@@ -66,3 +66,15 @@ The command-line validation used for this workspace was:
 ```
 
 The local simulator service in this environment was unavailable, so simulator launch was not verified here. The generic iOS device build succeeds.
+
+## Development Workflow
+
+Future Codex / programming-agent work should start from `AGENTS.md`, then read `update_log.md`, `md/flow/flow.md`, `md/flow/flowchart.md`, and `md/test/test.md`.
+
+The project now uses an Agent A/B/C iteration loop:
+
+- Agent A writes versioned implementation prompts under `md/prompt/`.
+- Agent B implements, tests, and updates required docs.
+- Agent C reviews the diff, verifies test evidence, and updates the core flow docs and update log when needed.
+
+Feature changes must update this README with current behavior. Test or verification changes must update both this README and `md/test/test.md`.

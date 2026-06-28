@@ -1,0 +1,145 @@
+# 项目核心流程文档
+
+`Desert Frontline` 当前核心链路是：SwiftUI 全屏承载 SpriteKit 场景，`GameScene` 在单个实时循环中驱动地图、实体、玩家输入、经济、生产、战斗、AI、战争迷雾、HUD 和胜负状态。
+
+## 1. 当前核心数据流
+
+```text
+触摸输入 / HUD 按钮 / AI 计时器
+  -> GameScene 状态字段
+  -> GameEntity / EntityKind / BuildOrder / ControlPoint / SupportPower
+  -> 移动、生产、经济、战斗、占领、迷雾、任务、胜负规则
+  -> SKNode / SKShapeNode / SKLabelNode 渲染
+  -> README、测试规范、更新日志记录当前事实
+```
+
+## 2. 当前核心执行流
+
+1. `DesertFrontlineApp` 创建 `GameView`。
+2. `GameView` 用 `SpriteView` 挂载 `SceneHolder.scene`。
+3. `SceneHolder` 创建固定尺寸 `GameScene(size: 1366x1024)`，`scaleMode = .aspectFill`。
+4. `GameScene.didMove(to:)` 初始化 world、map、entity、effect、fog、HUD、camera 节点。
+5. 初始化流程依次构建地形、绘制地图、生成控制点、生成初始单位/建筑、布局 HUD、刷新迷雾、刷新 HUD。
+6. `GameScene.update(_:)` 每帧推进施工、生产、支援冷却、经济、占领、维修、移动、战斗、AI、迷雾、死亡清理、任务进度、胜负和 HUD。
+7. 触摸事件在 `touchesBegan/Moved/Ended` 中分流到 HUD、迷你地图、双指平移缩放、框选、建筑预览、支援技能目标、集结点、attack-move、选中、移动和攻击。
+
+## 3. 核心状态对象 / 模块
+
+### `EntityKind`
+
+单位和建筑的静态定义来源：名称、短码、域、成本、建造时间、HP、速度、射程、伤害、冷却、视野、占地、生产来源、可生产项、可攻击目标。
+
+### `GameEntity`
+
+运行态实体：id、kind、faction、hp、destination、path、attackTarget、holdPosition、attackMoveDestination、attackTimer、revealedUntil、captureProgress、施工进度、rallyPoint 和各类 SpriteKit 节点。
+
+注意：`veterancyXP`、`killCount`、`veterancyNode` 已存在但老兵系统未完成。
+
+### `BuildOrder`
+
+生产队列项：产品、阵营、来源建筑/航母、总时长、剩余时间。`updateBuildOrders(dt:)` 完成出兵，`productionSource(...)` 决定来源。
+
+### `BattlefieldControlPoint`
+
+前线旗点状态：阵营、占领进度、占领方和对应节点。旗点提供收入与视野，并影响任务阶段。
+
+### `SupportPower`
+
+支援技能定义：侦察、区域维修、空袭、海军炮击。包含成本、冷却、半径、伤害/维修量和资产需求。
+
+### `HudAction`
+
+底部命令条动作：选军、hold、attack-move、生产、集结点、基地建造、支援技能、AI 难度、HQ 聚焦、重开 skirmish。
+
+### `AIDifficulty`
+
+AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、支援技能消费保留和支援阈值。
+
+### `MissionStage`
+
+自动任务阶段：占油、夺旗、混合军种、摧毁 Red 生产、摧毁 Red HQ。
+
+## 4. 关键运行流程
+
+### 输入与命令
+
+- HUD 点击先于世界点击处理。
+- 双指触摸进入相机平移/缩放。
+- 单指拖动可框选玩家移动单位。
+- 建筑放置、支援技能、集结点和 attack-move 都是 pending 模式；进入新模式时必须清理冲突模式。
+- 世界点击优先处理 pending 支援、pending 建筑、pending 集结点、pending attack-move，然后才处理选中、攻击或移动。
+
+### 经济与生产
+
+- HQ、已占领油井、已占领旗点提供收入。
+- 建筑只有 `isOperational` 后才能生产、赚钱或提供基地覆盖。
+- 陆军来自 War Factory，空军来自 Airfield 或 Carrier，海军来自 Shipyard。
+- Carrier 是移动空军生产平台，可生产 Helicopter/Fighter 并使用空军集结点。
+
+### 移动与战斗
+
+- 陆、空、海按 `Domain` 使用不同移动和地形规则；空军直飞，陆海需要路径点。
+- 普通移动会清理攻击/hold/attack-move 意图。
+- `HOLD` 记录 `holdPosition`，单位会在警戒半径内交战并回位。
+- `AMOV` 记录 `attackMoveDestination`，编队推进并沿途寻找可见敌人。
+- `updateCombat(dt:)` 选择目标、推进冷却并调用 `fire(attacker:target:)`。
+
+### 迷雾与隐身
+
+- 玩家可见性由单位/建筑视野、控制点视野和支援侦察共同决定。
+- 敌方实体只有满足 `isKnownToFaction(..., observer: .player)` 时才应被玩家看见或成为合法交互目标。
+- 潜艇依赖 `revealedUntil` 和声呐单位检测；开火会暴露。
+
+### AI
+
+- AI 按 `AIDifficulty` 周期执行。
+- AI 会赚钱、补生产建筑、生产混合陆海空单位、占油/旗、重建、使用支援技能、基地被打时拉防守单位。
+- AI 进攻使用 attack-move 波次，目标包括旗点、油田、生产建筑和 HQ。
+
+### HUD / 小地图
+
+- HUD 每帧由 `updateHUD()` 汇总金钱、收入、队列、任务、兵力、AI 状态、选择信息和按钮状态。
+- 选择信息来自 `singleSelectionInfo(...)` 或 `groupSelectionInfo(...)`。
+- 小地图显示地形、控制点、可见单位和相机框，点击可跳转相机。
+
+## 5. 用户入口
+
+- App 入口：`DesertFrontlineApp`
+- 游戏视图：`GameView`
+- 游戏场景：`GameScene`
+- 玩家主要操作：点击选择、拖框、点击移动/攻击、HUD 命令、双指移动缩放、点击小地图、`SKRM` 重开。
+
+## 6. 前端 / 数据层 / 模型层 / 测试层关系
+
+- 前端显示：SpriteKit 节点和 SwiftUI `SpriteView`。
+- 数据/状态层：`GameScene` 字段、`GameEntity`、`BuildOrder`、`BattlefieldControlPoint`。
+- 模型层：`EntityKind`、`SupportPower`、`HudAction`、`AIDifficulty`、`MissionStage`。
+- 规则层：`GameScene` 内的 update、command、build、combat、AI、fog、victory 系列函数。
+- 测试层：当前以 `xcodebuild` 构建和人工交互检查为主，规范见 `md/test/test.md`。
+
+## 7. 已确认铁律
+
+- README 只能记录已完成、可验证的当前功能。
+- 改 Swift 代码后最低运行 generic iOS device build。
+- Pending 模式必须互斥清理，避免建筑、支援、集结点、attack-move 状态交叉。
+- 新增单位/建筑必须同步考虑生产、AI、HUD、迷雾、死亡清理、重开重置。
+- 新增 HUD action 必须同步 `HudAction`、标题/副标题、按钮颜色、处理逻辑、HUD 更新和 README 控制说明。
+- 新增战斗行为必须同步可攻击规则、射程、伤害、冷却、目标搜索、AI 选择和视觉反馈。
+
+## 8. 未来扩展点
+
+- 老兵/经验系统：击杀 XP、等级、战斗加成、头顶徽章、选择面板显示。
+- AI 战术增强：守军、占点队、主攻波次、针对玩家构成调整生产。
+- 海军/航母深化：舰载机巡逻、截击、反潜、海岸争夺。
+- 建筑科技层：雷达、科技中心、防御塔、SAM、岸防炮、升级解锁。
+- 地图与任务：更多地图变体、战役式目标、阶段奖励。
+- 操作体验：双击同类选择、控制编队、命令按钮高亮、非法命令反馈。
+
+## 9. 不允许破坏的行为
+
+- HQ 被摧毁决定胜负。
+- 建筑施工未完成前不得生产、赚钱或扩展基地覆盖。
+- 玩家不能可靠攻击迷雾中不可见敌人。
+- AI 和玩家必须共享核心战斗/移动/生产规则。
+- `SKRM` 必须重置比赛状态、实体、任务、迷雾、经济和 pending 模式。
+- 潜艇隐身和声呐检测不得被新海战逻辑绕过。
