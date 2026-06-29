@@ -57,7 +57,7 @@ flowchart TD
 
 ## 3. Agent 迭代流程图
 
-读图说明：人工只提出目标和复核结论；Agent A 负责设计版本化提示词，Agent B 负责实现和测试，Agent C 负责验收并更新核心逻辑文档。每轮结束后回到人工。
+读图说明：人工提出目标和最终复核结论；Agent A 负责设计版本化提示词，Agent B 负责实现和测试，Agent C 负责验收。验收不通过则退回 Agent B 修复；验收通过后 Agent C 更新核心文档和日志，并按版本号自动创建 git commit，最后回到人工复核。
 
 ```mermaid
 flowchart TD
@@ -66,9 +66,12 @@ flowchart TD
   Prompt --> AgentB["Agent B\n按提示词实现、测试、更新必要文档"]
   AgentB --> Result["实现结果\n改动、文件、测试命令、风险"]
   Result --> AgentC["Agent C\n查看 diff、复核测试、验收实现"]
-  AgentC --> FlowDocs["更新核心文档\nmd/flow/flow.md 与 flowchart.md"]
-  AgentC --> Log["必要时更新 update_log.md\n正式版本、关键决策、遗留问题"]
-  FlowDocs --> Review["人工复核\n决定通过、返工或下一轮"]
-  Log --> Review
+  AgentC --> Gate{"验收是否通过"}
+  Gate -- "不通过" --> BackB["退回 Agent B\n列出阻塞问题和修复要求"]
+  BackB --> AgentB
+  Gate -- "通过" --> FlowDocs["更新核心文档\nmd/flow/flow.md 与 flowchart.md"]
+  FlowDocs --> Log["更新 update_log.md\n版本号、关键决策、验证结果"]
+  Log --> Commit["git commit\nsubject: 版本号: 简要说明\nbody: 工作概括与验证结果"]
+  Commit --> Review["人工复核\n决定继续下一轮或补充返工"]
   Review --> Human
 ```

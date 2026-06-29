@@ -75,6 +75,6 @@ The project now uses an Agent A/B/C iteration loop:
 
 - Agent A writes versioned implementation prompts under `md/prompt/`.
 - Agent B implements, tests, and updates required docs.
-- Agent C reviews the diff, verifies test evidence, and updates the core flow docs and update log when needed.
+- Agent C reviews the diff and test evidence; failed reviews return to Agent B, while passed reviews update the core flow docs, update the log, and create a versioned git commit.
 
 Feature changes must update this README with current behavior. Test or verification changes must update both this README and `md/test/test.md`.

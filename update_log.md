@@ -90,3 +90,28 @@
 遗留事项：
 
 - 下一轮功能开发建议从老兵/经验系统开始，先由 Agent A 生成版本化实现提示词。
+
+### v0.2 / 明确 Agent C 通过后版本提交规则
+
+日期：2026-06-29
+
+核心变更：
+
+- Agent C 验收不通过时必须列出阻塞问题并退回 Agent B，不创建 git commit。
+- Agent C 验收通过后必须更新核心文档和日志，并按版本号自动创建 git commit。
+- commit subject 统一为 `版本号: 简要说明`，commit body 简要概括本版本工作内容、影响范围和验证结果。
+
+关键文件：
+
+- `AGENTS.md`
+- `md/flow/flowchart.md`
+- `README.md`
+- `update_log.md`
+
+验证结果：
+
+- 仅文档变更，需运行 `git diff --check`。
+
+遗留事项：
+
+- 本规则从后续 Agent C 验收任务开始执行；普通文档编辑任务不自动提交，除非本轮角色就是 Agent C 且验收通过。
