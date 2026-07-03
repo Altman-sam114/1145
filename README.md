@@ -8,9 +8,10 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Isometric desert map matching the reference's desert RTS layout: roads, ridges, coastline, water, oil fields, base clusters, desert villages, oases, farms, depots, wreckage, and fog of war.
 - Economy loop: HQ base income, capturable oil derricks, front-line flag control points with income and scout vision, visible money/income HUD, and AI income scaling by difficulty.
 - Production queues from War Factory, Airfield, Shipyard, and Carrier decks with selected/least-busy source routing, visible factory progress bars, factory/carrier rally points, and ready pulses on the map.
-- Base construction from the HUD: place War Factory, Airfield, Shipyard, and Oil Derricks during play with a green/red placement preview, timed construction scaffolds, and visible build progress.
+- Base construction from the HUD: place War Factory, Airfield, Radar Outpost, Shipyard, and Oil Derricks during play with a green/red placement preview, timed construction scaffolds, and visible build progress.
 - Building rules: structures require vision and nearby friendly base coverage; Shipyards require coast tiles; Oil Derricks require oil fields.
-- New structures are attackable while under construction but do not produce units, earn income, or extend base coverage until operational.
+- New structures are attackable while under construction but do not produce units, earn income, provide vision, provide support assets, or extend base coverage until operational.
+- Radar Outposts are buildable land structures that provide extended static scout vision and count as `SCAN` assets once operational.
 - Land units: Humvee scout, Tank, Artillery, Mechanic.
 - Air units: Helicopter, Fighter.
 - Naval units: Battleship, Submarine, Carrier.
@@ -18,7 +19,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Carrier strike visuals, naval combat, air-to-ground/naval combat, artillery range advantage, submarine stealth, sonar detection, and firing reveal pings.
 - Combat units gain veterancy XP and kill counts from direct-fire kills, progressing from Recruit through Hardened, Veteran, and Elite with light damage, attack cooldown, and vision bonuses.
 - Non-Recruit units show SpriteKit veterancy badges above the unit, and the selection panel reports rank, XP, kills, effective stats, and group veterancy distribution.
-- Tactical support powers from the bottom command bar: `SCAN` reveals a target area, `REPR` restores damaged friendly assets, `AIRS` calls an air strike, and `BARR` calls naval fire support with economy costs, cooldowns, asset requirements, and map effects.
+- Tactical support powers from the bottom command bar: `SCAN` reveals a target area from an operational HQ or Radar Outpost, `REPR` restores damaged friendly assets, `AIRS` calls an air strike, and `BARR` calls naval fire support with economy costs, cooldowns, asset requirements, and map effects.
 - Mission objective panel with automatic stage completion: secure oil, capture front-line flags, deploy mixed land/air/naval forces, break enemy production, then destroy the Red HQ.
 - Unit selection, select-all army button, hold-position guard orders, attack-move advances, move orders, attack orders, health bars, explosions, automatic mechanic repairs, repair sparks.
 - Tactical selection panel with current unit/building stats, production state, rally/queue information, and multi-unit formation composition.
@@ -43,7 +44,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Select a War Factory, Airfield, Shipyard, or Carrier, tap `RLY`, then tap the map to set its rally point for newly produced units.
 - Tap the tactical minimap to move the camera.
 - Use two fingers to pan the battlefield; pinch with two fingers to zoom the tactical camera in or out.
-- Use `BASE` to cycle through buildable structures, drag or tap the map to preview valid placement, then tap a valid tile to start constructing the selected structure.
+- Use `BASE` to cycle through War Factory, Airfield, Radar Outpost, Shipyard, and Oil Derrick placement, drag or tap the map to preview valid placement, then tap a valid tile to start constructing the selected structure.
 - Use `SCAN`, `REPR`, `AIRS`, or `BARR`, then tap the map to target recon, field repair, air strike, or naval barrage support.
 - Use `ARMY`, any unit production button, HQ focus, or AI difficulty to leave structure placement/rally modes.
 - Use `SKRM` to start a new skirmish map variant.

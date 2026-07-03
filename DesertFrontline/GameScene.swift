@@ -44,6 +44,7 @@ private enum EntityKind: CaseIterable, Hashable {
     case airfield
     case shipyard
     case oilDerrick
+    case radarOutpost
     case humvee
     case tank
     case artillery
@@ -61,6 +62,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .airfield: "Airfield"
         case .shipyard: "Shipyard"
         case .oilDerrick: "Oil Derrick"
+        case .radarOutpost: "Radar Outpost"
         case .humvee: "Humvee"
         case .tank: "Tank"
         case .artillery: "Artillery"
@@ -80,6 +82,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .airfield: "AF"
         case .shipyard: "SY"
         case .oilDerrick: "OIL"
+        case .radarOutpost: "RAD"
         case .humvee: "HMV"
         case .tank: "TNK"
         case .artillery: "ART"
@@ -94,7 +97,7 @@ private enum EntityKind: CaseIterable, Hashable {
 
     var domain: Domain {
         switch self {
-        case .hq, .barracks, .airfield, .shipyard, .oilDerrick:
+        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost:
             .structure
         case .humvee, .tank, .artillery, .mechanic:
             .land
@@ -139,6 +142,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .airfield: 2200
         case .shipyard: 2400
         case .oilDerrick: 900
+        case .radarOutpost: 1300
         case .humvee: 420
         case .tank: 650
         case .artillery: 900
@@ -158,6 +162,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .airfield: 14.0
         case .shipyard: 14.0
         case .oilDerrick: 8.0
+        case .radarOutpost: 10.0
         case .humvee: 3.5
         case .tank: 5.0
         case .artillery: 7.0
@@ -177,6 +182,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .airfield: 900
         case .shipyard: 1050
         case .oilDerrick: 650
+        case .radarOutpost: 720
         case .humvee: 160
         case .tank: 260
         case .artillery: 190
@@ -254,6 +260,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .hq: 7
         case .barracks, .airfield, .shipyard: 5
         case .oilDerrick: 4
+        case .radarOutpost: 9
         case .humvee: 8
         case .artillery, .battleship, .carrier: 7
         case .fighter: 8
@@ -268,6 +275,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .hq: 58
         case .barracks, .airfield, .shipyard: 50
         case .oilDerrick: 42
+        case .radarOutpost: 46
         case .humvee: 28
         case .carrier: 60
         case .battleship: 50
@@ -798,7 +806,7 @@ final class GameScene: SKScene {
     private var buildOrders: [BuildOrder] = []
     private var aiBuildCursor = 0
     private var aiDifficulty: AIDifficulty = .normal
-    private let buildableStructures: [EntityKind] = [.barracks, .airfield, .shipyard, .oilDerrick]
+    private let buildableStructures: [EntityKind] = [.barracks, .airfield, .radarOutpost, .shipyard, .oilDerrick]
     private var structureBuildCursor = 0
     private var pendingConstructionKind: EntityKind?
     private var pendingSupportPower: SupportPower?
@@ -1528,7 +1536,7 @@ final class GameScene: SKScene {
         base.addChild(shadow)
 
         switch entity.kind {
-        case .hq, .barracks, .airfield, .shipyard, .oilDerrick:
+        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost:
             addStructureBody(for: entity, to: base)
         case .humvee, .tank, .artillery, .mechanic:
             addLandUnitBody(for: entity, to: base)
@@ -1661,6 +1669,40 @@ final class GameScene: SKScene {
             pump.strokeColor = .clear
             pump.zRotation = -0.35
             base.addChild(pump)
+        case .radarOutpost:
+            let pad = SKShapeNode(rectOf: CGSize(width: 54, height: 30), cornerRadius: 4)
+            pad.fillColor = UIColor(red: 0.46, green: 0.49, blue: 0.47, alpha: 1.0)
+            pad.strokeColor = UIColor(white: 0.18, alpha: 1.0)
+            pad.lineWidth = 2
+            base.addChild(pad)
+
+            let tower = SKShapeNode(rectOf: CGSize(width: 10, height: 30), cornerRadius: 2)
+            tower.position = CGPoint(x: -4, y: 15)
+            tower.fillColor = UIColor(red: 0.28, green: 0.30, blue: 0.32, alpha: 1.0)
+            tower.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            tower.lineWidth = 1.5
+            base.addChild(tower)
+
+            let dish = SKShapeNode(ellipseOf: CGSize(width: 34, height: 18))
+            dish.position = CGPoint(x: 10, y: 31)
+            dish.fillColor = UIColor(red: 0.78, green: 0.84, blue: 0.82, alpha: 1.0)
+            dish.strokeColor = UIColor(white: 0.18, alpha: 1.0)
+            dish.lineWidth = 2
+            dish.zRotation = -0.24
+            base.addChild(dish)
+
+            let sweep = SKShapeNode(rectOf: CGSize(width: 28, height: 3), cornerRadius: 1)
+            sweep.position = CGPoint(x: 16, y: 33)
+            sweep.fillColor = entity.faction.color
+            sweep.strokeColor = .clear
+            sweep.zRotation = -0.24
+            base.addChild(sweep)
+
+            let console = SKShapeNode(rectOf: CGSize(width: 22, height: 10), cornerRadius: 2)
+            console.position = CGPoint(x: -12, y: 4)
+            console.fillColor = entity.faction.color
+            console.strokeColor = .clear
+            base.addChild(console)
         default:
             break
         }
@@ -2406,6 +2448,9 @@ final class GameScene: SKScene {
         ]
 
         if entity.kind.isStructure {
+            if !entity.isOperational {
+                rows[1] = "Atk 0  Rng 0  Vis 0"
+            }
             rows[2] = entity.isOperational ? "Operational  \(domainLabel(for: entity.kind.domain))" : "Build \(Int(ceil(entity.buildProgressRemaining)))s left"
             rows[3] = structureStatusLine(for: entity)
         } else {
@@ -2485,8 +2530,17 @@ final class GameScene: SKScene {
     }
 
     private func structureStatusLine(for entity: GameEntity) -> String {
+        if entity.kind.isStructure && !entity.isOperational {
+            return "Offline until operational"
+        }
         guard entity.kind.isFactory else {
-            return entity.kind == .oilDerrick ? "Income +$145/s when held" : "Base coverage"
+            if entity.kind == .oilDerrick {
+                return "Income +$145/s when held"
+            }
+            if entity.kind == .radarOutpost {
+                return "Radar vision \(entity.kind.visionTiles)  SCAN asset"
+            }
+            return "Base coverage"
         }
 
         let orders = buildOrders.filter { $0.sourceID == entity.id }
@@ -2507,7 +2561,7 @@ final class GameScene: SKScene {
     private func supportAssetLine(for power: SupportPower) -> String {
         switch power {
         case .reconSweep:
-            return "Needs HQ"
+            return "Needs HQ or RAD"
         case .fieldRepair:
             return "Needs HQ or Mechanic"
         case .airStrike:
@@ -3130,7 +3184,7 @@ final class GameScene: SKScene {
         guard hasOperationalSupportAsset(for: power, faction: faction) else {
             switch power {
             case .reconSweep:
-                return "Recon requires an operational HQ."
+                return "Recon requires an operational HQ or Radar Outpost."
             case .fieldRepair:
                 return "Field Repair requires HQ or Mechanic."
             case .airStrike:
@@ -3147,7 +3201,7 @@ final class GameScene: SKScene {
             guard entity.faction == faction, entity.isAlive, entity.isOperational else { return false }
             switch power {
             case .reconSweep:
-                return entity.kind == .hq
+                return entity.kind == .hq || entity.kind == .radarOutpost
             case .fieldRepair:
                 return entity.kind == .hq || entity.kind == .mechanic
             case .airStrike:
@@ -3488,6 +3542,7 @@ final class GameScene: SKScene {
         aiBuildCursor = 0
         pendingConstructionKind = nil
         pendingSupportPower = nil
+        structureBuildCursor = 0
         supportCooldowns.removeAll()
         supportRevealTiles.removeAll()
         isSettingRallyPoint = false
@@ -4720,6 +4775,9 @@ final class GameScene: SKScene {
         if target.kind == .oilDerrick {
             score += 140
         }
+        if target.kind == .radarOutpost {
+            score += 90
+        }
         if target.hp < target.kind.maxHP * 0.42 {
             score += 120
         }
@@ -4858,6 +4916,8 @@ final class GameScene: SKScene {
             590
         case .oilDerrick:
             560
+        case .radarOutpost:
+            620
         case .helicopter:
             540
         case .tank:
@@ -4915,7 +4975,7 @@ final class GameScene: SKScene {
 
     private func primaryTarget(for faction: Faction) -> GameEntity? {
         let enemyFaction: Faction = faction == .enemy ? .player : .enemy
-        let priorities: [EntityKind] = [.hq, .oilDerrick, .shipyard, .airfield, .barracks, .carrier, .battleship]
+        let priorities: [EntityKind] = [.hq, .oilDerrick, .radarOutpost, .shipyard, .airfield, .barracks, .carrier, .battleship]
         for kind in priorities {
             if let target = entities.values.first(where: { $0.faction == enemyFaction && $0.kind == kind && $0.isAlive && isKnownToFaction($0, observer: faction) }) {
                 return target
@@ -4946,6 +5006,9 @@ final class GameScene: SKScene {
         var visible = Set<TileCoord>()
         let playerEntities = entities.values.filter { $0.faction == .player && $0.isAlive }
         for entity in playerEntities {
+            if entity.kind.isStructure && !entity.isOperational {
+                continue
+            }
             guard let origin = tile(at: entity.node.position) else { continue }
             let radius = effectiveVisionTiles(for: entity)
             for row in max(0, origin.row - radius)...min(rows - 1, origin.row + radius) {
