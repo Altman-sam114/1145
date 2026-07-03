@@ -55,13 +55,15 @@ flowchart TD
   Drag -- "超过阈值" --> Box["框选玩家移动单位"]
 ```
 
-## 3. Agent 迭代与云端验证流程图
+## 3. Agent X 主控迭代与云端验证流程图
 
-读图说明：人工提出目标和最终复核结论；Agent A 负责设计版本化提示词，Agent B 必须基于最新 `origin/main` 在 `main` 上实现、提交并直推，GitHub Actions 生成未加密结果包。Agent C 下载并核对最新 `main` run 的 manifest、JUnit、日志和失败摘要；验收不通过则退回 Agent B 在 `main` 上追加修复 commit 并重新 push，验收通过后再回到人工复核。
+读图说明：人工可以用 `agentx:` 给出总目标。Agent X 只负责拆分轮次和判断循环状态，不替代 Agent A/B/C。每个轮次仍由 Agent A 写提示词、Agent B 在 `main` 上实现并 push、GitHub Actions 生成未加密 artifact、Agent C 下载核对最新 `origin/main` run；之后 Agent X 才能判断继续、退回、暂停或完成。
 
 ```mermaid
 flowchart TD
-  Human["人工提出目标\n功能、禁止项、验收标准、测试要求"] --> AgentA["Agent A\n分析目标并写实现提示词"]
+  Human["人工给 Agent X 总目标\n范围、禁止项、验收标准"] --> AgentX["Agent X\n拆分小轮次并设定停止条件"]
+  AgentX --> RoundGoal["本轮目标\n清晰、有限、可验证"]
+  RoundGoal --> AgentA["Agent A\n分析本轮目标并写提示词"]
   AgentA --> Prompt["md/prompt/vX（阶段）/vX.Y（任务）.md\n版本化实现提示词"]
   Prompt --> Sync["Agent B\nfetch origin、切到 main、pull --ff-only origin main"]
   Sync --> Implement["Agent B\n小步实现、更新必要文档、本地轻量检查"]
@@ -75,9 +77,10 @@ flowchart TD
   Gate -- "不通过" --> BackB["退回 Agent B\n列出阻塞问题和修复要求"]
   BackB --> Fix["main 追加修复 commit\n再次 push origin main"]
   Fix --> Actions
-  Gate -- "通过" --> Docs{"是否需补齐核心文档"}
-  Docs -- "需要" --> DocCommit["Agent C 在 main 追加文档 commit\npush 后重新触发 Actions"]
-  DocCommit --> Actions
-  Docs -- "不需要" --> Review["人工复核\n决定继续下一轮或补充返工"]
-  Review --> Human
+  Gate -- "通过" --> XJudge["Agent X 判断\n继续、退回、暂停、完成"]
+  XJudge -- "继续下一轮" --> AgentX
+  XJudge -- "退回补充" --> BackB
+  XJudge -- "暂停等待人工" --> Pause["暂停\n权限、决策、冲突或同因失败"]
+  Pause --> Human
+  XJudge -- "总目标完成" --> Done["完成\n输出总目标闭环结果"]
 ```

@@ -80,6 +80,8 @@ The project now uses an Agent A/B/C iteration loop:
 - GitHub Actions runs the cloud validation workflow and uploads an unencrypted CI results package.
 - Agent C downloads the latest `main` results package, checks the manifest, JUnit summary, Xcode build log, and failure summary, then either accepts the run or returns a fix list to Agent B.
 
+For larger goals, `agentx:` (`x:` / `X:`) starts the Agent X control loop. Agent X splits the goal into smaller Agent A -> Agent B -> Agent C rounds and decides whether to continue, return for fixes, pause, or finish after Agent C artifact review; it does not replace the A/B/C roles.
+
 Feature changes must update this README with current behavior. Test or verification changes must update both this README and `md/test/test.md`.
 
 ## Collaboration And Cloud Validation

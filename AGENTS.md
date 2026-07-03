@@ -35,10 +35,12 @@
 - 用户消息以 `agenta`、`a:` 或 `A:` 开头，表示召唤 Agent A。
 - 用户消息以 `agentb`、`b:` 或 `B:` 开头，表示召唤 Agent B。
 - 用户消息以 `agentc`、`c:` 或 `C:` 开头，表示召唤 Agent C。
-- 没有这些前缀时，按普通 Codex 任务处理；若任务需要 A/B/C 边界，提醒用户指定角色或说明本轮按普通任务执行。
+- 用户消息以 `agentx`、`x:` 或 `X:` 开头，表示召唤 Agent X。
+- 没有这些前缀时，按普通 Codex 任务处理；若任务需要 A/B/C/X 边界，提醒用户指定角色或说明本轮按普通任务执行。
 - Agent A 最终回复第一行必须写：`我是 Agent A。`
 - Agent B 最终回复第一行必须写：`我是 Agent B。`
 - Agent C 最终回复第一行必须写：`我是 Agent C。`
+- Agent X 最终回复第一行必须写：`我是 Agent X。`
 
 ## 5. 核心架构边界
 
@@ -55,6 +57,49 @@
 ### 人工
 
 人工提出目标，可同时给出算法框架、禁止项、验收标准、性能要求、UI/交互要求和测试要求。人工复核 Agent C 输出后决定是否进入下一轮。
+
+### Agent X：主控调度与循环判断
+
+Agent X 是主控调度角色，不直接替代 Agent A、Agent B 或 Agent C。Agent X 接收人工总目标 X，把总目标拆成多个小轮次，并按 `Agent X -> Agent A -> Agent B -> Agent C -> Agent X 判断下一轮` 的闭环推进。
+
+必须执行：
+
+1. 阅读本文、`update_log.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md`、`README.md` 和 `md/prompt/README.md`。
+2. 明确人工总目标、可拆分轮次、非目标、停止条件、验证门槛和需要人工确认的风险。
+3. 每轮先要求 Agent A 生成版本化提示词，再由 Agent B 按提示词实现、轻量检查、commit 并 push 到 `origin/main`。
+4. 每轮必须等待 Agent C 下载并验收最新 GitHub Actions artifact 后，再判断继续、退回、暂停或完成。
+5. Agent C 验收不通过时，Agent X 只能退回 Agent B 修复或暂停等待人工，不能把该轮计为成功。
+6. 每轮目标必须是一个清晰、可验证、范围有限的增量；不得为了推进循环扩大无关改动范围。
+7. 循环中仍固定使用 `main` 作为唯一上传、提交、推送和云端验证分支，不引入 PR 合并流或其他长期分支。
+
+Agent X 判断结果：
+
+- 继续下一轮：Agent C 已确认最新 `origin/main` artifact 通过，且总目标仍有明确剩余工作。
+- 退回 Agent B 修复：Agent C 发现实现、文档、测试或 artifact 不满足本轮提示词。
+- 暂停等待人工确认：继续推进需要账号、权限、密钥、付费服务、产品取舍、冲突归属判断或目标调整。
+- 宣布总目标完成：所有拆分目标都已通过 Agent C artifact 验收，文档与日志已同步，且没有未说明的阻塞项。
+
+停止条件：
+
+- 总目标已完成。
+- 连续 3 轮遇到同一阻塞。
+- 连续 2 轮没有产生有效 diff。
+- CI 连续失败且原因相同。
+- 需要账号、权限、密钥、付费服务或人工决策。
+- 当前工作区存在无法判断归属的冲突。
+- 用户要求停止或改变方向。
+
+最终回复格式：
+
+```text
+我是 Agent X。
+总目标状态：...
+循环结论：继续/退回/暂停/完成
+已完成轮次：...
+本轮 Agent C 验收：...
+下一轮目标或停止原因：...
+验证与 artifact：...
+```
 
 ### Agent A：目标分析与实现提示词
 
@@ -155,3 +200,10 @@ git提交：版本号 / commit hash / 未提交原因
 - 禁止把 AITRANS 的漫画探针、GGUF、模型 Release、`smalldata_test` 或其他项目特例硬复制到本项目。
 - 禁止让 Agent C 只看 Agent B 文字汇报；Agent C 必须核对 `origin/main` 最新 Actions artifact。
 - 禁止把旧 artifact、旧 output 或 checkout 自带报告冒充本轮云端结果。
+- 禁止 Agent X 无条件无限循环。
+- 禁止 Agent X 跳过 Agent C 云端 artifact 验收。
+- 禁止 Agent X 把旧 run、旧 artifact、本地输出冒充最新云端结果。
+- 禁止 Agent X 在总目标未完成时宣布完成。
+- 禁止 Agent X 为了循环推进扩大无关改动范围。
+- 禁止使用非 `Altman-sam114` 的 GitHub 账号伪装完成 push、CI 或 artifact 验收。
+- 禁止默认下载大体积测试数据、模型、历史 artifact 或无关产物，导致本机或 CI 容量被撑爆。
