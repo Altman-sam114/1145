@@ -12,9 +12,9 @@
 
 ## 当前状态
 
-日期：2026-07-03
+日期：2026-07-04
 
-当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
+当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、老兵经验、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
 
 当前协作流程已升级为 `main` 直推触发 GitHub Actions 云端验证，并由 Agent C 下载未加密 CI 结果包复核。当前可靠构建命令仍是 generic iOS device build：
 
@@ -32,9 +32,8 @@
 
 遗留事项：
 
-- 本地仓库当前未配置 `origin` 远端；首次真实 `origin/main` push、GitHub Actions run 和 artifact 下载复核需要在远端配置后执行。
-- 老兵/经验系统未完成：`GameEntity` 已有 `veterancyXP`、`killCount`、`veterancyNode` 字段，但未完整接入击杀结算、等级、加成、HUD 和 README。
 - 移动端实际手感仍需要真机或可用模拟器验证。
+- 当前没有独立 XCTest target 或自动化玩法回归，Stage / Full 回归仍依赖云端 build 加人工设备或模拟器检查。
 - AI 战术分工、平衡、海军/航母深度和建筑科技层仍可继续增强。
 
 ## 历史记录
@@ -149,3 +148,39 @@
 遗留事项：
 
 - 配置 `origin` 后，需要执行首次真实 `main` push，等待 `ci-results` workflow，下载 `/private/tmp/desert-frontline-c-review-<run_id>/` 下的结果包并核对 manifest。
+
+### v1.0 / 实现老兵经验系统
+
+日期：2026-07-04
+
+核心变更：
+
+- 新增 `VeterancyRank`，按 XP 计算 Recruit / Hardened / Veteran / Elite 四档等级，不保存第二份可变等级状态。
+- 直接开火击杀会为可移动作战单位增加 `killCount` 和 `veterancyXP`，支援技能击杀不计入任何单位 XP。
+- 老兵等级影响有效伤害、攻击冷却和玩家视野，玩家与 AI 共享同一套 `fire`、有效数值和授 XP 逻辑。
+- 非 Recruit 单位显示 SpriteKit 头顶徽章，徽章作为实体节点子节点随战争迷雾隐藏。
+- 选择面板显示单体等级、XP、击杀、有效攻击/视野和多选等级分布。
+- `README.md`、`md/flow/flow.md` 和 `md/flow/flowchart.md` 已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v1（核心玩法）/v1.0（实现老兵经验系统）.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 提交并推送：`551f9eb182e7b8ea8b65f2f5abfef451141f15f3`，commit subject 为 `v1.0: 实现老兵经验系统`。
+- Agent C 复核：`git fetch origin` 成功；本地 `main`、`origin/main` 和 Actions run head SHA 均为 `551f9eb182e7b8ea8b65f2f5abfef451141f15f3`；`git diff --check` 通过。
+- GitHub Actions：run `28671220109`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`。
+- artifact：`desert-frontline-ci-v1.0-main-551f9eb182e7-run28671220109-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28671220109/` 并核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，老兵击杀、徽章、HUD 和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续微调老兵等级阈值、加成强度和 AI 对高等级单位的战术使用。
