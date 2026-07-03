@@ -16,7 +16,7 @@ flowchart TD
   Loop --> Build["施工 / 生产\n建筑进度、BuildOrder、出兵、集结点"]
   Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入与占领进度"]
   Loop --> Commands["移动 / 命令\n普通移动、HOLD、AMOV、路径和编队"]
-  Loop --> Combat["战斗 / 维修\n目标搜索、开火、伤害、维修、死亡清理"]
+  Loop --> Combat["战斗 / 维修\n目标搜索、有效伤害、击杀 XP、老兵徽章、死亡清理"]
   Loop --> AI["敌方 AI\n建造、占点、支援技能、attack-move 波次"]
   Loop --> Fog["战争迷雾\n可见格、已探索格、侦察、潜艇检测"]
   Loop --> Mission["任务 / 胜负\n阶段目标与 HQ 摧毁判定"]

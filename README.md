@@ -16,6 +16,8 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Naval units: Battleship, Submarine, Carrier.
 - Carriers act as mobile sea-based air platforms that can build Helicopters and Fighters, launch aircraft from the deck, and set air rally points.
 - Carrier strike visuals, naval combat, air-to-ground/naval combat, artillery range advantage, submarine stealth, sonar detection, and firing reveal pings.
+- Combat units gain veterancy XP and kill counts from direct-fire kills, progressing from Recruit through Hardened, Veteran, and Elite with light damage, attack cooldown, and vision bonuses.
+- Non-Recruit units show SpriteKit veterancy badges above the unit, and the selection panel reports rank, XP, kills, effective stats, and group veterancy distribution.
 - Tactical support powers from the bottom command bar: `SCAN` reveals a target area, `REPR` restores damaged friendly assets, `AIRS` calls an air strike, and `BARR` calls naval fire support with economy costs, cooldowns, asset requirements, and map effects.
 - Mission objective panel with automatic stage completion: secure oil, capture front-line flags, deploy mixed land/air/naval forces, break enemy production, then destroy the Red HQ.
 - Unit selection, select-all army button, hold-position guard orders, attack-move advances, move orders, attack orders, health bars, explosions, automatic mechanic repairs, repair sparks.

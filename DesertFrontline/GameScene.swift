@@ -333,6 +333,91 @@ private enum EntityKind: CaseIterable, Hashable {
     }
 }
 
+private enum VeterancyRank: Int, CaseIterable {
+    case recruit
+    case hardened
+    case veteran
+    case elite
+
+    var displayName: String {
+        switch self {
+        case .recruit: "Recruit"
+        case .hardened: "Hardened"
+        case .veteran: "Veteran"
+        case .elite: "Elite"
+        }
+    }
+
+    var shortCode: String {
+        switch self {
+        case .recruit: "REC"
+        case .hardened: "HDN"
+        case .veteran: "VET"
+        case .elite: "ELT"
+        }
+    }
+
+    var minimumXP: CGFloat {
+        switch self {
+        case .recruit: 0
+        case .hardened: 80
+        case .veteran: 200
+        case .elite: 420
+        }
+    }
+
+    var nextThreshold: CGFloat? {
+        switch self {
+        case .recruit: 80
+        case .hardened: 200
+        case .veteran: 420
+        case .elite: nil
+        }
+    }
+
+    var damageMultiplier: CGFloat {
+        switch self {
+        case .recruit: 1.00
+        case .hardened: 1.10
+        case .veteran: 1.18
+        case .elite: 1.28
+        }
+    }
+
+    var cooldownMultiplier: TimeInterval {
+        switch self {
+        case .recruit: 1.00
+        case .hardened: 0.96
+        case .veteran: 0.92
+        case .elite: 0.86
+        }
+    }
+
+    var visionBonus: Int {
+        switch self {
+        case .recruit, .hardened: 0
+        case .veteran, .elite: 1
+        }
+    }
+
+    var badgeColor: UIColor {
+        switch self {
+        case .recruit:
+            UIColor.clear
+        case .hardened:
+            UIColor(red: 0.72, green: 0.44, blue: 0.18, alpha: 1.0)
+        case .veteran:
+            UIColor(red: 0.78, green: 0.82, blue: 0.86, alpha: 1.0)
+        case .elite:
+            UIColor(red: 1.0, green: 0.77, blue: 0.22, alpha: 1.0)
+        }
+    }
+
+    static func rank(for xp: CGFloat) -> VeterancyRank {
+        VeterancyRank.allCases.last { xp >= $0.minimumXP } ?? .recruit
+    }
+}
+
 private enum HudAction: String, CaseIterable {
     case selectArmy
     case holdPosition
@@ -671,6 +756,14 @@ private final class GameEntity {
 
     var isOperational: Bool {
         !kind.isStructure || buildProgressRemaining <= 0
+    }
+
+    var veterancyRank: VeterancyRank {
+        VeterancyRank.rank(for: veterancyXP)
+    }
+
+    var nextVeterancyThreshold: CGFloat? {
+        veterancyRank.nextThreshold
     }
 }
 
@@ -1488,6 +1581,11 @@ final class GameScene: SKScene {
         entity.rallyNode.isHidden = true
         entity.node.addChild(entity.rallyNode)
 
+        entity.veterancyNode.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 30)
+        entity.veterancyNode.zPosition = 27
+        entity.node.addChild(entity.veterancyNode)
+        updateVeterancyBadge(for: entity)
+
         entity.captureNode.zPosition = 29
         entity.node.addChild(entity.captureNode)
 
@@ -2302,7 +2400,7 @@ final class GameScene: SKScene {
         let hpPercent = Int((entity.hp / max(entity.kind.maxHP, 1)) * 100)
         var rows = [
             "HP \(Int(entity.hp))/\(Int(entity.kind.maxHP))  \(hpPercent)%",
-            "Atk \(Int(entity.kind.damage))  Rng \(Int(entity.kind.attackRange))  Vis \(entity.kind.visionTiles)",
+            "Atk \(Int(effectiveDamage(for: entity)))  Rng \(Int(entity.kind.attackRange))  Vis \(effectiveVisionTiles(for: entity))",
             "Move \(Int(entity.kind.speed))  \(domainLabel(for: entity.kind.domain))",
             "$\(entity.kind.cost)  Value \(Int(strategicValue(of: entity.kind)))"
         ]
@@ -2310,16 +2408,12 @@ final class GameScene: SKScene {
         if entity.kind.isStructure {
             rows[2] = entity.isOperational ? "Operational  \(domainLabel(for: entity.kind.domain))" : "Build \(Int(ceil(entity.buildProgressRemaining)))s left"
             rows[3] = structureStatusLine(for: entity)
-        } else if entity.kind == .submarine {
-            rows[3] = entity.revealedUntil > lastUpdateTime ? "Detected \(Int(ceil(entity.revealedUntil - lastUpdateTime)))s" : "Stealth  Sonar yes"
-        } else if entity.kind == .mechanic {
-            rows[3] = "Repairs nearby allies"
-        } else if entity.kind == .carrier {
-            rows[3] = structureStatusLine(for: entity)
-        } else if entity.attackMoveDestination != nil {
-            rows[3] = "Attack-moving  Seek \(Int(attackMoveEngagementRadius))"
-        } else if entity.holdPosition != nil {
-            rows[3] = "Holding position  Guard \(Int(holdEngagementRadius))"
+        } else {
+            rows[3] = veterancyProgressLine(for: entity)
+            if let status = mobileStatusLine(for: entity) {
+                rows[2] = "\(rows[2])  \(compactVeterancyLine(for: entity))"
+                rows[3] = status
+            }
         }
 
         return ("\(entity.kind.displayName) \(entity.kind.shortCode)", rows)
@@ -2331,7 +2425,7 @@ final class GameScene: SKScene {
         let naval = selected.filter { $0.kind.domain == .naval }.count
         let totalHP = selected.reduce(CGFloat.zero) { $0 + $1.hp }
         let totalMaxHP = selected.reduce(CGFloat.zero) { $0 + $1.kind.maxHP }
-        let totalDamage = selected.reduce(CGFloat.zero) { $0 + $1.kind.damage }
+        let totalDamage = selected.reduce(CGFloat.zero) { $0 + effectiveDamage(for: $1) }
         let maxRange = selected.map { $0.kind.attackRange }.max() ?? 0
         let holdingCount = selected.filter { $0.holdPosition != nil }.count
         let attackMoveCount = selected.filter { $0.attackMoveDestination != nil }.count
@@ -2346,23 +2440,48 @@ final class GameScene: SKScene {
                     ? "Holding \(holdingCount)  Guard \(Int(holdEngagementRadius))"
                     : attackMoveCount > 0
                         ? "Attack move \(attackMoveCount)  Seek \(Int(attackMoveEngagementRadius))"
-                        : groupCompositionLine(for: selected)
+                        : groupVeterancyLine(for: selected)
             ]
         )
     }
 
-    private func groupCompositionLine(for selected: [GameEntity]) -> String {
-        let counts = Dictionary(grouping: selected, by: \.kind).mapValues(\.count)
-        let parts = counts
-            .sorted { left, right in
-                if left.value == right.value {
-                    return left.key.shortCode < right.key.shortCode
-                }
-                return left.value > right.value
-            }
-            .prefix(4)
-            .map { "\($0.key.shortCode)x\($0.value)" }
-        return "Mix " + parts.joined(separator: " ")
+    private func veterancyProgressLine(for entity: GameEntity) -> String {
+        if let nextThreshold = entity.nextVeterancyThreshold {
+            return "Vet \(entity.veterancyRank.displayName) XP \(Int(entity.veterancyXP))/\(Int(nextThreshold)) Kills \(entity.killCount)"
+        }
+        return "Vet \(entity.veterancyRank.displayName) XP \(Int(entity.veterancyXP)) Kills \(entity.killCount)"
+    }
+
+    private func compactVeterancyLine(for entity: GameEntity) -> String {
+        "\(entity.veterancyRank.shortCode) XP\(Int(entity.veterancyXP)) K\(entity.killCount)"
+    }
+
+    private func mobileStatusLine(for entity: GameEntity) -> String? {
+        if entity.kind == .submarine {
+            return entity.revealedUntil > lastUpdateTime ? "Detected \(Int(ceil(entity.revealedUntil - lastUpdateTime)))s" : "Stealth  Sonar yes"
+        }
+        if entity.kind == .mechanic {
+            return "Repairs nearby allies"
+        }
+        if entity.kind == .carrier {
+            return structureStatusLine(for: entity)
+        }
+        if entity.attackMoveDestination != nil {
+            return "Attack-moving  Seek \(Int(attackMoveEngagementRadius))"
+        }
+        if entity.holdPosition != nil {
+            return "Holding position  Guard \(Int(holdEngagementRadius))"
+        }
+        return nil
+    }
+
+    private func groupVeterancyLine(for selected: [GameEntity]) -> String {
+        let recruit = selected.filter { $0.veterancyRank == .recruit }.count
+        let hardened = selected.filter { $0.veterancyRank == .hardened }.count
+        let veteran = selected.filter { $0.veterancyRank == .veteran }.count
+        let elite = selected.filter { $0.veterancyRank == .elite }.count
+        let totalKills = selected.reduce(0) { $0 + $1.killCount }
+        return "Vet R\(recruit) H\(hardened) V\(veteran) E\(elite)  Kills \(totalKills)"
     }
 
     private func structureStatusLine(for entity: GameEntity) -> String {
@@ -4128,7 +4247,7 @@ final class GameScene: SKScene {
             guard distance <= entity.kind.attackRange + target.kind.footprint * 0.35 else { continue }
             guard entity.attackTimer <= 0 else { continue }
 
-            entity.attackTimer = entity.kind.attackCooldown
+            entity.attackTimer = effectiveAttackCooldown(for: entity)
             fire(attacker: entity, target: target)
         }
     }
@@ -4148,7 +4267,8 @@ final class GameScene: SKScene {
     }
 
     private func fire(attacker: GameEntity, target: GameEntity) {
-        let damage = attacker.kind.damage
+        let damage = effectiveDamage(for: attacker)
+        let wasAlive = target.isAlive
         if attacker.kind == .submarine {
             attacker.revealedUntil = max(attacker.revealedUntil, lastUpdateTime + 2.4)
             if attacker.faction == .enemy {
@@ -4180,9 +4300,80 @@ final class GameScene: SKScene {
         updateHealthBar(target)
         showPlayerUnderAttackAlertIfNeeded(target: target, attacker: attacker)
         triggerEnemyDefenseIfNeeded(target: target, attacker: attacker)
-        if target.hp <= 0 {
+        if wasAlive && target.hp <= 0 {
+            awardVeterancyKill(to: attacker, target: target)
             explode(at: target.node.position, scale: target.kind.isStructure ? 1.6 : 1.0)
         }
+    }
+
+    private func effectiveDamage(for attacker: GameEntity) -> CGFloat {
+        attacker.kind.damage * attacker.veterancyRank.damageMultiplier
+    }
+
+    private func effectiveAttackCooldown(for attacker: GameEntity) -> TimeInterval {
+        max(0.2, attacker.kind.attackCooldown * attacker.veterancyRank.cooldownMultiplier)
+    }
+
+    private func effectiveVisionTiles(for entity: GameEntity) -> Int {
+        max(0, entity.kind.visionTiles + entity.veterancyRank.visionBonus)
+    }
+
+    private func awardVeterancyKill(to attacker: GameEntity, target: GameEntity) {
+        guard attacker.isAlive,
+              !attacker.kind.isStructure,
+              attacker.kind.damage > 0,
+              attacker.faction != target.faction,
+              target.faction != .neutral
+        else { return }
+
+        let previousRank = attacker.veterancyRank
+        attacker.killCount += 1
+        attacker.veterancyXP += veterancyXPValue(for: target)
+        updateVeterancyBadge(for: attacker)
+
+        let promotedRank = attacker.veterancyRank
+        guard promotedRank != previousRank else { return }
+
+        if attacker.faction == .player {
+            showMessage(
+                "\(attacker.kind.displayName) promoted to \(promotedRank.displayName).",
+                color: UIColor(red: 1.0, green: 0.84, blue: 0.36, alpha: 1.0)
+            )
+        }
+    }
+
+    private func veterancyXPValue(for target: GameEntity) -> CGFloat {
+        var xp = max(24, CGFloat(target.kind.cost) * 0.12)
+        if target.kind.isStructure {
+            xp *= 0.65
+        }
+        if target.kind == .hq {
+            xp = min(xp, 180)
+        }
+        return xp
+    }
+
+    private func updateVeterancyBadge(for entity: GameEntity) {
+        entity.veterancyNode.removeAllChildren()
+        let rank = entity.veterancyRank
+        entity.veterancyNode.isHidden = rank == .recruit
+        guard rank != .recruit else { return }
+
+        let back = SKShapeNode(rectOf: CGSize(width: 24, height: 13), cornerRadius: 3)
+        back.fillColor = rank.badgeColor.withAlphaComponent(0.94)
+        back.strokeColor = UIColor.black.withAlphaComponent(0.72)
+        back.lineWidth = 1
+        entity.veterancyNode.addChild(back)
+
+        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label.text = rank.shortCode
+        label.fontSize = 7
+        label.fontColor = UIColor(white: 0.08, alpha: 1.0)
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.position = CGPoint(x: 0, y: -0.5)
+        label.zPosition = 1
+        entity.veterancyNode.addChild(label)
     }
 
     private func showPlayerUnderAttackAlertIfNeeded(target: GameEntity, attacker: GameEntity) {
@@ -4756,7 +4947,7 @@ final class GameScene: SKScene {
         let playerEntities = entities.values.filter { $0.faction == .player && $0.isAlive }
         for entity in playerEntities {
             guard let origin = tile(at: entity.node.position) else { continue }
-            let radius = entity.kind.visionTiles
+            let radius = effectiveVisionTiles(for: entity)
             for row in max(0, origin.row - radius)...min(rows - 1, origin.row + radius) {
                 for col in max(0, origin.col - radius)...min(cols - 1, origin.col + radius) {
                     let tile = TileCoord(row: row, col: col)
