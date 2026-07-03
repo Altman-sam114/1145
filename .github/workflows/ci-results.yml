@@ -1,0 +1,222 @@
+name: Desert Frontline CI Results
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ci-results:
+    name: Build and package CI results
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare CI results
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf ci-results .derivedData-ci
+          mkdir -p ci-results
+          printf 'Desert Frontline CI run %s attempt %s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" > ci-results/ci-run.log
+
+      - name: Static checks
+        id: static-checks
+        continue-on-error: true
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.before }}
+        run: |
+          set -o pipefail
+          {
+            zero_sha="0000000000000000000000000000000000000000"
+            if [[ -n "${BASE_SHA:-}" && "$BASE_SHA" != "$zero_sha" ]] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+              git diff --check "$BASE_SHA" HEAD
+            elif git rev-parse HEAD^ >/dev/null 2>&1; then
+              git diff --check HEAD^ HEAD
+            else
+              git diff --check
+            fi
+          } 2>&1 | tee ci-results/static-checks.log
+
+      - name: Project lint
+        id: project-lint
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          plutil -lint DesertFrontline.xcodeproj/project.pbxproj 2>&1 | tee ci-results/project-lint.log
+
+      - name: Xcode generic iOS build
+        id: xcode-build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf ci-results/DesertFrontline.xcresult .derivedData-ci
+          /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
+            -project DesertFrontline.xcodeproj \
+            -scheme DesertFrontline \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath .derivedData-ci \
+            -resultBundlePath ci-results/DesertFrontline.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee ci-results/xcodebuild.log
+
+      - name: Write manifest and summaries
+        id: package-metadata
+        shell: bash
+        env:
+          STATIC_OUTCOME: ${{ steps.static-checks.outcome }}
+          PROJECT_LINT_OUTCOME: ${{ steps.project-lint.outcome }}
+          BUILD_OUTCOME: ${{ steps.xcode-build.outcome }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+        run: |
+          set -euo pipefail
+          short_sha="$(git rev-parse --short=12 HEAD)"
+          branch_slug="$(printf '%s' "${GITHUB_REF_NAME}" | tr '/[:upper:]' '-[:lower:]')"
+          commit_subject="$(git log -1 --pretty=%s)"
+          version="$(printf '%s' "$commit_subject" | sed -E 's/^([^:]+):.*/\1/')"
+          if [[ ! "$version" =~ ^v[0-9]+(\.[0-9]+)?$ ]]; then
+            version="unversioned"
+          fi
+          created_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          artifact_name="desert-frontline-ci-${version}-${branch_slug}-${short_sha}-run${GITHUB_RUN_ID}-attempt${GITHUB_RUN_ATTEMPT}"
+          echo "artifact_name=${artifact_name}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
+          echo "created_at=${created_at}" >> "$GITHUB_OUTPUT"
+          export CI_VERSION="$version"
+          export CI_SHORT_SHA="$short_sha"
+          export CI_CREATED_AT="$created_at"
+
+          failure_count=0
+          for outcome in "$STATIC_OUTCOME" "$PROJECT_LINT_OUTCOME" "$BUILD_OUTCOME"; do
+            if [[ "$outcome" != "success" ]]; then
+              failure_count=$((failure_count + 1))
+            fi
+          done
+
+          cat > ci-results/ci-failure-summary.md <<EOF
+          # Desert Frontline CI Failure Summary
+
+          - Branch: ${GITHUB_REF_NAME}
+          - Commit: ${GITHUB_SHA}
+          - Run: ${GITHUB_RUN_ID}
+          - Attempt: ${GITHUB_RUN_ATTEMPT}
+          - Static checks: ${STATIC_OUTCOME}
+          - Project lint: ${PROJECT_LINT_OUTCOME}
+          - Build: ${BUILD_OUTCOME}
+          - XCTest: skipped (no XCTest target exists in the current project)
+
+          Logs:
+
+          - ci-results/static-checks.log
+          - ci-results/project-lint.log
+          - ci-results/xcodebuild.log
+          EOF
+
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import xml.sax.saxutils as sax
+
+          results_dir = pathlib.Path("ci-results")
+          static_outcome = os.environ["STATIC_OUTCOME"]
+          project_lint_outcome = os.environ["PROJECT_LINT_OUTCOME"]
+          build_outcome = os.environ["BUILD_OUTCOME"]
+          failure_count = sum(
+              outcome != "success"
+              for outcome in (static_outcome, project_lint_outcome, build_outcome)
+          )
+
+          checks = [
+              ("static-checks", static_outcome, "ci-results/static-checks.log"),
+              ("project-lint", project_lint_outcome, "ci-results/project-lint.log"),
+              ("xcode-build", build_outcome, "ci-results/xcodebuild.log"),
+          ]
+          testcases = []
+          for name, outcome, log_path in checks:
+              failure = ""
+              if outcome != "success":
+                  failure = (
+                      f'<failure message="{sax.escape(outcome)}">'
+                      f'See {sax.escape(log_path)}</failure>'
+                  )
+              testcases.append(
+                  f'    <testcase classname="DesertFrontlineCI" name="{sax.escape(name)}">'
+                  f'{failure}</testcase>'
+              )
+          junit = (
+              '<?xml version="1.0" encoding="UTF-8"?>\n'
+              f'<testsuite name="DesertFrontlineCI" tests="{len(checks)}" '
+              f'failures="{failure_count}" skipped="1">\n'
+              + "\n".join(testcases)
+              + '\n    <testcase classname="DesertFrontlineCI" name="xctest">'
+              '<skipped message="No XCTest target exists in the current project"/>'
+              '</testcase>\n'
+              '</testsuite>\n'
+          )
+          (results_dir / "junit.xml").write_text(junit, encoding="utf-8")
+
+          manifest = {
+              "version": os.environ["CI_VERSION"],
+              "branch": os.environ["GITHUB_REF_NAME"],
+              "commitSha": os.environ["GITHUB_SHA"],
+              "shortSha": os.environ["CI_SHORT_SHA"],
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "workflowName": os.environ["WORKFLOW_NAME"],
+              "createdAt": os.environ.get("CI_CREATED_AT", ""),
+              "projectName": "Desert Frontline",
+              "scheme": "DesertFrontline",
+              "destination": "generic/platform=iOS",
+              "resultBundlePath": "ci-results/DesertFrontline.xcresult",
+              "junitPath": "ci-results/junit.xml",
+              "buildLogPath": "ci-results/xcodebuild.log",
+              "failureSummaryPath": "ci-results/ci-failure-summary.md",
+              "staticChecksOutcome": static_outcome,
+              "projectLintOutcome": project_lint_outcome,
+              "buildOutcome": build_outcome,
+              "testOutcome": "skipped",
+              "projectSpecificReports": ["ci-results/DesertFrontline.xcresult"],
+          }
+          (results_dir / "ci-artifact-manifest.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload CI results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package-metadata.outputs.artifact_name }}
+          path: ci-results
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail on unsuccessful checks
+        shell: bash
+        env:
+          STATIC_OUTCOME: ${{ steps.static-checks.outcome }}
+          PROJECT_LINT_OUTCOME: ${{ steps.project-lint.outcome }}
+          BUILD_OUTCOME: ${{ steps.xcode-build.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$STATIC_OUTCOME" != "success" || "$PROJECT_LINT_OUTCOME" != "success" || "$BUILD_OUTCOME" != "success" ]]; then
+            echo "One or more CI checks failed. Download the CI results artifact for details."
+            exit 1
+          fi

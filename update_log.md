@@ -12,11 +12,11 @@
 
 ## 当前状态
 
-日期：2026-06-28
+日期：2026-07-03
 
 当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
 
-当前可靠验证基线是 generic iOS device build：
+当前协作流程已升级为 `main` 直推触发 GitHub Actions 云端验证，并由 Agent C 下载未加密 CI 结果包复核。当前可靠构建命令仍是 generic iOS device build：
 
 ```sh
 /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
@@ -32,6 +32,7 @@
 
 遗留事项：
 
+- 本地仓库当前未配置 `origin` 远端；首次真实 `origin/main` push、GitHub Actions run 和 artifact 下载复核需要在远端配置后执行。
 - 老兵/经验系统未完成：`GameEntity` 已有 `veterancyXP`、`killCount`、`veterancyNode` 字段，但未完整接入击杀结算、等级、加成、HUD 和 README。
 - 移动端实际手感仍需要真机或可用模拟器验证。
 - AI 战术分工、平衡、海军/航母深度和建筑科技层仍可继续增强。
@@ -115,3 +116,36 @@
 遗留事项：
 
 - 本规则从后续 Agent C 验收任务开始执行；普通文档编辑任务不自动提交，除非本轮角色就是 Agent C 且验收通过。
+
+### v0.3 / 协作流程升级为 main 直推与云端结果包验收
+
+日期：2026-07-03
+
+核心变更：
+
+- 将默认协作验证从本机完整构建改为本地轻量检查 + `main` 直推 + GitHub Actions 云端重验证。
+- 明确 `agenta` / `a:`、`agentb` / `b:`、`agentc` / `c:` 召唤规则和 Agent A/B/C 最终回复身份标识。
+- 明确 Agent B 基于最新 `origin/main` 在 `main` 上实现、commit、push；Agent C 下载未加密结果包，核对 manifest、JUnit、日志和失败摘要。
+- 新增 `ci-results` workflow 设计，上传 Agent C 可追溯复核的 CI 结果包。
+- 明确本轮制度不引入 `smalldata_test`、`develop`、`codeb/...`、候选分支或 PR 合并流，也不复制 AITRANS 的项目特例。
+
+关键文件：
+
+- `AGENTS.md`
+- `README.md`
+- `md/prompt/README.md`
+- `md/test/test.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `.github/workflows/ci-results.yml`
+- `update_log.md`
+
+验证结果：
+
+- 本轮是流程和 CI 改造，不涉及业务逻辑。
+- 需运行 `git diff --check`、`plutil -lint DesertFrontline.xcodeproj/project.pbxproj` 和 workflow YAML 解析。
+- 本地仓库当前没有 `origin` 远端，无法在本机完成真实 `git push origin main`、GitHub Actions run 和 artifact 下载复核；该限制必须在最终交付中说明，不得伪装为云端已通过。
+
+遗留事项：
+
+- 配置 `origin` 后，需要执行首次真实 `main` push，等待 `ci-results` workflow，下载 `/private/tmp/desert-frontline-c-review-<run_id>/` 下的结果包并核对 manifest。

@@ -74,7 +74,12 @@ Future Codex / programming-agent work should start from `AGENTS.md`, then read `
 The project now uses an Agent A/B/C iteration loop:
 
 - Agent A writes versioned implementation prompts under `md/prompt/`.
-- Agent B implements, tests, and updates required docs.
-- Agent C reviews the diff and test evidence; failed reviews return to Agent B, while passed reviews update the core flow docs, update the log, and create a versioned git commit.
+- Agent B implements on `main`, runs local lightweight checks, commits, and pushes to `origin/main`.
+- GitHub Actions runs the cloud validation workflow and uploads an unencrypted CI results package.
+- Agent C downloads the latest `main` results package, checks the manifest, JUnit summary, Xcode build log, and failure summary, then either accepts the run or returns a fix list to Agent B.
 
 Feature changes must update this README with current behavior. Test or verification changes must update both this README and `md/test/test.md`.
+
+## Collaboration And Cloud Validation
+
+The default validation path is `main` direct push plus GitHub Actions. Local full Xcode builds are kept for explicit requests or extra investigation; routine agent work should rely on the CI results package described in `md/test/test.md`.
