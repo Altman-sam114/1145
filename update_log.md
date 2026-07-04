@@ -12,9 +12,9 @@
 
 ## 当前状态
 
-日期：2026-07-04
+日期：2026-07-05
 
-当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、建造、雷达前哨、防御炮塔、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、老兵经验、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
+当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、建造、地图控制、旗点前线建造覆盖、雷达前哨、防御炮塔、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、老兵经验、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
 
 当前协作流程已升级为 `main` 直推触发 GitHub Actions 云端验证，并由 Agent C 下载未加密 CI 结果包复核。当前可靠构建命令仍是 generic iOS device build：
 
@@ -549,3 +549,43 @@
 - 当前没有独立 XCTest target，AI 油井 / 旗点 runner 同轮不复用、移动中的占点 runner 不被主攻波次抢走、真正 idle 作战单位仍能发起 attack-move、以及 v1.7 生产扫描行为仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 本轮只保护仍有普通 `destination` 的移动中占点 runner；单位到达占领半径且 `destination` 清空后，若占领尚未完成，后续周期仍可能被重新调度。若要长期占点 reservation，需要另开小版本设计。
 - 后续可继续扩展旗点建造覆盖、岸防炮、长期 AI 角色 reservation 或反潜 HUD 信息，但这些不属于 v1.9。
+
+### v2.0 / 旗点提供建造覆盖
+
+日期：2026-07-05
+
+核心变更：
+
+- 新增结构建造覆盖、旗点建造覆盖和旗点中心 no-build 半径常量；己方已完工结构继续提供 390 像素覆盖，己方已占领旗点提供 180 像素有限覆盖。
+- `constructionIssue(...)` 改为共享 `hasNearbyBuildCoverage(...)`，玩家和 AI 都使用己方已完工结构或己方已占旗点作为建造覆盖来源。
+- 玩家建造仍必须有目标视野；Shipyard 海岸、Oil Derrick 油田、普通陆地结构、碰撞检查和资金扣除规则保持不变。
+- `isOccupiedForConstruction(...)` 增加旗点中心 56 像素保护，避免普通建筑压住旗点视觉和交互中心，同时保留 Oil Derrick 复用 / 改建旧油井的既有例外。
+- `setControlPointFaction(...)` 在玩家相关旗点归属变化时强制刷新 fog，让刚占旗后的视野和建造覆盖立即进入合法性判断。
+- AI 普通建筑选点把 Red 已占旗点加入 build anchor，但最终仍走 `constructionIssue(...)`，不能绕过海岸、油田、陆地、碰撞或覆盖规则。
+- README、flow、flowchart 和 v2.0 Agent A 提示词已同步当前真实行为；本轮没有新增建筑、科技树、支援资产、旗点武器或声呐能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v2（地图控制）/v2.0（旗点建造覆盖）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 实现提交并推送：`c943446a173704b973ae4fb89cef01b7531bebca`，commit subject 为 `v2.0: 旗点提供建造覆盖`。
+- Agent X 并行只读子 agent 复核：代码审查和文档审查均返回 `No issues`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `c943446a173704b973ae4fb89cef01b7531bebca`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28712236687`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v2.0-main-c943446a1737-run28712236687-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28712236687/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=c943446a173704b973ae4fb89cef01b7531bebca`、`runId=28712236687`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，玩家占旗后立即放置 Radar Outpost / Guard Tower、敌方或中立旗点不提供玩家覆盖、AI 围绕已占旗点前线补建、旗点中心 no-build、Oil Derrick 复用、Shipyard 海岸限制和 `SKRM` 重置后旗点覆盖清空仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展岸防炮、SAM、长期 AI 角色 reservation、旗点争夺奖励或反潜 HUD 信息，但这些不属于 v2.0。
