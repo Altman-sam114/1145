@@ -396,3 +396,42 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，建筑失败、支援失败、失效 `RLY` / `AMOV`、不可攻击敌人、非移动实体点地面、无选中空地点击不刷 marker、v1.4 按钮高亮保留和 `SKRM` 清理仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展控制编队、按钮禁用态或音效反馈，但这些不属于 v1.5。
+
+### v1.6 / 控制组快速编队
+
+日期：2026-07-04
+
+核心变更：
+
+- 底部 HUD 新增 `G1` / `G2` 控制组按钮，放在 `ARMY` 后作为触控编队入口。
+- HUD 单击 `G1` / `G2` 会延迟召回对应控制组，以避免双击保存时第一下误触发召回；召回会过滤仍存活、玩家阵营、非结构的机动单位并回写 live ID 集。
+- HUD 双击 `G1` / `G2` 会保存当前玩家机动单位选择的 ID 集；空选择或结构-only 选择不会覆盖旧组，也不改变当前选择。
+- 控制组操作会清理 pending 建筑、支援技能、集结点、attack-move 和 construction preview；召回空组不会清空当前选择。
+- 死亡清理会从控制组移除已清理 ID；`SKRM` 重开会取消待召回动作、重置召回 token 并清空两个控制组。
+- README、flow 和 flowchart 已同步控制组保存/召回、subtitle 和 `SKRM` 重置行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v1（核心玩法）/v1.6（控制组快速编队）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 实现提交并推送：`6fde9ab91b4e0dba9475f59213cb0a30acad5e4b`，commit subject 为 `v1.6: 增加控制组快速编队`；对应 GitHub Actions run `28705810539` 成功，但不是最终验收 run。
+- Agent B 修复提交并推送：`b2c3ee081559d6b01ec36b23cc447966365cb27b`，commit subject 为 `v1.6: 修复控制组双击保存`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和最终 Actions run head SHA 均为 `b2c3ee081559d6b01ec36b23cc447966365cb27b`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions 最终 run：`28706014088`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v1.6-main-b2c3ee081559-run28706014088-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28706014088/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=b2c3ee081559d6b01ec36b23cc447966365cb27b`、`runId=28706014088`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，`G1` / `G2` 双击保存、单击召回、空选择不覆盖、空组召回不清选择、pending 清理、死亡 ID 过滤、HUD subtitle 更新和 `SKRM` 清空控制组仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展编队管理深化、按钮禁用态、命令队列反馈或移动端手感优化，但这些不属于 v1.6。
