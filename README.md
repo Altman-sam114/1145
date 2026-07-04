@@ -48,6 +48,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Use two fingers to pan the battlefield; pinch with two fingers to zoom the tactical camera in or out.
 - Use `BASE` to cycle through War Factory, Airfield, Radar Outpost, Guard Tower, Shipyard, and Oil Derrick placement, drag or tap the map to preview valid placement, then tap a valid tile to start constructing the selected structure.
 - Use `SCAN`, `REPR`, `AIRS`, or `BARR`, then tap the map to target recon, field repair, air strike, or naval barrage support.
+- `BASE`, `RLY`, `AMOV`, `SCAN`, `REPR`, `AIRS`, and `BARR` highlight while waiting for a map target.
 - Use `ARMY`, any unit production button, HQ focus, or AI difficulty to leave structure placement/rally modes.
 - Use `SKRM` to start a new skirmish map variant.
 - Use the bottom HUD buttons to select the army, hold ground, build units, focus HQ, cycle AI difficulty, place structures, or restart the skirmish.

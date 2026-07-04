@@ -851,6 +851,7 @@ final class GameScene: SKScene {
     private var selectionInfoRowLabels: [SKLabelNode] = []
     private var hudButtonFrames: [HudAction: CGRect] = [:]
     private var hudButtonSubtitleLabels: [HudAction: SKLabelNode] = [:]
+    private var hudButtonShapes: [HudAction: SKShapeNode] = [:]
     private var minimapFrame = CGRect.zero
     private var minimapBlipsNode = SKNode()
     private var minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 36, height: 24), cornerRadius: 2)
@@ -1931,6 +1932,7 @@ final class GameScene: SKScene {
         hudNode.removeAllChildren()
         hudButtonFrames.removeAll()
         hudButtonSubtitleLabels.removeAll()
+        hudButtonShapes.removeAll()
         selectionInfoRowLabels.removeAll()
 
         let halfW = size.width / 2
@@ -2084,6 +2086,8 @@ final class GameScene: SKScene {
                 actionIndex += 1
             }
         }
+
+        refreshHudButtonStyles()
     }
 
     private func commandRowCounts(total: Int, rows: Int) -> [Int] {
@@ -2185,6 +2189,7 @@ final class GameScene: SKScene {
         shape.strokeColor = UIColor.black
         shape.lineWidth = 4
         node.addChild(shape)
+        hudButtonShapes[action] = shape
 
         let title = SKLabelNode(fontNamed: "Menlo-Bold")
         title.text = action.title
@@ -2206,6 +2211,38 @@ final class GameScene: SKScene {
         hudButtonSubtitleLabels[action] = subtitleLabel
 
         return node
+    }
+
+    private func isHudActionArmed(_ action: HudAction) -> Bool {
+        switch action {
+        case .buildBase:
+            return pendingConstructionKind != nil
+        case .setRally:
+            return isSettingRallyPoint
+        case .attackMove:
+            return isSettingAttackMove
+        case .reconSweep, .fieldRepair, .airStrike, .navalBarrage:
+            return action.supportPower != nil && action.supportPower == pendingSupportPower
+        default:
+            return false
+        }
+    }
+
+    private func refreshHudButtonStyles() {
+        for (action, shape) in hudButtonShapes {
+            shape.fillColor = buttonColor(for: action)
+            shape.alpha = 1.0
+
+            if isHudActionArmed(action) {
+                shape.strokeColor = UIColor(red: 1.0, green: 0.84, blue: 0.26, alpha: 1.0)
+                shape.lineWidth = 5.5
+                shape.glowWidth = 3
+            } else {
+                shape.strokeColor = UIColor.black
+                shape.lineWidth = 4
+                shape.glowWidth = 0
+            }
+        }
     }
 
     private func buttonColor(for action: HudAction) -> UIColor {
@@ -2291,6 +2328,7 @@ final class GameScene: SKScene {
                 subtitleLabel.fontColor = UIColor(white: 0.92, alpha: 1.0)
             }
         }
+        refreshHudButtonStyles()
 
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
         if let pendingConstructionKind {

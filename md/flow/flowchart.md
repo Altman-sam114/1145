@@ -26,7 +26,7 @@ flowchart TD
   Combat --> Render
   AI --> Render
   Fog --> Render
-  Mission --> HUD["HUD / 小地图\n金钱、队列、选择信息、任务、相机框"]
+  Mission --> HUD["HUD / 小地图\n金钱、队列、选择信息、任务、命令高亮、相机框"]
   Render --> HUD
 ```
 
@@ -37,7 +37,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   Touch["玩家触摸输入\nBegan / Moved / Ended"] --> HUDCheck{"是否点到 HUD 按钮"}
-  HUDCheck -- "是" --> HudAction["handleHudAction\n切换命令、生产、支援、AI、重开"]
+  HUDCheck -- "是" --> HudAction["handleHudAction\n切换命令、生产、支援、AI、重开\npending按钮高亮由状态刷新"]
   HUDCheck -- "否" --> MiniMap{"是否点到小地图"}
   MiniMap -- "是" --> Camera["移动相机到小地图位置"]
   MiniMap -- "否" --> MultiTouch{"是否双指触摸"}
