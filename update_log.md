@@ -435,3 +435,41 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，`G1` / `G2` 双击保存、单击召回、空选择不覆盖、空组召回不清选择、pending 清理、死亡 ID 过滤、HUD subtitle 更新和 `SKRM` 清空控制组仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展编队管理深化、按钮禁用态、命令队列反馈或移动端手感优化，但这些不属于 v1.6。
+
+### v1.7 / AI 跳过不可生产兵种
+
+日期：2026-07-04
+
+核心变更：
+
+- AI 常规生产槽不再只尝试 `aiBuildCursor` 当前指向的兵种，而是从 cursor 开始最多扫描一次完整 `aiBuildPattern()`。
+- 新增 `canQueueBuild(kind:faction:)` 和 `nextAvailableAIBuildKind(in:startingAt:)`，可生产判定复用 `productionSource(for:faction:)` 并检查资金，保持 War Factory、Airfield、Shipyard 和 Carrier 的现有 operational 来源规则。
+- 当前缺 Airfield / Shipyard / Carrier 或资金不足时，AI 会跳过对应兵种并选择后续当前可生产单位；成功排队后 cursor 推进到命中项之后。
+- 若整轮 pattern 都不可生产，AI 本槽不排队、不扣钱、不显示玩家 HUD message 或 denied marker，并将 cursor 有界推进 1，避免长期从同一不可生产起点开始扫描。
+- 玩家生产、生产队列执行、AI 补建建筑、攻击波次、支援技能、经济、迷雾、战斗、老兵、胜负、控制组和 `SKRM` 重置链路保持不变。
+- README、flow 和 flowchart 已同步当前 AI 生产选择行为；Agent B 未预写本正式记录。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v1（核心玩法）/v1.7（AI跳过不可生产兵种）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 实现提交并推送：`82a30a580b05387d3606c78f7a6db1d2764676eb`，commit subject 为 `v1.7: 优化AI生产选择`。
+- Agent B 本地轻量检查：交接未提供原始命令输出；本轮按提示词要求应为 `git diff --check` 和 `git diff --cached --check`，最终以云端 static checks 与 Agent C 本地复核为准。
+- Agent C 复核：`git fetch origin` 成功；普通沙箱执行 `git pull --ff-only origin main` 因 `.git/FETCH_HEAD` 权限失败，提升权限重试成功且显示 `Already up to date`；本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `82a30a580b05387d3606c78f7a6db1d2764676eb`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28709813494`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v1.7-main-82a30a580b05-run28709813494-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28709813494/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=82a30a580b05387d3606c78f7a6db1d2764676eb`、`runId=28709813494`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，AI 在缺 Airfield / Shipyard / Carrier、资金不足、来源完工后重新纳入空海军、全部不可生产时无玩家反馈、cursor 失败推进 1 和 `SKRM` 重置 cursor 仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展 AI 战术分工、编队管理深化、按钮禁用态、命令队列反馈或移动端手感优化，但这些不属于 v1.7。
