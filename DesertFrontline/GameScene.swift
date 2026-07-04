@@ -3117,6 +3117,7 @@ final class GameScene: SKScene {
             let selectedFactories = selectedPlayerRallyFactories()
             if selectedFactories.isEmpty {
                 isSettingRallyPoint = false
+                showDeniedMarker(at: point, reason: "NO SOURCE")
                 showMessage("No factory or carrier selected.", color: .orange)
                 updateHUD()
                 return
@@ -3132,6 +3133,7 @@ final class GameScene: SKScene {
             let selected = selectedMobilePlayerUnits().filter { $0.kind.damage > 0 }
             if selected.isEmpty {
                 isSettingAttackMove = false
+                showDeniedMarker(at: point, reason: "NO UNITS")
                 showMessage("No combat units selected.", color: .orange)
                 updateHUD()
                 return
@@ -3157,14 +3159,21 @@ final class GameScene: SKScene {
 
             let selected = selectedMobilePlayerUnits()
             if !selected.isEmpty && tapped.faction == .enemy {
+                var assignedAttackers = 0
                 for unit in selected where unit.kind.canAttack(tapped.kind) {
                     unit.holdPosition = nil
                     unit.attackMoveDestination = nil
                     unit.attackTarget = tapped
                     unit.destination = nil
                     unit.path.removeAll()
+                    assignedAttackers += 1
                 }
-                showMessage("Attack order: \(tapped.kind.displayName).", color: UIColor(red: 1.0, green: 0.62, blue: 0.35, alpha: 1.0))
+                if assignedAttackers > 0 {
+                    showMessage("Attack order: \(tapped.kind.displayName).", color: UIColor(red: 1.0, green: 0.62, blue: 0.35, alpha: 1.0))
+                } else {
+                    showDeniedMarker(at: tapped.node.position, reason: "NO ATK")
+                    showMessage("Selected units cannot attack that target.", color: .orange)
+                }
                 return
             }
         }
@@ -3175,6 +3184,9 @@ final class GameScene: SKScene {
             if !selectedFactories.isEmpty {
                 setRallyPoint(to: point, for: selectedFactories)
                 return
+            }
+            if !selectedIDs.isEmpty {
+                showDeniedMarker(at: point, reason: "NO UNITS")
             }
             selectedIDs.removeAll()
             refreshSelection()
@@ -3216,6 +3228,7 @@ final class GameScene: SKScene {
     private func executeSupportPower(_ power: SupportPower, at point: CGPoint, faction: Faction = .player, showFeedback: Bool = true) {
         guard let tile = tile(at: point) else {
             if showFeedback && faction == .player {
+                showDeniedMarker(at: point, reason: "NO MAP")
                 showMessage("Target outside battlefield.", color: .orange)
             }
             return
@@ -3227,6 +3240,7 @@ final class GameScene: SKScene {
                 pendingSupportPower = nil
             }
             if showFeedback && faction == .player {
+                showDeniedMarker(at: targetPoint, reason: supportDeniedReason(for: issue))
                 showMessage(issue, color: .orange)
                 updateHUD()
             }
@@ -3234,12 +3248,16 @@ final class GameScene: SKScene {
         }
 
         if faction == .player && power != .reconSweep && !exploredTiles.contains(tile) {
+            if showFeedback {
+                showDeniedMarker(at: targetPoint, reason: "NO SCOUT")
+            }
             showMessage("Support target must be scouted first.", color: .orange)
             return
         }
 
         if power.repairAmount > 0 && supportRepairScore(power, at: targetPoint, for: faction) <= 0 {
             if showFeedback && faction == .player {
+                showDeniedMarker(at: targetPoint, reason: "NO REPAIR")
                 showMessage("No damaged units in repair zone.", color: .orange)
                 updateHUD()
             }
@@ -3322,6 +3340,16 @@ final class GameScene: SKScene {
             }
         }
         return nil
+    }
+
+    private func supportDeniedReason(for issue: String) -> String {
+        if issue.contains("funds") {
+            return "NO FUNDS"
+        }
+        if issue.contains("cooling") {
+            return "NO READY"
+        }
+        return "NO ASSET"
     }
 
     private func hasOperationalSupportAsset(for power: SupportPower, faction: Faction) -> Bool {
@@ -3547,16 +3575,19 @@ final class GameScene: SKScene {
 
     private func placeStructure(kind: EntityKind, at point: CGPoint) {
         guard let tile = tile(at: point) else {
+            showDeniedMarker(at: point, reason: "NO BUILD")
             showMessage("Invalid build location.", color: .orange)
             return
         }
         let position = tileCenter(tile)
 
         if let issue = constructionIssue(for: kind, faction: .player, tile: tile, position: position) {
+            showDeniedMarker(at: position, reason: "NO BUILD")
             showMessage(issue, color: .orange)
             return
         }
         guard playerMoney >= kind.cost else {
+            showDeniedMarker(at: position, reason: "NO FUNDS")
             showMessage("Not enough funds for \(kind.displayName).", color: .orange)
             return
         }
@@ -5289,6 +5320,50 @@ final class GameScene: SKScene {
         cross.zPosition = 265
         effectsLayer.addChild(cross)
         cross.run(.sequence([.group([.scale(to: 1.35, duration: 0.42), .fadeOut(withDuration: 0.42)]), .removeFromParent()]))
+    }
+
+    private func showDeniedMarker(at point: CGPoint, reason: String) {
+        let color = UIColor(red: 1.0, green: 0.30, blue: 0.18, alpha: 1.0)
+        let node = SKNode()
+        node.position = point
+        node.zPosition = 268
+
+        let ring = SKShapeNode(ellipseOf: CGSize(width: 54, height: 25))
+        ring.fillColor = color.withAlphaComponent(0.10)
+        ring.strokeColor = color
+        ring.lineWidth = 3
+        ring.glowWidth = 1.5
+        node.addChild(ring)
+
+        let crossPath = CGMutablePath()
+        crossPath.move(to: CGPoint(x: -14, y: -10))
+        crossPath.addLine(to: CGPoint(x: 14, y: 10))
+        crossPath.move(to: CGPoint(x: -14, y: 10))
+        crossPath.addLine(to: CGPoint(x: 14, y: -10))
+
+        let cross = SKShapeNode(path: crossPath)
+        cross.strokeColor = color
+        cross.lineWidth = 3
+        cross.lineCap = .round
+        node.addChild(cross)
+
+        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label.text = reason
+        label.fontSize = 10
+        label.fontColor = color
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.position = CGPoint(x: 0, y: 27)
+        node.addChild(label)
+
+        effectsLayer.addChild(node)
+        node.run(.sequence([
+            .group([
+                .scale(to: 1.35, duration: 0.52),
+                .fadeOut(withDuration: 0.52)
+            ]),
+            .removeFromParent()
+        ]))
     }
 
     private func showHoldMarker(at point: CGPoint) {

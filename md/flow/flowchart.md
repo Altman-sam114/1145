@@ -32,7 +32,7 @@ flowchart TD
 
 ## 2. 玩家输入与命令流程图
 
-读图说明：触摸输入会先判断 HUD 和小地图，再处理 pending 模式。建筑放置、支援技能、集结点和 attack-move 都是互斥 pending 状态，最后才进入普通选择、攻击或移动。
+读图说明：触摸输入会先判断 HUD 和小地图，再处理 pending 模式。建筑放置、支援技能、集结点和 attack-move 都是互斥 pending 状态，最后才进入普通选择、攻击或移动；无效世界目标只补短暂拒绝标记，不改变命令合法性或 pending 语义。
 
 ```mermaid
 flowchart TD
@@ -47,11 +47,17 @@ flowchart TD
   Pending -- "支援技能" --> Support["executeSupportPower\n检查资金、冷却、资产需求、效果"]
   Pending -- "集结点" --> Rally["setRallyPoint\n生产来源设置出兵目标"]
   Pending -- "AMOV" --> AttackMove["issueAttackMoveOrder\n编队推进并沿途交战"]
+  Place -- "无效目标" --> Denied["showDeniedMarker\n点击位置短暂红橙拒绝反馈"]
+  Support -- "无效目标" --> Denied
+  Rally -- "无有效来源" --> Denied
+  AttackMove -- "无作战单位" --> Denied
   Pending -- "无" --> WorldTap{"世界点击目标"}
   WorldTap -- "双击己方机动单位" --> TypeSelect["选择当前视野内同 kind 玩家机动单位"]
   WorldTap -- "单击己方实体/建筑" --> Select["选中实体 / refreshSelection"]
   WorldTap -- "可见敌人" --> Attack["设置 attackTarget\n进入攻击链路"]
   WorldTap -- "地面" --> Move["issueFormationMove\n按陆空海分组移动"]
+  Attack -- "选中单位都不能攻击" --> Denied
+  Move -- "无移动单位或集结来源" --> Denied
   Touch --> Drag{"单指拖动空地"}
   Drag -- "超过阈值" --> Box["框选玩家移动单位"]
 ```
