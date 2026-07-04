@@ -323,3 +323,39 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，双击 Tank / Humvee / Artillery / Mechanic / Helicopter / Fighter / Battleship / Submarine / Carrier 的屏幕内同类选择、屏幕外排除、建筑双击退化为单选、pending 模式和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展控制编队、命令按钮高亮或非法命令反馈，但这些不属于 v1.3。
+
+### v1.4 / 高亮命令按钮状态
+
+日期：2026-07-04
+
+核心变更：
+
+- `BASE`、`RLY`、`AMOV`、`SCAN`、`REPR`、`AIRS` 和 `BARR` 在等待地图目标时显示明显 stroke/glow 高亮。
+- 按钮高亮直接由 `pendingConstructionKind`、`isSettingRallyPoint`、`isSettingAttackMove` 和 `pendingSupportPower` 推导，不保存第二份 active 状态。
+- `layoutHUD()` 重建 HUD 后会重新缓存当前按钮 shape 并刷新样式；`updateHUD()` 刷新 subtitle/cooldown 文案后也会刷新样式。
+- 按钮命中区域、subtitle、支援冷却文案、pending 清理、触摸优先级、双击同类选择、移动/攻击/集结点/支援目标和游戏规则保持原有状态流。
+- README、flow 和 flowchart 已同步当前真实 HUD 行为；Agent B 未预写本正式记录。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v1（核心玩法）/v1.4（命令按钮状态高亮）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 提交并推送：`c780ca0bbdcc25070f9557174586fc7d9a8775c1`，commit subject 为 `v1.4: 高亮命令按钮状态`。
+- Agent C 复核：`git fetch origin` 成功；本地 `main`、`origin/main` 和 Actions run head SHA 均为 `c780ca0bbdcc25070f9557174586fc7d9a8775c1`；`git diff --check` 与 `git diff --check c780ca0bbdcc25070f9557174586fc7d9a8775c1^ c780ca0bbdcc25070f9557174586fc7d9a8775c1` 通过。
+- GitHub Actions：run `28704548004`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`。
+- artifact：`desert-frontline-ci-v1.4-main-c780ca0bbdcc-run28704548004-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28704548004/` 并核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，`BASE` / `RLY` / `AMOV` / 支援按钮高亮进入和清理、无效支援目标保留 pending、HUD 尺寸变化、`SKRM` 重置和 v1.3 双击同类选择仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展控制编队、非法命令反馈或按钮禁用态，但这些不属于 v1.4。
