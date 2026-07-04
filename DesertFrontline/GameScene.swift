@@ -4787,19 +4787,20 @@ final class GameScene: SKScene {
             _ = queueBuild(kind: nextBuild.kind, faction: .enemy, showFeedback: false)
         }
 
-        let freeCaptureUnits = enemyUnits.filter { unit in
-            unit.attackTarget == nil &&
-            unit.attackMoveDestination == nil &&
-            unit.destination == nil
-        }
+        var assignedCaptureUnitIDs = Set<Int>()
+        let freeCaptureUnits = enemyUnits.filter(isAvailableEnemyCaptureUnit)
 
         if let neutralOil = entities.values.first(where: { $0.kind == .oilDerrick && $0.faction != .enemy && $0.isAlive }),
            let oilRunner = freeCaptureUnits.first(where: { $0.kind == .mechanic }) ?? freeCaptureUnits.first(where: { $0.kind == .humvee }) {
             setDestination(for: oilRunner, near: neutralOil.node.position)
+            assignedCaptureUnitIDs.insert(oilRunner.id)
         }
 
+        let freeFlagCaptureUnits = enemyUnits.filter { unit in
+            isAvailableEnemyCaptureUnit(unit) && !assignedCaptureUnitIDs.contains(unit.id)
+        }
         if let targetFlag = enemyControlPointTarget(),
-           let flagRunner = freeCaptureUnits.first(where: { $0.kind == .humvee || $0.kind == .mechanic || $0.kind == .tank }) {
+           let flagRunner = freeFlagCaptureUnits.first(where: { $0.kind == .humvee || $0.kind == .mechanic || $0.kind == .tank }) {
             setDestination(for: flagRunner, near: targetFlag.node.position)
         }
 
@@ -4808,6 +4809,17 @@ final class GameScene: SKScene {
         let shouldAttack = enemyUnits.count >= aiDifficulty.attackGroupSize || enemyMoney > 4800
         guard shouldAttack else { return }
         commandEnemyAttackers(enemyUnits)
+    }
+
+    private func isAvailableEnemyCaptureUnit(_ unit: GameEntity) -> Bool {
+        unit.faction == .enemy &&
+            unit.isAlive &&
+            !unit.kind.isStructure &&
+            unit.attackTarget == nil &&
+            unit.attackMoveDestination == nil &&
+            unit.destination == nil &&
+            unit.kind.domain == .land &&
+            unit.isOperational
     }
 
     private func enemyControlPointTarget() -> BattlefieldControlPoint? {
@@ -4981,6 +4993,7 @@ final class GameScene: SKScene {
         let idleAttackers = enemyUnits.filter { unit in
             unit.attackTarget == nil &&
             unit.attackMoveDestination == nil &&
+            unit.destination == nil &&
             unit.kind.damage > 0 &&
             unit.isOperational
         }
