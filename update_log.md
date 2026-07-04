@@ -14,7 +14,7 @@
 
 日期：2026-07-05
 
-当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、建造、地图控制、旗点前线建造覆盖、雷达前哨、防御炮塔、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、老兵经验、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
+当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、建造、地图控制、旗点前线建造覆盖、雷达前哨、防御炮塔、岸防炮、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、老兵经验、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
 
 当前协作流程已升级为 `main` 直推触发 GitHub Actions 云端验证，并由 Agent C 下载未加密 CI 结果包复核。当前可靠构建命令仍是 generic iOS device build：
 
@@ -589,3 +589,42 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，玩家占旗后立即放置 Radar Outpost / Guard Tower、敌方或中立旗点不提供玩家覆盖、AI 围绕已占旗点前线补建、旗点中心 no-build、Oil Derrick 复用、Shipyard 海岸限制和 `SKRM` 重置后旗点覆盖清空仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展岸防炮、SAM、长期 AI 角色 reservation、旗点争夺奖励或反潜 HUD 信息，但这些不属于 v2.0。
+
+### v2.1 / 引入岸防炮
+
+日期：2026-07-05
+
+核心变更：
+
+- 新增 `EntityKind.coastalBattery` / Coastal Battery / `CB`，作为可由 `BASE` 轮换建造的海岸防御结构。
+- Coastal Battery 使用现有施工、资金扣除、血条、选择、死亡清理、迷雾隐藏和 `SKRM` 重置链路；未完工前不能开火、提供视野、提供 build coverage、生产、赚钱或成为支援资产。
+- `constructionIssue(...)` 让 Coastal Battery 和 Shipyard 一样要求 coast tile，同时继续共享玩家视野、己方结构 / 旗点 build coverage、碰撞和旗点中心 no-build 规则。
+- 完工 Coastal Battery 共享 `canAttack(...)`、目标搜索、`isKnownToFaction(...)` 和 `fire(attacker:target:)` 链路，只攻击可见水面海军目标，不攻击潜艇、陆地、空中或建筑目标，不提供 sonar，也不改变潜艇暴露逻辑。
+- AI 缺失建筑补建列表纳入 Coastal Battery；目标价值、主攻目标优先级和 Red 防御结构评分已同步。
+- README、flow、flowchart 和 v2.1 Agent A 提示词已同步当前真实行为；本轮没有新增 SAM、科技树、支援资产、声呐或外部素材。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v2（地图控制）/v2.1（引入岸防炮）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 实现提交并推送：`b666f6ebaf523e421ebff89e1b675984da39b80b`，commit subject 为 `v2.1: 引入岸防炮`。
+- Agent X 并行只读子 agent 复核：代码审查返回 `No issues`；文档审查指出 `md/flow/flow.md` 未来扩展点仍把岸防炮列为未来项，已修正为岸防炮平衡 / 升级。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `b666f6ebaf523e421ebff89e1b675984da39b80b`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28713037948`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v2.1-main-b666f6ebaf52-run28713037948-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28713037948/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=b666f6ebaf523e421ebff89e1b675984da39b80b`、`runId=28713037948`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，`BASE` 轮换到 Coastal Battery、coast-only 放置、旗点 build coverage 下的海岸放置、完工后只攻击 Battleship / Carrier 等水面海军、不攻击 Submarine / 陆空 / 建筑、AI 补建岸防炮、目标排序和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展 SAM、岸防炮平衡 / 升级、长期 AI 角色 reservation、旗点争夺奖励或反潜 HUD 信息，但这些不属于 v2.1。
