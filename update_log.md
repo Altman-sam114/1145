@@ -359,3 +359,40 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，`BASE` / `RLY` / `AMOV` / 支援按钮高亮进入和清理、无效支援目标保留 pending、HUD 尺寸变化、`SKRM` 重置和 v1.3 双击同类选择仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展控制编队、非法命令反馈或按钮禁用态，但这些不属于 v1.4。
+
+### v1.5 / 增加非法命令反馈
+
+日期：2026-07-04
+
+核心变更：
+
+- 新增 `showDeniedMarker(at:reason:)`，在 `effectsLayer` 生成短生命周期红橙拒绝标记和短码 label，自动淡出移除，不保存持久状态。
+- 建筑放置失败、玩家支援目标失败、失效 `RLY`、失效 `AMOV`、可见敌人但选中单位全不能攻击、选中非移动且非 rally 来源实体后点击空地时，会在世界点击位置补充 denied marker。
+- 非法命令反馈只补充 `showMessage(...)`，不改变建筑合法性、支援费用/冷却/资产、pending 清理语义、迷雾边界、移动/攻击规则、AI 内部失败路径或 `SKRM` 重置链路。
+- 普通攻击分支不再在没有任何选中单位能攻击目标时误报 `Attack order`，改为显示 `NO ATK` 和简短 HUD 文案，并保持选择与单位命令不变。
+- README、flow 和 flowchart 已同步当前真实输入反馈行为；Agent B 未预写本正式记录。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v1（核心玩法）/v1.5（非法命令反馈）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 提交并推送：`4214af67969823990a4f540a389addfc2f786599`，commit subject 为 `v1.5: 增加非法命令反馈`。
+- Agent C 复核：`git fetch origin` 成功；本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `4214af67969823990a4f540a389addfc2f786599`；`gh` 当前认证账号为 `Altman-sam114`；`git diff --check 4214af67969823990a4f540a389addfc2f786599^ 4214af67969823990a4f540a389addfc2f786599` 通过。
+- GitHub Actions：run `28705182303`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`。
+- artifact：`desert-frontline-ci-v1.5-main-4214af679698-run28705182303-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28705182303/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=4214af67969823990a4f540a389addfc2f786599`、`runId=28705182303`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，建筑失败、支援失败、失效 `RLY` / `AMOV`、不可攻击敌人、非移动实体点地面、无选中空地点击不刷 marker、v1.4 按钮高亮保留和 `SKRM` 清理仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展控制编队、按钮禁用态或音效反馈，但这些不属于 v1.5。
