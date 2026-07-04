@@ -816,6 +816,8 @@ final class GameScene: SKScene {
     private var controlPoints: [BattlefieldControlPoint] = []
     private var selectedIDs = Set<Int>()
     private var controlGroups: [Int: Set<Int>] = [1: [], 2: []]
+    private var pendingControlGroupRecallTokens: [Int: Int] = [:]
+    private var nextControlGroupRecallToken = 0
     private var nextEntityID = 1
 
     private var playerMoney = 5200
@@ -878,6 +880,7 @@ final class GameScene: SKScene {
     private let holdEngagementRadius: CGFloat = 340
     private let holdReturnTolerance: CGFloat = 58
     private let attackMoveEngagementRadius: CGFloat = 285
+    private let controlGroupRecallDelay: TimeInterval = 0.24
 
     override func didMove(to view: SKView) {
         backgroundColor = UIColor(white: 0.04, alpha: 1.0)
@@ -3014,9 +3017,9 @@ final class GameScene: SKScene {
             updateHUD()
             showMessage("Selected all available combat units.", color: .white)
         case .controlGroup1:
-            tapCount >= 2 ? saveControlGroup(1) : recallControlGroup(1)
+            tapCount >= 2 ? saveControlGroup(1) : scheduleRecallControlGroup(1)
         case .controlGroup2:
-            tapCount >= 2 ? saveControlGroup(2) : recallControlGroup(2)
+            tapCount >= 2 ? saveControlGroup(2) : scheduleRecallControlGroup(2)
         case .holdPosition:
             clearPendingCommandModes()
             issueHoldPositionOrder(units: selectedMobilePlayerUnits())
@@ -3118,6 +3121,39 @@ final class GameScene: SKScene {
         return count > 0 ? "\(count) units" : "empty"
     }
 
+    private func controlGroupRecallActionKey(for group: Int) -> String {
+        "control-group-\(group)-recall"
+    }
+
+    private func cancelPendingControlGroupRecall(_ group: Int) {
+        removeAction(forKey: controlGroupRecallActionKey(for: group))
+        pendingControlGroupRecallTokens[group] = nil
+    }
+
+    private func cancelPendingControlGroupRecalls() {
+        for group in pendingControlGroupRecallTokens.keys {
+            removeAction(forKey: controlGroupRecallActionKey(for: group))
+        }
+        pendingControlGroupRecallTokens.removeAll()
+    }
+
+    private func scheduleRecallControlGroup(_ group: Int) {
+        clearPendingCommandModes()
+        cancelPendingControlGroupRecall(group)
+        nextControlGroupRecallToken += 1
+        let token = nextControlGroupRecallToken
+        pendingControlGroupRecallTokens[group] = token
+        let action = SKAction.sequence([
+            .wait(forDuration: controlGroupRecallDelay),
+            .run { [weak self] in
+                guard let self, self.pendingControlGroupRecallTokens[group] == token else { return }
+                self.pendingControlGroupRecallTokens[group] = nil
+                self.recallControlGroup(group)
+            }
+        ])
+        run(action, withKey: controlGroupRecallActionKey(for: group))
+    }
+
     private func recallControlGroup(_ group: Int) {
         clearPendingCommandModes()
         let liveIDs = liveControlGroupIDs(for: group)
@@ -3136,6 +3172,7 @@ final class GameScene: SKScene {
     }
 
     private func saveControlGroup(_ group: Int) {
+        cancelPendingControlGroupRecall(group)
         clearPendingCommandModes()
         let units = selectedMobilePlayerUnits()
         guard !units.isEmpty else {
@@ -3739,6 +3776,8 @@ final class GameScene: SKScene {
 
     private func restartSkirmish() {
         skirmishSeed += 1
+        cancelPendingControlGroupRecalls()
+        nextControlGroupRecallToken = 0
         entities.removeAll()
         selectedIDs.removeAll()
         controlGroups = [1: [], 2: []]
