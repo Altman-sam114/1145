@@ -4106,6 +4106,12 @@ final class GameScene: SKScene {
         }
     }
 
+    private func canQueueBuild(kind: EntityKind, faction: Faction) -> Bool {
+        kind.requiredFactory != nil &&
+        productionSource(for: kind, faction: faction) != nil &&
+        money(for: faction) >= kind.cost
+    }
+
     private func queueDepth(for sourceID: Int) -> Int {
         buildOrders.filter { $0.sourceID == sourceID }.count
     }
@@ -4760,9 +4766,14 @@ final class GameScene: SKScene {
 
         let desired: [EntityKind] = aiBuildPattern()
         for _ in 0..<aiDifficulty.buildOrdersPerCycle {
-            let buildKind = desired[aiBuildCursor % desired.count]
-            aiBuildCursor += 1
-            _ = queueBuild(kind: buildKind, faction: .enemy, showFeedback: false)
+            guard let nextBuild = nextAvailableAIBuildKind(in: desired, startingAt: aiBuildCursor) else {
+                if !desired.isEmpty {
+                    aiBuildCursor += 1
+                }
+                continue
+            }
+            aiBuildCursor = nextBuild.nextCursor
+            _ = queueBuild(kind: nextBuild.kind, faction: .enemy, showFeedback: false)
         }
 
         let freeCaptureUnits = enemyUnits.filter { unit in
@@ -5105,6 +5116,17 @@ final class GameScene: SKScene {
         case .hard:
             return [.humvee, .tank, .artillery, .fighter, .helicopter, .battleship, .submarine, .carrier, .carrier]
         }
+    }
+
+    private func nextAvailableAIBuildKind(in pattern: [EntityKind], startingAt cursor: Int) -> (kind: EntityKind, nextCursor: Int)? {
+        guard !pattern.isEmpty else { return nil }
+        for offset in 0..<pattern.count {
+            let candidate = pattern[(cursor + offset) % pattern.count]
+            if canQueueBuild(kind: candidate, faction: .enemy) {
+                return (candidate, cursor + offset + 1)
+            }
+        }
+        return nil
     }
 
     private func tacticalTarget(for attacker: GameEntity) -> GameEntity? {
