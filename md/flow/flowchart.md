@@ -48,7 +48,8 @@ flowchart TD
   Pending -- "集结点" --> Rally["setRallyPoint\n生产来源设置出兵目标"]
   Pending -- "AMOV" --> AttackMove["issueAttackMoveOrder\n编队推进并沿途交战"]
   Pending -- "无" --> WorldTap{"世界点击目标"}
-  WorldTap -- "己方实体" --> Select["选中实体 / refreshSelection"]
+  WorldTap -- "双击己方机动单位" --> TypeSelect["选择当前视野内同 kind 玩家机动单位"]
+  WorldTap -- "单击己方实体/建筑" --> Select["选中实体 / refreshSelection"]
   WorldTap -- "可见敌人" --> Attack["设置 attackTarget\n进入攻击链路"]
   WorldTap -- "地面" --> Move["issueFormationMove\n按陆空海分组移动"]
   Touch --> Drag{"单指拖动空地"}

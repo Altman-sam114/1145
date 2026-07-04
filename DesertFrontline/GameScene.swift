@@ -2829,6 +2829,7 @@ final class GameScene: SKScene {
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
+        let tapCount = touch.tapCount
         defer {
             touchStartScene = nil
             touchStartWorld = nil
@@ -2864,7 +2865,7 @@ final class GameScene: SKScene {
             if worldPoint.distance(to: startWorld) > 14 {
                 return
             }
-            handleWorldTap(at: worldPoint)
+            handleWorldTap(at: worldPoint, tapCount: tapCount)
             return
         }
 
@@ -2875,7 +2876,7 @@ final class GameScene: SKScene {
         if worldPoint.distance(to: startWorld) > 14 {
             return
         }
-        handleWorldTap(at: worldPoint)
+        handleWorldTap(at: worldPoint, tapCount: tapCount)
     }
 
     private func updateSelectionBox(from start: CGPoint, to end: CGPoint) {
@@ -2904,6 +2905,37 @@ final class GameScene: SKScene {
             showMessage("No units in selection box.", color: .white)
         } else {
             showMessage("Selected \(selected.count) units.", color: UIColor(red: 0.75, green: 0.95, blue: 1.0, alpha: 1.0))
+        }
+    }
+
+    private func visibleWorldRect(padding: CGFloat = 28) -> CGRect {
+        let width = size.width * cameraRig.xScale + padding * 2
+        let height = size.height * cameraRig.yScale + padding * 2
+        return CGRect(
+            x: cameraRig.position.x - width / 2,
+            y: cameraRig.position.y - height / 2,
+            width: width,
+            height: height
+        )
+    }
+
+    private func selectVisiblePlayerUnits(matching tapped: GameEntity) {
+        let viewRect = visibleWorldRect()
+        let matches = entities.values.filter { entity in
+            entity.faction == .player &&
+            entity.isAlive &&
+            !entity.kind.isStructure &&
+            entity.kind == tapped.kind &&
+            viewRect.contains(entity.node.position)
+        }
+        let selected = matches.isEmpty ? [tapped] : matches
+        selectedIDs = Set(selected.map(\.id))
+        refreshSelection()
+        updateHUD()
+        if selected.count > 1 {
+            showMessage("Selected \(selected.count) \(tapped.kind.shortCode).", color: UIColor(red: 0.75, green: 0.95, blue: 1.0, alpha: 1.0))
+        } else {
+            showMessage("No other \(tapped.kind.shortCode) in view.", color: .white)
         }
     }
 
@@ -3032,7 +3064,7 @@ final class GameScene: SKScene {
         }
     }
 
-    private func handleWorldTap(at point: CGPoint) {
+    private func handleWorldTap(at point: CGPoint, tapCount: Int = 1) {
         if let pendingSupportPower {
             executeSupportPower(pendingSupportPower, at: point)
             return
@@ -3075,6 +3107,10 @@ final class GameScene: SKScene {
 
         if let tapped = entity(at: point) {
             if tapped.faction == .player {
+                if !tapped.kind.isStructure && tapCount >= 2 {
+                    selectVisiblePlayerUnits(matching: tapped)
+                    return
+                }
                 selectedIDs = [tapped.id]
                 refreshSelection()
                 showMessage("Selected \(tapped.kind.displayName).", color: .white)

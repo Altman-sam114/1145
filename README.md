@@ -37,6 +37,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 ## Controls
 
 - Tap a player unit to select it.
+- Double-tap a player mobile unit to select visible units of the same type in the current camera view.
 - Drag on the battlefield to box-select mobile player units.
 - Tap ground with units selected to move in formation.
 - Tap a visible enemy with combat units selected to attack.
