@@ -8,11 +8,12 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Isometric desert map matching the reference's desert RTS layout: roads, ridges, coastline, water, oil fields, base clusters, desert villages, oases, farms, depots, wreckage, and fog of war.
 - Economy loop: HQ base income, capturable oil derricks, front-line flag control points with income, scout vision, and limited build coverage, visible money/income HUD, and AI income scaling by difficulty.
 - Production queues from War Factory, Airfield, Shipyard, and Carrier decks with selected/least-busy source routing, visible factory progress bars, factory/carrier rally points, and ready pulses on the map.
-- Base construction from the HUD: place War Factory, Airfield, Radar Outpost, Guard Tower, Coastal Battery, Shipyard, and Oil Derricks during play with a green/red placement preview, timed construction scaffolds, and visible build progress.
+- Base construction from the HUD: place War Factory, Airfield, Radar Outpost, Guard Tower, SAM Site, Coastal Battery, Shipyard, and Oil Derricks during play with a green/red placement preview, timed construction scaffolds, and visible build progress.
 - Building rules: structures require vision and nearby friendly operational structure or captured flag build coverage; Shipyards and Coastal Batteries require coast tiles; Oil Derricks require oil fields.
 - New structures are attackable while under construction but do not produce units, earn income, provide vision, provide support assets, extend base coverage, or fire weapons until operational.
 - Radar Outposts are buildable land structures that provide extended static scout vision and count as `SCAN` assets once operational.
 - Guard Towers are buildable land defense structures that automatically fire on visible land, air, and structure targets once operational; they do not attack naval units or submarines and do not provide sonar.
+- SAM Sites are buildable land anti-air structures that automatically fire on visible air targets once operational; they do not attack land, naval, submarine, or structure targets and do not provide sonar.
 - Coastal Batteries are buildable coastal defense structures that automatically fire on visible surface naval targets once operational; they do not attack submarines and do not provide sonar.
 - Land units: Humvee scout, Tank, Artillery, Mechanic.
 - Air units: Helicopter, Fighter.
@@ -31,7 +32,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Drag selection box for player mobile units.
 - Tactical minimap with terrain, friendly/enemy/neutral blips, camera box, and tap-to-jump camera control.
 - Two-finger map pan, HQ focus, and select-all combat controls.
-- Enemy AI that earns money, builds mixed land/air/naval forces, skips units that currently lack an operational source or enough funds while preserving its mixed build pattern, captures oil and front-line flags with separate moving runners kept out of attack-move waves, can use captured flags as forward build anchors, rebuilds lost production and defense structures including Coastal Batteries, launches attack-move waves toward flags, oil fields, production structures, defensive structures, and HQ targets, assigns tactical targets per unit role, uses domain-aware attack approach positions for land/air/naval forces, pulls nearby defenders when its base is hit, and supports Easy/Normal/Hard difficulty from the HUD.
+- Enemy AI that earns money, builds mixed land/air/naval forces, skips units that currently lack an operational source or enough funds while preserving its mixed build pattern, captures oil and front-line flags with separate moving runners kept out of attack-move waves, can use captured flags as forward build anchors, rebuilds lost production and defense structures including SAM Sites and Coastal Batteries, launches attack-move waves toward flags, oil fields, production structures, defensive structures, and HQ targets, assigns tactical targets per unit role, uses domain-aware attack approach positions for land/air/naval forces, pulls nearby defenders when its base is hit, and supports Easy/Normal/Hard difficulty from the HUD.
 - Restartable skirmishes that cycle through map variants and reset the match state.
 - Victory and defeat conditions based on HQ destruction.
 
@@ -51,7 +52,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Invalid map targets for building, rally, attack-move, support powers, impossible attacks, or non-mobile selections briefly show a red/orange denied marker at the clicked location while keeping the HUD message.
 - Tap the tactical minimap to move the camera.
 - Use two fingers to pan the battlefield; pinch with two fingers to zoom the tactical camera in or out.
-- Use `BASE` to cycle through War Factory, Airfield, Radar Outpost, Guard Tower, Coastal Battery, Shipyard, and Oil Derrick placement, drag or tap the map to preview valid placement, then tap a valid tile to start constructing the selected structure.
+- Use `BASE` to cycle through War Factory, Airfield, Radar Outpost, Guard Tower, SAM Site, Coastal Battery, Shipyard, and Oil Derrick placement, drag or tap the map to preview valid placement, then tap a valid tile to start constructing the selected structure.
 - Use `SCAN`, `REPR`, `AIRS`, or `BARR`, then tap the map to target recon, field repair, air strike, or naval barrage support.
 - `BASE`, `RLY`, `AMOV`, `SCAN`, `REPR`, `AIRS`, and `BARR` highlight while waiting for a map target.
 - Use `ARMY`, any unit production button, HQ focus, or AI difficulty to leave structure placement/rally modes.
