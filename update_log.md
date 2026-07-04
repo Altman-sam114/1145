@@ -473,3 +473,41 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，AI 在缺 Airfield / Shipyard / Carrier、资金不足、来源完工后重新纳入空海军、全部不可生产时无玩家反馈、cursor 失败推进 1 和 `SKRM` 重置 cursor 仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展 AI 战术分工、编队管理深化、按钮禁用态、命令队列反馈或移动端手感优化，但这些不属于 v1.7。
+
+### v1.8 / 支援命中潜艇短暂暴露
+
+日期：2026-07-04
+
+核心变更：
+
+- `AIRS` / `BARR` 伤害型支援在 `applySupportDamage(...)` 中真实命中潜艇并扣血后，会把该潜艇 `revealedUntil` 延长到当前时间后 2.4 秒。
+- 新增 `revealSubmarineHitBySupport(...)` 小 helper，使用 `max(...)` 延长暴露，避免缩短 `SCAN` 的 8 秒侦察暴露。
+- 未命中的支援打击不暴露潜艇；`SCAN` 仍走 `revealSupportTargets(... duration: 8.0 ...)`，`REPR` 仍只走维修路径。
+- 本轮没有新增 `showSonarPing(...)` 调用，不把支援命中表现成声呐扫描，也不新增可能泄露未知潜艇位置的 HUD 文案。
+- 支援伤害路径仍不调用 `awardVeterancyKill(...)`，支援技能击杀不计入任何单位 XP。
+- README、flow 和 flowchart 已同步当前真实海战 / 迷雾行为；Agent B 未预写本正式记录。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v1（核心玩法）/v1.8（支援命中潜艇短暂暴露）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 实现提交并推送：`5a4c48c5776025ad1e2852c6efdb53fc23909c1c`，commit subject 为 `v1.8: 支援命中潜艇短暂暴露`。
+- Agent C 复核：`git fetch origin` 成功；本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `5a4c48c5776025ad1e2852c6efdb53fc23909c1c`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28710696003`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v1.8-main-5a4c48c57760-run28710696003-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28710696003/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=5a4c48c5776025ad1e2852c6efdb53fc23909c1c`、`runId=28710696003`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，`AIRS` / `BARR` 命中未死亡潜艇短暂可见、未命中不暴露、过期后无声呐重新隐藏、`SCAN` 仍保持 8 秒暴露、`REPR` 不暴露潜艇和支援击杀不授 XP 仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展 AI 占点队保护、旗点建造覆盖、岸防炮或反潜 HUD 信息，但这些不属于 v1.8。
