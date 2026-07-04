@@ -877,6 +877,9 @@ final class GameScene: SKScene {
     private let minCameraScale: CGFloat = 0.72
     private let maxCameraScale: CGFloat = 1.58
     private let controlPointVisionTiles = 6
+    private let structureBuildCoverageRadius: CGFloat = 390
+    private let controlPointBuildCoverageRadius: CGFloat = 180
+    private let controlPointNoBuildRadius: CGFloat = 56
     private let holdEngagementRadius: CGFloat = 340
     private let holdReturnTolerance: CGFloat = 58
     private let attackMoveEngagementRadius: CGFloat = 285
@@ -2488,7 +2491,7 @@ final class GameScene: SKScene {
                 [
                     "$\(pendingConstructionKind.cost)  HP \(Int(pendingConstructionKind.maxHP))",
                     "Build \(Int(pendingConstructionKind.buildTime))s  \(domainLabel(for: pendingConstructionKind.domain))",
-                    pendingConstructionKind == .shipyard ? "Needs coast tile" : "Needs base coverage",
+                    pendingConstructionKind == .shipyard ? "Needs coast tile" : "Needs base/flag coverage",
                     pendingConstructionKind == .oilDerrick ? "Requires oil field" : "Requires visible ground"
                 ]
             )
@@ -2646,7 +2649,7 @@ final class GameScene: SKScene {
             if entity.kind == .guardTower {
                 return "Land/Air defense  No naval"
             }
-            return "Base coverage"
+            return "Build coverage"
         }
 
         let orders = buildOrders.filter { $0.sourceID == entity.id }
@@ -3721,7 +3724,7 @@ final class GameScene: SKScene {
         if faction == .player {
             guard isVisible(point: position) else { return "Need vision at build site." }
         }
-        guard hasNearbyStructure(position, faction: faction) else { return "Build within base radius." }
+        guard hasNearbyBuildCoverage(position, faction: faction) else { return "Build within base or captured flag radius." }
 
         if kind == .oilDerrick {
             guard terrain(at: tile) == .oil else { return "Oil derrick requires an oil field." }
@@ -3749,17 +3752,34 @@ final class GameScene: SKScene {
             entity.isAlive &&
             entity.kind.isStructure &&
             entity.isOperational &&
-            entity.node.position.distance(to: position) <= 390
+            entity.node.position.distance(to: position) <= structureBuildCoverageRadius
         }
     }
 
+    private func hasNearbyControlledFlag(_ position: CGPoint, faction: Faction) -> Bool {
+        controlPoints.contains { point in
+            point.faction == faction &&
+                point.node.position.distance(to: position) <= controlPointBuildCoverageRadius
+        }
+    }
+
+    private func hasNearbyBuildCoverage(_ position: CGPoint, faction: Faction) -> Bool {
+        hasNearbyStructure(position, faction: faction) ||
+            hasNearbyControlledFlag(position, faction: faction)
+    }
+
     private func isOccupiedForConstruction(_ position: CGPoint, placing kind: EntityKind) -> Bool {
-        entities.values.contains { entity in
+        if entities.values.contains(where: { entity in
             guard entity.isAlive else { return false }
             if kind == .oilDerrick && entity.kind == .oilDerrick && entity.node.position.distance(to: position) < 46 {
                 return false
             }
             return entity.node.position.distance(to: position) < max(58, entity.kind.footprint * 0.9)
+        }) {
+            return true
+        }
+        return controlPoints.contains { point in
+            point.node.position.distance(to: position) < controlPointNoBuildRadius
         }
     }
 
@@ -4404,10 +4424,14 @@ final class GameScene: SKScene {
     }
 
     private func setControlPointFaction(_ faction: Faction, for point: BattlefieldControlPoint) {
+        let previousFaction = point.faction
         point.faction = faction
         point.capturingFaction = nil
         point.captureProgress = 0
         updateControlPointVisual(point)
+        if previousFaction == .player || faction == .player {
+            updateFog(force: true)
+        }
     }
 
     private func setFaction(_ faction: Faction, for entity: GameEntity) {
@@ -5110,12 +5134,11 @@ final class GameScene: SKScene {
             return nil
         }
 
-        let anchors = entities.values
-            .filter { $0.faction == .enemy && $0.isAlive && $0.kind.isStructure && $0.isOperational }
-            .sorted { $0.node.position.distance(to: enemyBaseAnchorPoint()) < $1.node.position.distance(to: enemyBaseAnchorPoint()) }
+        let anchors = buildCoverageAnchors(for: .enemy)
+            .sorted { $0.distance(to: enemyBaseAnchorPoint()) < $1.distance(to: enemyBaseAnchorPoint()) }
 
         for anchor in anchors {
-            guard let origin = tile(at: anchor.node.position) else { continue }
+            guard let origin = tile(at: anchor) else { continue }
             for radius in 1...6 {
                 for row in max(0, origin.row - radius)...min(rows - 1, origin.row + radius) {
                     for col in max(0, origin.col - radius)...min(cols - 1, origin.col + radius) {
@@ -5129,6 +5152,16 @@ final class GameScene: SKScene {
             }
         }
         return nil
+    }
+
+    private func buildCoverageAnchors(for faction: Faction) -> [CGPoint] {
+        let structureAnchors = entities.values
+            .filter { $0.faction == faction && $0.isAlive && $0.kind.isStructure && $0.isOperational }
+            .map(\.node.position)
+        let flagAnchors = controlPoints
+            .filter { $0.faction == faction }
+            .map(\.node.position)
+        return structureAnchors + flagAnchors
     }
 
     private func aiBuildPattern() -> [EntityKind] {

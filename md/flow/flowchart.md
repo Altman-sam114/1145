@@ -13,8 +13,8 @@ flowchart TD
   Holder --> Scene["GameScene.didMove\n初始化世界节点、地图、实体、HUD、相机"]
   Scene --> Init["初始化链路\n地形 -> 地图 -> 控制点 -> 初始部队 -> HUD -> 迷雾"]
   Init --> Loop["GameScene.update 每帧循环\n统一推进游戏状态"]
-  Loop --> Build["施工 / 生产\n建筑进度、RAD/GT、BuildOrder、出兵、集结点"]
-  Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入与占领进度"]
+  Loop --> Build["施工 / 生产\n建筑进度、RAD/GT、旗点覆盖、BuildOrder、出兵、集结点"]
+  Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖与占领进度"]
   Loop --> Commands["移动 / 命令\n普通移动、HOLD、AMOV、路径和编队"]
   Loop --> Combat["战斗 / 维修\n未完工攻击结构禁火、目标搜索、有效伤害、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
   Loop --> AI["敌方 AI\n补建、跳过不可生产兵种、保留占点队、支援、attack-move 波次"]
@@ -43,7 +43,7 @@ flowchart TD
   MiniMap -- "否" --> MultiTouch{"是否双指触摸"}
   MultiTouch -- "是" --> PanZoom["相机平移 / 缩放"]
   MultiTouch -- "否" --> Pending{"是否存在 pending 模式"}
-  Pending -- "建筑" --> Place["放置预览 / placeStructure\n检查视野、基地覆盖、地形规则和资金"]
+  Pending -- "建筑" --> Place["放置预览 / placeStructure\n检查视野、基地/旗点覆盖、地形规则和资金"]
   Pending -- "支援技能" --> Support["executeSupportPower\n检查资金、冷却、资产需求、效果"]
   Pending -- "集结点" --> Rally["setRallyPoint\n生产来源设置出兵目标"]
   Pending -- "AMOV" --> AttackMove["issueAttackMoveOrder\n编队推进并沿途交战"]
