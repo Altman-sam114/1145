@@ -14,7 +14,7 @@
 
 日期：2026-07-04
 
-当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、建造、雷达前哨、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、老兵经验、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
+当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、建造、雷达前哨、防御炮塔、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、老兵经验、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
 
 当前协作流程已升级为 `main` 直推触发 GitHub Actions 云端验证，并由 Agent C 下载未加密 CI 结果包复核。当前可靠构建命令仍是 generic iOS device build：
 
@@ -251,3 +251,39 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Radar Outpost 的放置、未完工/完工视野、`SCAN` 资产失效、AI 补建、摧毁清理和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展建筑科技层，例如科技中心、防御塔、SAM、岸防炮或 Radar Outpost 平衡，但这些不属于 v1.1。
+
+### v1.2 / 引入防御炮塔
+
+日期：2026-07-04
+
+核心变更：
+
+- 新增 `EntityKind.guardTower` / Guard Tower / `GT`，作为可由 `BASE` 轮换建造的普通陆地防御结构。
+- Guard Tower 复用现有施工、资金扣除、血条、选择、死亡清理、迷雾隐藏和 AI 缺失建筑补建链路，不生产单位、不赚钱、不设置 rally point，也不作为支援技能资产。
+- 未完工攻击型结构在 `updateCombat(dt:)` 中会清理攻击目标和计时器并跳过战斗，统一保证施工中结构不能搜索目标、保留目标或开火。
+- Guard Tower 完工后共享 `canAttack(_:)`、目标搜索、`isKnownToFaction(...)` 和 `fire(attacker:target:)` 链路，自动攻击可见 land / air / structure 目标，不攻击 naval / submarine，不提供声呐。
+- Guard Tower 已纳入选择信息、战略价值、AI 目标评分、README 和核心流程文档；HQ 胜负、任务阶段、经济、支援资产、单位生产列表和潜艇侦测链路保持不变。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v1（核心玩法）/v1.2（引入防御炮塔）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 提交并推送：`a214f35b62ff87ab9c71b2c4d04e0781711144da`，commit subject 为 `v1.2: 引入防御炮塔`。
+- Agent C 复核：`git fetch origin` 成功；本地 `main`、`origin/main` 和 Actions run head SHA 均为 `a214f35b62ff87ab9c71b2c4d04e0781711144da`；`git diff --check 8f05554..a214f35b62ff87ab9c71b2c4d04e0781711144da` 通过。
+- GitHub Actions：run `28702698407`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`。
+- artifact：`desert-frontline-ci-v1.2-main-a214f35b62ff-run28702698407-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28702698407/` 并核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Guard Tower 的 `BASE` 放置、未完工禁火/无视野、完工自动攻击、naval/submarine 排除、AI 补建、摧毁清理和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展建筑科技层，例如科技中心、SAM、岸防炮、升级系统或 Guard Tower 平衡，但这些不属于 v1.2。
