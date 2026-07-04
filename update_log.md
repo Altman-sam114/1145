@@ -287,3 +287,39 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Guard Tower 的 `BASE` 放置、未完工禁火/无视野、完工自动攻击、naval/submarine 排除、AI 补建、摧毁清理和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展建筑科技层，例如科技中心、SAM、岸防炮、升级系统或 Guard Tower 平衡，但这些不属于 v1.2。
+
+### v1.3 / 支持双击同类选择
+
+日期：2026-07-04
+
+核心变更：
+
+- 玩家双击己方机动单位时，会选择当前摄像机视野内同 `kind` 的己方存活非结构单位。
+- 同类选择使用当前相机位置、缩放和场景尺寸计算世界可见矩形，不退化为全地图选择。
+- 双击建筑、敌方、中立实体或地面不会触发同类选择；pending 支援、建筑、集结点和 `AMOV` 模式仍优先于普通世界点击。
+- 单击选择、框选、HUD、小地图、双指平移缩放、攻击命令、地面移动、集结点和 `SKRM` 重开链路保持原有状态流。
+- README、flow 和 flowchart 已同步当前真实输入行为；Agent B 未预写本正式记录。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v1（核心玩法）/v1.3（双击同类选择）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 提交并推送：`bc89f7e8cb2240f8ef53dc09c5a52305d2ee807b`，commit subject 为 `v1.3: 支持双击同类选择`。
+- Agent C 复核：`git fetch origin` 成功；本地 `main`、`origin/main` 和 Actions run head SHA 均为 `bc89f7e8cb2240f8ef53dc09c5a52305d2ee807b`；`git diff --check` 通过。
+- GitHub Actions：run `28703292884`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`。
+- artifact：`desert-frontline-ci-v1.3-main-bc89f7e8cb22-run28703292884-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28703292884/` 并核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，双击 Tank / Humvee / Artillery / Mechanic / Helicopter / Fighter / Battleship / Submarine / Carrier 的屏幕内同类选择、屏幕外排除、建筑双击退化为单选、pending 模式和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展控制编队、命令按钮高亮或非法命令反馈，但这些不属于 v1.3。
