@@ -48,6 +48,7 @@ private enum EntityKind: CaseIterable, Hashable {
     case guardTower
     case samSite
     case coastalBattery
+    case aaTruck
     case humvee
     case tank
     case artillery
@@ -69,6 +70,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .guardTower: "Guard Tower"
         case .samSite: "SAM Site"
         case .coastalBattery: "Coastal Battery"
+        case .aaTruck: "AA Truck"
         case .humvee: "Humvee"
         case .tank: "Tank"
         case .artillery: "Artillery"
@@ -92,6 +94,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .guardTower: "GT"
         case .samSite: "SAM"
         case .coastalBattery: "CB"
+        case .aaTruck: "AA"
         case .humvee: "HMV"
         case .tank: "TNK"
         case .artillery: "ART"
@@ -108,7 +111,7 @@ private enum EntityKind: CaseIterable, Hashable {
         switch self {
         case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .guardTower, .samSite, .coastalBattery:
             .structure
-        case .humvee, .tank, .artillery, .mechanic:
+        case .aaTruck, .humvee, .tank, .artillery, .mechanic:
             .land
         case .helicopter, .fighter:
             .air
@@ -155,6 +158,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .guardTower: 1450
         case .samSite: 1650
         case .coastalBattery: 1700
+        case .aaTruck: 720
         case .humvee: 420
         case .tank: 650
         case .artillery: 900
@@ -178,6 +182,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .guardTower: 11.0
         case .samSite: 12.0
         case .coastalBattery: 12.0
+        case .aaTruck: 5.5
         case .humvee: 3.5
         case .tank: 5.0
         case .artillery: 7.0
@@ -201,6 +206,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .guardTower: 820
         case .samSite: 760
         case .coastalBattery: 780
+        case .aaTruck: 170
         case .humvee: 160
         case .tank: 260
         case .artillery: 190
@@ -215,6 +221,7 @@ private enum EntityKind: CaseIterable, Hashable {
 
     var speed: CGFloat {
         switch self {
+        case .aaTruck: 82
         case .humvee: 118
         case .tank: 70
         case .artillery: 48
@@ -234,6 +241,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .guardTower: 205
         case .samSite: 260
         case .coastalBattery: 285
+        case .aaTruck: 220
         case .humvee: 125
         case .tank: 145
         case .artillery: 250
@@ -252,6 +260,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .guardTower: 30
         case .samSite: 48
         case .coastalBattery: 62
+        case .aaTruck: 24
         case .humvee: 18
         case .tank: 34
         case .artillery: 58
@@ -270,6 +279,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .guardTower: 1.25
         case .samSite: 1.55
         case .coastalBattery: 2.15
+        case .aaTruck: 0.82
         case .humvee: 0.72
         case .tank: 1.15
         case .artillery: 2.1
@@ -291,6 +301,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .guardTower: 6
         case .samSite: 7
         case .coastalBattery: 6
+        case .aaTruck: 7
         case .humvee: 8
         case .artillery, .battleship, .carrier: 7
         case .fighter: 8
@@ -307,6 +318,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .oilDerrick: 42
         case .radarOutpost, .guardTower: 46
         case .samSite, .coastalBattery: 48
+        case .aaTruck: 30
         case .humvee: 28
         case .carrier: 60
         case .battleship: 50
@@ -316,7 +328,7 @@ private enum EntityKind: CaseIterable, Hashable {
 
     var requiredFactory: EntityKind? {
         switch self {
-        case .humvee, .tank, .artillery, .mechanic:
+        case .aaTruck, .humvee, .tank, .artillery, .mechanic:
             .barracks
         case .helicopter, .fighter:
             .airfield
@@ -330,7 +342,7 @@ private enum EntityKind: CaseIterable, Hashable {
     func canProduce(_ product: EntityKind) -> Bool {
         switch self {
         case .barracks:
-            return product == .humvee || product == .tank || product == .artillery || product == .mechanic
+            return product == .aaTruck || product == .humvee || product == .tank || product == .artillery || product == .mechanic
         case .airfield, .carrier:
             return product == .helicopter || product == .fighter
         case .shipyard:
@@ -356,6 +368,8 @@ private enum EntityKind: CaseIterable, Hashable {
             return target.domain == .air
         case .coastalBattery:
             return target.domain == .naval
+        case .aaTruck:
+            return target.domain == .air
         case .humvee:
             return target.domain == .land || target.domain == .air || target.isStructure
         case .tank:
@@ -470,6 +484,7 @@ private enum HudAction: String, CaseIterable {
     case holdPosition
     case attackMove
     case buildHumvee
+    case buildAATruck
     case buildTank
     case buildArtillery
     case buildMechanic
@@ -496,6 +511,7 @@ private enum HudAction: String, CaseIterable {
         case .holdPosition: "HOLD"
         case .attackMove: "AMOV"
         case .buildHumvee: "HMV"
+        case .buildAATruck: "AA"
         case .buildTank: "TANK"
         case .buildArtillery: "ART"
         case .buildMechanic: "MECH"
@@ -519,6 +535,7 @@ private enum HudAction: String, CaseIterable {
     var buildKind: EntityKind? {
         switch self {
         case .buildHumvee: .humvee
+        case .buildAATruck: .aaTruck
         case .buildTank: .tank
         case .buildArtillery: .artillery
         case .buildMechanic: .mechanic
@@ -1587,7 +1604,7 @@ final class GameScene: SKScene {
         switch entity.kind {
         case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .guardTower, .samSite, .coastalBattery:
             addStructureBody(for: entity, to: base)
-        case .humvee, .tank, .artillery, .mechanic:
+        case .aaTruck, .humvee, .tank, .artillery, .mechanic:
             addLandUnitBody(for: entity, to: base)
         case .helicopter, .fighter:
             addAirUnitBody(for: entity, to: base)
@@ -1876,6 +1893,43 @@ final class GameScene: SKScene {
             : UIColor(red: 0.72, green: 0.59, blue: 0.33, alpha: 1.0)
 
         switch entity.kind {
+        case .aaTruck:
+            let body = SKShapeNode(rectOf: CGSize(width: 38, height: 21), cornerRadius: 5)
+            body.fillColor = fill
+            body.strokeColor = UIColor(white: 0.18, alpha: 1.0)
+            body.lineWidth = 2
+            base.addChild(body)
+
+            let cabin = SKShapeNode(rectOf: CGSize(width: 14, height: 12), cornerRadius: 3)
+            cabin.position = CGPoint(x: -10, y: 6)
+            cabin.fillColor = fill.darker(by: 0.12)
+            cabin.strokeColor = .clear
+            base.addChild(cabin)
+
+            let launcher = SKShapeNode(rectOf: CGSize(width: 26, height: 7), cornerRadius: 2)
+            launcher.position = CGPoint(x: 9, y: 11)
+            launcher.fillColor = UIColor(red: 0.45, green: 0.48, blue: 0.43, alpha: 1.0)
+            launcher.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            launcher.lineWidth = 1
+            launcher.zRotation = 0.24
+            base.addChild(launcher)
+
+            for offset in [-4, 4] {
+                let missile = SKShapeNode(rectOf: CGSize(width: 22, height: 3), cornerRadius: 1)
+                missile.position = CGPoint(x: 13, y: 13 + CGFloat(offset) * 0.45)
+                missile.fillColor = UIColor(red: 0.90, green: 0.90, blue: 0.82, alpha: 1.0)
+                missile.strokeColor = .clear
+                missile.zRotation = 0.24
+                base.addChild(missile)
+            }
+
+            for x in [-13, 13] {
+                let wheel = SKShapeNode(ellipseOf: CGSize(width: 9, height: 5))
+                wheel.position = CGPoint(x: CGFloat(x), y: -11)
+                wheel.fillColor = UIColor(white: 0.08, alpha: 1.0)
+                wheel.strokeColor = .clear
+                base.addChild(wheel)
+            }
         case .humvee:
             let body = SKShapeNode(rectOf: CGSize(width: 36, height: 20), cornerRadius: 5)
             body.fillColor = fill
@@ -2172,7 +2226,7 @@ final class GameScene: SKScene {
         )
         addSelectionInfoPanel(frame: infoPanelFrame, compact: compactHUD)
 
-        let actions: [HudAction] = [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .buildHumvee, .buildTank, .buildArtillery, .buildMechanic, .buildHelicopter, .buildFighter, .buildBattleship, .buildSubmarine, .buildCarrier, .setRally, .buildBase, .reconSweep, .fieldRepair, .airStrike, .navalBarrage, .cycleAI, .focusHQ, .newSkirmish]
+        let actions: [HudAction] = [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .buildHumvee, .buildAATruck, .buildTank, .buildArtillery, .buildMechanic, .buildHelicopter, .buildFighter, .buildBattleship, .buildSubmarine, .buildCarrier, .setRally, .buildBase, .reconSweep, .fieldRepair, .airStrike, .navalBarrage, .cycleAI, .focusHQ, .newSkirmish]
         let gap: CGFloat = compactHUD ? 5 : 7
         let availableWidth = size.width - 32
         let maxButtonsPerRow = compactHUD ? Int(ceil(Double(actions.count) / 2.0)) : actions.count
@@ -4129,7 +4183,7 @@ final class GameScene: SKScene {
 
     private func formationPriority(for kind: EntityKind) -> Int {
         switch kind {
-        case .humvee, .fighter, .submarine:
+        case .humvee, .aaTruck, .fighter, .submarine:
             return 0
         case .tank, .helicopter, .battleship:
             return 1
@@ -5278,11 +5332,11 @@ final class GameScene: SKScene {
     private func aiBuildPattern() -> [EntityKind] {
         switch aiDifficulty {
         case .easy:
-            return [.humvee, .tank, .tank, .artillery, .helicopter, .battleship]
+            return [.humvee, .tank, .aaTruck, .tank, .artillery, .helicopter, .battleship]
         case .normal:
-            return [.humvee, .tank, .tank, .artillery, .helicopter, .fighter, .battleship, .submarine, .carrier]
+            return [.humvee, .tank, .aaTruck, .tank, .artillery, .helicopter, .fighter, .battleship, .submarine, .carrier]
         case .hard:
-            return [.humvee, .tank, .artillery, .fighter, .helicopter, .battleship, .submarine, .carrier, .carrier]
+            return [.humvee, .tank, .aaTruck, .artillery, .fighter, .helicopter, .battleship, .submarine, .carrier, .carrier]
         }
     }
 
@@ -5375,6 +5429,8 @@ final class GameScene: SKScene {
             620
         case .helicopter:
             540
+        case .aaTruck:
+            520
         case .tank:
             500
         case .mechanic:

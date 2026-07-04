@@ -15,7 +15,8 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Guard Towers are buildable land defense structures that automatically fire on visible land, air, and structure targets once operational; they do not attack naval units or submarines and do not provide sonar.
 - SAM Sites are buildable land anti-air structures that automatically fire on visible air targets once operational; they do not attack land, naval, submarine, or structure targets and do not provide sonar.
 - Coastal Batteries are buildable coastal defense structures that automatically fire on visible surface naval targets once operational; they do not attack submarines and do not provide sonar.
-- Land units: Humvee scout, Tank, Artillery, Mechanic.
+- Land units: Humvee scout, AA Truck, Tank, Artillery, Mechanic.
+- AA Trucks are War Factory-built mobile anti-air units that fire on visible air targets; they do not attack land, naval, submarine, or structure targets and do not provide sonar.
 - Air units: Helicopter, Fighter.
 - Naval units: Battleship, Submarine, Carrier.
 - Carriers act as mobile sea-based air platforms that can build Helicopters and Fighters, launch aircraft from the deck, and set air rally points.
@@ -32,7 +33,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Drag selection box for player mobile units.
 - Tactical minimap with terrain, friendly/enemy/neutral blips, camera box, and tap-to-jump camera control.
 - Two-finger map pan, HQ focus, and select-all combat controls.
-- Enemy AI that earns money, builds mixed land/air/naval forces, skips units that currently lack an operational source or enough funds while preserving its mixed build pattern, captures oil and front-line flags with separate moving runners kept out of attack-move waves, can use captured flags as forward build anchors, rebuilds lost production and defense structures including SAM Sites and Coastal Batteries, launches attack-move waves toward flags, oil fields, production structures, defensive structures, and HQ targets, assigns tactical targets per unit role, uses domain-aware attack approach positions for land/air/naval forces, pulls nearby defenders when its base is hit, and supports Easy/Normal/Hard difficulty from the HUD.
+- Enemy AI that earns money, builds mixed land/air/naval forces including mobile anti-air, skips units that currently lack an operational source or enough funds while preserving its mixed build pattern, captures oil and front-line flags with separate moving runners kept out of attack-move waves, can use captured flags as forward build anchors, rebuilds lost production and defense structures including SAM Sites and Coastal Batteries, launches attack-move waves toward flags, oil fields, production structures, defensive structures, and HQ targets, assigns tactical targets per unit role, uses domain-aware attack approach positions for land/air/naval forces, pulls nearby defenders when its base is hit, and supports Easy/Normal/Hard difficulty from the HUD.
 - Restartable skirmishes that cycle through map variants and reset the match state.
 - Victory and defeat conditions based on HQ destruction.
 
