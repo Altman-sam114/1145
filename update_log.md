@@ -511,3 +511,41 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，`AIRS` / `BARR` 命中未死亡潜艇短暂可见、未命中不暴露、过期后无声呐重新隐藏、`SCAN` 仍保持 8 秒暴露、`REPR` 不暴露潜艇和支援击杀不授 XP 仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展 AI 占点队保护、旗点建造覆盖、岸防炮或反潜 HUD 信息，但这些不属于 v1.8。
+
+### v1.9 / AI 占点队保留任务
+
+日期：2026-07-04
+
+核心变更：
+
+- AI 占点候选新增 `isAvailableEnemyCaptureUnit(...)` 小 helper，只选择当前空闲、存活、已完工、无攻击目标、无 attack-move 意图、无普通目的地的 Red 陆地单位。
+- `updateAI(dt:)` 在同一指挥周期内记录已分配的占点 runner，避免同一个 Humvee / Mechanic 先被派去油井又立刻被改派去旗点。
+- `commandEnemyAttackers(...)` 的主攻波次筛选新增 `destination == nil` 条件，正在执行普通移动 / 占点移动的作战单位不会被立即改派成 attack-move 波次。
+- AI 生产、支援技能、波次目标、波次规模、玩家命令链路、占领规则、经济、迷雾、胜负和 `SKRM` 重置链路保持不变。
+- README、flow 和 flowchart 已同步当前真实 AI 行为；Agent B 未预写本正式记录。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v1（核心玩法）/v1.9（AI占点队保留任务）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 实现提交并推送：`646cf8fc7dfa92caf285746f4f2da39461d6da97`，commit subject 为 `v1.9: 保留AI占点队任务`。
+- Agent C 复核：`git fetch origin` 成功；本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `646cf8fc7dfa92caf285746f4f2da39461d6da97`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28711230416`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v1.9-main-646cf8fc7dfa-run28711230416-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28711230416/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=646cf8fc7dfa92caf285746f4f2da39461d6da97`、`runId=28711230416`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，AI 油井 / 旗点 runner 同轮不复用、移动中的占点 runner 不被主攻波次抢走、真正 idle 作战单位仍能发起 attack-move、以及 v1.7 生产扫描行为仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 本轮只保护仍有普通 `destination` 的移动中占点 runner；单位到达占领半径且 `destination` 清空后，若占领尚未完成，后续周期仍可能被重新调度。若要长期占点 reservation，需要另开小版本设计。
+- 后续可继续扩展旗点建造覆盖、岸防炮、长期 AI 角色 reservation 或反潜 HUD 信息，但这些不属于 v1.9。
