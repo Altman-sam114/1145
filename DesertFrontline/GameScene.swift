@@ -440,6 +440,8 @@ private enum VeterancyRank: Int, CaseIterable {
 
 private enum HudAction: String, CaseIterable {
     case selectArmy
+    case controlGroup1
+    case controlGroup2
     case holdPosition
     case attackMove
     case buildHumvee
@@ -464,6 +466,8 @@ private enum HudAction: String, CaseIterable {
     var title: String {
         switch self {
         case .selectArmy: "ARMY"
+        case .controlGroup1: "G1"
+        case .controlGroup2: "G2"
         case .holdPosition: "HOLD"
         case .attackMove: "AMOV"
         case .buildHumvee: "HMV"
@@ -811,6 +815,7 @@ final class GameScene: SKScene {
     private var entities: [Int: GameEntity] = [:]
     private var controlPoints: [BattlefieldControlPoint] = []
     private var selectedIDs = Set<Int>()
+    private var controlGroups: [Int: Set<Int>] = [1: [], 2: []]
     private var nextEntityID = 1
 
     private var playerMoney = 5200
@@ -2062,7 +2067,7 @@ final class GameScene: SKScene {
         )
         addSelectionInfoPanel(frame: infoPanelFrame, compact: compactHUD)
 
-        let actions: [HudAction] = [.selectArmy, .holdPosition, .buildHumvee, .buildTank, .buildArtillery, .buildMechanic, .buildHelicopter, .buildFighter, .buildBattleship, .buildSubmarine, .buildCarrier, .setRally, .buildBase, .reconSweep, .fieldRepair, .airStrike, .navalBarrage, .cycleAI, .focusHQ, .newSkirmish]
+        let actions: [HudAction] = [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .buildHumvee, .buildTank, .buildArtillery, .buildMechanic, .buildHelicopter, .buildFighter, .buildBattleship, .buildSubmarine, .buildCarrier, .setRally, .buildBase, .reconSweep, .fieldRepair, .airStrike, .navalBarrage, .cycleAI, .focusHQ, .newSkirmish]
         let gap: CGFloat = compactHUD ? 5 : 7
         let availableWidth = size.width - 32
         let maxButtonsPerRow = compactHUD ? Int(ceil(Double(actions.count) / 2.0)) : actions.count
@@ -2249,6 +2254,8 @@ final class GameScene: SKScene {
         switch action {
         case .selectArmy:
             UIColor(red: 0.10, green: 0.62, blue: 0.25, alpha: 0.96)
+        case .controlGroup1, .controlGroup2:
+            UIColor(red: 0.24, green: 0.43, blue: 0.40, alpha: 0.96)
         case .holdPosition:
             UIColor(red: 0.30, green: 0.48, blue: 0.22, alpha: 0.96)
         case .attackMove:
@@ -2291,6 +2298,10 @@ final class GameScene: SKScene {
         switch action {
         case .selectArmy:
             return "all combat"
+        case .controlGroup1:
+            return controlGroupSubtitle(for: 1)
+        case .controlGroup2:
+            return controlGroupSubtitle(for: 2)
         case .holdPosition:
             return "guard"
         case .attackMove:
@@ -2788,7 +2799,7 @@ final class GameScene: SKScene {
             return
         }
         if let action = hudAction(at: uiPoint) {
-            handleHudAction(action)
+            handleHudAction(action, tapCount: touch.tapCount)
             touchStartScene = nil
             touchStartWorld = nil
             return
@@ -2993,31 +3004,24 @@ final class GameScene: SKScene {
         return nil
     }
 
-    private func handleHudAction(_ action: HudAction) {
+    private func handleHudAction(_ action: HudAction, tapCount: Int = 1) {
         switch action {
         case .selectArmy:
-            clearConstructionPreview()
-            pendingConstructionKind = nil
-            pendingSupportPower = nil
-            isSettingRallyPoint = false
-            isSettingAttackMove = false
+            clearPendingCommandModes()
             selectedIDs = Set(entities.values.filter { $0.faction == .player && !$0.kind.isStructure && $0.isAlive }.map(\.id))
             refreshSelection()
             layoutHUD()
             updateHUD()
             showMessage("Selected all available combat units.", color: .white)
+        case .controlGroup1:
+            tapCount >= 2 ? saveControlGroup(1) : recallControlGroup(1)
+        case .controlGroup2:
+            tapCount >= 2 ? saveControlGroup(2) : recallControlGroup(2)
         case .holdPosition:
-            clearConstructionPreview()
-            pendingConstructionKind = nil
-            pendingSupportPower = nil
-            isSettingRallyPoint = false
-            isSettingAttackMove = false
+            clearPendingCommandModes()
             issueHoldPositionOrder(units: selectedMobilePlayerUnits())
         case .attackMove:
-            clearConstructionPreview()
-            pendingConstructionKind = nil
-            pendingSupportPower = nil
-            isSettingRallyPoint = false
+            clearPendingCommandModes()
             let combatUnits = selectedMobilePlayerUnits().filter { $0.kind.damage > 0 }
             guard !combatUnits.isEmpty else {
                 isSettingAttackMove = false
@@ -3031,22 +3035,14 @@ final class GameScene: SKScene {
             updateHUD()
             showMessage("Tap the map to attack-move.", color: UIColor(red: 1.0, green: 0.72, blue: 0.46, alpha: 1.0))
         case .focusHQ:
-            clearConstructionPreview()
-            pendingConstructionKind = nil
-            pendingSupportPower = nil
-            isSettingRallyPoint = false
-            isSettingAttackMove = false
+            clearPendingCommandModes()
             if let hq = entities.values.first(where: { $0.kind == .hq && $0.faction == .player && $0.isAlive }) {
                 cameraRig.position = clampCamera(hq.node.position)
             }
             layoutHUD()
             updateHUD()
         case .cycleAI:
-            clearConstructionPreview()
-            pendingConstructionKind = nil
-            pendingSupportPower = nil
-            isSettingRallyPoint = false
-            isSettingAttackMove = false
+            clearPendingCommandModes()
             aiDifficulty = aiDifficulty.next
             layoutHUD()
             updateHUD()
@@ -3100,6 +3096,57 @@ final class GameScene: SKScene {
                 queueBuild(kind: kind, faction: .player, showFeedback: true)
             }
         }
+    }
+
+    private func clearPendingCommandModes() {
+        clearConstructionPreview()
+        pendingConstructionKind = nil
+        pendingSupportPower = nil
+        isSettingRallyPoint = false
+        isSettingAttackMove = false
+    }
+
+    private func liveControlGroupIDs(for group: Int) -> Set<Int> {
+        Set(controlGroups[group, default: []].filter { id in
+            guard let entity = entities[id] else { return false }
+            return entity.isAlive && entity.faction == .player && !entity.kind.isStructure
+        })
+    }
+
+    private func controlGroupSubtitle(for group: Int) -> String {
+        let count = liveControlGroupIDs(for: group).count
+        return count > 0 ? "\(count) units" : "empty"
+    }
+
+    private func recallControlGroup(_ group: Int) {
+        clearPendingCommandModes()
+        let liveIDs = liveControlGroupIDs(for: group)
+        controlGroups[group] = liveIDs
+
+        guard !liveIDs.isEmpty else {
+            updateHUD()
+            showMessage("Group \(group) is empty.", color: .orange)
+            return
+        }
+
+        selectedIDs = liveIDs
+        refreshSelection()
+        updateHUD()
+        showMessage("Group \(group) selected: \(liveIDs.count) units.", color: UIColor(red: 0.75, green: 0.95, blue: 1.0, alpha: 1.0))
+    }
+
+    private func saveControlGroup(_ group: Int) {
+        clearPendingCommandModes()
+        let units = selectedMobilePlayerUnits()
+        guard !units.isEmpty else {
+            updateHUD()
+            showMessage("Select mobile units before saving Group \(group).", color: .orange)
+            return
+        }
+
+        controlGroups[group] = Set(units.map(\.id))
+        updateHUD()
+        showMessage("Saved \(units.count) units to Group \(group).", color: UIColor(red: 0.75, green: 0.95, blue: 1.0, alpha: 1.0))
     }
 
     private func handleWorldTap(at point: CGPoint, tapCount: Int = 1) {
@@ -3694,6 +3741,7 @@ final class GameScene: SKScene {
         skirmishSeed += 1
         entities.removeAll()
         selectedIDs.removeAll()
+        controlGroups = [1: [], 2: []]
         buildOrders.removeAll()
         nextEntityID = 1
         playerMoney = 5200
@@ -4648,6 +4696,10 @@ final class GameScene: SKScene {
             selectedIDs.remove(id)
         }
         buildOrders.removeAll { deadIDs.contains($0.sourceID) }
+        let deadIDSet = Set(deadIDs)
+        for group in Array(controlGroups.keys) {
+            controlGroups[group]?.subtract(deadIDSet)
+        }
         updateProductionIndicators()
         refreshSelection()
     }

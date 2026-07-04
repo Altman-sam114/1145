@@ -32,12 +32,12 @@ flowchart TD
 
 ## 2. 玩家输入与命令流程图
 
-读图说明：触摸输入会先判断 HUD 和小地图，再处理 pending 模式。建筑放置、支援技能、集结点和 attack-move 都是互斥 pending 状态，最后才进入普通选择、攻击或移动；无效世界目标只补短暂拒绝标记，不改变命令合法性或 pending 语义。
+读图说明：触摸输入会先判断 HUD 和小地图；HUD 可处理控制组保存 / 召回并清理 pending 模式。建筑放置、支援技能、集结点和 attack-move 都是互斥 pending 状态，最后才进入普通选择、攻击或移动；无效世界目标只补短暂拒绝标记，不改变命令合法性或 pending 语义。
 
 ```mermaid
 flowchart TD
   Touch["玩家触摸输入\nBegan / Moved / Ended"] --> HUDCheck{"是否点到 HUD 按钮"}
-  HUDCheck -- "是" --> HudAction["handleHudAction\n切换命令、生产、支援、AI、重开\npending按钮高亮由状态刷新"]
+  HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\n切换命令、生产、支援、AI、重开\npending按钮高亮由状态刷新"]
   HUDCheck -- "否" --> MiniMap{"是否点到小地图"}
   MiniMap -- "是" --> Camera["移动相机到小地图位置"]
   MiniMap -- "否" --> MultiTouch{"是否双指触摸"}
