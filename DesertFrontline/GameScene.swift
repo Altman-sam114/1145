@@ -46,6 +46,7 @@ private enum EntityKind: CaseIterable, Hashable {
     case oilDerrick
     case radarOutpost
     case guardTower
+    case coastalBattery
     case humvee
     case tank
     case artillery
@@ -65,6 +66,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .oilDerrick: "Oil Derrick"
         case .radarOutpost: "Radar Outpost"
         case .guardTower: "Guard Tower"
+        case .coastalBattery: "Coastal Battery"
         case .humvee: "Humvee"
         case .tank: "Tank"
         case .artillery: "Artillery"
@@ -86,6 +88,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .oilDerrick: "OIL"
         case .radarOutpost: "RAD"
         case .guardTower: "GT"
+        case .coastalBattery: "CB"
         case .humvee: "HMV"
         case .tank: "TNK"
         case .artillery: "ART"
@@ -100,7 +103,7 @@ private enum EntityKind: CaseIterable, Hashable {
 
     var domain: Domain {
         switch self {
-        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .guardTower:
+        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .guardTower, .coastalBattery:
             .structure
         case .humvee, .tank, .artillery, .mechanic:
             .land
@@ -147,6 +150,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .oilDerrick: 900
         case .radarOutpost: 1300
         case .guardTower: 1450
+        case .coastalBattery: 1700
         case .humvee: 420
         case .tank: 650
         case .artillery: 900
@@ -168,6 +172,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .oilDerrick: 8.0
         case .radarOutpost: 10.0
         case .guardTower: 11.0
+        case .coastalBattery: 12.0
         case .humvee: 3.5
         case .tank: 5.0
         case .artillery: 7.0
@@ -189,6 +194,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .oilDerrick: 650
         case .radarOutpost: 720
         case .guardTower: 820
+        case .coastalBattery: 780
         case .humvee: 160
         case .tank: 260
         case .artillery: 190
@@ -220,6 +226,7 @@ private enum EntityKind: CaseIterable, Hashable {
         switch self {
         case .hq: 190
         case .guardTower: 205
+        case .coastalBattery: 285
         case .humvee: 125
         case .tank: 145
         case .artillery: 250
@@ -236,6 +243,7 @@ private enum EntityKind: CaseIterable, Hashable {
         switch self {
         case .hq: 24
         case .guardTower: 30
+        case .coastalBattery: 62
         case .humvee: 18
         case .tank: 34
         case .artillery: 58
@@ -252,6 +260,7 @@ private enum EntityKind: CaseIterable, Hashable {
         switch self {
         case .hq: 1.6
         case .guardTower: 1.25
+        case .coastalBattery: 2.15
         case .humvee: 0.72
         case .tank: 1.15
         case .artillery: 2.1
@@ -271,6 +280,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .oilDerrick: 4
         case .radarOutpost: 9
         case .guardTower: 6
+        case .coastalBattery: 6
         case .humvee: 8
         case .artillery, .battleship, .carrier: 7
         case .fighter: 8
@@ -286,6 +296,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .barracks, .airfield, .shipyard: 50
         case .oilDerrick: 42
         case .radarOutpost, .guardTower: 46
+        case .coastalBattery: 48
         case .humvee: 28
         case .carrier: 60
         case .battleship: 50
@@ -331,6 +342,8 @@ private enum EntityKind: CaseIterable, Hashable {
             return target.domain == .land || target.domain == .air
         case .guardTower:
             return target.domain == .land || target.domain == .air || target.isStructure
+        case .coastalBattery:
+            return target.domain == .naval
         case .humvee:
             return target.domain == .land || target.domain == .air || target.isStructure
         case .tank:
@@ -825,7 +838,7 @@ final class GameScene: SKScene {
     private var buildOrders: [BuildOrder] = []
     private var aiBuildCursor = 0
     private var aiDifficulty: AIDifficulty = .normal
-    private let buildableStructures: [EntityKind] = [.barracks, .airfield, .radarOutpost, .guardTower, .shipyard, .oilDerrick]
+    private let buildableStructures: [EntityKind] = [.barracks, .airfield, .radarOutpost, .guardTower, .coastalBattery, .shipyard, .oilDerrick]
     private var structureBuildCursor = 0
     private var pendingConstructionKind: EntityKind?
     private var pendingSupportPower: SupportPower?
@@ -1560,7 +1573,7 @@ final class GameScene: SKScene {
         base.addChild(shadow)
 
         switch entity.kind {
-        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .guardTower:
+        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .guardTower, .coastalBattery:
             addStructureBody(for: entity, to: base)
         case .humvee, .tank, .artillery, .mechanic:
             addLandUnitBody(for: entity, to: base)
@@ -1766,6 +1779,38 @@ final class GameScene: SKScene {
             beacon.strokeColor = UIColor.white.withAlphaComponent(0.72)
             beacon.lineWidth = 1
             base.addChild(beacon)
+        case .coastalBattery:
+            let pad = SKShapeNode(rectOf: CGSize(width: 58, height: 32), cornerRadius: 4)
+            pad.fillColor = UIColor(red: 0.40, green: 0.39, blue: 0.34, alpha: 1.0)
+            pad.strokeColor = UIColor(white: 0.15, alpha: 1.0)
+            pad.lineWidth = 2
+            base.addChild(pad)
+
+            let revetment = SKShapeNode(ellipseOf: CGSize(width: 54, height: 24))
+            revetment.position = CGPoint(x: -2, y: 10)
+            revetment.fillColor = UIColor(red: 0.28, green: 0.28, blue: 0.25, alpha: 1.0)
+            revetment.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            revetment.lineWidth = 1.5
+            base.addChild(revetment)
+
+            let turret = SKShapeNode(ellipseOf: CGSize(width: 32, height: 20))
+            turret.position = CGPoint(x: -1, y: 18)
+            turret.fillColor = UIColor(red: 0.48, green: 0.50, blue: 0.45, alpha: 1.0)
+            turret.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            turret.lineWidth = 1.5
+            base.addChild(turret)
+
+            let barrel = SKShapeNode(rectOf: CGSize(width: 42, height: 6), cornerRadius: 2)
+            barrel.position = CGPoint(x: 29, y: 21)
+            barrel.fillColor = UIColor(white: 0.10, alpha: 1.0)
+            barrel.strokeColor = .clear
+            base.addChild(barrel)
+
+            let rangeMark = SKShapeNode(rectOf: CGSize(width: 28, height: 5), cornerRadius: 1.5)
+            rangeMark.position = CGPoint(x: -3, y: 2)
+            rangeMark.fillColor = entity.faction.color
+            rangeMark.strokeColor = .clear
+            base.addChild(rangeMark)
         default:
             break
         }
@@ -2491,7 +2536,7 @@ final class GameScene: SKScene {
                 [
                     "$\(pendingConstructionKind.cost)  HP \(Int(pendingConstructionKind.maxHP))",
                     "Build \(Int(pendingConstructionKind.buildTime))s  \(domainLabel(for: pendingConstructionKind.domain))",
-                    pendingConstructionKind == .shipyard ? "Needs coast tile" : "Needs base/flag coverage",
+                    pendingConstructionKind == .shipyard || pendingConstructionKind == .coastalBattery ? "Needs coast tile" : "Needs base/flag coverage",
                     pendingConstructionKind == .oilDerrick ? "Requires oil field" : "Requires visible ground"
                 ]
             )
@@ -2648,6 +2693,9 @@ final class GameScene: SKScene {
             }
             if entity.kind == .guardTower {
                 return "Land/Air defense  No naval"
+            }
+            if entity.kind == .coastalBattery {
+                return "Naval defense  No sonar"
             }
             return "Build coverage"
         }
@@ -3734,8 +3782,8 @@ final class GameScene: SKScene {
             return nil
         }
 
-        if kind == .shipyard {
-            guard isCoastal(tile) else { return "Shipyard must be placed on coast." }
+        if kind == .shipyard || kind == .coastalBattery {
+            guard isCoastal(tile) else { return "\(kind.displayName) must be placed on coast." }
         } else {
             guard isLand(tile) else { return "Structure requires clear land." }
         }
@@ -5096,6 +5144,9 @@ final class GameScene: SKScene {
         if target.kind == .guardTower {
             score += 110
         }
+        if target.kind == .coastalBattery {
+            score += 125
+        }
         if target.hp < target.kind.maxHP * 0.42 {
             score += 120
         }
@@ -5246,6 +5297,8 @@ final class GameScene: SKScene {
             720
         case .battleship:
             690
+        case .coastalBattery:
+            680
         case .guardTower:
             660
         case .submarine:
@@ -5315,7 +5368,7 @@ final class GameScene: SKScene {
 
     private func primaryTarget(for faction: Faction) -> GameEntity? {
         let enemyFaction: Faction = faction == .enemy ? .player : .enemy
-        let priorities: [EntityKind] = [.hq, .oilDerrick, .shipyard, .airfield, .barracks, .guardTower, .radarOutpost, .carrier, .battleship]
+        let priorities: [EntityKind] = [.hq, .oilDerrick, .shipyard, .airfield, .barracks, .coastalBattery, .guardTower, .radarOutpost, .carrier, .battleship]
         for kind in priorities {
             if let target = entities.values.first(where: { $0.faction == enemyFaction && $0.kind == kind && $0.isAlive && isKnownToFaction($0, observer: faction) }) {
                 return target
@@ -5767,7 +5820,7 @@ final class GameScene: SKScene {
         path.addLine(to: end)
         let tracer = SKShapeNode(path: path)
         tracer.strokeColor = projectileColor(for: kind)
-        tracer.lineWidth = kind == .battleship || kind == .artillery ? 4 : 2
+        tracer.lineWidth = kind == .battleship || kind == .artillery || kind == .coastalBattery ? 4 : 2
         tracer.glowWidth = 2
         tracer.zPosition = 250
         effectsLayer.addChild(tracer)
