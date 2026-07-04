@@ -16,9 +16,9 @@ flowchart TD
   Loop --> Build["施工 / 生产\n建筑进度、RAD/GT、BuildOrder、出兵、集结点"]
   Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入与占领进度"]
   Loop --> Commands["移动 / 命令\n普通移动、HOLD、AMOV、路径和编队"]
-  Loop --> Combat["战斗 / 维修\n未完工攻击结构禁火、目标搜索、有效伤害、击杀 XP、老兵徽章、死亡清理"]
+  Loop --> Combat["战斗 / 维修\n未完工攻击结构禁火、目标搜索、有效伤害、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
   Loop --> AI["敌方 AI\n补建、跳过不可生产兵种、占点、支援、attack-move 波次"]
-  Loop --> Fog["战争迷雾\n单位/已完工建筑/RAD/GT 视野、侦察、潜艇检测"]
+  Loop --> Fog["战争迷雾\n单位/已完工建筑/RAD/GT 视野、侦察、潜艇检测、支援命中暴露"]
   Loop --> Mission["任务 / 胜负\n阶段目标与 HQ 摧毁判定"]
   Build --> Render["SpriteKit 渲染\n实体节点、特效、进度条"]
   Economy --> Render

@@ -3475,6 +3475,14 @@ final class GameScene: SKScene {
         }
     }
 
+    private func revealSubmarineHitBySupport(_ submarine: GameEntity) {
+        guard submarine.kind == .submarine else { return }
+        submarine.revealedUntil = max(submarine.revealedUntil, lastUpdateTime + 2.4)
+        if submarine.faction == .enemy {
+            submarine.node.isHidden = !isKnownToFaction(submarine, observer: .player)
+        }
+    }
+
     private func applySupportDamage(_ power: SupportPower, at point: CGPoint, from faction: Faction) {
         guard power.damage > 0 else { return }
         for entity in entities.values where entity.faction != faction && entity.faction != .neutral && entity.isAlive {
@@ -3484,6 +3492,9 @@ final class GameScene: SKScene {
             let structureMultiplier: CGFloat = entity.kind.isStructure ? 0.72 : 1.0
             entity.hp -= power.damage * falloff * structureMultiplier
             updateHealthBar(entity)
+            if entity.kind == .submarine {
+                revealSubmarineHitBySupport(entity)
+            }
             if entity.hp <= 0 {
                 explode(at: entity.node.position, scale: entity.kind.isStructure ? 1.35 : 0.9)
             }
