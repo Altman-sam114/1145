@@ -1259,3 +1259,43 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Red 在具备多兵种时是否稳定形成混编主攻、兵种不足时是否继续出击、Battleship / Carrier 是否仍受护航门槛约束、占点 reservation 是否不被抢走、动态 AA / ASW 补单是否保持原语义仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展高价值老兵保护、AI 前线撤退 / 维修行为、Sonar Buoy 平衡 / 升级或更完整的航母 / 海军机制，但这些不属于 v3.7。
+
+### v3.8 / AI 高价值老兵主攻保护
+
+日期：2026-07-05
+
+核心变更：
+
+- Red routine attack-move 主攻波次会在最终入波过滤中排除低血 Veteran / Elite 机动战斗单位。
+- 保护对象必须是 Red 存活、非结构、operational、有伤害、Veteran 或 Elite，且 HP 比例低于 55%。
+- 受保护老兵不进入本轮 `issueFormationMove(... attackMove: true)`，因此不会被设置 `attackMoveDestination`、`destination` 或 `attackTarget`；HP 恢复到阈值以上后可按既有规则重新加入后续主攻。
+- Battleship / Carrier 仍受 v3.6 护航门槛约束；若同时是低血 Veteran / Elite，会先被老兵保护过滤，不会因护航满足而带伤出击。
+- Red `REPR` 支援评分会偏向低血 Veteran / Elite 作战单位；实际维修量、费用、冷却、半径、资产需求和玩家手动 `REPR` 行为不变。
+- 本轮没有改变 XP 规则、老兵加成、玩家 `AMOV`、`issueFormationMove(...)`、v3.7 mixed provisional wave、生产、寻路、战斗、迷雾、声呐、支援技能数值、单位数值或 Xcode/workflow 配置。
+- README、flow、flowchart 和 v3.8 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v3（海战反潜）/v3.8（AI高价值老兵主攻保护）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`4990612ae8faac2841f1fad07752faee38c4652b`，commit subject 为 `v3.8: AI高价值老兵主攻保护`。
+- 老兵保护调查子 agent 推荐该小目标并定位 `VeterancyRank`、`GameEntity.veterancyRank`、`canJoinEnemyAssaultWave(...)`、`supportRepairScore(...)` 和 v3.6/v3.7 过滤边界。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `4990612ae8faac2841f1fad07752faee38c4652b`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28738199147`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v3.8-main-4990612ae8fa-run28738199147-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28738199147/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=4990612ae8faac2841f1fad07752faee38c4652b`、`runId=28738199147`、`runAttempt=1`、`version=v3.8`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，低血 Red Veteran / Elite 是否留在 idle、HP 恢复后是否重新入波、低血 Veteran / Elite Battleship / Carrier 是否仍被保护、Red `REPR` 是否更常覆盖这些单位、玩家手动 `REPR` 是否无变化仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展 AI 前线撤退 / 回修行为、Sonar Buoy 平衡 / 升级、航母舰载机巡逻或更完整的海军机制，但这些不属于 v3.8。
