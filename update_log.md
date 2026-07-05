@@ -826,3 +826,43 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，AI 油井 / 旗点 runner 到达占领半径后持续完成占领、目标归 Red 后释放 reservation、runner 死亡 / 被防守反应打断后释放、多个未占旗点不会重复派同一目标、以及 `SKRM` 重置后 reservation 清空仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展旗点争夺奖励、AI 编队比例、高价值老兵保护、反潜 HUD 信息或更完整的 AI 角色系统，但这些不属于 v2.6。
+
+### v2.7 / AI 旗点防守响应
+
+日期：2026-07-05
+
+核心变更：
+
+- 玩家单位开始夺取 Red 已占旗点时，Red 会用自己的单位、已完工建筑或已占旗点视野确认抢点单位；确认后才触发防守响应，不复用玩家 `visibleTiles`，也不全图作弊。
+- 新增 `lastEnemyControlPointDefenseResponseTime`，为旗点防守响应提供独立 cooldown；Red 确认抢点后即刷新尝试时间，避免无合格守军时每帧重复扫描。
+- 旗点防守响应最多调附近少量 Red 非结构作战单位，要求单位存活、有伤害、能攻击抢点单位，并限制在旗点附近。
+- 旗点防守响应会跳过 `isEnemyCaptureReserved(...)` 为 true 的占油 / 占旗 runner，避免破坏 v2.6 的长期占点任务保留。
+- 防守单位继续复用现有 `attackTarget`、`attackDestination(for:target:)`、`setDestination(for:near:)`、移动和战斗链路；没有新增平行 AI、寻路或战斗系统。
+- `SKRM` 重开会重置旗点防守 cooldown；本轮没有改变旗点占领半径、占领速度、收入、视野、build coverage、任务阶段、玩家命令、AI 生产或支援技能。
+- README、flow、flowchart 和 v2.7 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v2（地图控制）/v2.7（AI旗点防守响应）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`3907db50fe419a0e27276ecaa421ae83612f9be4`，commit subject 为 `v2.7: AI旗点防守响应`。
+- Agent X 并行只读子 agent 调查建议本轮做 AI 旗点防守响应；diff reviewer 发现无 P0 / P1，指出无守军场景下 cooldown 语义可更严谨，已修正为确认 Red 感知后即刷新尝试 cooldown。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `3907db50fe419a0e27276ecaa421ae83612f9be4`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28729671852`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v2.7-main-3907db50fe41-run28729671852-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28729671852/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=3907db50fe419a0e27276ecaa421ae83612f9be4`、`runId=28729671852`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，玩家单位抢 Red 已占旗点时触发附近 Red 非 reservation 作战单位防守、Red 视野外抢点不触发、无合格守军时 cooldown 正常节流、占点 runner 不被抢走、以及 `SKRM` 重置后旗点防守 cooldown 清空仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展旗点争夺奖励、AI 编队比例、高价值老兵保护、反潜 HUD 信息或更完整的 AI 角色系统，但这些不属于 v2.7。
