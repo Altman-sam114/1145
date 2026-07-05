@@ -1500,3 +1500,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，任务链中 Secure Coast 进入时是否稳定显示 1/2、完工 Sonar Buoy / Coastal Battery 是否立即完成阶段、未完工海岸建筑是否不计入、任务文案在实际 HUD 宽度下是否足够清晰仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展真实舰载机巡逻 / CAP、航母护航行为、海岸任务奖励、Sonar Buoy 升级或更多地图目标，但这些不属于 v4.3。
+
+### v4.4 / 海岸据点任务奖励
+
+日期：2026-07-05
+
+核心变更：
+
+- `Secure Coast` 任务阶段首次完成时，现在通过 `changeMoney(for: .player, by: 600)` 给玩家一次性 `$600` 资源奖励。
+- 新增 `missionReward(for:)` 作为任务奖励 helper；当前只有 `.secureCoast` 返回 `600`，其他阶段返回 `0`。
+- 奖励发放发生在 `updateMissionProgress()` 将阶段写入 `completedMissionStages` 的首次完成路径中，不新增独立奖励状态，依赖既有完成集合避免重复发放。
+- 若同一帧连续完成多个阶段，奖励仍按实际发奖阶段在循环内发放，完成消息以最后完成阶段为标题并附本轮累计奖励，避免消息停留在早先阶段。
+- `Secure Coast` HUD 详情追加 `+$600`，让玩家进入该阶段时能看到完成奖励。
+- README、flow、flowchart 和 v4.4 Agent A 提示词已同步当前真实行为，未宣称新增完整战役奖励系统、海岸旗点、科技升级、AI 新能力或新地图。
+- 本轮没有改变 `Secure Coast` 完成条件、海岸建造规则、AI、生产队列、单位数值、伤害、射程、冷却、迷雾、潜艇侦测、支援技能、路径、XP、胜负或 Xcode/workflow 配置。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.4（海岸据点任务奖励）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`0650c5fb445ab4608441a9d980106afd4985d776`，commit subject 为 `v4.4: 增加海岸据点任务奖励`。
+- 只读候选评估子 agent 推荐该小目标，认为它比 Sonar Buoy 升级或 Carrier CAP / 巡逻前置更小、更贴合 v4.3 的新增任务阶段。
+- diff reviewer 初次发现同一帧连续完成多个阶段时，完成消息可能停留在 `Secure Coast`；Agent B 已在提交前修正为最后完成阶段标题加本轮累计奖励，并确认未发现重复发奖、SKRM 重置或范围控制问题。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `0650c5fb445ab4608441a9d980106afd4985d776`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28744577617`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.4-main-0650c5fb445a-run28744577617-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28744577617/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=0650c5fb445ab4608441a9d980106afd4985d776`、`runId=28744577617`、`runAttempt=1`、`version=v4.4`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Secure Coast 首次完成时 `$600` 是否在 HUD 金钱上即时可感知、同一帧连续完成 Secure Coast / Combined Arms 时的顶部消息是否最符合玩家预期、任务详情 `+$600` 在实际 HUD 宽度下是否足够清晰仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展更多任务阶段奖励、真实舰载机巡逻 / CAP、航母护航行为、Sonar Buoy 升级或更多地图目标，但这些不属于 v4.4。
