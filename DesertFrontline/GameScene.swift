@@ -5182,7 +5182,7 @@ final class GameScene: SKScene {
             return derrick.faction != .enemy
         case .controlPoint(let id):
             guard let controlPoint = controlPoints.first(where: { $0.id == id }) else { return false }
-            return controlPoint.faction != .enemy
+            return enemyControlPointNeedsAction(controlPoint)
         }
     }
 
@@ -5286,13 +5286,51 @@ final class GameScene: SKScene {
     private func enemyControlPointTarget(excludingReserved: Bool = false) -> BattlefieldControlPoint? {
         controlPoints
             .filter { point in
-                point.faction != .enemy &&
+                enemyControlPointNeedsAction(point) &&
                     (!excludingReserved || !isEnemyCaptureTargetReserved(.controlPoint(point.id)))
             }
-            .min { left, right in
-                left.node.position.distance(to: enemyBaseAnchorPoint()) <
-                    right.node.position.distance(to: enemyBaseAnchorPoint())
+            .max { left, right in
+                let leftPriority = enemyControlPointPriority(left)
+                let rightPriority = enemyControlPointPriority(right)
+                if abs(leftPriority - rightPriority) > 0.001 {
+                    return leftPriority < rightPriority
+                }
+
+                let leftDistance = left.node.position.distance(to: enemyBaseAnchorPoint())
+                let rightDistance = right.node.position.distance(to: enemyBaseAnchorPoint())
+                if abs(leftDistance - rightDistance) > 0.001 {
+                    return leftDistance > rightDistance
+                }
+
+                return left.id > right.id
             }
+    }
+
+    private func enemyControlPointNeedsAction(_ point: BattlefieldControlPoint) -> Bool {
+        point.faction != .enemy || isPlayerPressuringControlPoint(point)
+    }
+
+    private func isPlayerPressuringControlPoint(_ point: BattlefieldControlPoint) -> Bool {
+        point.capturingFaction == .player && point.captureProgress > 0
+    }
+
+    private func enemyControlPointPriority(_ point: BattlefieldControlPoint) -> CGFloat {
+        var score: CGFloat = 0
+        if isPlayerPressuringControlPoint(point) {
+            score += 1_400 + min(point.captureProgress, 4.0) * 32
+        } else {
+            switch point.faction {
+            case .player:
+                score += 1_000
+            case .neutral:
+                score += 300
+            case .enemy:
+                score -= 10_000
+            }
+        }
+
+        let distance = point.node.position.distance(to: enemyBaseAnchorPoint())
+        return score - distance * 0.02
     }
 
     private func enemyBaseAnchorPoint() -> CGPoint {
