@@ -5595,6 +5595,9 @@ final class GameScene: SKScene {
             if entity.kind.isStructure {
                 score += 85
             }
+            if faction == .enemy && isProtectedEnemyVeteranCombatUnit(entity) {
+                score += strategicValue(of: entity.kind) * 0.28
+            }
             repairedAssets += 1
         }
 
@@ -5751,6 +5754,7 @@ final class GameScene: SKScene {
     }
 
     private func canJoinEnemyAssaultWave(_ unit: GameEntity, provisionalWave: [GameEntity]) -> Bool {
+        guard !isProtectedEnemyVeteranCombatUnit(unit) else { return false }
         guard isHighValueNavalAssaultUnit(unit) else { return true }
 
         let escortRequirement = unit.kind == .carrier ? 2 : 1
@@ -5760,6 +5764,21 @@ final class GameScene: SKScene {
         }
 
         return enemyEscortCount(near: unit, in: provisionalWave) >= escortRequirement
+    }
+
+    private func isProtectedEnemyVeteranCombatUnit(_ unit: GameEntity) -> Bool {
+        unit.faction == .enemy &&
+            unit.isAlive &&
+            !unit.kind.isStructure &&
+            unit.kind.damage > 0 &&
+            unit.isOperational &&
+            (unit.veterancyRank == .veteran || unit.veterancyRank == .elite) &&
+            healthRatio(of: unit) < 0.55
+    }
+
+    private func healthRatio(of unit: GameEntity) -> CGFloat {
+        guard unit.kind.maxHP > 0 else { return 0 }
+        return unit.hp / unit.kind.maxHP
     }
 
     private func isHighValueNavalAssaultUnit(_ unit: GameEntity) -> Bool {
