@@ -1659,3 +1659,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，终局 Red HQ 未知 / 已知 / 已毁三种任务详情状态、`SCAN` 暴露 HQ 后 HP 是否立即显示、以及文案在实际 HUD 宽度下是否足够清晰仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做真实舰载机巡逻 / CAP、航母护航行为、Sonar Buoy 升级、更多地图目标或终局攻势反馈，但这些不属于 v4.7。
+
+### v4.8 / 终局 HQ 攻击指引
+
+日期：2026-07-05
+
+核心变更：
+
+- `Destroy Red HQ` 阶段中，玩家选中可 attack-move 的作战单位并点击 `AMOV` 时，如果 Red HQ 存活且满足 `isKnownToFaction(redHQ, observer: .player)`，会显示 `Red HQ known: tap HQ or map for attack-move.`。
+- 同一条件下会在 Red HQ 位置显示短暂 `HQ` 目标标记，作为终局攻势的视觉指引。
+- Red HQ 未知时仍只显示通用 `Tap the map to attack-move.`，不显示隐藏 HQ 的位置、距离、标记或额外状态。
+- 新增 `playerKnownEnemyHQ()` 复用 `enemyHQ()` 和 `isKnownToFaction(...)` 作为唯一已知边界；v4.7 的 HP 任务详情也改为复用该 helper。
+- `AMOV` 仍只进入 pending attack-move，玩家随后点击地图或可见敌人时才下达命令；没有改变 attack-move 目标选择、编队、寻路、沿途交战、AI、胜负、单位数值、迷雾、潜艇侦测或支援技能。
+- README、flow、flowchart 和 v4.8 Agent A 提示词已同步当前真实行为，未宣称自动攻击、小地图标记、新奖励、战役系统或新 AI 能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.8（终局HQ攻击指引）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`c02bb55dfb9beea54b4f50032a920753bcc87f68`，commit subject 为 `v4.8: 增加终局HQ攻击指引`。
+- diff reviewer 返回 `No issues`，确认未发现迷雾泄露、AMOV 命令语义改变、Swift 编译风险或文档夸大；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `c02bb55dfb9beea54b4f50032a920753bcc87f68`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28746995064`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.8-main-c02bb55dfb9b-run28746995064-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28746995064/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=c02bb55dfb9beea54b4f50032a920753bcc87f68`、`runId=28746995064`、`runAttempt=1`、`version=v4.8`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，终局 Red HQ 已知时 `AMOV` 文案与短暂 HQ 标记是否在真实 HUD 宽度和触摸节奏下足够清晰、未知 Red HQ 时是否保持无标记、以及玩家点击 HQ / 地面后的攻势手感仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.8。
