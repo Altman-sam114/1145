@@ -17,7 +17,7 @@ flowchart TD
   Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖、旗点奖金与占领进度"]
   Loop --> Commands["移动 / 命令\n普通移动、HOLD、AMOV、路径和编队"]
   Loop --> Combat["战斗 / 维修\n未完工攻击结构禁火、SAM/AA 防空、岸防反舰、目标搜索、有效伤害、已知潜艇 direct-fire ASW HIT 反馈、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
-  Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、已知潜艇压力补 ASW、合法认知 SCAN 巡扫、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、跳过不可生产兵种、支援、attack-move 波次"]
+  Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、已知潜艇压力补 ASW、合法认知 SCAN 巡扫、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、跳过不可生产兵种、支援、高价值海军护航门槛、attack-move 波次"]
   Loop --> Fog["战争迷雾\n单位/已完工建筑/RAD/SON/GT/SAM/CB 视野、侦察、潜艇检测、支援命中暴露"]
   Loop --> Mission["任务 / 胜负\n阶段目标与 HQ 摧毁判定"]
   Build --> Render["SpriteKit 渲染\n实体节点、特效、进度条"]

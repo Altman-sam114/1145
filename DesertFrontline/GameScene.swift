@@ -5684,7 +5684,7 @@ final class GameScene: SKScene {
         }
 
         let waveSize = min(idleAttackers.count, max(aiDifficulty.attackGroupSize + 2, idleAttackers.count / 2))
-        let wave = idleAttackers
+        let provisionalWave = idleAttackers
             .sorted { left, right in
                 let leftDistance = left.node.position.distance(to: objective)
                 let rightDistance = right.node.position.distance(to: objective)
@@ -5694,8 +5694,52 @@ final class GameScene: SKScene {
                 return leftDistance < rightDistance
             }
             .prefix(waveSize)
+        let wave = enemyAssaultWave(from: Array(provisionalWave))
+        guard !wave.isEmpty else { return }
 
-        issueFormationMove(to: objective, units: Array(wave), showMarkers: false, showFeedback: false, attackMove: true)
+        issueFormationMove(to: objective, units: wave, showMarkers: false, showFeedback: false, attackMove: true)
+    }
+
+    private func enemyAssaultWave(from provisionalWave: [GameEntity]) -> [GameEntity] {
+        provisionalWave.filter { unit in
+            canJoinEnemyAssaultWave(unit, provisionalWave: provisionalWave)
+        }
+    }
+
+    private func canJoinEnemyAssaultWave(_ unit: GameEntity, provisionalWave: [GameEntity]) -> Bool {
+        guard isHighValueNavalAssaultUnit(unit) else { return true }
+
+        let escortRequirement = unit.kind == .carrier ? 2 : 1
+        let waveEscorts = provisionalWave.filter(isEnemyAssaultEscort).count
+        if waveEscorts >= max(aiDifficulty.attackGroupSize, escortRequirement + 1) {
+            return true
+        }
+
+        return enemyEscortCount(near: unit, in: provisionalWave) >= escortRequirement
+    }
+
+    private func isHighValueNavalAssaultUnit(_ unit: GameEntity) -> Bool {
+        unit.faction == .enemy &&
+            unit.isAlive &&
+            (unit.kind == .battleship || unit.kind == .carrier)
+    }
+
+    private func isEnemyAssaultEscort(_ unit: GameEntity) -> Bool {
+        unit.faction == .enemy &&
+            unit.isAlive &&
+            !unit.kind.isStructure &&
+            unit.kind.damage > 0 &&
+            unit.isOperational &&
+            !isEnemyCaptureReserved(unit) &&
+            !isHighValueNavalAssaultUnit(unit)
+    }
+
+    private func enemyEscortCount(near unit: GameEntity, in candidates: [GameEntity]) -> Int {
+        candidates.filter { escort in
+            isEnemyAssaultEscort(escort) &&
+                escort.id != unit.id &&
+                escort.node.position.distance(to: unit.node.position) <= 620
+        }.count
     }
 
     private func enemyWaveObjective() -> CGPoint? {
