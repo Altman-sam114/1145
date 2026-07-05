@@ -1023,3 +1023,43 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Fighter 单选 `ASW attack  No sonar`、Battleship / Submarine / Carrier / Helicopter 同时显示 ASW 与 sonar、Sonar Buoy 不显示 ASW、多选 ASW / sonar 统计和小屏 HUD 文案长度仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展反潜交互反馈、Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.1。
+
+### v3.2 / AI 已知潜艇压力补 ASW
+
+日期：2026-07-05
+
+核心变更：
+
+- Red AI 在常规生产扫描前新增已知玩家潜艇压力评估；只有玩家 Submarine 同时满足 `isKnownToFaction(..., observer: .enemy)` 和 Red 单位 / 已完工建筑 / 已占旗点视野边界时，才计入已知潜艇威胁。
+- 新增 Red ASW committed count，统计 Red 存活 ASW 攻击单位和已排队 ASW 订单，避免每个 AI 周期重复堆单。
+- 当已知潜艇威胁至少为 1 且 Red 现有 / 已排队 ASW 不足时，每个 AI 指挥周期最多额外尝试排产一个 Helicopter、Fighter、Submarine、Battleship 或 Carrier。
+- 动态 ASW 响应仍走 `canQueueBuild(...)`、`queueBuild(...)` 和 `productionSource(...)`；缺资金、缺 operational Airfield / Carrier / Shipyard 或队列来源时自然跳过，不直接生成单位。
+- Fighter 计为 ASW attacker 但不是 sonar sensor；Sonar Buoy 计为 sonar sensor 但不是 ASW attacker。
+- 本轮没有改变 `canAttack(...)`、`hasSonar`、`sonarRange(for:)`、`isSubmarineDetected(...)`、`revealedUntil`、`SCAN`、`AIRS` / `BARR`、战斗、迷雾、单位数值、建筑规则或 HUD 输入。
+- README、flow、flowchart 和 v3.2 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v3（海战反潜）/v3.2（AI已知潜艇压力补ASW）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`a05570bb485e46977ced21d88d6ddec9eb8c72ac`，commit subject 为 `v3.2: AI已知潜艇压力补ASW`。
+- Agent A 子 agent 生成 v3.2 实现提示词；Agent X 并行只读 reviewer 返回 `No issues`，确认 diff 只改 AI ASW helper / 接入和必要文档，没有修改潜艇侦测、战斗、迷雾或单位规则。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `a05570bb485e46977ced21d88d6ddec9eb8c72ac`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28732957239`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v3.2-main-a05570bb485e-run28732957239-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28732957239/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=a05570bb485e46977ced21d88d6ddec9eb8c72ac`、`runId=28732957239`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Red 只在自身视野 / sonar / `revealedUntil` 认知内响应玩家潜艇、不会全图补 ASW、不会把 Fighter 当 sonar、不会把 Sonar Buoy 当 ASW attacker、不会绕过生产来源和资金限制仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展反潜交互反馈、Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.2。
