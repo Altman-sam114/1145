@@ -745,3 +745,43 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，`BASE` 轮换到 Sonar Buoy、coast-only 放置、旗点 build coverage 下的海岸放置、完工后侦测潜艇、不攻击任何目标、不作为 `SCAN` 资产、AI 补建声呐浮标、目标排序和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展 Sonar Buoy 平衡 / 升级、AI 空军威胁防空响应、长期 AI 角色 reservation、旗点争夺奖励或反潜 HUD 信息，但这些不属于 v2.4。
+
+### v2.5 / AI 空军威胁防空响应
+
+日期：2026-07-05
+
+核心变更：
+
+- AI 在保底 Mechanic 之后、常规 `aiBuildPattern()` 生产扫描之前，会根据 Red 当前认知评估玩家空军压力。
+- Red 已知玩家空军只统计玩家存活 air 单位，并额外要求处于 Red 存活单位、Red 已完工建筑或 Red 已占旗点视野内；本轮不复用玩家 `visibleTiles`，也不全图作弊。
+- AI 防空覆盖会统计 Red 存活 `.aaTruck` / `.fighter`，以及已完工 `.guardTower` / `.samSite`；同时统计已排队的 `.aaTruck` / `.fighter`，避免重复堆订单。
+- 当已知玩家空军达到阈值且现有 / 已排队防空不足时，AI 每个指挥周期最多额外尝试排一个 `.aaTruck`，其次 `.fighter`。
+- 动态防空仍走 `canQueueBuild(...)`、`queueBuild(...)` 和 `productionSource(...)`，缺资金、缺 operational War Factory / Airfield / Carrier 或队列来源时自然跳过；成功补防空后不阻断本周期常规生产扫描。
+- 本轮没有改变玩家 HUD、单位 / 建筑数值、`canAttack(...)`、支援技能、潜艇隐身、声呐检测或 Sonar Buoy 行为。
+- README、flow、flowchart 和 v2.5 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v2（地图控制）/v2.5（AI空军威胁防空响应）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`319032f94679523ebbdc310da38acc0831053f7c`，commit subject 为 `v2.5: AI响应空军威胁补防空`。
+- Agent X 并行只读子 agent 复核：当前 diff 审查返回 `No issues`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `319032f94679523ebbdc310da38acc0831053f7c`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28728193870`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v2.5-main-319032f94679-run28728193870-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28728193870/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=319032f94679523ebbdc310da38acc0831053f7c`、`runId=28728193870`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Red 视野内 2 架以上玩家空军触发 AA Truck / Fighter 补单、视野外玩家空军不触发、已排队防空不重复堆单、缺生产来源 / 资金时自然跳过、补防空后常规生产仍继续、以及 `SKRM` 重置后 AI 正常重新评估仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展长期 AI 角色 reservation、旗点争夺奖励、AI 编队比例、高价值老兵保护或反潜 HUD 信息，但这些不属于 v2.5。
