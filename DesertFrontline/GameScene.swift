@@ -5964,6 +5964,9 @@ final class GameScene: SKScene {
         if target.kind == .coastalBattery {
             score += 125
         }
+        if isCoastalInfrastructure(target.kind), hasActiveCoastalAssaultNavy(for: .enemy) {
+            score += target.kind == .shipyard ? 210 : 170
+        }
         if target.hp < target.kind.maxHP * 0.42 {
             score += 120
         }
@@ -6093,11 +6096,35 @@ final class GameScene: SKScene {
         if attacker.kind == .carrier && (target.kind == .shipyard || target.kind == .airfield || target.kind == .carrier) {
             score += 150
         }
+        if attacker.faction == .enemy && isCoastalAssaultNavalUnit(attacker) && isCoastalInfrastructure(target.kind) {
+            score += attacker.kind == .carrier || attacker.kind == .battleship ? 150 : 110
+        }
         if target.hp < target.kind.maxHP * 0.35 {
             score += 95
         }
 
         return score - distance * 0.18
+    }
+
+    private func isCoastalInfrastructure(_ kind: EntityKind) -> Bool {
+        kind == .shipyard || kind == .sonarBuoy || kind == .coastalBattery
+    }
+
+    private func hasActiveCoastalAssaultNavy(for faction: Faction) -> Bool {
+        entities.values.contains { isCoastalAssaultNavalUnit($0) && $0.faction == faction }
+    }
+
+    private func isCoastalAssaultNavalUnit(_ entity: GameEntity) -> Bool {
+        entity.isAlive &&
+            entity.isOperational &&
+            !entity.kind.isStructure &&
+            entity.kind.domain == .naval &&
+            entity.kind.damage > 0 &&
+            isCoastalInfrastructureAttackCapable(entity.kind)
+    }
+
+    private func isCoastalInfrastructureAttackCapable(_ kind: EntityKind) -> Bool {
+        kind.canAttack(.shipyard) || kind.canAttack(.sonarBuoy) || kind.canAttack(.coastalBattery)
     }
 
     private func strategicValue(of kind: EntityKind) -> CGFloat {
