@@ -5006,6 +5006,8 @@ final class GameScene: SKScene {
             queueBuild(kind: .mechanic, faction: .enemy, showFeedback: false)
         }
 
+        _ = queueEnemyAirDefenseIfNeeded()
+
         let desired: [EntityKind] = aiBuildPattern()
         for _ in 0..<aiDifficulty.buildOrdersPerCycle {
             guard let nextBuild = nextAvailableAIBuildKind(in: desired, startingAt: aiBuildCursor) else {
@@ -5051,6 +5053,82 @@ final class GameScene: SKScene {
             unit.destination == nil &&
             unit.kind.domain == .land &&
             unit.isOperational
+    }
+
+    private func queueEnemyAirDefenseIfNeeded() -> Bool {
+        let knownAirThreat = knownPlayerAirThreatCount()
+        guard knownAirThreat >= 2 else { return false }
+
+        let desiredAntiAir = desiredEnemyAntiAirCount(for: knownAirThreat)
+        let committedAntiAir = enemyAntiAirAssetCount() + queuedEnemyAntiAirCount()
+        guard committedAntiAir < desiredAntiAir else { return false }
+
+        let candidates: [EntityKind] = [.aaTruck, .fighter]
+        for kind in candidates where canQueueBuild(kind: kind, faction: .enemy) {
+            return queueBuild(kind: kind, faction: .enemy, showFeedback: false)
+        }
+        return false
+    }
+
+    private func knownPlayerAirThreatCount() -> Int {
+        entities.values.filter(isKnownPlayerAirThreat).count
+    }
+
+    private func isKnownPlayerAirThreat(_ entity: GameEntity) -> Bool {
+        entity.faction == .player &&
+            entity.kind.domain == .air &&
+            entity.isAlive &&
+            isKnownToFaction(entity, observer: .enemy) &&
+            isPointKnownToEnemySensors(entity.node.position)
+    }
+
+    private func isPointKnownToEnemySensors(_ point: CGPoint) -> Bool {
+        guard let targetTile = tile(at: point) else { return false }
+
+        for sensor in entities.values where sensor.faction == .enemy && sensor.isAlive {
+            if sensor.kind.isStructure && !sensor.isOperational {
+                continue
+            }
+            guard let origin = tile(at: sensor.node.position) else { continue }
+            let radius = effectiveVisionTiles(for: sensor)
+            if hypot(CGFloat(targetTile.row - origin.row), CGFloat(targetTile.col - origin.col)) <= CGFloat(radius) {
+                return true
+            }
+        }
+
+        for controlPoint in controlPoints where controlPoint.faction == .enemy {
+            guard let origin = tile(at: controlPoint.node.position) else { continue }
+            if hypot(CGFloat(targetTile.row - origin.row), CGFloat(targetTile.col - origin.col)) <= CGFloat(controlPointVisionTiles) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private func enemyAntiAirAssetCount() -> Int {
+        entities.values.filter { entity in
+            guard entity.faction == .enemy, entity.isAlive else { return false }
+            switch entity.kind {
+            case .aaTruck, .fighter:
+                return true
+            case .guardTower, .samSite:
+                return entity.isOperational
+            default:
+                return false
+            }
+        }.count
+    }
+
+    private func queuedEnemyAntiAirCount() -> Int {
+        buildOrders.filter { order in
+            order.faction == .enemy &&
+                (order.kind == .aaTruck || order.kind == .fighter)
+        }.count
+    }
+
+    private func desiredEnemyAntiAirCount(for knownAirThreat: Int) -> Int {
+        max(1, min(4, (knownAirThreat + 1) / 2))
     }
 
     private func enemyControlPointTarget() -> BattlefieldControlPoint? {
