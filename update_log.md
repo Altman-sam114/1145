@@ -1698,3 +1698,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，终局 Red HQ 已知时 `AMOV` 文案与短暂 HQ 标记是否在真实 HUD 宽度和触摸节奏下足够清晰、未知 Red HQ 时是否保持无标记、以及玩家点击 HQ / 地面后的攻势手感仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.8。
+
+### v4.9 / 恢复 AMOV 按钮入口
+
+日期：2026-07-05
+
+核心变更：
+
+- `layoutHUD()` 的底部命令条 actions 重新加入 `.attackMove`，位置在 `.holdPosition` 后，使 `HOLD` / `AMOV` 基础军队命令相邻且玩家可直接从 HUD 触发 attack-move。
+- 保持既有 `HudAction.attackMove` title/subtitle/color/highlight、`handleHudAction(.attackMove)`、`issueAttackMoveOrder(...)` 和 `issueFormationMove(... attackMove: true)` 语义不变。
+- 保持 v4.8 终局 Red HQ 已知提示和短暂 HQ 标记逻辑不变，仍只在 `isKnownToFaction(..., observer: .player)` 成立时显示。
+- 为 24 个命令按钮补上响应式布局保护：`compactHUD` 现在会按按钮数量、48pt 最小按钮宽度、7pt 间距和 32pt 横向边距计算 non-compact 所需宽度；中等宽度不足以容纳单行时自动走现有 compact 双行布局，避免边缘按钮溢出。
+- README、flow、flowchart 和 v4.9 Agent A 提示词已同步当前真实行为，未宣称新增自动攻击、地图导航、AI 能力、任务奖励或 HUD 重做。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.9（恢复AMOV按钮入口）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`0dc94bbb86cc843d75540c3f259b1cc59fde2a5d`，commit subject 为 `v4.9: 恢复AMOV按钮入口`。
+- diff reviewer 首轮指出 24 个按钮在 1180-1313 宽的 non-compact HUD 下可能因 48pt 最小按钮宽度溢出；Agent B 已通过按按钮数量计算 compact 阈值修复。
+- diff reviewer 复查返回 `No issues`，确认之前的溢出风险已解决，attack-move 语义、迷雾、AI 和文档仍保持一致；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `0dc94bbb86cc843d75540c3f259b1cc59fde2a5d`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28747360775`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.9-main-0dc94bbb86cc-run28747360775-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28747360775/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=0dc94bbb86cc843d75540c3f259b1cc59fde2a5d`、`runId=28747360775`、`runAttempt=1`、`version=v4.9`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，恢复后的 `AMOV` 按钮在真机触摸尺寸、1366 固定场景缩放和较窄设备 aspect-fill 显示下的实际手感仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.9。
