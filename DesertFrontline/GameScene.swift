@@ -2632,7 +2632,7 @@ final class GameScene: SKScene {
         case .captureFrontline:
             return "Hold 2 front-line flags. \(min(controlPointCount(for: .player), 2))/2 secured."
         case .secureCoast:
-            return "Hold 2 coastal assets. \(min(coastalAssetCount(for: .player), 2))/2 secured."
+            return "Hold 2 coastal assets. \(min(coastalAssetCount(for: .player), 2))/2 secured. +$600"
         case .combinedArms:
             let counts = playerMobileDomainCounts()
             return "Field 10 units: \(min(counts.total, 10))/10  L\(counts.land) A\(counts.air) N\(counts.naval)"
@@ -2652,13 +2652,29 @@ final class GameScene: SKScene {
         guard victoryState == nil else { return }
 
         var completedStage: MissionStage?
+        var completedReward = 0
         while let stage = activeMissionStage(), isMissionStageComplete(stage) {
             completedMissionStages.insert(stage)
             completedStage = stage
+            let reward = missionReward(for: stage)
+            if reward > 0 {
+                changeMoney(for: .player, by: reward)
+                completedReward += reward
+            }
         }
 
         if let completedStage {
-            showMessage("Objective complete: \(completedStage.title)", color: UIColor(red: 0.76, green: 1.0, blue: 0.58, alpha: 1.0))
+            let rewardText = completedReward > 0 ? " +$\(completedReward)" : ""
+            showMessage("Objective complete: \(completedStage.title)\(rewardText)", color: UIColor(red: 0.76, green: 1.0, blue: 0.58, alpha: 1.0))
+        }
+    }
+
+    private func missionReward(for stage: MissionStage) -> Int {
+        switch stage {
+        case .secureCoast:
+            return 600
+        default:
+            return 0
         }
     }
 
