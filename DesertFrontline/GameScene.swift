@@ -5124,6 +5124,7 @@ final class GameScene: SKScene {
         }
 
         _ = queueEnemyAirDefenseIfNeeded()
+        _ = queueEnemyAntiSubmarineIfNeeded()
 
         let desired: [EntityKind] = aiBuildPattern()
         for _ in 0..<aiDifficulty.buildOrdersPerCycle {
@@ -5337,6 +5338,61 @@ final class GameScene: SKScene {
 
     private func desiredEnemyAntiAirCount(for knownAirThreat: Int) -> Int {
         max(1, min(4, (knownAirThreat + 1) / 2))
+    }
+
+    private func queueEnemyAntiSubmarineIfNeeded() -> Bool {
+        let knownSubmarineThreat = knownPlayerSubmarineThreatCount()
+        guard knownSubmarineThreat >= 1 else { return false }
+
+        let desiredASW = desiredEnemyAntiSubmarineCount(for: knownSubmarineThreat)
+        let committedASW = enemyAntiSubmarineAssetCount() + queuedEnemyAntiSubmarineCount()
+        guard committedASW < desiredASW else { return false }
+
+        for kind in enemyAntiSubmarineCandidateKinds() where canQueueBuild(kind: kind, faction: .enemy) {
+            return queueBuild(kind: kind, faction: .enemy, showFeedback: false)
+        }
+        return false
+    }
+
+    private func knownPlayerSubmarineThreatCount() -> Int {
+        entities.values.filter(isKnownPlayerSubmarineThreat).count
+    }
+
+    private func isKnownPlayerSubmarineThreat(_ entity: GameEntity) -> Bool {
+        entity.faction == .player &&
+            entity.kind == .submarine &&
+            entity.isAlive &&
+            isKnownToFaction(entity, observer: .enemy) &&
+            isPointKnownToEnemySensors(entity.node.position)
+    }
+
+    private func enemyAntiSubmarineAssetCount() -> Int {
+        entities.values.filter { entity in
+            entity.faction == .enemy &&
+                entity.isAlive &&
+                !entity.kind.isStructure &&
+                isEnemyAntiSubmarineKind(entity.kind)
+        }.count
+    }
+
+    private func queuedEnemyAntiSubmarineCount() -> Int {
+        buildOrders.filter { order in
+            order.faction == .enemy &&
+                isEnemyAntiSubmarineKind(order.kind)
+        }.count
+    }
+
+    private func desiredEnemyAntiSubmarineCount(for knownSubmarineThreat: Int) -> Int {
+        max(1, min(3, (knownSubmarineThreat + 1) / 2))
+    }
+
+    private func enemyAntiSubmarineCandidateKinds() -> [EntityKind] {
+        [.helicopter, .fighter, .submarine, .battleship, .carrier]
+    }
+
+    private func isEnemyAntiSubmarineKind(_ kind: EntityKind) -> Bool {
+        enemyAntiSubmarineCandidateKinds().contains(kind) &&
+            kind.canAttack(.submarine)
     }
 
     private func enemyControlPointTarget(excludingReserved: Bool = false) -> BattlefieldControlPoint? {
