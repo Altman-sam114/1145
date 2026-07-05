@@ -20,8 +20,8 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - AA Trucks are War Factory-built mobile anti-air units that fire on visible air targets; they do not attack land, naval, submarine, or structure targets and do not provide sonar.
 - Air units: Helicopter, Fighter.
 - Naval units: Battleship, Submarine, Carrier.
-- Carriers act as mobile sea-based air platforms that can build Helicopters and Fighters, launch aircraft from the deck, and set air rally points.
-- Carrier strike visuals, naval combat, air-to-ground/naval combat, artillery range advantage, submarine stealth, sonar detection, firing reveal pings, direct-fire ASW hit shock-ring feedback for player-known or visible submarines, and brief submarine exposure when `AIRS` or `BARR` actually hits a submarine.
+- Carriers act as mobile sea-based air platforms that can build Helicopters and Fighters, show short deck-launch cues when aircraft are produced, and set air rally points.
+- Carrier wing-strike visuals, naval combat, air-to-ground/naval combat, artillery range advantage, submarine stealth, sonar detection, firing reveal pings, direct-fire ASW hit shock-ring feedback for player-known or visible submarines, and brief submarine exposure when `AIRS` or `BARR` actually hits a submarine.
 - Combat units gain veterancy XP and kill counts from direct-fire kills, progressing from Recruit through Hardened, Veteran, and Elite with light damage, attack cooldown, and vision bonuses.
 - Non-Recruit units show SpriteKit veterancy badges above the unit, and the selection panel reports rank, XP, kills, effective stats, ASW attack capability, sonar range, submarine stealth/detected state, group ASW/sonar summaries, and group veterancy distribution.
 - Selecting player active sonar sensors overlays their sonar coverage rings on the battlefield; multi-selection shows multiple rings, while unfinished Sonar Buoys and enemy sensors do not show coverage.

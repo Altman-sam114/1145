@@ -4452,7 +4452,7 @@ final class GameScene: SKScene {
             let spawnPoint = spawnPoint(for: order.kind, from: source)
             let entity = addEntity(kind: order.kind, faction: order.faction, at: spawnPoint)
             if source.kind == .carrier && order.kind.domain == .air {
-                showCarrierLaunch(from: source.node.position, to: spawnPoint, faction: source.faction)
+                showCarrierLaunch(from: source.node.position, to: spawnPoint, faction: source.faction, kind: order.kind)
             }
             if order.faction == .enemy, let target = tacticalTarget(for: entity) {
                 entity.attackTarget = target
@@ -4914,7 +4914,7 @@ final class GameScene: SKScene {
         }
 
         if attacker.kind == .carrier {
-            launchCarrierWing(from: attacker.node.position, to: target.node.position)
+            launchCarrierWing(from: attacker.node.position, to: target.node.position, faction: attacker.faction)
         } else {
             showProjectile(from: attacker.node.position, to: target.node.position, kind: attacker.kind)
         }
@@ -6692,41 +6692,128 @@ final class GameScene: SKScene {
         }
     }
 
-    private func launchCarrierWing(from start: CGPoint, to end: CGPoint) {
-        let plane = SKShapeNode(path: jetPath())
-        plane.fillColor = UIColor(red: 0.95, green: 0.86, blue: 0.45, alpha: 1.0)
-        plane.strokeColor = UIColor(white: 0.15, alpha: 1.0)
-        plane.lineWidth = 1.5
-        plane.position = start + CGPoint(x: 0, y: 18)
-        plane.setScale(0.65)
-        plane.zPosition = 270
-        effectsLayer.addChild(plane)
-        plane.run(.sequence([.move(to: end + CGPoint(x: 0, y: 18), duration: 0.32), .removeFromParent()]))
+    private func launchCarrierWing(from start: CGPoint, to end: CGPoint, faction: Faction) {
+        showCarrierDeckPulse(at: start, faction: faction, label: "CV STRIKE")
+        showCarrierCraftFlight(kind: .fighter, from: start + CGPoint(x: 0, y: 20), to: end + CGPoint(x: 0, y: 18), faction: faction, duration: 0.34, scale: 0.62)
         showProjectile(from: start, to: end, kind: .carrier)
     }
 
-    private func showCarrierLaunch(from start: CGPoint, to end: CGPoint, faction: Faction) {
-        let wakeColor = faction == .enemy
-            ? UIColor(red: 1.0, green: 0.44, blue: 0.30, alpha: 1.0)
-            : UIColor(red: 0.32, green: 0.92, blue: 1.0, alpha: 1.0)
+    private func showCarrierLaunch(from start: CGPoint, to end: CGPoint, faction: Faction, kind: EntityKind) {
+        let wakeColor = carrierLaunchColor(for: faction)
+        let label = kind == .helicopter ? "CV HLO LAUNCH" : "CV \(kind.shortCode) LAUNCH"
 
-        let catapult = SKShapeNode(rectOf: CGSize(width: 54, height: 4), cornerRadius: 1)
-        catapult.position = start + CGPoint(x: 0, y: 15)
+        showCarrierDeckPulse(at: start, faction: faction, label: label)
+
+        let catapultStart = start + CGPoint(x: -8, y: 15)
+        let catapultEnd = end + CGPoint(x: 0, y: 12)
+        let catapult = SKShapeNode(rectOf: CGSize(width: 58, height: 4), cornerRadius: 1)
+        catapult.position = catapultStart
         catapult.fillColor = wakeColor.withAlphaComponent(0.82)
         catapult.strokeColor = .clear
         catapult.zRotation = 0.18
         catapult.zPosition = 276
         effectsLayer.addChild(catapult)
-        catapult.run(.sequence([.group([.move(to: end, duration: 0.28), .fadeOut(withDuration: 0.28)]), .removeFromParent()]))
+        catapult.run(.sequence([.group([.move(to: catapultEnd, duration: 0.30), .fadeOut(withDuration: 0.30)]), .removeFromParent()]))
 
-        let ring = SKShapeNode(ellipseOf: CGSize(width: 70, height: 28))
-        ring.position = start
-        ring.fillColor = wakeColor.withAlphaComponent(0.10)
-        ring.strokeColor = wakeColor.withAlphaComponent(0.95)
+        showCarrierLaunchTrail(from: catapultStart, to: catapultEnd, faction: faction)
+        showCarrierCraftFlight(kind: kind, from: start + CGPoint(x: -10, y: 22), to: end + CGPoint(x: 0, y: 24), faction: faction, duration: 0.38, scale: kind == .helicopter ? 0.78 : 0.60)
+    }
+
+    private func carrierLaunchColor(for faction: Faction) -> UIColor {
+        faction == .enemy
+            ? UIColor(red: 1.0, green: 0.44, blue: 0.30, alpha: 1.0)
+            : UIColor(red: 0.32, green: 0.92, blue: 1.0, alpha: 1.0)
+    }
+
+    private func showCarrierDeckPulse(at point: CGPoint, faction: Faction, label: String) {
+        let color = carrierLaunchColor(for: faction)
+
+        let deckFlash = SKShapeNode(rectOf: CGSize(width: 76, height: 18), cornerRadius: 2)
+        deckFlash.position = point + CGPoint(x: 0, y: 15)
+        deckFlash.fillColor = color.withAlphaComponent(0.18)
+        deckFlash.strokeColor = color.withAlphaComponent(0.90)
+        deckFlash.lineWidth = 2
+        deckFlash.zRotation = 0.18
+        deckFlash.zPosition = 275
+        effectsLayer.addChild(deckFlash)
+        deckFlash.run(.sequence([.group([.scale(to: 1.25, duration: 0.26), .fadeOut(withDuration: 0.26)]), .removeFromParent()]))
+
+        let ring = SKShapeNode(ellipseOf: CGSize(width: 76, height: 30))
+        ring.position = point
+        ring.fillColor = color.withAlphaComponent(0.09)
+        ring.strokeColor = color.withAlphaComponent(0.90)
         ring.lineWidth = 2
-        ring.zPosition = 275
+        ring.zPosition = 274
         effectsLayer.addChild(ring)
-        ring.run(.sequence([.group([.scale(to: 1.45, duration: 0.32), .fadeOut(withDuration: 0.32)]), .removeFromParent()]))
+        ring.run(.sequence([.group([.scale(to: 1.48, duration: 0.34), .fadeOut(withDuration: 0.34)]), .removeFromParent()]))
+
+        guard faction == .player || isVisible(point: point) else { return }
+        let labelNode = SKLabelNode(fontNamed: "Menlo-Bold")
+        labelNode.text = label
+        labelNode.fontSize = 10
+        labelNode.fontColor = color
+        labelNode.verticalAlignmentMode = .center
+        labelNode.horizontalAlignmentMode = .center
+        labelNode.position = point + CGPoint(x: 0, y: 50)
+        labelNode.zPosition = 278
+        effectsLayer.addChild(labelNode)
+        labelNode.run(.sequence([.group([.moveBy(x: 0, y: 14, duration: 0.52), .fadeOut(withDuration: 0.52)]), .removeFromParent()]))
+    }
+
+    private func showCarrierLaunchTrail(from start: CGPoint, to end: CGPoint, faction: Faction) {
+        let path = CGMutablePath()
+        path.move(to: start)
+        path.addLine(to: end)
+        let trail = SKShapeNode(path: path)
+        let color = carrierLaunchColor(for: faction)
+        trail.strokeColor = color.withAlphaComponent(0.72)
+        trail.lineWidth = 3
+        trail.glowWidth = 3
+        trail.zPosition = 274
+        effectsLayer.addChild(trail)
+        trail.run(.sequence([.fadeOut(withDuration: 0.38), .removeFromParent()]))
+    }
+
+    private func showCarrierCraftFlight(kind: EntityKind, from start: CGPoint, to end: CGPoint, faction: Faction, duration: TimeInterval, scale: CGFloat) {
+        let craft = carrierLaunchCraft(for: kind, faction: faction)
+        craft.position = start
+        craft.setScale(scale)
+        craft.zPosition = 279
+        effectsLayer.addChild(craft)
+        craft.run(.sequence([.group([.move(to: end, duration: duration), .fadeOut(withDuration: duration)]), .removeFromParent()]))
+    }
+
+    private func carrierLaunchCraft(for kind: EntityKind, faction: Faction) -> SKNode {
+        let node = SKNode()
+        let color = carrierLaunchColor(for: faction)
+
+        if kind == .helicopter {
+            let body = SKShapeNode(ellipseOf: CGSize(width: 34, height: 15))
+            body.fillColor = color.withAlphaComponent(0.96)
+            body.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            body.lineWidth = 1.2
+            node.addChild(body)
+
+            let tail = SKShapeNode(rectOf: CGSize(width: 26, height: 4), cornerRadius: 1)
+            tail.position = CGPoint(x: -22, y: 0)
+            tail.fillColor = color.withAlphaComponent(0.80)
+            tail.strokeColor = .clear
+            node.addChild(tail)
+
+            let rotor = SKShapeNode(rectOf: CGSize(width: 52, height: 3), cornerRadius: 1)
+            rotor.position = CGPoint(x: 1, y: 8)
+            rotor.fillColor = UIColor.white.withAlphaComponent(0.82)
+            rotor.strokeColor = .clear
+            node.addChild(rotor)
+        } else {
+            let jet = SKShapeNode(path: jetPath())
+            jet.fillColor = color.withAlphaComponent(0.96)
+            jet.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            jet.lineWidth = 1.3
+            node.addChild(jet)
+        }
+
+        return node
     }
 
     private func explode(at point: CGPoint, scale: CGFloat) {
