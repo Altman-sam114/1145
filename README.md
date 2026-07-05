@@ -50,7 +50,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Tap ground with units selected to move in formation.
 - Tap a visible enemy with combat units selected to attack.
 - Tap `HOLD` with mobile units selected to make them guard their current positions and return if pulled too far away.
-- Tap `AMOV` with combat units selected, then tap the map to advance in formation while engaging visible enemies en route; during the final Red HQ objective, a known Red HQ gets a short target cue when `AMOV` is armed.
+- Tap the bottom HUD `AMOV` button with combat units selected, then tap the map to advance in formation while engaging visible enemies en route; during the final Red HQ objective, a known Red HQ gets a short target cue when `AMOV` is armed.
 - Select a War Factory, Airfield, Shipyard, or Carrier, tap `RLY`, then tap the map to set its rally point for newly produced units.
 - Invalid map targets for building, rally, attack-move, support powers, impossible attacks, or non-mobile selections briefly show a red/orange denied marker at the clicked location while keeping the HUD message.
 - Tap the tactical minimap to move the camera.
@@ -60,7 +60,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - `BASE`, `RLY`, `AMOV`, `SCAN`, `REPR`, `AIRS`, and `BARR` highlight while waiting for a map target.
 - Use `ARMY`, any unit production button, HQ focus, or AI difficulty to leave structure placement/rally modes.
 - Use `SKRM` to start a new skirmish map variant.
-- Use the bottom HUD buttons to select the army, save or recall control groups, hold ground, build units, focus HQ, cycle AI difficulty, place structures, or restart the skirmish.
+- Use the bottom HUD buttons to select the army, save or recall control groups, hold ground, attack-move, build units, focus HQ, cycle AI difficulty, place structures, or restart the skirmish.
 
 ## Open In Xcode
 

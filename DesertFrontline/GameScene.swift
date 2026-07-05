@@ -2195,7 +2195,11 @@ final class GameScene: SKScene {
         incomeLabel.position = CGPoint(x: -halfW + 79, y: halfH - 75)
         hudNode.addChild(incomeLabel)
 
-        let compactHUD = size.width < 1180
+        let actions: [HudAction] = [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .attackMove, .buildHumvee, .buildAATruck, .buildTank, .buildArtillery, .buildMechanic, .buildHelicopter, .buildFighter, .buildBattleship, .buildSubmarine, .buildCarrier, .setRally, .buildBase, .reconSweep, .fieldRepair, .airStrike, .navalBarrage, .cycleAI, .focusHQ, .newSkirmish]
+        let minimumCommandButtonWidth: CGFloat = 48
+        let nonCompactCommandGap: CGFloat = 7
+        let nonCompactCommandWidth = CGFloat(actions.count) * minimumCommandButtonWidth + CGFloat(actions.count - 1) * nonCompactCommandGap + 32
+        let compactHUD = size.width < max(1180, nonCompactCommandWidth)
         let commandBarRows = compactHUD ? 2 : 1
         let commandButtonHeight: CGFloat = compactHUD ? 54 : 76
         let commandBarHeight = CGFloat(commandBarRows) * commandButtonHeight + CGFloat(commandBarRows - 1) * 6
@@ -2289,12 +2293,11 @@ final class GameScene: SKScene {
         )
         addSelectionInfoPanel(frame: infoPanelFrame, compact: compactHUD)
 
-        let actions: [HudAction] = [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .buildHumvee, .buildAATruck, .buildTank, .buildArtillery, .buildMechanic, .buildHelicopter, .buildFighter, .buildBattleship, .buildSubmarine, .buildCarrier, .setRally, .buildBase, .reconSweep, .fieldRepair, .airStrike, .navalBarrage, .cycleAI, .focusHQ, .newSkirmish]
         let gap: CGFloat = compactHUD ? 5 : 7
         let availableWidth = size.width - 32
         let maxButtonsPerRow = compactHUD ? Int(ceil(Double(actions.count) / 2.0)) : actions.count
         let buttonWidth = min(compactHUD ? 76 : 86, (availableWidth - CGFloat(maxButtonsPerRow - 1) * gap) / CGFloat(maxButtonsPerRow))
-        let buttonSize = CGSize(width: max(48, buttonWidth), height: commandButtonHeight)
+        let buttonSize = CGSize(width: max(minimumCommandButtonWidth, buttonWidth), height: commandButtonHeight)
         let rowCounts = commandRowCounts(total: actions.count, rows: commandBarRows)
         var actionIndex = 0
 

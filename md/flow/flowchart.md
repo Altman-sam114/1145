@@ -37,7 +37,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   Touch["玩家触摸输入\nBegan / Moved / Ended"] --> HUDCheck{"是否点到 HUD 按钮"}
-  HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\n切换命令、生产、支援、AI、重开\n终局AMOV可提示已知HQ\npending按钮高亮由状态刷新"]
+  HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\nHOLD/AMOV、生产、支援、AI、重开\n终局AMOV可提示已知HQ\npending按钮高亮由状态刷新"]
   HUDCheck -- "否" --> MiniMap{"是否点到小地图"}
   MiniMap -- "是" --> Camera["移动相机到小地图位置"]
   MiniMap -- "否" --> MultiTouch{"是否双指触摸"}
