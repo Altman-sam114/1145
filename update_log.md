@@ -1299,3 +1299,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，低血 Red Veteran / Elite 是否留在 idle、HP 恢复后是否重新入波、低血 Veteran / Elite Battleship / Carrier 是否仍被保护、Red `REPR` 是否更常覆盖这些单位、玩家手动 `REPR` 是否无变化仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展 AI 前线撤退 / 回修行为、Sonar Buoy 平衡 / 升级、航母舰载机巡逻或更完整的海军机制，但这些不属于 v3.8。
+
+### v3.9 / AI 低血单位撤退回修
+
+日期：2026-07-05
+
+核心变更：
+
+- Red routine attack-move 主攻波次会在 provisional wave 形成后，把低血 Red 机动作战单位从本轮主攻中剥离并改派回修。
+- 撤退对象必须是 Red 存活、非结构、operational、有伤害、非占点 reservation 的机动战斗单位，且 HP 比例低于 38%。
+- 撤退单位会清理 `attackMoveDestination` 和 `attackTarget`，临时用 `holdPosition` 锚定维修点，并通过既有 `setDestination(for:near:)` 后撤；恢复到 62% HP 以上或被外部防守目标接管后会退出撤退集合。
+- 回修目标优先选择最近 Red Mechanic；没有 Mechanic 时退回 `enemyBaseAnchorPoint()`，实际回血仍由既有 Mechanic 自动维修和 `REPR` 支援完成。
+- Red `REPR` 支援评分会轻量偏向正在撤退回修或低血待撤退的作战单位；实际维修量、费用、冷却、半径、资产需求和玩家手动 `REPR` 行为不变。
+- 本轮没有改变玩家 `AMOV`、`issueFormationMove(...)`、`updateMovement(...)`、`updateCombat(...)`、`updateRepair(...)`、`applySupportRepair(...)`、占点 reservation、防守响应、生产、寻路、迷雾、声呐、支援技能数值、单位数值或 Xcode/workflow 配置。
+- README、flow、flowchart 和 v3.9 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v3（海战反潜）/v3.9（AI低血单位撤退回修）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`85590418f0851645e0a6854777a8d62cb95f1bcb`，commit subject 为 `v3.9: AI低血单位撤退回修`。
+- 初次云端验证失败：run `28740172701`，attempt `1`，manifest 记录 `buildOutcome=failure`，`xcodebuild.log` 指向 `enemyRepairAnchor(for:)` 的 Swift `guard` 链式写法编译错误。
+- Agent B 追加修复提交并推送：`aca9f80cc067d0fb9e8ceb87874db048a555eafd`，commit subject 为 `v3.9: 修复AI撤退回修编译`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `aca9f80cc067d0fb9e8ceb87874db048a555eafd`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28740622459`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v3.9-main-aca9f80cc067-run28740622459-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28740622459/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=aca9f80cc067d0fb9e8ceb87874db048a555eafd`、`runId=28740622459`、`runAttempt=1`、`version=v3.9`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Red 低血主攻单位是否稳定脱离本轮 wave、是否优先回到 Mechanic、无 Mechanic 时是否退回基地锚点、HP 恢复后是否重入后续波次、防守响应是否能接管撤退单位、玩家命令和 `REPR` 数值是否无变化仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展 Sonar Buoy 平衡 / 升级、航母舰载机巡逻、AI 撤退反馈或更完整的海军机制，但这些不属于 v3.9。
