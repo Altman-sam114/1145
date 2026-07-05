@@ -2640,10 +2640,10 @@ final class GameScene: SKScene {
             let remaining = enemyProductionCount()
             return remaining == 0 ? "Red production disabled. Push to the HQ. +$900" : "Destroy Red WF/AF/SY/CV. \(remaining) left. +$900"
         case .destroyHQ:
-            guard let redHQ = enemyHQ() else {
+            guard enemyHQ() != nil else {
                 return "Red Command HQ destroyed."
             }
-            guard isKnownToFaction(redHQ, observer: .player) else {
+            guard let redHQ = playerKnownEnemyHQ() else {
                 return "Locate Red HQ with scouts or SCAN, then finish it."
             }
             return "Red HQ HP \(Int(redHQ.hp))/\(Int(redHQ.kind.maxHP)). Finish the assault."
@@ -2708,6 +2708,11 @@ final class GameScene: SKScene {
 
     private func enemyHQ() -> GameEntity? {
         entities.values.first { $0.kind == .hq && $0.faction == .enemy && $0.isAlive }
+    }
+
+    private func playerKnownEnemyHQ() -> GameEntity? {
+        guard let redHQ = enemyHQ(), isKnownToFaction(redHQ, observer: .player) else { return nil }
+        return redHQ
     }
 
     private func playerMobileDomainCounts() -> (land: Int, air: Int, naval: Int, total: Int) {
@@ -3350,7 +3355,12 @@ final class GameScene: SKScene {
             refreshSelection()
             layoutHUD()
             updateHUD()
-            showMessage("Tap the map to attack-move.", color: UIColor(red: 1.0, green: 0.72, blue: 0.46, alpha: 1.0))
+            if activeMissionStage() == .destroyHQ, let redHQ = playerKnownEnemyHQ() {
+                showObjectiveTargetMarker(at: redHQ.node.position, label: "HQ")
+                showMessage("Red HQ known: tap HQ or map for attack-move.", color: UIColor(red: 1.0, green: 0.72, blue: 0.46, alpha: 1.0))
+            } else {
+                showMessage("Tap the map to attack-move.", color: UIColor(red: 1.0, green: 0.72, blue: 0.46, alpha: 1.0))
+            }
         case .focusHQ:
             clearPendingCommandModes()
             if let hq = entities.values.first(where: { $0.kind == .hq && $0.faction == .player && $0.isAlive }) {
@@ -6467,6 +6477,46 @@ final class GameScene: SKScene {
         cross.zPosition = 265
         effectsLayer.addChild(cross)
         cross.run(.sequence([.group([.scale(to: 1.35, duration: 0.42), .fadeOut(withDuration: 0.42)]), .removeFromParent()]))
+    }
+
+    private func showObjectiveTargetMarker(at point: CGPoint, label: String) {
+        let color = UIColor(red: 1.0, green: 0.78, blue: 0.25, alpha: 1.0)
+        let node = SKNode()
+        node.position = point
+        node.zPosition = 266
+
+        let ring = SKShapeNode(ellipseOf: CGSize(width: 74, height: 34))
+        ring.fillColor = color.withAlphaComponent(0.10)
+        ring.strokeColor = color
+        ring.lineWidth = 3
+        ring.glowWidth = 2
+        node.addChild(ring)
+
+        let bracketPath = CGMutablePath()
+        bracketPath.move(to: CGPoint(x: -25, y: 0))
+        bracketPath.addLine(to: CGPoint(x: -12, y: 0))
+        bracketPath.move(to: CGPoint(x: 12, y: 0))
+        bracketPath.addLine(to: CGPoint(x: 25, y: 0))
+        bracketPath.move(to: CGPoint(x: 0, y: -14))
+        bracketPath.addLine(to: CGPoint(x: 0, y: -5))
+        bracketPath.move(to: CGPoint(x: 0, y: 5))
+        bracketPath.addLine(to: CGPoint(x: 0, y: 14))
+        let bracket = SKShapeNode(path: bracketPath)
+        bracket.strokeColor = color
+        bracket.lineWidth = 3
+        bracket.lineCap = .round
+        node.addChild(bracket)
+
+        let labelNode = SKLabelNode(fontNamed: "Menlo-Bold")
+        labelNode.text = label
+        labelNode.fontSize = 14
+        labelNode.fontColor = color
+        labelNode.verticalAlignmentMode = .center
+        labelNode.position = CGPoint(x: 0, y: 30)
+        node.addChild(labelNode)
+
+        effectsLayer.addChild(node)
+        node.run(.sequence([.group([.scale(to: 1.18, duration: 0.65), .fadeOut(withDuration: 0.65)]), .removeFromParent()]))
     }
 
     private func showDeniedMarker(at point: CGPoint, reason: String) {

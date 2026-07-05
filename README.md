@@ -26,7 +26,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Non-Recruit units show SpriteKit veterancy badges above the unit, and the selection panel reports rank, XP, kills, effective stats, ASW attack capability, sonar range, submarine stealth/detected state, group ASW/sonar summaries, and group veterancy distribution.
 - Selecting player active sonar sensors overlays their sonar coverage rings on the battlefield; multi-selection shows multiple rings, while unfinished Sonar Buoys and enemy sensors do not show coverage.
 - Tactical support powers from the bottom command bar: `SCAN` reveals a target area from an operational HQ or Radar Outpost, `REPR` restores damaged friendly assets, `AIRS` calls an air strike, and `BARR` calls naval fire support with economy costs, cooldowns, asset requirements, and map effects.
-- Mission objective panel with automatic stage completion: secure oil, capture front-line flags, secure two operational coastal assets, deploy mixed land/air/naval forces, and break enemy production for one-time resource rewards, then destroy the Red HQ with HP intel shown only when the HQ is player-known.
+- Mission objective panel with automatic stage completion: secure oil, capture front-line flags, secure two operational coastal assets, deploy mixed land/air/naval forces, and break enemy production for one-time resource rewards, then destroy the Red HQ with HP intel and attack-move guidance shown only when the HQ is player-known.
 - Unit selection, select-all army button, hold-position guard orders, attack-move advances, move orders, attack orders, health bars, explosions, automatic mechanic repairs, repair sparks.
 - Tactical selection panel with current unit/building stats, production state, rally/queue information, ASW attack versus sonar sensor status, submarine detection state, and multi-unit formation composition.
 - Under-attack alerts with throttled HUD warnings, battlefield pings, and minimap pulses when player units or structures take enemy fire.
@@ -50,7 +50,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Tap ground with units selected to move in formation.
 - Tap a visible enemy with combat units selected to attack.
 - Tap `HOLD` with mobile units selected to make them guard their current positions and return if pulled too far away.
-- Tap `AMOV` with combat units selected, then tap the map to advance in formation while engaging visible enemies en route.
+- Tap `AMOV` with combat units selected, then tap the map to advance in formation while engaging visible enemies en route; during the final Red HQ objective, a known Red HQ gets a short target cue when `AMOV` is armed.
 - Select a War Factory, Airfield, Shipyard, or Carrier, tap `RLY`, then tap the map to set its rally point for newly produced units.
 - Invalid map targets for building, rally, attack-move, support powers, impossible attacks, or non-mobile selections briefly show a red/orange denied marker at the clicked location while keeping the HUD message.
 - Tap the tactical minimap to move the camera.
