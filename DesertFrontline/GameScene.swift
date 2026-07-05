@@ -158,7 +158,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .shipyard: 2400
         case .oilDerrick: 900
         case .radarOutpost: 1300
-        case .sonarBuoy: 1150
+        case .sonarBuoy: 850
         case .guardTower: 1450
         case .samSite: 1650
         case .coastalBattery: 1700
@@ -183,7 +183,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .shipyard: 14.0
         case .oilDerrick: 8.0
         case .radarOutpost: 10.0
-        case .sonarBuoy: 9.0
+        case .sonarBuoy: 7.0
         case .guardTower: 11.0
         case .samSite: 12.0
         case .coastalBattery: 12.0
@@ -208,7 +208,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .shipyard: 1050
         case .oilDerrick: 650
         case .radarOutpost: 720
-        case .sonarBuoy: 540
+        case .sonarBuoy: 360
         case .guardTower: 820
         case .samSite: 760
         case .coastalBattery: 780
@@ -304,7 +304,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .barracks, .airfield, .shipyard: 5
         case .oilDerrick: 4
         case .radarOutpost: 9
-        case .sonarBuoy: 6
+        case .sonarBuoy: 4
         case .guardTower: 6
         case .samSite: 7
         case .coastalBattery: 6
@@ -6312,7 +6312,7 @@ final class GameScene: SKScene {
         case .helicopter:
             185
         case .sonarBuoy:
-            300
+            340
         default:
             0
         }

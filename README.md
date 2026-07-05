@@ -12,7 +12,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Building rules: structures require vision and nearby friendly operational structure or captured flag build coverage; Shipyards, Sonar Buoys, and Coastal Batteries require coast tiles; Oil Derricks require oil fields.
 - New structures are attackable while under construction but do not produce units, earn income, provide vision, provide support assets, extend base coverage, or fire weapons until operational.
 - Radar Outposts are buildable land structures that provide extended static scout vision and count as `SCAN` assets once operational.
-- Sonar Buoys are buildable coastal detector structures that provide static vision and sonar detection once operational; they do not attack, produce units, earn income, or count as `SCAN` assets.
+- Sonar Buoys are low-cost, fragile coastal detector structures that provide limited static vision and wide sonar detection once operational; they do not attack, produce units, earn income, or count as `SCAN` assets.
 - Guard Towers are buildable land defense structures that automatically fire on visible land, air, and structure targets once operational; they do not attack naval units or submarines and do not provide sonar.
 - SAM Sites are buildable land anti-air structures that automatically fire on visible air targets once operational; they do not attack land, naval, submarine, or structure targets and do not provide sonar.
 - Coastal Batteries are buildable coastal defense structures that automatically fire on visible surface naval targets once operational; they do not attack submarines and do not provide sonar.
