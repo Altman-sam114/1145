@@ -1379,3 +1379,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Sonar Buoy 新成本 / HP / 普通视野 / sonar 覆盖在实机手感中的平衡、覆盖圈与 HUD range 是否足够清楚、AI 巡扫热点是否因为更大 sonar range 更频繁覆盖海岸入口仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展航母舰载机巡逻 / launch 反馈、Sonar Buoy 升级、海军海岸争夺或更多地图目标，但这些不属于 v4.0。
+
+### v4.1 / 航母舰载机弹射反馈增强
+
+日期：2026-07-05
+
+核心变更：
+
+- Carrier 生产 Helicopter / Fighter 完成时，除通用 ready pulse 外，会显示更明确的短暂甲板 launch 反馈。
+- Carrier launch visual 现在接收产物类型，可用不同短暂机体 cue 和 `CV HLO LAUNCH` / `CV JET LAUNCH` 文案区分 Helicopter 与 Fighter。
+- Carrier 直接开火时会显示短暂 deck pulse 和 wing-strike 视觉，但仍走既有 `fire(attacker:target:)` 直接火力结算。
+- 新增视觉全部是 `effectsLayer` 上的短生命周期 SpriteKit 节点，动画结束后移除；没有新增持久舰载机实体、状态字段、HUD 命令或外部素材。
+- 本轮没有改变 Carrier / Helicopter / Fighter 数值、生产来源、队列推进、spawn point、rally point、AI build pattern、AI 进攻、防空 / 反潜、支援技能、潜艇侦测、迷雾合法性、伤害、冷却、射程、XP、胜负或 Xcode/workflow 配置。
+- README、flow、flowchart 和 v4.1 Agent A 提示词已同步当前真实行为，未宣称已实现舰载机巡逻、CAP、截击或舰载机 AI。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.1（航母舰载机弹射反馈增强）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`df16f14f079782137054f9665283f08d50516bf8`，commit subject 为 `v4.1: 航母舰载机弹射反馈增强`。
+- Agent X 使用两个只读子 agent 调查 v4.1 候选，均推荐“航母 launch 反馈增强”并明确不做真实巡逻 / CAP；diff reviewer 返回 `No issues`，确认未修改生产、AI、伤害、迷雾、单位数值或文档边界。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `df16f14f079782137054f9665283f08d50516bf8`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28742553955`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.1-main-df16f14f0797-run28742553955-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28742553955/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=df16f14f079782137054f9665283f08d50516bf8`、`runId=28742553955`、`runAttempt=1`、`version=v4.1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Carrier 生产 Helicopter / Fighter 时的 deck launch 视觉清晰度、Carrier 高频开火时 wing-strike 反馈是否遮挡战场、敌方可见 Carrier 的反馈是否符合预期、以及 `SKRM` 后是否无特效残留仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展真实舰载机巡逻 / CAP、航母护航行为、海军海岸争夺或 Sonar Buoy 升级，但这些不属于 v4.1。
