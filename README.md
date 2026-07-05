@@ -6,7 +6,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 
 - iOS SwiftUI app shell with a full-screen SpriteKit scene.
 - Isometric desert map matching the reference's desert RTS layout: roads, ridges, coastline, water, oil fields, base clusters, desert villages, oases, farms, depots, wreckage, and fog of war.
-- Economy loop: HQ base income, capturable oil derricks, front-line flag control points with income, scout vision, and limited build coverage, visible money/income HUD, and AI income scaling by difficulty.
+- Economy loop: HQ base income, capturable oil derricks, front-line flag control points with income, scout vision, limited build coverage, and one-time capture bonuses, visible money/income HUD, and AI income scaling by difficulty.
 - Production queues from War Factory, Airfield, Shipyard, and Carrier decks with selected/least-busy source routing, visible factory progress bars, factory/carrier rally points, and ready pulses on the map.
 - Base construction from the HUD: place War Factory, Airfield, Radar Outpost, Sonar Buoy, Guard Tower, SAM Site, Coastal Battery, Shipyard, and Oil Derricks during play with a green/red placement preview, timed construction scaffolds, and visible build progress.
 - Building rules: structures require vision and nearby friendly operational structure or captured flag build coverage; Shipyards, Sonar Buoys, and Coastal Batteries require coast tiles; Oil Derricks require oil fields.

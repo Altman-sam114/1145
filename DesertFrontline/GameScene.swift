@@ -937,6 +937,7 @@ final class GameScene: SKScene {
     private let structureBuildCoverageRadius: CGFloat = 390
     private let controlPointBuildCoverageRadius: CGFloat = 180
     private let controlPointNoBuildRadius: CGFloat = 56
+    private let controlPointCaptureBonus = 260
     private let holdEngagementRadius: CGFloat = 340
     private let holdReturnTolerance: CGFloat = 58
     private let attackMoveEngagementRadius: CGFloat = 285
@@ -4613,7 +4614,7 @@ final class GameScene: SKScene {
                 point.captureProgress += CGFloat(dt) * captureRate(for: nearbyPlayer)
                 if point.captureProgress >= 4.0 {
                     setControlPointFaction(.player, for: point)
-                    showMessage("\(point.name) flag captured.", color: UIColor(red: 0.70, green: 0.95, blue: 1.0, alpha: 1.0))
+                    showMessage("\(point.name) flag captured. +$\(controlPointCaptureBonus)", color: UIColor(red: 0.70, green: 0.95, blue: 1.0, alpha: 1.0))
                 }
             } else if let nearbyEnemy, nearbyPlayer == nil, point.faction != .enemy {
                 point.capturingFaction = .enemy
@@ -4647,6 +4648,9 @@ final class GameScene: SKScene {
         point.faction = faction
         point.capturingFaction = nil
         point.captureProgress = 0
+        if previousFaction != faction {
+            changeMoney(for: faction, by: controlPointCaptureBonus)
+        }
         updateControlPointVisual(point)
         if previousFaction == .player || faction == .player {
             updateFog(force: true)

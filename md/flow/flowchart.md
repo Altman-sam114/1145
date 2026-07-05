@@ -14,7 +14,7 @@ flowchart TD
   Scene --> Init["初始化链路\n地形 -> 地图 -> 控制点 -> 初始部队 -> HUD -> 迷雾"]
   Init --> Loop["GameScene.update 每帧循环\n统一推进游戏状态"]
   Loop --> Build["施工 / 生产\n建筑进度、RAD/SON/GT/SAM/CB、AA Truck、旗点覆盖、BuildOrder、出兵、集结点"]
-  Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖与占领进度"]
+  Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖、旗点奖金与占领进度"]
   Loop --> Commands["移动 / 命令\n普通移动、HOLD、AMOV、路径和编队"]
   Loop --> Combat["战斗 / 维修\n未完工攻击结构禁火、SAM/AA 防空、岸防反舰、目标搜索、有效伤害、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
   Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、跳过不可生产兵种、支援、attack-move 波次"]
