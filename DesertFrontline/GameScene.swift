@@ -4892,6 +4892,7 @@ final class GameScene: SKScene {
     private func fire(attacker: GameEntity, target: GameEntity) {
         let damage = effectiveDamage(for: attacker)
         let wasAlive = target.isAlive
+        let showASWHit = shouldShowAntiSubmarineHitFeedback(for: target)
         if attacker.kind == .submarine {
             attacker.revealedUntil = max(attacker.revealedUntil, lastUpdateTime + 2.4)
             if attacker.faction == .enemy {
@@ -4921,12 +4922,20 @@ final class GameScene: SKScene {
 
         target.hp -= damage * armorMultiplier
         updateHealthBar(target)
+        if showASWHit {
+            showAntiSubmarineHit(at: target.node.position, faction: attacker.faction)
+        }
         showPlayerUnderAttackAlertIfNeeded(target: target, attacker: attacker)
         triggerEnemyDefenseIfNeeded(target: target, attacker: attacker)
         if wasAlive && target.hp <= 0 {
             awardVeterancyKill(to: attacker, target: target)
             explode(at: target.node.position, scale: target.kind.isStructure ? 1.6 : 1.0)
         }
+    }
+
+    private func shouldShowAntiSubmarineHitFeedback(for target: GameEntity) -> Bool {
+        guard target.kind == .submarine else { return false }
+        return target.faction == .player || isKnownToFaction(target, observer: .player)
     }
 
     private func effectiveDamage(for attacker: GameEntity) -> CGFloat {
@@ -6470,6 +6479,38 @@ final class GameScene: SKScene {
         ring.zPosition = 278
         effectsLayer.addChild(ring)
         ring.run(.sequence([.group([.scale(to: 2.1, duration: 0.45), .fadeOut(withDuration: 0.45)]), .removeFromParent()]))
+    }
+
+    private func showAntiSubmarineHit(at point: CGPoint, faction: Faction) {
+        let color = faction == .enemy
+            ? UIColor(red: 1.0, green: 0.42, blue: 0.28, alpha: 1.0)
+            : UIColor(red: 0.28, green: 0.95, blue: 1.0, alpha: 1.0)
+
+        let shockRing = SKShapeNode(ellipseOf: CGSize(width: 56, height: 22))
+        shockRing.position = point
+        shockRing.fillColor = color.withAlphaComponent(0.08)
+        shockRing.strokeColor = color.withAlphaComponent(0.96)
+        shockRing.lineWidth = 2.5
+        shockRing.zPosition = 282
+        effectsLayer.addChild(shockRing)
+        shockRing.run(.sequence([
+            .group([.scale(to: 1.85, duration: 0.42), .fadeOut(withDuration: 0.42)]),
+            .removeFromParent()
+        ]))
+
+        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label.text = "ASW HIT"
+        label.fontSize = 10
+        label.fontColor = color
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.position = point + CGPoint(x: 0, y: 34)
+        label.zPosition = 283
+        effectsLayer.addChild(label)
+        label.run(.sequence([
+            .group([.moveBy(x: 0, y: 12, duration: 0.48), .fadeOut(withDuration: 0.48)]),
+            .removeFromParent()
+        ]))
     }
 
     private func money(for faction: Faction) -> Int {
