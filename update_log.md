@@ -1582,3 +1582,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，`Deploy Combined Arms` 首次完成时 `$800` 是否在 HUD 金钱上即时可感知、同一帧连续完成 `Secure Coast` / `Deploy Combined Arms` 时 `+$1400` 顶部消息是否最符合玩家预期、任务详情 `+$800` 在实际 HUD 宽度下是否足够清晰仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续补齐 `Break Red Production` 奖励、真实舰载机巡逻 / CAP、航母护航行为、Sonar Buoy 升级或更多地图目标，但这些不属于 v4.5。
+
+### v4.6 / 摧毁生产任务奖励
+
+日期：2026-07-05
+
+核心变更：
+
+- `Break Red Production` 任务阶段首次完成时，现在通过 `changeMoney(for: .player, by: 900)` 给玩家一次性 `$900` 资源奖励。
+- `missionReward(for:)` 当前奖励表为：`Secure Coast` `$600`，`Deploy Combined Arms` `$800`，`Break Red Production` `$900`，其他阶段 `$0`。
+- 奖励仍只在 `updateMissionProgress()` 将阶段写入 `completedMissionStages` 的首次完成路径中发放，不新增独立奖励状态，依赖既有完成集合避免重复发放。
+- `Break Red Production` HUD 详情在剩余 Red 生产来源计数旁追加 `+$900`，完成态文案也保留终局推进提示和奖励数值。
+- README、flow、flowchart 和 v4.6 Agent A 提示词已同步当前真实行为，未宣称新增完整战役奖励系统、支援冷却、免费技能、科技升级、AI 新能力或新地图。
+- 本轮没有改变 `Break Red Production` 完成条件、`enemyProductionCount()`、AI、生产队列、单位数值、伤害、射程、冷却、迷雾、潜艇侦测、支援技能、路径、XP、胜负或 Xcode/workflow 配置。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.6（摧毁生产任务奖励）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`aac32fc47a8bac7218211862c5116f9ba68bb796`，commit subject 为 `v4.6: 增加摧毁生产任务奖励`。
+- diff reviewer 返回 `No issues`，确认未发现越界改动；只读定位子 agent 因并发限制断开，未影响主线程已完成的源码定位和实现复核。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `aac32fc47a8bac7218211862c5116f9ba68bb796`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28745659738`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.6-main-aac32fc47a8b-run28745659738-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28745659738/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=aac32fc47a8bac7218211862c5116f9ba68bb796`、`runId=28745659738`、`runAttempt=1`、`version=v4.6`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，`Break Red Production` 首次完成时 `$900` 是否在 HUD 金钱上即时可感知、终局任务详情 `+$900` 在实际 HUD 宽度下是否足够清晰、以及摧毁最后生产来源后玩家补给节奏是否合适仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做真实舰载机巡逻 / CAP、航母护航行为、Sonar Buoy 升级、更多地图目标或任务奖励平衡，但这些不属于 v4.6。
