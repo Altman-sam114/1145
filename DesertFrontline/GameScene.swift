@@ -2772,6 +2772,9 @@ final class GameScene: SKScene {
                 rows[3] = status
             }
         }
+        if let sonarInfo = sonarInfoLine(for: entity) {
+            rows[1] = "\(rows[1])  \(sonarInfo)"
+        }
 
         return ("\(entity.kind.displayName) \(entity.kind.shortCode)", rows)
     }
@@ -2786,13 +2789,16 @@ final class GameScene: SKScene {
         let maxRange = selected.map { $0.kind.attackRange }.max() ?? 0
         let holdingCount = selected.filter { $0.holdPosition != nil }.count
         let attackMoveCount = selected.filter { $0.attackMoveDestination != nil }.count
+        let combatSummary = groupSonarSummary(for: selected).map {
+            "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))  \($0)"
+        } ?? "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))"
 
         return (
             "\(selected.count) UNITS SELECTED",
             [
                 "Land \(land)  Air \(air)  Sea \(naval)",
                 "HP \(Int(totalHP))/\(Int(totalMaxHP))",
-                "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))",
+                combatSummary,
                 holdingCount > 0
                     ? "Holding \(holdingCount)  Guard \(Int(holdEngagementRadius))"
                     : attackMoveCount > 0
@@ -2815,7 +2821,7 @@ final class GameScene: SKScene {
 
     private func mobileStatusLine(for entity: GameEntity) -> String? {
         if entity.kind == .submarine {
-            return entity.revealedUntil > lastUpdateTime ? "Detected \(Int(ceil(entity.revealedUntil - lastUpdateTime)))s" : "Stealth  Sonar yes"
+            return submarineStatusLine(for: entity)
         }
         if entity.kind == .mechanic {
             return "Repairs nearby allies"
@@ -2830,6 +2836,13 @@ final class GameScene: SKScene {
             return "Holding position  Guard \(Int(holdEngagementRadius))"
         }
         return nil
+    }
+
+    private func submarineStatusLine(for entity: GameEntity) -> String {
+        if entity.revealedUntil > lastUpdateTime {
+            return "Temporary detected \(Int(ceil(entity.revealedUntil - lastUpdateTime)))s"
+        }
+        return "Stealth while undetected"
     }
 
     private func groupVeterancyLine(for selected: [GameEntity]) -> String {
@@ -2853,7 +2866,7 @@ final class GameScene: SKScene {
                 return "Radar vision \(entity.kind.visionTiles)  SCAN asset"
             }
             if entity.kind == .sonarBuoy {
-                return "Sonar detector  No SCAN"
+                return "Sonar \(Int(sonarRange(for: entity.kind)))  No SCAN"
             }
             if entity.kind == .guardTower {
                 return "Land/Air defense  No naval"
@@ -2873,6 +2886,24 @@ final class GameScene: SKScene {
         }
         let suffix = orders.count > 1 ? " +\(orders.count - 1)" : ""
         return "Queue \(active.kind.shortCode) \(Int(ceil(active.remaining)))s\(suffix)"
+    }
+
+    private func isActiveSonarSensor(_ entity: GameEntity) -> Bool {
+        entity.kind.hasSonar &&
+            entity.isAlive &&
+            (!entity.kind.isStructure || entity.isOperational)
+    }
+
+    private func sonarInfoLine(for entity: GameEntity) -> String? {
+        guard isActiveSonarSensor(entity) else { return nil }
+        return "Sonar \(Int(sonarRange(for: entity.kind)))"
+    }
+
+    private func groupSonarSummary(for selected: [GameEntity]) -> String? {
+        let sensors = selected.filter(isActiveSonarSensor)
+        guard !sensors.isEmpty else { return nil }
+        let maxRange = sensors.map { sonarRange(for: $0.kind) }.max() ?? 0
+        return "Sonar \(sensors.count)/\(Int(maxRange))"
     }
 
     private func playerQueueInfoLine() -> String {
