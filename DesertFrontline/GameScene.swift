@@ -2640,7 +2640,13 @@ final class GameScene: SKScene {
             let remaining = enemyProductionCount()
             return remaining == 0 ? "Red production disabled. Push to the HQ. +$900" : "Destroy Red WF/AF/SY/CV. \(remaining) left. +$900"
         case .destroyHQ:
-            return "Destroy the Red Command HQ."
+            guard let redHQ = enemyHQ() else {
+                return "Red Command HQ destroyed."
+            }
+            guard isKnownToFaction(redHQ, observer: .player) else {
+                return "Locate Red HQ with scouts or SCAN, then finish it."
+            }
+            return "Red HQ HP \(Int(redHQ.hp))/\(Int(redHQ.kind.maxHP)). Finish the assault."
         }
     }
 
@@ -2698,6 +2704,10 @@ final class GameScene: SKScene {
         case .destroyHQ:
             return !entities.values.contains { $0.kind == .hq && $0.faction == .enemy && $0.isAlive }
         }
+    }
+
+    private func enemyHQ() -> GameEntity? {
+        entities.values.first { $0.kind == .hq && $0.faction == .enemy && $0.isAlive }
     }
 
     private func playerMobileDomainCounts() -> (land: Int, air: Int, naval: Int, total: Int) {
