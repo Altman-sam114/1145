@@ -1219,3 +1219,43 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，孤立 Red Carrier / Battleship 留在 idle、有足够同波次 escort 时加入 routine assault、足够混合大波次时加入、玩家 `AMOV` 不受影响、Red 防守响应和出厂 tactical target 不受影响、`SKRM` 后无残留仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展高价值老兵保护、AI 编队比例、Sonar Buoy 平衡 / 升级或更完整的航母 / 海军机制，但这些不属于 v3.6。
+
+### v3.7 / AI 编队比例混编进攻
+
+日期：2026-07-05
+
+核心变更：
+
+- Red routine attack-move 主攻波次不再只按距离截取最近单位，而是先形成 mixed provisional wave。
+- mixed provisional wave 会优先尝试带入前排陆军、防空、远程火力、空军支援和海军支援，再用按距离 / `formationPriority(for:)` 排序的剩余单位补齐。
+- 兵种不足时仍 fallback 到现有可战斗单位出击，不因缺少某个角色而卡死。
+- v3.6 Battleship / Carrier 护航过滤仍在最终 `issueFormationMove(... attackMove: true)` 之前执行，高价值海军不会因混编选择绕过护航门槛。
+- Easy / Normal / Hard 的常规 `aiBuildPattern()` 只做小顺序调整，更稳定穿插陆军核心、AA、空军和海军支援；实际排产仍走 `canQueueBuild(...)`、`queueBuild(...)` 和 `productionSource(...)`。
+- 本轮没有改变玩家 `AMOV`、`issueFormationMove(...)`、动态 AA / ASW 生产、生产来源、寻路、战斗、迷雾、支援、防守响应、单位数值或 Xcode/workflow 配置。
+- README、flow、flowchart 和 v3.7 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v3（海战反潜）/v3.7（AI编队比例混编进攻）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`d632b78644d731f20894e24e5bd21a9dac0d3aea`，commit subject 为 `v3.7: AI编队比例混编进攻`。
+- 编队比例调查子 agent 推荐该小目标并定位 `commandEnemyAttackers(_:)`、`aiBuildPattern()` 和 v3.6 护航边界；只读 diff reviewer 返回 `No issues`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `d632b78644d731f20894e24e5bd21a9dac0d3aea`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28737636057`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v3.7-main-d632b78644d7-run28737636057-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28737636057/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=d632b78644d731f20894e24e5bd21a9dac0d3aea`、`runId=28737636057`、`runAttempt=1`、`version=v3.7`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Red 在具备多兵种时是否稳定形成混编主攻、兵种不足时是否继续出击、Battleship / Carrier 是否仍受护航门槛约束、占点 reservation 是否不被抢走、动态 AA / ASW 补单是否保持原语义仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展高价值老兵保护、AI 前线撤退 / 维修行为、Sonar Buoy 平衡 / 升级或更完整的航母 / 海军机制，但这些不属于 v3.7。
