@@ -945,3 +945,42 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，玩家占旗时资金立即增加并显示 `+$260`、AI 占旗同额加钱、同归属重复调用不重复发奖、旗点持续收入仍为 `$95/s`、`SKRM` 后资金重置自然清空奖金影响仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展旗点争夺奖励平衡、AI 编队比例、高价值老兵保护、反潜 HUD 信息或更完整的 AI 角色系统，但这些不属于 v2.9。
+
+### v3.0 / 反潜 HUD 信息
+
+日期：2026-07-05
+
+核心变更：
+
+- 选择面板新增 active sonar range 展示，已完工 Sonar Buoy 以及 Battleship、Carrier、Helicopter、Submarine 会显示 `Sonar <range>`；未完工 Sonar Buoy 仍显示 offline，不被当作 active sonar sensor。
+- 潜艇单选状态从含糊的 `Stealth  Sonar yes` 改为区分 `Stealth while undetected` 与 `Temporary detected <Ns>`，sonar range 由统一 sonar 信息行展示。
+- 多选 combat summary 在存在 active sonar asset 时追加 `Sonar <count>/<maxRange>`，不覆盖 hold、attack-move 或老兵分布行。
+- Operational Sonar Buoy 的结构状态显示 `Sonar <range>  No SCAN`，继续明确它不作为 `SCAN` 资产。
+- 本轮只改 HUD 可读性和文档，没有改变 `isSubmarineDetected(...)`、`sonarRange(for:)`、`revealedUntil`、`SCAN`、`AIRS` / `BARR`、AI、战斗、迷雾合法性、Sonar Buoy 放置或数值。
+- README、flow、flowchart 和 v3.0 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v3（海战反潜）/v3.0（反潜HUD信息）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`dc15666f89d218aef31b331a9b0ec0c95ddfd423`，commit subject 为 `v3.0: 显示反潜HUD信息`。
+- Agent X 并行只读子 agent 调查确认该小增量适合开启海战 / 反潜可读性阶段；diff reviewer 返回 `No issues`，确认当前 diff 只改 HUD 文案与文档、active sonar helper 有 operational 边界、未修改潜艇侦测 / 战斗 / AI / 迷雾规则。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `dc15666f89d218aef31b331a9b0ec0c95ddfd423`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28730937122`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v3.0-main-dc15666f89d2-run28730937122-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28730937122/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=dc15666f89d218aef31b331a9b0ec0c95ddfd423`、`runId=28730937122`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，单选 Submarine / Sonar Buoy / Battleship / Carrier / Helicopter、多选混编 sonar asset、未完工 Sonar Buoy offline 文案、潜艇 detected 倒计时显示和 HUD 文案是否在小屏不溢出仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展反潜交互反馈、Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.0。
