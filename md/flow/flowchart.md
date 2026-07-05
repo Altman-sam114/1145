@@ -26,7 +26,7 @@ flowchart TD
   Combat --> Render
   AI --> Render
   Fog --> Render
-  Mission --> HUD["HUD / 小地图\n金钱、队列、选择/反潜/声呐信息、任务、命令高亮、相机框"]
+  Mission --> HUD["HUD / 小地图\n金钱、队列、选择/反潜/声呐信息、声呐覆盖圈、任务、命令高亮、相机框"]
   Render --> HUD
 ```
 

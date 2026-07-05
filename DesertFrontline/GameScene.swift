@@ -806,6 +806,7 @@ private final class GameEntity {
     var rallyPoint: CGPoint?
     let node = SKNode()
     let selectionNode: SKShapeNode
+    let sonarCoverageNode = SKShapeNode()
     let healthFill: SKShapeNode
     let teamFlag: SKShapeNode
     let label: SKLabelNode
@@ -1634,6 +1635,9 @@ final class GameScene: SKScene {
         entity.selectionNode.isHidden = true
         entity.selectionNode.zPosition = -1
         entity.node.addChild(entity.selectionNode)
+
+        configureSonarCoverageNode(for: entity)
+        entity.node.addChild(entity.sonarCoverageNode)
 
         let healthBack = SKShapeNode(rectOf: CGSize(width: entity.kind.footprint, height: 5), cornerRadius: 1)
         healthBack.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 16)
@@ -3883,6 +3887,7 @@ final class GameScene: SKScene {
 
         if shouldRefreshPlayerVision {
             updateFog(force: true)
+            refreshSelection()
         }
     }
 
@@ -6063,7 +6068,33 @@ final class GameScene: SKScene {
         for entity in entities.values {
             entity.selectionNode.isHidden = !selectedIDs.contains(entity.id)
             entity.rallyNode.isHidden = !(selectedIDs.contains(entity.id) && entity.kind.supportsRallyPoint && entity.rallyPoint != nil)
+            entity.sonarCoverageNode.isHidden = !shouldShowSonarCoverage(for: entity)
         }
+    }
+
+    private func shouldShowSonarCoverage(for entity: GameEntity) -> Bool {
+        selectedIDs.contains(entity.id) &&
+            entity.faction == .player &&
+            isActiveSonarSensor(entity)
+    }
+
+    private func configureSonarCoverageNode(for entity: GameEntity) {
+        let range = sonarRange(for: entity.kind)
+        guard range > 0 else {
+            entity.sonarCoverageNode.isHidden = true
+            return
+        }
+
+        entity.sonarCoverageNode.path = CGPath(
+            ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2),
+            transform: nil
+        )
+        entity.sonarCoverageNode.fillColor = UIColor(red: 0.22, green: 0.88, blue: 1.0, alpha: 0.035)
+        entity.sonarCoverageNode.strokeColor = UIColor(red: 0.32, green: 0.92, blue: 1.0, alpha: 0.42)
+        entity.sonarCoverageNode.lineWidth = 2
+        entity.sonarCoverageNode.glowWidth = 1.2
+        entity.sonarCoverageNode.zPosition = -4
+        entity.sonarCoverageNode.isHidden = true
     }
 
     private func showMessage(_ text: String, color: UIColor) {
