@@ -1621,3 +1621,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，`Break Red Production` 首次完成时 `$900` 是否在 HUD 金钱上即时可感知、终局任务详情 `+$900` 在实际 HUD 宽度下是否足够清晰、以及摧毁最后生产来源后玩家补给节奏是否合适仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做真实舰载机巡逻 / CAP、航母护航行为、Sonar Buoy 升级、更多地图目标或任务奖励平衡，但这些不属于 v4.6。
+
+### v4.7 / 终局 HQ 任务情报
+
+日期：2026-07-05
+
+核心变更：
+
+- `Destroy Red HQ` 任务阶段现在会在 Red HQ 存活且满足 `isKnownToFaction(redHQ, observer: .player)` 时显示 `Red HQ HP 当前/最大`，帮助玩家组织终局攻势。
+- Red HQ 存活但玩家未知时，任务详情只提示用 scouts 或 `SCAN` 侦察后再进攻，不显示隐藏 HQ 的 HP、位置、距离或路径。
+- Red HQ 已不存在时，任务详情显示 `Red Command HQ destroyed.`，胜利状态仍由现有 `updateVictoryState()` 和 `victoryState` 文案负责。
+- 新增 `enemyHQ()` 作为任务详情专用的 Red HQ 查找 helper；没有改变 `Destroy Red HQ` 完成条件、胜负触发、迷雾、支援侦察、潜艇侦测、AI 或战斗逻辑。
+- README、flow、flowchart 和 v4.7 Agent A 提示词已同步当前真实行为，未宣称新增地图 ping、小地图标记、战役系统、任务奖励或新 AI 能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.7（终局HQ任务情报）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`55be31620ffea8af2126835c076e2d93163c695c`，commit subject 为 `v4.7: 增加终局HQ任务情报`。
+- diff reviewer 返回 `No issues`，确认未发现迷雾泄露、任务完成条件 / 胜负 / AI / 单位数值 / 支援 / Xcode workflow 越界，也未看到本地测试、构建或静态检查证据。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `55be31620ffea8af2126835c076e2d93163c695c`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28746496986`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.7-main-55be31620ffe-run28746496986-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28746496986/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=55be31620ffea8af2126835c076e2d93163c695c`、`runId=28746496986`、`runAttempt=1`、`version=v4.7`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，终局 Red HQ 未知 / 已知 / 已毁三种任务详情状态、`SCAN` 暴露 HQ 后 HP 是否立即显示、以及文案在实际 HUD 宽度下是否足够清晰仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做真实舰载机巡逻 / CAP、航母护航行为、Sonar Buoy 升级、更多地图目标或终局攻势反馈，但这些不属于 v4.7。
