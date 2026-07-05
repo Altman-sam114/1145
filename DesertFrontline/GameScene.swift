@@ -5751,18 +5751,16 @@ final class GameScene: SKScene {
     }
 
     private func enemyRepairAnchor(for unit: GameEntity) -> CGPoint? {
-        guard let mechanic = entities.values
-            .filter { candidate in
-                candidate.faction == .enemy &&
-                    candidate.isAlive &&
-                    candidate.kind == .mechanic &&
-                    candidate.id != unit.id
-            }
-            .min { left, right in
-                left.node.position.distance(to: unit.node.position) <
-                    right.node.position.distance(to: unit.node.position)
-            }
-        else { return nil }
+        let mechanics = entities.values.filter { candidate in
+            candidate.faction == .enemy &&
+                candidate.isAlive &&
+                candidate.kind == .mechanic &&
+                candidate.id != unit.id
+        }
+        guard let mechanic = mechanics.min(by: { left, right in
+            left.node.position.distance(to: unit.node.position) <
+                right.node.position.distance(to: unit.node.position)
+        }) else { return nil }
 
         return mechanic.node.position
     }
