@@ -880,6 +880,7 @@ final class GameScene: SKScene {
     private var enemyMoney = 5200
     private var buildOrders: [BuildOrder] = []
     private var enemyCaptureReservations: [Int: EnemyCaptureReservation] = [:]
+    private var enemyRetreatingUnitIDs = Set<Int>()
     private var aiBuildCursor = 0
     private var aiDifficulty: AIDifficulty = .normal
     private let buildableStructures: [EntityKind] = [.barracks, .airfield, .radarOutpost, .sonarBuoy, .guardTower, .samSite, .coastalBattery, .shipyard, .oilDerrick]
@@ -902,6 +903,9 @@ final class GameScene: SKScene {
     private var lastEnemyControlPointDefenseResponseTime: TimeInterval = -100
     private var victoryState: String?
     private var completedMissionStages = Set<MissionStage>()
+
+    private let enemyRetreatHealthThreshold: CGFloat = 0.38
+    private let enemyRetreatRecoveryThreshold: CGFloat = 0.62
 
     private var moneyLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     private var incomeLabel = SKLabelNode(fontNamed: "Menlo")
@@ -4086,6 +4090,7 @@ final class GameScene: SKScene {
         controlGroups = [1: [], 2: []]
         buildOrders.removeAll()
         enemyCaptureReservations.removeAll()
+        enemyRetreatingUnitIDs.removeAll()
         nextEntityID = 1
         playerMoney = 5200
         enemyMoney = 5200
@@ -5113,6 +5118,7 @@ final class GameScene: SKScene {
         enemyCaptureReservations = enemyCaptureReservations.filter {
             !deadIDs.contains($0.key) && enemyCaptureTargetNeedsCapture($0.value)
         }
+        enemyRetreatingUnitIDs.subtract(deadIDs)
         let deadIDSet = Set(deadIDs)
         for group in Array(controlGroups.keys) {
             controlGroups[group]?.subtract(deadIDSet)
@@ -5133,6 +5139,7 @@ final class GameScene: SKScene {
         rebuildEnemyBaseIfNeeded()
 
         let enemyUnits = entities.values.filter { $0.faction == .enemy && !$0.kind.isStructure && $0.isAlive }
+        updateEnemyRetreatingUnits(enemyUnits)
         if enemyUnits.filter({ $0.kind == .mechanic }).count < 2 {
             queueBuild(kind: .mechanic, faction: .enemy, showFeedback: false)
         }
@@ -5598,6 +5605,9 @@ final class GameScene: SKScene {
             if faction == .enemy && isProtectedEnemyVeteranCombatUnit(entity) {
                 score += strategicValue(of: entity.kind) * 0.28
             }
+            if faction == .enemy && (isEnemyUnitRetreating(entity) || shouldRetreatEnemyAssaultUnit(entity)) {
+                score += strategicValue(of: entity.kind) * 0.18
+            }
             repairedAssets += 1
         }
 
@@ -5663,12 +5673,107 @@ final class GameScene: SKScene {
         return candidates
     }
 
+    private func updateEnemyRetreatingUnits(_ enemyUnits: [GameEntity]) {
+        for id in Array(enemyRetreatingUnitIDs) {
+            guard let unit = entities[id],
+                  unit.faction == .enemy,
+                  unit.isAlive,
+                  isEnemyAssaultRetreatEligible(unit),
+                  healthRatio(of: unit) < enemyRetreatRecoveryThreshold
+            else {
+                if let unit = entities[id] {
+                    unit.holdPosition = nil
+                    if unit.attackTarget == nil && unit.attackMoveDestination == nil {
+                        unit.destination = nil
+                        unit.path.removeAll()
+                    }
+                }
+                enemyRetreatingUnitIDs.remove(id)
+                continue
+            }
+
+            if unit.attackTarget != nil {
+                unit.holdPosition = nil
+                enemyRetreatingUnitIDs.remove(id)
+            } else if unit.attackMoveDestination != nil ||
+                unit.destination == nil {
+                retreatEnemyAssaultUnit(unit)
+            }
+        }
+
+        for unit in enemyUnits where unit.attackMoveDestination != nil && shouldRetreatEnemyAssaultUnit(unit) {
+            retreatEnemyAssaultUnit(unit)
+        }
+    }
+
+    private func retreatEnemyAssaultUnits(_ units: [GameEntity]) -> Set<Int> {
+        var retreatingIDs = Set<Int>()
+        for unit in units where shouldRetreatEnemyAssaultUnit(unit) {
+            retreatEnemyAssaultUnit(unit)
+            retreatingIDs.insert(unit.id)
+        }
+        return retreatingIDs
+    }
+
+    private func retreatEnemyAssaultUnit(_ unit: GameEntity) {
+        guard isEnemyAssaultRetreatEligible(unit) else { return }
+
+        let retreatPoint = enemyRetreatDestination(for: unit)
+        enemyRetreatingUnitIDs.insert(unit.id)
+        unit.attackMoveDestination = nil
+        unit.attackTarget = nil
+        unit.holdPosition = retreatPoint
+        setDestination(for: unit, near: retreatPoint)
+    }
+
+    private func shouldRetreatEnemyAssaultUnit(_ unit: GameEntity) -> Bool {
+        isEnemyAssaultRetreatEligible(unit) &&
+            healthRatio(of: unit) < enemyRetreatHealthThreshold
+    }
+
+    private func isEnemyUnitRetreating(_ unit: GameEntity) -> Bool {
+        enemyRetreatingUnitIDs.contains(unit.id) &&
+            isEnemyAssaultRetreatEligible(unit) &&
+            healthRatio(of: unit) < enemyRetreatRecoveryThreshold
+    }
+
+    private func isEnemyAssaultRetreatEligible(_ unit: GameEntity) -> Bool {
+        unit.faction == .enemy &&
+            unit.isAlive &&
+            !unit.kind.isStructure &&
+            unit.kind.damage > 0 &&
+            unit.isOperational &&
+            !isEnemyCaptureReserved(unit)
+    }
+
+    private func enemyRetreatDestination(for unit: GameEntity) -> CGPoint {
+        enemyRepairAnchor(for: unit) ?? enemyBaseAnchorPoint()
+    }
+
+    private func enemyRepairAnchor(for unit: GameEntity) -> CGPoint? {
+        guard let mechanic = entities.values
+            .filter { candidate in
+                candidate.faction == .enemy &&
+                    candidate.isAlive &&
+                    candidate.kind == .mechanic &&
+                    candidate.id != unit.id
+            }
+            .min { left, right in
+                left.node.position.distance(to: unit.node.position) <
+                    right.node.position.distance(to: unit.node.position)
+            }
+        else { return nil }
+
+        return mechanic.node.position
+    }
+
     private func commandEnemyAttackers(_ enemyUnits: [GameEntity]) {
         let idleAttackers = enemyUnits.filter { unit in
             unit.attackTarget == nil &&
             unit.attackMoveDestination == nil &&
             unit.destination == nil &&
             !isEnemyCaptureReserved(unit) &&
+            !isEnemyUnitRetreating(unit) &&
             unit.kind.damage > 0 &&
             unit.isOperational
         }
@@ -5688,7 +5793,8 @@ final class GameScene: SKScene {
 
         let waveSize = min(idleAttackers.count, max(aiDifficulty.attackGroupSize + 2, idleAttackers.count / 2))
         let provisionalWave = enemyProvisionalAssaultWave(from: idleAttackers, toward: objective, waveSize: waveSize)
-        let wave = enemyAssaultWave(from: provisionalWave)
+        let retreatingIDs = retreatEnemyAssaultUnits(provisionalWave)
+        let wave = enemyAssaultWave(from: provisionalWave).filter { !retreatingIDs.contains($0.id) }
         guard !wave.isEmpty else { return }
 
         issueFormationMove(to: objective, units: wave, showMarkers: false, showFeedback: false, attackMove: true)
