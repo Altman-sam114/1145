@@ -1418,3 +1418,43 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Carrier 生产 Helicopter / Fighter 时的 deck launch 视觉清晰度、Carrier 高频开火时 wing-strike 反馈是否遮挡战场、敌方可见 Carrier 的反馈是否符合预期、以及 `SKRM` 后是否无特效残留仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展真实舰载机巡逻 / CAP、航母护航行为、海军海岸争夺或 Sonar Buoy 升级，但这些不属于 v4.1。
+
+### v4.2 / AI 海岸目标权重微调
+
+日期：2026-07-05
+
+核心变更：
+
+- Red routine assault 的战略结构评分新增海岸基础设施权重：当 Red 拥有可攻击结构的 operational 海军压力时，已知玩家 Shipyard、Sonar Buoy 和 Coastal Battery 会获得额外目标分。
+- Red 海军单位的战术目标评分会更重视已知且可攻击的玩家海岸基础设施。
+- 新增 `isCoastalInfrastructure(...)`、`hasActiveCoastalAssaultNavy(...)`、`isCoastalAssaultNavalUnit(...)` 和 `isCoastalInfrastructureAttackCapable(...)`，只用于局部 AI 评分。
+- 该权重仍在 `enemyStrategicAssaultTarget()` 和 `tacticalTarget(for:)` 既有过滤之后生效，不绕过 `isKnownToFaction(...)` 或 `canAttack(...)`。
+- 只有能攻击 Shipyard / Sonar Buoy / Coastal Battery 至少一种结构的 Red operational 海军会触发战略加分；单独潜艇不会触发海岸结构优先。
+- 本轮没有改变生产队列、AI build pattern、动态 AA / ASW、单位数值、伤害、射程、冷却、迷雾、潜艇侦测、支援技能、建造海岸规则、路径、XP、胜负或 Xcode/workflow 配置。
+- README、flow、flowchart 和 v4.2 Agent A 提示词已同步当前真实行为，未宣称新增地图目标、任务阶段、海岸旗点或科技升级。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.2（AI海岸目标权重微调）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`1010ec4eb9ad2eaa6109ec7a897c63093c881fee`，commit subject 为 `v4.2: AI海岸目标权重微调`。
+- 只读调查子 agent 推荐该小目标，确认 `enemyStrategicAssaultScore(_:)` 与 `targetScore(for:target:)` 是合适接入点；diff reviewer 返回 `No issues`，确认未绕过 `isKnownToFaction` / `canAttack`，只有潜艇不会触发海岸结构优先，也未修改生产、AI build pattern、单位数值、伤害、迷雾或支援技能。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `1010ec4eb9ad2eaa6109ec7a897c63093c881fee`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28743446836`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.2-main-1010ec4eb9ad-run28743446836-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28743446836/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=1010ec4eb9ad2eaa6109ec7a897c63093c881fee`、`runId=28743446836`、`runAttempt=1`、`version=v4.2`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Red 具备 Battleship / Carrier 时是否更稳定压制玩家 Shipyard / Sonar Buoy / Coastal Battery、只有 Submarine 时是否不会错误偏向岸上结构、旗点 / 油井优先级是否仍符合预期、以及不同 AI 难度下海岸战斗节奏仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展真实舰载机巡逻 / CAP、航母护航行为、海岸任务目标、Sonar Buoy 升级或更多地图目标，但这些不属于 v4.2。
