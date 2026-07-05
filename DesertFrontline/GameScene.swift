@@ -5606,15 +5606,58 @@ final class GameScene: SKScene {
     }
 
     private func enemyReconSupportPoint() -> CGPoint? {
-        entities.values
-            .filter { entity in
-                entity.faction == .player &&
-                entity.kind == .submarine &&
-                entity.isAlive &&
-                !isKnownToFaction(entity, observer: .enemy)
+        if let knownSubmarine = entities.values
+            .filter(isKnownPlayerSubmarineThreat)
+            .max(by: { enemyReconKnownSubmarineScore($0) < enemyReconKnownSubmarineScore($1) }) {
+            return knownSubmarine.node.position
+        }
+
+        return enemyReconPatrolHotspot()
+    }
+
+    private func enemyReconKnownSubmarineScore(_ entity: GameEntity) -> CGFloat {
+        strategicValue(of: entity.kind) - entity.node.position.distance(to: enemyBaseAnchorPoint()) * 0.04
+    }
+
+    private func enemyReconPatrolHotspot() -> CGPoint? {
+        enemyReconPatrolHotspotCandidates().max { $0.score < $1.score }?.point
+    }
+
+    private func enemyReconPatrolHotspotCandidates() -> [(point: CGPoint, score: CGFloat)] {
+        enemyReconPatrolAnchors().flatMap { anchor in
+            enemyReconHotspotCandidates(around: anchor.point).map { candidate in
+                let terrainBonus: CGFloat = terrain(at: candidate.tile) == .water ? 34 : 18
+                let distancePenalty = candidate.point.distance(to: anchor.point) * 0.055
+                return (point: candidate.point, score: anchor.weight + terrainBonus - distancePenalty)
             }
-            .max { strategicValue(of: $0.kind) < strategicValue(of: $1.kind) }?
-            .node.position
+        }
+    }
+
+    private func enemyReconPatrolAnchors() -> [(point: CGPoint, weight: CGFloat)] {
+        let sonarAnchors: [(point: CGPoint, weight: CGFloat)] = entities.values.compactMap { entity in
+            guard entity.faction == .enemy, isActiveSonarSensor(entity) else { return nil }
+            let weight: CGFloat = entity.kind == .sonarBuoy ? 74 : 56
+            return (point: entity.node.position, weight: weight)
+        }
+        let flagAnchors = controlPoints
+            .filter { $0.faction == .enemy }
+            .map { (point: $0.node.position, weight: CGFloat(42)) }
+        return sonarAnchors + flagAnchors
+    }
+
+    private func enemyReconHotspotCandidates(around anchor: CGPoint) -> [(tile: TileCoord, point: CGPoint)] {
+        guard let origin = tile(at: anchor) else { return [] }
+        var candidates: [(tile: TileCoord, point: CGPoint)] = []
+        for radius in 0...5 {
+            for row in max(0, origin.row - radius)...min(rows - 1, origin.row + radius) {
+                for col in max(0, origin.col - radius)...min(cols - 1, origin.col + radius) {
+                    let tile = TileCoord(row: row, col: col)
+                    guard terrain(at: tile) == .water || isCoastal(tile) else { continue }
+                    candidates.append((tile: tile, point: tileCenter(tile)))
+                }
+            }
+        }
+        return candidates
     }
 
     private func commandEnemyAttackers(_ enemyUnits: [GameEntity]) {
