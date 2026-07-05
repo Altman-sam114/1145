@@ -898,6 +898,7 @@ final class GameScene: SKScene {
     private var fogAccumulator: TimeInterval = 0
     private var lastPlayerAttackAlertTime: TimeInterval = -100
     private var lastEnemyDefenseResponseTime: TimeInterval = -100
+    private var lastEnemyControlPointDefenseResponseTime: TimeInterval = -100
     private var victoryState: String?
     private var completedMissionStages = Set<MissionStage>()
 
@@ -4045,6 +4046,7 @@ final class GameScene: SKScene {
         fogAccumulator = 0
         lastPlayerAttackAlertTime = -100
         lastEnemyDefenseResponseTime = -100
+        lastEnemyControlPointDefenseResponseTime = -100
         lastUpdateTime = 0
         exploredTiles.removeAll()
         visibleTiles.removeAll()
@@ -4604,6 +4606,9 @@ final class GameScene: SKScene {
             let nearbyEnemy = controlPointCaptureUnit(near: point, faction: .enemy)
 
             if let nearbyPlayer, nearbyEnemy == nil, point.faction != .player {
+                if point.faction == .enemy {
+                    triggerEnemyControlPointDefenseIfNeeded(point: point, intruder: nearbyPlayer)
+                }
                 point.capturingFaction = .player
                 point.captureProgress += CGFloat(dt) * captureRate(for: nearbyPlayer)
                 if point.captureProgress >= 4.0 {
@@ -4970,6 +4975,51 @@ final class GameScene: SKScene {
 
         if !defenders.isEmpty, isKnownToFaction(target, observer: .player) {
             showEnemyDefensePing(at: target.node.position)
+        }
+    }
+
+    private func triggerEnemyControlPointDefenseIfNeeded(point: BattlefieldControlPoint, intruder: GameEntity) {
+        guard point.faction == .enemy,
+              intruder.faction == .player,
+              intruder.isAlive,
+              lastUpdateTime - lastEnemyControlPointDefenseResponseTime >= 3.2,
+              isKnownToFaction(intruder, observer: .enemy),
+              isPointKnownToEnemySensors(intruder.node.position)
+        else { return }
+
+        lastEnemyControlPointDefenseResponseTime = lastUpdateTime
+
+        let defenders = entities.values
+            .filter { unit in
+                unit.faction == .enemy &&
+                    unit.isAlive &&
+                    !unit.kind.isStructure &&
+                    unit.kind.damage > 0 &&
+                    unit.kind.canAttack(intruder.kind) &&
+                    !isEnemyCaptureReserved(unit) &&
+                    unit.node.position.distance(to: point.node.position) <= 640
+            }
+            .sorted {
+                $0.node.position.distance(to: point.node.position) <
+                    $1.node.position.distance(to: point.node.position)
+            }
+
+        guard !defenders.isEmpty else { return }
+
+        for defender in defenders.prefix(5) {
+            defender.holdPosition = nil
+            defender.attackMoveDestination = nil
+            defender.attackTarget = intruder
+            if defender.node.position.distance(to: intruder.node.position) > defender.kind.attackRange * 0.88 {
+                setDestination(for: defender, near: attackDestination(for: defender, target: intruder))
+            } else {
+                defender.destination = nil
+                defender.path.removeAll()
+            }
+        }
+
+        if isVisible(point: point.node.position) {
+            showEnemyDefensePing(at: point.node.position)
         }
     }
 
