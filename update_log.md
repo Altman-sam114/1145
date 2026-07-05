@@ -1340,3 +1340,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Red 低血主攻单位是否稳定脱离本轮 wave、是否优先回到 Mechanic、无 Mechanic 时是否退回基地锚点、HP 恢复后是否重入后续波次、防守响应是否能接管撤退单位、玩家命令和 `REPR` 数值是否无变化仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展 Sonar Buoy 平衡 / 升级、航母舰载机巡逻、AI 撤退反馈或更完整的海军机制，但这些不属于 v3.9。
+
+### v4.0 / 声呐浮标专职反潜再平衡
+
+日期：2026-07-05
+
+核心变更：
+
+- 将 Sonar Buoy 调整为更便宜、更快部署、更脆弱、普通视野更小但 sonar 覆盖更大的沿海专职反潜传感器。
+- Sonar Buoy 成本从 1150 降到 850，建造时间从 9.0 秒降到 7.0 秒，HP 从 540 降到 360。
+- Sonar Buoy 普通视野从 6 降到 4，`sonarRange(for:)` 中的 Sonar Buoy 检测范围从 300 提升到 340。
+- Sonar Buoy 仍然不攻击、不生产、不赚钱、不作为 `SCAN` 资产，不计入 ASW attacker，且仍只有 operational 后才提供视野、sonar 检测、选择态覆盖圈和 AI 巡扫 anchor。
+- 本轮没有改变 `isSubmarineDetected(...)`、`isKnownToFaction(...)`、`revealedUntil`、`supportRevealTiles`、`SCAN` / `AIRS` / `BARR`、AI 动态 ASW、Red `SCAN` 公平认知、玩家命令、建造海岸规则、战斗数值或 Xcode/workflow 配置。
+- README、flow、flowchart 和 v4.0 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.0（声呐浮标专职反潜再平衡）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`02e4ade21a67be359433ffac16e89a0df73b3556`，commit subject 为 `v4.0: 声呐浮标专职反潜再平衡`。
+- Agent X 使用只读子 agent 对比 Sonar Buoy 平衡与航母视觉增强两个候选后，选择 Sonar Buoy 专职反潜再平衡作为 v4.0 小目标。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `02e4ade21a67be359433ffac16e89a0df73b3556`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28741939923`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.0-main-02e4ade21a67-run28741939923-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28741939923/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=02e4ade21a67be359433ffac16e89a0df73b3556`、`runId=28741939923`、`runAttempt=1`、`version=v4.0`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Sonar Buoy 新成本 / HP / 普通视野 / sonar 覆盖在实机手感中的平衡、覆盖圈与 HUD range 是否足够清楚、AI 巡扫热点是否因为更大 sonar range 更频繁覆盖海岸入口仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展航母舰载机巡逻 / launch 反馈、Sonar Buoy 升级、海军海岸争夺或更多地图目标，但这些不属于 v4.0。
