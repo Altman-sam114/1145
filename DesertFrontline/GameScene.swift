@@ -5684,20 +5684,64 @@ final class GameScene: SKScene {
         }
 
         let waveSize = min(idleAttackers.count, max(aiDifficulty.attackGroupSize + 2, idleAttackers.count / 2))
-        let provisionalWave = idleAttackers
-            .sorted { left, right in
-                let leftDistance = left.node.position.distance(to: objective)
-                let rightDistance = right.node.position.distance(to: objective)
-                if abs(leftDistance - rightDistance) < 0.001 {
-                    return formationPriority(for: left.kind) < formationPriority(for: right.kind)
-                }
-                return leftDistance < rightDistance
-            }
-            .prefix(waveSize)
-        let wave = enemyAssaultWave(from: Array(provisionalWave))
+        let provisionalWave = enemyProvisionalAssaultWave(from: idleAttackers, toward: objective, waveSize: waveSize)
+        let wave = enemyAssaultWave(from: provisionalWave)
         guard !wave.isEmpty else { return }
 
         issueFormationMove(to: objective, units: wave, showMarkers: false, showFeedback: false, attackMove: true)
+    }
+
+    private func enemyProvisionalAssaultWave(from candidates: [GameEntity], toward objective: CGPoint, waveSize: Int) -> [GameEntity] {
+        let ordered = sortedEnemyAssaultCandidates(candidates, toward: objective)
+        var selected: [GameEntity] = []
+
+        appendEnemyAssaultRole(from: ordered, to: &selected, waveSize: waveSize, limit: 2) { unit in
+            unit.kind == .humvee || unit.kind == .tank
+        }
+        appendEnemyAssaultRole(from: ordered, to: &selected, waveSize: waveSize, limit: 1) { unit in
+            unit.kind == .aaTruck || unit.kind == .fighter
+        }
+        appendEnemyAssaultRole(from: ordered, to: &selected, waveSize: waveSize, limit: 1) { unit in
+            unit.kind == .artillery || unit.kind == .battleship
+        }
+        appendEnemyAssaultRole(from: ordered, to: &selected, waveSize: waveSize, limit: 1) { unit in
+            unit.kind == .helicopter || unit.kind == .fighter
+        }
+        appendEnemyAssaultRole(from: ordered, to: &selected, waveSize: waveSize, limit: 1) { unit in
+            unit.kind == .submarine || unit.kind == .battleship || unit.kind == .carrier
+        }
+
+        for candidate in ordered where selected.count < waveSize && !selected.contains(where: { $0.id == candidate.id }) {
+            selected.append(candidate)
+        }
+
+        return selected
+    }
+
+    private func sortedEnemyAssaultCandidates(_ candidates: [GameEntity], toward objective: CGPoint) -> [GameEntity] {
+        candidates.sorted { left, right in
+            let leftDistance = left.node.position.distance(to: objective)
+            let rightDistance = right.node.position.distance(to: objective)
+            if abs(leftDistance - rightDistance) < 0.001 {
+                return formationPriority(for: left.kind) < formationPriority(for: right.kind)
+            }
+            return leftDistance < rightDistance
+        }
+    }
+
+    private func appendEnemyAssaultRole(
+        from candidates: [GameEntity],
+        to selected: inout [GameEntity],
+        waveSize: Int,
+        limit: Int,
+        matching matches: (GameEntity) -> Bool
+    ) {
+        var added = 0
+        for candidate in candidates where selected.count < waveSize && added < limit {
+            guard matches(candidate), !selected.contains(where: { $0.id == candidate.id }) else { continue }
+            selected.append(candidate)
+            added += 1
+        }
     }
 
     private func enemyAssaultWave(from provisionalWave: [GameEntity]) -> [GameEntity] {
@@ -5868,11 +5912,11 @@ final class GameScene: SKScene {
     private func aiBuildPattern() -> [EntityKind] {
         switch aiDifficulty {
         case .easy:
-            return [.humvee, .tank, .aaTruck, .tank, .artillery, .helicopter, .battleship]
+            return [.humvee, .tank, .aaTruck, .artillery, .tank, .helicopter, .battleship]
         case .normal:
-            return [.humvee, .tank, .aaTruck, .tank, .artillery, .helicopter, .fighter, .battleship, .submarine, .carrier]
+            return [.humvee, .tank, .aaTruck, .artillery, .helicopter, .fighter, .tank, .submarine, .battleship, .carrier]
         case .hard:
-            return [.humvee, .tank, .aaTruck, .artillery, .fighter, .helicopter, .battleship, .submarine, .carrier, .carrier]
+            return [.humvee, .tank, .aaTruck, .artillery, .fighter, .helicopter, .tank, .submarine, .battleship, .carrier]
         }
     }
 
