@@ -629,6 +629,7 @@ private enum SupportPower: CaseIterable, Hashable {
 private enum MissionStage: Int, CaseIterable, Hashable {
     case secureOil
     case captureFrontline
+    case secureCoast
     case combinedArms
     case breakRedProduction
     case destroyHQ
@@ -637,6 +638,7 @@ private enum MissionStage: Int, CaseIterable, Hashable {
         switch self {
         case .secureOil: "Secure Oil"
         case .captureFrontline: "Capture Frontline"
+        case .secureCoast: "Secure Coast"
         case .combinedArms: "Deploy Combined Arms"
         case .breakRedProduction: "Break Red Production"
         case .destroyHQ: "Destroy Red HQ"
@@ -2629,6 +2631,8 @@ final class GameScene: SKScene {
             return "Hold 2 oil derricks. \(min(oilCount(for: .player), 2))/2 secured."
         case .captureFrontline:
             return "Hold 2 front-line flags. \(min(controlPointCount(for: .player), 2))/2 secured."
+        case .secureCoast:
+            return "Hold 2 coastal assets. \(min(coastalAssetCount(for: .player), 2))/2 secured."
         case .combinedArms:
             let counts = playerMobileDomainCounts()
             return "Field 10 units: \(min(counts.total, 10))/10  L\(counts.land) A\(counts.air) N\(counts.naval)"
@@ -2664,6 +2668,8 @@ final class GameScene: SKScene {
             return oilCount(for: .player) >= 2
         case .captureFrontline:
             return controlPointCount(for: .player) >= 2
+        case .secureCoast:
+            return coastalAssetCount(for: .player) >= 2
         case .combinedArms:
             let counts = playerMobileDomainCounts()
             return counts.total >= 10 && counts.land > 0 && counts.air > 0 && counts.naval > 0
@@ -4576,6 +4582,15 @@ final class GameScene: SKScene {
 
     private func controlPointCount(for faction: Faction) -> Int {
         controlPoints.filter { $0.faction == faction }.count
+    }
+
+    private func coastalAssetCount(for faction: Faction) -> Int {
+        entities.values.filter { entity in
+            entity.faction == faction &&
+                entity.isAlive &&
+                entity.isOperational &&
+                (entity.kind == .shipyard || entity.kind == .sonarBuoy || entity.kind == .coastalBattery)
+        }.count
     }
 
     private func updateCapture(dt: TimeInterval) {
