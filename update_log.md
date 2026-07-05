@@ -14,7 +14,7 @@
 
 日期：2026-07-05
 
-当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、建造、地图控制、旗点前线建造覆盖、雷达前哨、防御炮塔、防空阵地、岸防炮、机动防空、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、老兵经验、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
+当前项目已经是一个可构建的 iOS RTS 原型，覆盖经济、建造、地图控制、旗点前线建造覆盖、雷达前哨、声呐浮标、防御炮塔、防空阵地、岸防炮、机动防空、陆军、空军、海军、战舰、航母、AI、地图、战争迷雾、老兵经验、支援技能、HUD、任务阶段和 HQ 胜负条件。当前主要逻辑集中在 `DesertFrontline/GameScene.swift`。
 
 当前协作流程已升级为 `main` 直推触发 GitHub Actions 云端验证，并由 Agent C 下载未加密 CI 结果包复核。当前可靠构建命令仍是 generic iOS device build：
 
@@ -706,3 +706,42 @@
 - 本轮未运行本机 Xcode build 或模拟器/真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，War Factory 生产 AA Truck、HUD `AA` 按钮、selected factory routing、集结点出兵、AA Truck 只攻击 Helicopter / Fighter、不攻击 Submarine / 陆地 / 海军 / 建筑、AI 混合生产 AA Truck、目标排序和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展 SAM / AA Truck 平衡与升级、长期 AI 角色 reservation、旗点争夺奖励或反潜 HUD 信息，但这些不属于 v2.3。
+
+### v2.4 / 引入声呐浮标
+
+日期：2026-07-05
+
+核心变更：
+
+- 新增 `EntityKind.sonarBuoy` / Sonar Buoy / `SON`，作为可由 `BASE` 轮换建造的海岸侦测结构。
+- Sonar Buoy 使用现有施工、资金扣除、血条、选择、死亡清理、迷雾隐藏和 `SKRM` 重置链路；未完工前不能提供视野、build coverage、sonar、生产、赚钱或成为支援资产。
+- `constructionIssue(...)` 让 Sonar Buoy 和 Shipyard / Coastal Battery 一样要求 coast tile，同时继续共享玩家视野、己方结构 / 旗点 build coverage、碰撞和旗点中心 no-build 规则。
+- 完工 Sonar Buoy 提供普通静态视野和 300 像素 sonar 检测；结构类 sonar 必须 `isOperational` 才能生效，移动 sonar 单位保持既有行为。
+- Sonar Buoy 不攻击任何目标，不写入潜艇 `revealedUntil`，不作为 `SCAN`、`REPR`、`AIRS` 或 `BARR` 资产；`SCAN` 仍只认 operational HQ 或 Radar Outpost。
+- AI 缺失建筑补建列表纳入 Sonar Buoy；战略价值、Red 结构目标评分和主目标优先级已同步。
+- README、flow、flowchart 和 v2.4 Agent A 提示词已同步当前真实行为；本轮没有新增反潜武器、科技树、升级、音效、图片素材或外部依赖。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v2（地图控制）/v2.4（引入声呐浮标）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`81928d3f9eedb92b21fcfb48007ada2eb0819cd6`，commit subject 为 `v2.4: 引入声呐浮标`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `81928d3f9eedb92b21fcfb48007ada2eb0819cd6`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28725950719`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v2.4-main-81928d3f9eed-run28725950719-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28725950719/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=81928d3f9eedb92b21fcfb48007ada2eb0819cd6`、`runId=28725950719`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，`BASE` 轮换到 Sonar Buoy、coast-only 放置、旗点 build coverage 下的海岸放置、完工后侦测潜艇、不攻击任何目标、不作为 `SCAN` 资产、AI 补建声呐浮标、目标排序和 `SKRM` 重置仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展 Sonar Buoy 平衡 / 升级、AI 空军威胁防空响应、长期 AI 角色 reservation、旗点争夺奖励或反潜 HUD 信息，但这些不属于 v2.4。
