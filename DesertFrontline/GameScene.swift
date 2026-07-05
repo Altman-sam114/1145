@@ -2772,8 +2772,8 @@ final class GameScene: SKScene {
                 rows[3] = status
             }
         }
-        if let sonarInfo = sonarInfoLine(for: entity) {
-            rows[1] = "\(rows[1])  \(sonarInfo)"
+        if let capabilityInfo = selectionCapabilityInfoLine(for: entity) {
+            rows[1] = "\(rows[1])  \(capabilityInfo)"
         }
 
         return ("\(entity.kind.displayName) \(entity.kind.shortCode)", rows)
@@ -2789,7 +2789,7 @@ final class GameScene: SKScene {
         let maxRange = selected.map { $0.kind.attackRange }.max() ?? 0
         let holdingCount = selected.filter { $0.holdPosition != nil }.count
         let attackMoveCount = selected.filter { $0.attackMoveDestination != nil }.count
-        let combatSummary = groupSonarSummary(for: selected).map {
+        let combatSummary = groupAntiSubmarineSummary(for: selected).map {
             "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))  \($0)"
         } ?? "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))"
 
@@ -2894,16 +2894,37 @@ final class GameScene: SKScene {
             (!entity.kind.isStructure || entity.isOperational)
     }
 
+    private func isActiveAntiSubmarineAttacker(_ entity: GameEntity) -> Bool {
+        entity.isAlive &&
+            entity.kind.canAttack(.submarine) &&
+            (!entity.kind.isStructure || entity.isOperational)
+    }
+
+    private func selectionCapabilityInfoLine(for entity: GameEntity) -> String? {
+        var parts: [String] = []
+        let hasASWAttack = isActiveAntiSubmarineAttacker(entity)
+        if hasASWAttack {
+            parts.append("ASW attack")
+        }
+        if let sonarInfo = sonarInfoLine(for: entity) {
+            parts.append(sonarInfo)
+        } else if hasASWAttack {
+            parts.append("No sonar")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: "  ")
+    }
+
     private func sonarInfoLine(for entity: GameEntity) -> String? {
         guard isActiveSonarSensor(entity) else { return nil }
         return "Sonar \(Int(sonarRange(for: entity.kind)))"
     }
 
-    private func groupSonarSummary(for selected: [GameEntity]) -> String? {
+    private func groupAntiSubmarineSummary(for selected: [GameEntity]) -> String? {
+        let aswAttackers = selected.filter(isActiveAntiSubmarineAttacker)
         let sensors = selected.filter(isActiveSonarSensor)
-        guard !sensors.isEmpty else { return nil }
+        guard !aswAttackers.isEmpty || !sensors.isEmpty else { return nil }
         let maxRange = sensors.map { sonarRange(for: $0.kind) }.max() ?? 0
-        return "Sonar \(sensors.count)/\(Int(maxRange))"
+        return "ASW \(aswAttackers.count)  Sonar \(sensors.count)/\(Int(maxRange))"
     }
 
     private func playerQueueInfoLine() -> String {

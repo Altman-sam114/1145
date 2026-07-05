@@ -23,11 +23,11 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Carriers act as mobile sea-based air platforms that can build Helicopters and Fighters, launch aircraft from the deck, and set air rally points.
 - Carrier strike visuals, naval combat, air-to-ground/naval combat, artillery range advantage, submarine stealth, sonar detection, firing reveal pings, and brief submarine exposure when `AIRS` or `BARR` actually hits a submarine.
 - Combat units gain veterancy XP and kill counts from direct-fire kills, progressing from Recruit through Hardened, Veteran, and Elite with light damage, attack cooldown, and vision bonuses.
-- Non-Recruit units show SpriteKit veterancy badges above the unit, and the selection panel reports rank, XP, kills, effective stats, sonar range, submarine stealth/detected state, group sonar summaries, and group veterancy distribution.
+- Non-Recruit units show SpriteKit veterancy badges above the unit, and the selection panel reports rank, XP, kills, effective stats, ASW attack capability, sonar range, submarine stealth/detected state, group ASW/sonar summaries, and group veterancy distribution.
 - Tactical support powers from the bottom command bar: `SCAN` reveals a target area from an operational HQ or Radar Outpost, `REPR` restores damaged friendly assets, `AIRS` calls an air strike, and `BARR` calls naval fire support with economy costs, cooldowns, asset requirements, and map effects.
 - Mission objective panel with automatic stage completion: secure oil, capture front-line flags, deploy mixed land/air/naval forces, break enemy production, then destroy the Red HQ.
 - Unit selection, select-all army button, hold-position guard orders, attack-move advances, move orders, attack orders, health bars, explosions, automatic mechanic repairs, repair sparks.
-- Tactical selection panel with current unit/building stats, production state, rally/queue information, active sonar ranges, submarine detection state, and multi-unit formation composition.
+- Tactical selection panel with current unit/building stats, production state, rally/queue information, ASW attack versus sonar sensor status, submarine detection state, and multi-unit formation composition.
 - Under-attack alerts with throttled HUD warnings, battlefield pings, and minimap pulses when player units or structures take enemy fire.
 - Domain-aware formation move orders keep land, air, and naval groups separated on valid terrain during player commands and AI assaults.
 - Terrain-aware movement: land and naval units follow waypoint paths around blocked terrain while air units fly directly; land units prefer roads, move faster on roads, and slow slightly on oil fields.
