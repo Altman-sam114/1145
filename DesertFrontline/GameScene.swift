@@ -978,7 +978,7 @@ final class GameScene: SKScene {
         layoutHUD()
         updateFog(force: true)
         updateHUD()
-        showMessage("Capture oil and flags, build land/air/naval forces, destroy the enemy HQ.", color: .white)
+        showMessage("Capture oil and flags, secure the coast, build combined forces, destroy the enemy HQ.", color: .white)
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
