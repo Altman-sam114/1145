@@ -2638,7 +2638,7 @@ final class GameScene: SKScene {
             return "Field 10 units: \(min(counts.total, 10))/10  L\(counts.land) A\(counts.air) N\(counts.naval)  +$800"
         case .breakRedProduction:
             let remaining = enemyProductionCount()
-            return remaining == 0 ? "Red production disabled. Push to the HQ." : "Destroy Red WF/AF/SY/CV. \(remaining) left."
+            return remaining == 0 ? "Red production disabled. Push to the HQ. +$900" : "Destroy Red WF/AF/SY/CV. \(remaining) left. +$900"
         case .destroyHQ:
             return "Destroy the Red Command HQ."
         }
@@ -2675,6 +2675,8 @@ final class GameScene: SKScene {
             return 600
         case .combinedArms:
             return 800
+        case .breakRedProduction:
+            return 900
         default:
             return 0
         }
