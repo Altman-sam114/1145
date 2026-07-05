@@ -785,3 +785,44 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Red 视野内 2 架以上玩家空军触发 AA Truck / Fighter 补单、视野外玩家空军不触发、已排队防空不重复堆单、缺生产来源 / 资金时自然跳过、补防空后常规生产仍继续、以及 `SKRM` 重置后 AI 正常重新评估仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展长期 AI 角色 reservation、旗点争夺奖励、AI 编队比例、高价值老兵保护或反潜 HUD 信息，但这些不属于 v2.5。
+
+### v2.6 / AI 占点任务长期保留
+
+日期：2026-07-05
+
+核心变更：
+
+- 新增 `EnemyCaptureReservation` 和 `enemyCaptureReservations`，记录 Red AI 自己分配的占油 / 占旗 runner 与目标关系。
+- AI 在每个指挥周期开始维护 reservation：目标已归 Red、目标消失、单位死亡、单位不再有效或被 attack target / attack-move 外部战斗状态打断时自动释放。
+- AI 分配 oil runner 和 flag runner 时会登记 reservation；有效 reservation 会让 runner 不再被重复挑为其他占点任务。
+- `commandEnemyAttackers(...)` 的常规主攻波次会跳过有效 reservation 的 runner，即使该 runner 已到达占领半径且 `destination == nil`。
+- 如果 runner 仍有有效 reservation、没有战斗目标或 attack-move 且不在目标占领半径内，AI 会重新给它设置到目标附近的 destination，避免路径结束在占领半径外。
+- `cullDestroyedEntities()` 会清理死亡单位和失效目标对应 reservation；`SKRM` 重开会清空全部 reservation。
+- 本轮没有改变玩家命令、占领半径、占领速度、收入、视野、build coverage、AI 生产、动态防空、支援技能或紧急基地防守响应。
+- README、flow、flowchart 和 v2.6 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v2（地图控制）/v2.6（AI占点任务长期保留）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`93242ef80e82f7f89d6b211d44341f2a8516e252`，commit subject 为 `v2.6: 保留AI占点任务`。
+- Agent X 只读子 agent 调查确认最小实现位置；实现后按 diff 和云端 artifact 复核。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `93242ef80e82f7f89d6b211d44341f2a8516e252`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28729127625`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v2.6-main-93242ef80e82-run28729127625-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28729127625/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=93242ef80e82f7f89d6b211d44341f2a8516e252`、`runId=28729127625`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，AI 油井 / 旗点 runner 到达占领半径后持续完成占领、目标归 Red 后释放 reservation、runner 死亡 / 被防守反应打断后释放、多个未占旗点不会重复派同一目标、以及 `SKRM` 重置后 reservation 清空仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展旗点争夺奖励、AI 编队比例、高价值老兵保护、反潜 HUD 信息或更完整的 AI 角色系统，但这些不属于 v2.6。
