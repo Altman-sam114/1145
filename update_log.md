@@ -1102,3 +1102,42 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，敌方 direct-fire 命中玩家潜艇、玩家 direct-fire 命中已知敌潜艇、隐藏敌潜艇不泄露 `ASW HIT`、`AIRS` / `BARR` 命中潜艇不显示该反馈、以及特效在实机 HUD / 迷雾层级下是否足够清楚仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展 Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.3。
+
+### v3.4 / 声呐覆盖选择反馈
+
+日期：2026-07-05
+
+核心变更：
+
+- 玩家选中 active sonar sensor 时在战场显示声呐覆盖圈，范围由既有 `sonarRange(for:)` 推导。
+- 多选多个玩家 active sonar sensor 时同时显示多个覆盖圈；未完工 Sonar Buoy 和敌方 sensor 不显示覆盖圈。
+- 新增 `sonarCoverageNode`、`configureSonarCoverageNode(for:)` 和 `shouldShowSonarCoverage(for:)`，通过 `refreshSelection()` 与选择态同步显隐。
+- 玩家建筑施工完成后刷新 selection visual，确保已选中的 Sonar Buoy 进入 operational 状态后能显示覆盖圈。
+- 本轮是 visual-only 反馈，没有改变 `sonarRange(for:)`、`isSubmarineDetected(...)`、`revealedUntil`、迷雾数据、AI、伤害、HUD 按钮、单位数值或建筑规则。
+- README、flow、flowchart 和 v3.4 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v3（海战反潜）/v3.4（声呐覆盖选择反馈）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`4b26de43bb713fb40705c5e0ed7867c67ea8cffc`，commit subject 为 `v3.4: 声呐覆盖选择反馈`。
+- Agent A 子 agent 生成 v3.4 实现提示词；只读评估子 agent 确认声呐覆盖圈可作为纯选择态 visual 接入；diff reviewer 返回 `No issues`，确认未修改 sonar、潜艇侦测、迷雾、AI、伤害或 HUD 按钮。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `4b26de43bb713fb40705c5e0ed7867c67ea8cffc`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28734758814`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v3.4-main-4b26de43bb71-run28734758814-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28734758814/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=4b26de43bb713fb40705c5e0ed7867c67ea8cffc`、`runId=28734758814`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，单选 Battleship / Submarine / Carrier / Helicopter / active Sonar Buoy、多选多个 sonar sensor、未完工 Sonar Buoy 不显示覆盖圈、施工完成后显示覆盖圈、敌方 sensor 不显示覆盖圈、取消选择 / 死亡 / SKRM 重开不残留、以及覆盖圈在迷雾和单位层级下的清晰度仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展 Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.4。
