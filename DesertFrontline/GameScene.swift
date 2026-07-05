@@ -2635,7 +2635,7 @@ final class GameScene: SKScene {
             return "Hold 2 coastal assets. \(min(coastalAssetCount(for: .player), 2))/2 secured. +$600"
         case .combinedArms:
             let counts = playerMobileDomainCounts()
-            return "Field 10 units: \(min(counts.total, 10))/10  L\(counts.land) A\(counts.air) N\(counts.naval)"
+            return "Field 10 units: \(min(counts.total, 10))/10  L\(counts.land) A\(counts.air) N\(counts.naval)  +$800"
         case .breakRedProduction:
             let remaining = enemyProductionCount()
             return remaining == 0 ? "Red production disabled. Push to the HQ." : "Destroy Red WF/AF/SY/CV. \(remaining) left."
@@ -2673,6 +2673,8 @@ final class GameScene: SKScene {
         switch stage {
         case .secureCoast:
             return 600
+        case .combinedArms:
+            return 800
         default:
             return 0
         }
