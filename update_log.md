@@ -906,3 +906,42 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Red 优先派 runner / attack-move 波次反夺玩家已占旗点、Red 已占但正在被玩家夺取的旗点进入候选、已有 reservation 不重复派同一旗点、没有玩家控制或争夺旗点时仍按距离选择中立旗点、以及 v2.7 抢点防守 sensor gate 不被绕开仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展旗点争夺奖励、AI 编队比例、高价值老兵保护、反潜 HUD 信息或更完整的 AI 角色系统，但这些不属于 v2.8。
+
+### v2.9 / 旗点占领奖励
+
+日期：2026-07-05
+
+核心变更：
+
+- 新增 `controlPointCaptureBonus = 260`，为前线旗点归属实际变化提供一次性资金奖励。
+- `setControlPointFaction(_:,for:)` 在 `previousFaction != faction` 时通过共享 `changeMoney(for:by:)` 给新归属方发放奖金；玩家和 AI 共享同一经济入口，`.neutral` 通过 `changeMoney` no-op 保持安全。
+- 玩家成功占领旗点时，原有 HUD 消息会显示 `+$260` 奖金；AI 占领旗点不新增玩家提示，但同样获得资金。
+- `incomePerTick(for:)` 未改变，旗点持续收入仍为 `$95/s`；本轮没有把一次性奖金混入每秒收入。
+- 本轮没有改变旗点占领半径、占领速度、视野、build coverage、任务阶段、AI 占点 reservation、AI 防守响应、AI 反夺优先级、AI 生产或玩家命令。
+- README、flow、flowchart 和 v2.9 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v2（地图控制）/v2.9（旗点占领奖励）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`7872f2a1da18389175660c0873d95e37f1997dcd`，commit subject 为 `v2.9: 旗点占领奖励`。
+- Agent X 并行只读子 agent 调查确认该小增量适合；diff reviewer 返回 `No issues`，确认奖金只在归属变化时发放、玩家 / AI 共享 `changeMoney(...)`、持续收入未改、文档一致且 v2.6-v2.8 AI 逻辑未被当前 diff 修改。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `7872f2a1da18389175660c0873d95e37f1997dcd`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28730455859`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v2.9-main-7872f2a1da18-run28730455859-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28730455859/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=7872f2a1da18389175660c0873d95e37f1997dcd`、`runId=28730455859`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，玩家占旗时资金立即增加并显示 `+$260`、AI 占旗同额加钱、同归属重复调用不重复发奖、旗点持续收入仍为 `$95/s`、`SKRM` 后资金重置自然清空奖金影响仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展旗点争夺奖励平衡、AI 编队比例、高价值老兵保护、反潜 HUD 信息或更完整的 AI 角色系统，但这些不属于 v2.9。
