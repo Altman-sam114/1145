@@ -744,6 +744,11 @@ private struct BuildOrder {
     var remaining: TimeInterval
 }
 
+private enum EnemyCaptureReservation: Hashable {
+    case oilDerrick(Int)
+    case controlPoint(Int)
+}
+
 private enum SceneryKind {
     case village
     case oasis
@@ -873,6 +878,7 @@ final class GameScene: SKScene {
     private var playerMoney = 5200
     private var enemyMoney = 5200
     private var buildOrders: [BuildOrder] = []
+    private var enemyCaptureReservations: [Int: EnemyCaptureReservation] = [:]
     private var aiBuildCursor = 0
     private var aiDifficulty: AIDifficulty = .normal
     private let buildableStructures: [EntityKind] = [.barracks, .airfield, .radarOutpost, .sonarBuoy, .guardTower, .samSite, .coastalBattery, .shipyard, .oilDerrick]
@@ -4020,6 +4026,7 @@ final class GameScene: SKScene {
         selectedIDs.removeAll()
         controlGroups = [1: [], 2: []]
         buildOrders.removeAll()
+        enemyCaptureReservations.removeAll()
         nextEntityID = 1
         playerMoney = 5200
         enemyMoney = 5200
@@ -4983,6 +4990,9 @@ final class GameScene: SKScene {
             selectedIDs.remove(id)
         }
         buildOrders.removeAll { deadIDs.contains($0.sourceID) }
+        enemyCaptureReservations = enemyCaptureReservations.filter {
+            !deadIDs.contains($0.key) && enemyCaptureTargetNeedsCapture($0.value)
+        }
         let deadIDSet = Set(deadIDs)
         for group in Array(controlGroups.keys) {
             controlGroups[group]?.subtract(deadIDSet)
@@ -4999,6 +5009,7 @@ final class GameScene: SKScene {
         let enemyHQAlive = entities.values.contains { $0.kind == .hq && $0.faction == .enemy && $0.isAlive }
         guard enemyHQAlive else { return }
 
+        maintainEnemyCaptureReservations()
         rebuildEnemyBaseIfNeeded()
 
         let enemyUnits = entities.values.filter { $0.faction == .enemy && !$0.kind.isStructure && $0.isAlive }
@@ -5023,18 +5034,25 @@ final class GameScene: SKScene {
         var assignedCaptureUnitIDs = Set<Int>()
         let freeCaptureUnits = enemyUnits.filter(isAvailableEnemyCaptureUnit)
 
-        if let neutralOil = entities.values.first(where: { $0.kind == .oilDerrick && $0.faction != .enemy && $0.isAlive }),
+        if let neutralOil = entities.values.first(where: {
+            $0.kind == .oilDerrick &&
+                $0.faction != .enemy &&
+                $0.isAlive &&
+                !isEnemyCaptureTargetReserved(.oilDerrick($0.id))
+        }),
            let oilRunner = freeCaptureUnits.first(where: { $0.kind == .mechanic }) ?? freeCaptureUnits.first(where: { $0.kind == .humvee }) {
             setDestination(for: oilRunner, near: neutralOil.node.position)
+            reserveEnemyCapture(unit: oilRunner, target: .oilDerrick(neutralOil.id))
             assignedCaptureUnitIDs.insert(oilRunner.id)
         }
 
         let freeFlagCaptureUnits = enemyUnits.filter { unit in
             isAvailableEnemyCaptureUnit(unit) && !assignedCaptureUnitIDs.contains(unit.id)
         }
-        if let targetFlag = enemyControlPointTarget(),
+        if let targetFlag = enemyControlPointTarget(excludingReserved: true),
            let flagRunner = freeFlagCaptureUnits.first(where: { $0.kind == .humvee || $0.kind == .mechanic || $0.kind == .tank }) {
             setDestination(for: flagRunner, near: targetFlag.node.position)
+            reserveEnemyCapture(unit: flagRunner, target: .controlPoint(targetFlag.id))
         }
 
         tryEnemySupportPower()
@@ -5051,6 +5069,90 @@ final class GameScene: SKScene {
             unit.attackTarget == nil &&
             unit.attackMoveDestination == nil &&
             unit.destination == nil &&
+            !isEnemyCaptureReserved(unit) &&
+            unit.kind.domain == .land &&
+            unit.isOperational
+    }
+
+    private func reserveEnemyCapture(unit: GameEntity, target: EnemyCaptureReservation) {
+        guard isEnemyCaptureUnit(unit), enemyCaptureTargetNeedsCapture(target) else { return }
+        enemyCaptureReservations[unit.id] = target
+    }
+
+    private func maintainEnemyCaptureReservations() {
+        pruneEnemyCaptureReservations()
+
+        for (unitID, reservation) in enemyCaptureReservations {
+            guard let unit = entities[unitID],
+                  unit.attackTarget == nil,
+                  unit.attackMoveDestination == nil,
+                  unit.destination == nil,
+                  let targetPosition = enemyCaptureTargetPosition(for: reservation)
+            else { continue }
+
+            if unit.node.position.distance(to: targetPosition) > enemyCaptureRange(for: reservation) {
+                setDestination(for: unit, near: targetPosition)
+            }
+        }
+    }
+
+    private func pruneEnemyCaptureReservations() {
+        enemyCaptureReservations = enemyCaptureReservations.filter { unitID, reservation in
+            guard let unit = entities[unitID],
+                  isEnemyCaptureUnit(unit),
+                  enemyCaptureTargetNeedsCapture(reservation)
+            else { return false }
+
+            return unit.attackTarget == nil && unit.attackMoveDestination == nil
+        }
+    }
+
+    private func isEnemyCaptureReserved(_ unit: GameEntity) -> Bool {
+        guard let reservation = enemyCaptureReservations[unit.id],
+              isEnemyCaptureUnit(unit),
+              enemyCaptureTargetNeedsCapture(reservation)
+        else { return false }
+
+        return unit.attackTarget == nil && unit.attackMoveDestination == nil
+    }
+
+    private func enemyCaptureTargetPosition(for reservation: EnemyCaptureReservation) -> CGPoint? {
+        switch reservation {
+        case .oilDerrick(let id):
+            return entities[id]?.node.position
+        case .controlPoint(let id):
+            return controlPoints.first { $0.id == id }?.node.position
+        }
+    }
+
+    private func enemyCaptureTargetNeedsCapture(_ reservation: EnemyCaptureReservation) -> Bool {
+        switch reservation {
+        case .oilDerrick(let id):
+            guard let derrick = entities[id], derrick.kind == .oilDerrick, derrick.isAlive else { return false }
+            return derrick.faction != .enemy
+        case .controlPoint(let id):
+            guard let controlPoint = controlPoints.first(where: { $0.id == id }) else { return false }
+            return controlPoint.faction != .enemy
+        }
+    }
+
+    private func enemyCaptureRange(for reservation: EnemyCaptureReservation) -> CGFloat {
+        switch reservation {
+        case .oilDerrick:
+            return 78
+        case .controlPoint:
+            return 92
+        }
+    }
+
+    private func isEnemyCaptureTargetReserved(_ reservation: EnemyCaptureReservation) -> Bool {
+        enemyCaptureReservations.values.contains(reservation)
+    }
+
+    private func isEnemyCaptureUnit(_ unit: GameEntity) -> Bool {
+        unit.faction == .enemy &&
+            unit.isAlive &&
+            !unit.kind.isStructure &&
             unit.kind.domain == .land &&
             unit.isOperational
     }
@@ -5131,9 +5233,12 @@ final class GameScene: SKScene {
         max(1, min(4, (knownAirThreat + 1) / 2))
     }
 
-    private func enemyControlPointTarget() -> BattlefieldControlPoint? {
+    private func enemyControlPointTarget(excludingReserved: Bool = false) -> BattlefieldControlPoint? {
         controlPoints
-            .filter { $0.faction != .enemy }
+            .filter { point in
+                point.faction != .enemy &&
+                    (!excludingReserved || !isEnemyCaptureTargetReserved(.controlPoint(point.id)))
+            }
             .min { left, right in
                 left.node.position.distance(to: enemyBaseAnchorPoint()) <
                     right.node.position.distance(to: enemyBaseAnchorPoint())
@@ -5303,6 +5408,7 @@ final class GameScene: SKScene {
             unit.attackTarget == nil &&
             unit.attackMoveDestination == nil &&
             unit.destination == nil &&
+            !isEnemyCaptureReserved(unit) &&
             unit.kind.damage > 0 &&
             unit.isOperational
         }
