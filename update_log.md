@@ -984,3 +984,42 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，单选 Submarine / Sonar Buoy / Battleship / Carrier / Helicopter、多选混编 sonar asset、未完工 Sonar Buoy offline 文案、潜艇 detected 倒计时显示和 HUD 文案是否在小屏不溢出仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展反潜交互反馈、Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.0。
+
+### v3.1 / 反潜攻击 HUD 信息
+
+日期：2026-07-05
+
+核心变更：
+
+- 选择面板区分 ASW attack capability 与 sonar sensor：单选 Fighter 会显示 `ASW attack  No sonar`，说明它能攻击潜艇但不能侦测潜艇。
+- Battleship、Submarine、Carrier 和 Helicopter 单选会同时显示 `ASW attack` 与 `Sonar <range>`；Sonar Buoy 只显示 sonar / `No SCAN`，不显示 `ASW attack`。
+- 多选 combat summary 追加 `ASW <count>  Sonar <count>/<maxRange>`，Fighter 只计入 ASW，不计入 sonar；active Sonar Buoy 只计入 sonar，不计入 ASW。
+- 第 4 行 hold / attack-move / veterancy 优先级保持不变，选择面板仍维持 4 行信息结构。
+- 本轮只改 HUD 可读性和文档，没有改变 `canAttack(...)`、`hasSonar`、`sonarRange(for:)`、`isSubmarineDetected(...)`、`revealedUntil`、`SCAN`、`AIRS` / `BARR`、AI、战斗、迷雾合法性、单位数值或建筑规则。
+- README、flow、flowchart 和 v3.1 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v3（海战反潜）/v3.1（反潜攻击HUD信息）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`b82a89ccbb6bdcfc50a3b60d1814f359f9ddab4c`，commit subject 为 `v3.1: 区分ASW攻击与声呐HUD信息`。
+- Agent A 子 agent 生成 v3.1 实现提示词；Agent X 并行只读 reviewer 返回 `No issues`，确认 diff 只改 HUD helper / 文案和必要文档，没有修改潜艇侦测、战斗、AI 或迷雾规则。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `b82a89ccbb6bdcfc50a3b60d1814f359f9ddab4c`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28731507221`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v3.1-main-b82a89ccbb6b-run28731507221-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28731507221/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=b82a89ccbb6bdcfc50a3b60d1814f359f9ddab4c`、`runId=28731507221`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Fighter 单选 `ASW attack  No sonar`、Battleship / Submarine / Carrier / Helicopter 同时显示 ASW 与 sonar、Sonar Buoy 不显示 ASW、多选 ASW / sonar 统计和小屏 HUD 文案长度仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展反潜交互反馈、Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.1。
