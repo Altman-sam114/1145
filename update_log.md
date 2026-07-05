@@ -1063,3 +1063,42 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Red 只在自身视野 / sonar / `revealedUntil` 认知内响应玩家潜艇、不会全图补 ASW、不会把 Fighter 当 sonar、不会把 Sonar Buoy 当 ASW attacker、不会绕过生产来源和资金限制仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展反潜交互反馈、Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.2。
+
+### v3.3 / 反潜命中战场反馈
+
+日期：2026-07-05
+
+核心变更：
+
+- 直接火力命中玩家潜艇或玩家已知敌方潜艇时，会在目标位置显示短暂 `ASW HIT` 文案和水下冲击圈反馈。
+- 新增 `shouldShowAntiSubmarineHitFeedback(for:)`，仅允许玩家潜艇或满足 `isKnownToFaction(..., observer: .player)` 的潜艇显示命中特效，避免泄露隐藏敌方潜艇位置。
+- 新增 `showAntiSubmarineHit(at:faction:)`，复用 `effectsLayer`、`SKShapeNode` 和 `SKLabelNode(fontNamed: "Menlo-Bold")` 创建短生命周期 visual-only 特效。
+- 本轮只接入 `fire(attacker:target:)` direct-fire 路径；`AIRS` / `BARR` / `applySupportDamage(...)` 不显示 `ASW HIT`，仍只负责既有支援命中短暂暴露。
+- 本轮没有改变伤害公式、`armorMultiplier`、kill / XP、`canAttack(...)`、sonar、`revealedUntil`、AI、迷雾、单位数值、HUD 输入或建筑规则。
+- README、flow、flowchart 和 v3.3 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v3（海战反潜）/v3.3（反潜命中战场反馈）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`ed55fe662740fccbba612d3f6817a93d24fa8382`，commit subject 为 `v3.3: 反潜命中战场反馈`。
+- Agent A 子 agent 生成 v3.3 实现提示词；Agent X 并行只读定位子 agent 确认 `fire(attacker:target:)` 是 direct-fire 入口；diff reviewer 返回 `No issues`，确认未修改伤害、`armorMultiplier`、kill / XP、`revealedUntil`、sonar、`SCAN` / `AIRS` / `BARR`、AI 或 HUD 输入。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `ed55fe662740fccbba612d3f6817a93d24fa8382`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28734041508`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v3.3-main-ed55fe662740-run28734041508-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28734041508/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=ed55fe662740fccbba612d3f6817a93d24fa8382`、`runId=28734041508`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，敌方 direct-fire 命中玩家潜艇、玩家 direct-fire 命中已知敌潜艇、隐藏敌潜艇不泄露 `ASW HIT`、`AIRS` / `BARR` 命中潜艇不显示该反馈、以及特效在实机 HUD / 迷雾层级下是否足够清楚仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展 Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.3。
