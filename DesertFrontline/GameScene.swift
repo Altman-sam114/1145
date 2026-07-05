@@ -45,6 +45,7 @@ private enum EntityKind: CaseIterable, Hashable {
     case shipyard
     case oilDerrick
     case radarOutpost
+    case sonarBuoy
     case guardTower
     case samSite
     case coastalBattery
@@ -67,6 +68,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .shipyard: "Shipyard"
         case .oilDerrick: "Oil Derrick"
         case .radarOutpost: "Radar Outpost"
+        case .sonarBuoy: "Sonar Buoy"
         case .guardTower: "Guard Tower"
         case .samSite: "SAM Site"
         case .coastalBattery: "Coastal Battery"
@@ -91,6 +93,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .shipyard: "SY"
         case .oilDerrick: "OIL"
         case .radarOutpost: "RAD"
+        case .sonarBuoy: "SON"
         case .guardTower: "GT"
         case .samSite: "SAM"
         case .coastalBattery: "CB"
@@ -109,7 +112,7 @@ private enum EntityKind: CaseIterable, Hashable {
 
     var domain: Domain {
         switch self {
-        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .guardTower, .samSite, .coastalBattery:
+        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .sonarBuoy, .guardTower, .samSite, .coastalBattery:
             .structure
         case .aaTruck, .humvee, .tank, .artillery, .mechanic:
             .land
@@ -140,7 +143,7 @@ private enum EntityKind: CaseIterable, Hashable {
 
     var hasSonar: Bool {
         switch self {
-        case .battleship, .submarine, .carrier, .helicopter:
+        case .battleship, .submarine, .carrier, .helicopter, .sonarBuoy:
             true
         default:
             false
@@ -155,6 +158,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .shipyard: 2400
         case .oilDerrick: 900
         case .radarOutpost: 1300
+        case .sonarBuoy: 1150
         case .guardTower: 1450
         case .samSite: 1650
         case .coastalBattery: 1700
@@ -179,6 +183,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .shipyard: 14.0
         case .oilDerrick: 8.0
         case .radarOutpost: 10.0
+        case .sonarBuoy: 9.0
         case .guardTower: 11.0
         case .samSite: 12.0
         case .coastalBattery: 12.0
@@ -203,6 +208,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .shipyard: 1050
         case .oilDerrick: 650
         case .radarOutpost: 720
+        case .sonarBuoy: 540
         case .guardTower: 820
         case .samSite: 760
         case .coastalBattery: 780
@@ -298,6 +304,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .barracks, .airfield, .shipyard: 5
         case .oilDerrick: 4
         case .radarOutpost: 9
+        case .sonarBuoy: 6
         case .guardTower: 6
         case .samSite: 7
         case .coastalBattery: 6
@@ -317,6 +324,7 @@ private enum EntityKind: CaseIterable, Hashable {
         case .barracks, .airfield, .shipyard: 50
         case .oilDerrick: 42
         case .radarOutpost, .guardTower: 46
+        case .sonarBuoy: 44
         case .samSite, .coastalBattery: 48
         case .aaTruck: 30
         case .humvee: 28
@@ -867,7 +875,7 @@ final class GameScene: SKScene {
     private var buildOrders: [BuildOrder] = []
     private var aiBuildCursor = 0
     private var aiDifficulty: AIDifficulty = .normal
-    private let buildableStructures: [EntityKind] = [.barracks, .airfield, .radarOutpost, .guardTower, .samSite, .coastalBattery, .shipyard, .oilDerrick]
+    private let buildableStructures: [EntityKind] = [.barracks, .airfield, .radarOutpost, .sonarBuoy, .guardTower, .samSite, .coastalBattery, .shipyard, .oilDerrick]
     private var structureBuildCursor = 0
     private var pendingConstructionKind: EntityKind?
     private var pendingSupportPower: SupportPower?
@@ -1602,7 +1610,7 @@ final class GameScene: SKScene {
         base.addChild(shadow)
 
         switch entity.kind {
-        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .guardTower, .samSite, .coastalBattery:
+        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .sonarBuoy, .guardTower, .samSite, .coastalBattery:
             addStructureBody(for: entity, to: base)
         case .aaTruck, .humvee, .tank, .artillery, .mechanic:
             addLandUnitBody(for: entity, to: base)
@@ -1769,6 +1777,43 @@ final class GameScene: SKScene {
             console.fillColor = entity.faction.color
             console.strokeColor = .clear
             base.addChild(console)
+        case .sonarBuoy:
+            let pad = SKShapeNode(ellipseOf: CGSize(width: 50, height: 24))
+            pad.fillColor = UIColor(red: 0.31, green: 0.38, blue: 0.39, alpha: 1.0)
+            pad.strokeColor = UIColor(white: 0.14, alpha: 1.0)
+            pad.lineWidth = 2
+            base.addChild(pad)
+
+            let mast = SKShapeNode(rectOf: CGSize(width: 7, height: 32), cornerRadius: 2)
+            mast.position = CGPoint(x: -2, y: 18)
+            mast.fillColor = UIColor(red: 0.70, green: 0.76, blue: 0.73, alpha: 1.0)
+            mast.strokeColor = UIColor(white: 0.16, alpha: 1.0)
+            mast.lineWidth = 1.5
+            base.addChild(mast)
+
+            let receiver = SKShapeNode(ellipseOf: CGSize(width: 26, height: 12))
+            receiver.position = CGPoint(x: 8, y: 34)
+            receiver.fillColor = UIColor(red: 0.62, green: 0.80, blue: 0.84, alpha: 1.0)
+            receiver.strokeColor = UIColor(white: 0.14, alpha: 1.0)
+            receiver.lineWidth = 1.5
+            receiver.zRotation = -0.18
+            base.addChild(receiver)
+
+            let beacon = SKShapeNode(circleOfRadius: 5)
+            beacon.position = CGPoint(x: -11, y: 36)
+            beacon.fillColor = entity.faction.color
+            beacon.strokeColor = UIColor.white.withAlphaComponent(0.72)
+            beacon.lineWidth = 1
+            base.addChild(beacon)
+
+            for index in 0..<2 {
+                let ring = SKShapeNode(ellipseOf: CGSize(width: 34 + index * 16, height: 14 + index * 8))
+                ring.position = CGPoint(x: 3, y: 2)
+                ring.fillColor = .clear
+                ring.strokeColor = entity.faction.color.withAlphaComponent(index == 0 ? 0.55 : 0.35)
+                ring.lineWidth = 1.5
+                base.addChild(ring)
+            }
         case .guardTower:
             let pad = SKShapeNode(rectOf: CGSize(width: 54, height: 30), cornerRadius: 4)
             pad.fillColor = UIColor(red: 0.43, green: 0.43, blue: 0.39, alpha: 1.0)
@@ -2644,7 +2689,7 @@ final class GameScene: SKScene {
                 [
                     "$\(pendingConstructionKind.cost)  HP \(Int(pendingConstructionKind.maxHP))",
                     "Build \(Int(pendingConstructionKind.buildTime))s  \(domainLabel(for: pendingConstructionKind.domain))",
-                    pendingConstructionKind == .shipyard || pendingConstructionKind == .coastalBattery ? "Needs coast tile" : "Needs base/flag coverage",
+                    pendingConstructionKind == .shipyard || pendingConstructionKind == .sonarBuoy || pendingConstructionKind == .coastalBattery ? "Needs coast tile" : "Needs base/flag coverage",
                     pendingConstructionKind == .oilDerrick ? "Requires oil field" : "Requires visible ground"
                 ]
             )
@@ -2798,6 +2843,9 @@ final class GameScene: SKScene {
             }
             if entity.kind == .radarOutpost {
                 return "Radar vision \(entity.kind.visionTiles)  SCAN asset"
+            }
+            if entity.kind == .sonarBuoy {
+                return "Sonar detector  No SCAN"
             }
             if entity.kind == .guardTower {
                 return "Land/Air defense  No naval"
@@ -3893,7 +3941,7 @@ final class GameScene: SKScene {
             return nil
         }
 
-        if kind == .shipyard || kind == .coastalBattery {
+        if kind == .shipyard || kind == .sonarBuoy || kind == .coastalBattery {
             guard isCoastal(tile) else { return "\(kind.displayName) must be placed on coast." }
         } else {
             guard isLand(tile) else { return "Structure requires clear land." }
@@ -5252,6 +5300,9 @@ final class GameScene: SKScene {
         if target.kind == .radarOutpost {
             score += 90
         }
+        if target.kind == .sonarBuoy {
+            score += 96
+        }
         if target.kind == .guardTower {
             score += 110
         }
@@ -5427,6 +5478,8 @@ final class GameScene: SKScene {
             560
         case .radarOutpost:
             620
+        case .sonarBuoy:
+            600
         case .helicopter:
             540
         case .aaTruck:
@@ -5486,7 +5539,7 @@ final class GameScene: SKScene {
 
     private func primaryTarget(for faction: Faction) -> GameEntity? {
         let enemyFaction: Faction = faction == .enemy ? .player : .enemy
-        let priorities: [EntityKind] = [.hq, .oilDerrick, .shipyard, .airfield, .barracks, .coastalBattery, .samSite, .guardTower, .radarOutpost, .carrier, .battleship]
+        let priorities: [EntityKind] = [.hq, .oilDerrick, .shipyard, .airfield, .barracks, .coastalBattery, .samSite, .guardTower, .sonarBuoy, .radarOutpost, .carrier, .battleship]
         for kind in priorities {
             if let target = entities.values.first(where: { $0.faction == enemyFaction && $0.kind == kind && $0.isAlive && isKnownToFaction($0, observer: faction) }) {
                 return target
@@ -5590,6 +5643,7 @@ final class GameScene: SKScene {
         return entities.values.contains { sensor in
             sensor.faction == observer &&
             sensor.isAlive &&
+            (!sensor.kind.isStructure || sensor.isOperational) &&
             sensor.kind.hasSonar &&
             sensor.node.position.distance(to: submarine.node.position) <= sonarRange(for: sensor.kind)
         }
@@ -5605,6 +5659,8 @@ final class GameScene: SKScene {
             210
         case .helicopter:
             185
+        case .sonarBuoy:
+            300
         default:
             0
         }
