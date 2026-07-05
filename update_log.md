@@ -1141,3 +1141,42 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，单选 Battleship / Submarine / Carrier / Helicopter / active Sonar Buoy、多选多个 sonar sensor、未完工 Sonar Buoy 不显示覆盖圈、施工完成后显示覆盖圈、敌方 sensor 不显示覆盖圈、取消选择 / 死亡 / SKRM 重开不残留、以及覆盖圈在迷雾和单位层级下的清晰度仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续扩展 Sonar Buoy 平衡 / 升级、AI 编队比例、高价值老兵保护或更完整的海军 / 航母机制，但这些不属于 v3.4。
+
+### v3.5 / 收紧 AI 侦察反潜目标
+
+日期：2026-07-05
+
+核心变更：
+
+- Red AI 的 `enemyReconSupportPoint()` 不再读取 Red 未知玩家潜艇的真实坐标来投放 `SCAN`。
+- Red `SCAN` 精确反潜目标只来自 Red 已知玩家潜艇；已知条件复用 `isKnownPlayerSubmarineThreat(_:)`，同时要求 `isKnownToFaction(..., observer: .enemy)` 和 Red 单位 / 已完工建筑 / 已占旗点视野边界。
+- 没有已知玩家潜艇时，Red 只能从己方 active sonar sensor 或已占旗点周边生成水域 / 海岸巡扫热点；找不到合法热点时不释放 `SCAN`，不会回退到隐藏潜艇坐标。
+- 新增 `enemyReconKnownSubmarineScore(_:)`、`enemyReconPatrolHotspot()`、`enemyReconPatrolHotspotCandidates()`、`enemyReconPatrolAnchors()` 和 `enemyReconHotspotCandidates(around:)`，只使用 Red 自身 anchor 和地图地形生成巡扫点。
+- 本轮没有改变 `sonarRange(for:)`、`isSubmarineDetected(...)`、`revealedUntil`、`SCAN` 半径 / 持续时间 / 费用 / 冷却 / 资产需求、玩家 `SCAN`、AI ASW 生产、伤害、单位数值或建筑规则。
+- README、flow、flowchart 和 v3.5 Agent A 提示词已同步当前真实行为。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v3（海战反潜）/v3.5（收紧AI侦察反潜目标）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`018c0a0020739f40bfe118c229f52e81cc5ce4b3`，commit subject 为 `v3.5: 收紧AI侦察反潜目标`。
+- Agent A 子 agent 生成 v3.5 实现提示词；候选目标子 agent 首推该 AI 侦察公平性修复；声呐 / 潜艇入口定位子 agent 标出 `isKnownToFaction(...)`、`isSubmarineDetected(...)`、`fire(...)` 和 AI ASW 语义边界；diff reviewer 返回 `No issues`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `018c0a0020739f40bfe118c229f52e81cc5ce4b3`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28735429615`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v3.5-main-018c0a002073-run28735429615-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28735429615/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=018c0a0020739f40bfe118c229f52e81cc5ce4b3`、`runId=28735429615`、`runAttempt=1`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Red 已知玩家潜艇时 `SCAN` 精确落点、Red 未知玩家潜艇时只做己方旗点 / sonar 周边巡扫、隐藏玩家潜艇不被真实坐标点名、Fighter 不被当作 sonar anchor、未完工 Sonar Buoy 不参与巡扫 anchor、以及 Easy / Normal / Hard 下 `SCAN` 使用频率仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续扩展 AI 编队比例、高价值老兵保护、Sonar Buoy 平衡 / 升级或更完整的海军 / 航母机制，但这些不属于 v3.5。
