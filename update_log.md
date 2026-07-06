@@ -1965,3 +1965,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，`RLY` pending 面板在真实设备 HUD 宽度下的 land/air/naval 与 set/unset 文案可读性，以及多来源 rally 设置时的触感，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做支援目标面板资产状态、航母生产来源提示、航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级或更多地图目标，但这些不属于 v4.15。
+
+### v4.16 / 支援目标面板资产状态
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家点击 `SCAN`、`REPR`、`AIRS` 或 `BARR` 并进入 support pending 后，选择信息面板的资产行现在显示真实资产状态。
+- 资产满足时显示 `Asset ready: HQ/RAD`、`Asset ready: HQ/MECH`、`Asset ready: AF/CV` 或 `Asset ready: BB/CV`；资产不满足时显示对应 `Need ...` 文案。
+- 资产状态复用 `hasOperationalSupportAsset(for:faction:)` 的现有 operational asset 口径，不在 HUD helper 中重写资产搜索规则。
+- 本轮只增强 pending support 目标面板的只读文案，没有改变 `supportIssue`、支援费用、冷却、资产需求、`selectSupportPower`、`executeSupportPower`、AI、迷雾、潜艇暴露、支援效果、pending 行为或按钮 subtitle / layout。
+- README、flow、flowchart 和 v4.16 Agent A 提示词已同步当前真实行为，未宣称新增支援能力、资产需求变化、按钮禁用、费用变化、冷却变化或 AI 新能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.16（支援目标面板资产状态）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`54c51214312ea85426f89a0f82fffeb8daff2183`，commit subject 为 `v4.16: 增强支援目标面板资产状态`。
+- diff reviewer 返回 `No issues`，确认 support pending 面板资产行通过 `hasOperationalSupportAsset(for:faction:)` 判断并显示 `Asset ready` / `Need`，未改变 `supportIssue`、费用、冷却、资产需求、`selectSupportPower`、`executeSupportPower`、AI、fog、submarine reveal、support effects、pending 行为或按钮 subtitle / layout，文档未夸大；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `54c51214312ea85426f89a0f82fffeb8daff2183`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28765877621`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.16-main-54c51214312e-run28765877621-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28765877621/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=54c51214312ea85426f89a0f82fffeb8daff2183`、`runId=28765877621`、`runAttempt=1`、`version=v4.16`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，support pending 面板在真实设备 HUD 宽度下的 `Asset ready` / `Need` 文案可读性，以及支援进入 pending 后资产状态与按钮 subtitle 的一致理解，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母生产来源提示、航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.16。
