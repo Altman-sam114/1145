@@ -2557,6 +2557,11 @@ final class GameScene: SKScene {
                 return "need AF/CV"
             }
             return "\(source.kind.shortCode) $\(kind.cost)"
+        case .battleship, .submarine, .carrier:
+            guard let source = productionSource(for: kind, faction: .player) else {
+                return "need SY"
+            }
+            return "\(source.kind.shortCode) $\(kind.cost)"
         default:
             return "$\(kind.cost)"
         }
