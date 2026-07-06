@@ -3091,6 +3091,9 @@ final class GameScene: SKScene {
         if entity.holdPosition != nil {
             return "Holding position  Guard \(Int(holdEngagementRadius))"
         }
+        if let repairSource = damagedMobileRepairSourceLine(for: entity) {
+            return repairSource
+        }
         return nil
     }
 
@@ -3111,6 +3114,33 @@ final class GameScene: SKScene {
                 target.hp < target.kind.maxHP &&
                 target.node.position.distance(to: mechanic.node.position) < mechanicRepairRange
         }.count
+    }
+
+    private func damagedMobileRepairSourceLine(for entity: GameEntity) -> String? {
+        guard entity.faction == .player,
+              entity.isAlive,
+              !entity.kind.isStructure,
+              entity.kind != .mechanic,
+              entity.hp < entity.kind.maxHP else { return nil }
+
+        guard let distance = nearestFriendlyMechanicDistance(for: entity) else {
+            return "Need MECH"
+        }
+        if distance < mechanicRepairRange {
+            return "MECH in range"
+        }
+        return "Need MECH  \(Int(distance))"
+    }
+
+    private func nearestFriendlyMechanicDistance(for entity: GameEntity) -> CGFloat? {
+        entities.values
+            .filter { mechanic in
+                mechanic.faction == entity.faction &&
+                    mechanic.isAlive &&
+                    mechanic.kind == .mechanic
+            }
+            .map { $0.node.position.distance(to: entity.node.position) }
+            .min()
     }
 
     private func groupVeterancyLine(for selected: [GameEntity]) -> String {
