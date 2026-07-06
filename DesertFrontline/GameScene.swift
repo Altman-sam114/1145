@@ -3115,7 +3115,23 @@ final class GameScene: SKScene {
         if entity.revealedUntil > lastUpdateTime {
             return "Temporary detected \(Int(ceil(entity.revealedUntil - lastUpdateTime)))s"
         }
+        if entity.faction == .player {
+            return isCoveredByKnownEnemySonar(entity) ? "Known sonar contact" : "Stealth / no known contact"
+        }
         return "Stealth while undetected"
+    }
+
+    private func isCoveredByKnownEnemySonar(_ submarine: GameEntity) -> Bool {
+        guard submarine.kind == .submarine,
+              submarine.faction == .player,
+              submarine.isAlive else { return false }
+
+        return entities.values.contains { sensor in
+            sensor.faction == .enemy &&
+                isActiveSonarSensor(sensor) &&
+                isKnownToFaction(sensor, observer: .player) &&
+                sensor.node.position.distance(to: submarine.node.position) <= sonarRange(for: sensor.kind)
+        }
     }
 
     private func damagedRepairTargetCount(for mechanic: GameEntity) -> Int {
