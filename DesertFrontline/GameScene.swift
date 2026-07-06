@@ -2999,15 +2999,24 @@ final class GameScene: SKScene {
     private func carrierAirWingLine(for entity: GameEntity) -> String? {
         guard entity.kind == .carrier else { return nil }
         let requirement = 2
-        let nearby = nearbyCarrierAirWingCount(for: entity)
-        let missing = max(0, requirement - nearby)
+        let nearbyWing = nearbyCarrierAirWing(for: entity)
+        let isGuarding = entity.holdPosition != nil
+        let count = isGuarding
+            ? nearbyWing.filter { $0.holdPosition != nil }.count
+            : nearbyWing.count
+        let missing = max(0, requirement - count)
+        let label = isGuarding ? "Guard wing" : "Wing"
         if missing > 0 {
-            return "Wing \(nearby)/\(requirement) Need \(missing)"
+            return "\(label) \(count)/\(requirement) Need \(missing)"
         }
-        return "Wing \(nearby)/\(requirement) OK"
+        return "\(label) \(count)/\(requirement) OK"
     }
 
     private func nearbyCarrierAirWingCount(for entity: GameEntity) -> Int {
+        nearbyCarrierAirWing(for: entity).count
+    }
+
+    private func nearbyCarrierAirWing(for entity: GameEntity) -> [GameEntity] {
         entities.values.filter { wing in
             wing.faction == entity.faction &&
                 wing.isAlive &&
@@ -3015,7 +3024,7 @@ final class GameScene: SKScene {
                 !wing.kind.isStructure &&
                 (wing.kind == .helicopter || wing.kind == .fighter) &&
                 wing.node.position.distance(to: entity.node.position) <= highValueNavalEscortRadius
-        }.count
+        }
     }
 
     private func highValueNavalEscortRequirement(for kind: EntityKind) -> Int? {
@@ -4662,11 +4671,28 @@ final class GameScene: SKScene {
             unit.destination = nil
             unit.path.removeAll()
         }
+        let guardWingCount = assignCarrierGuardWing(for: mobileUnits.filter { $0.kind == .carrier })
 
         refreshSelection()
         showHoldMarker(at: center)
         updateHUD()
-        showMessage("Hold position: \(mobileUnits.count) units guarding.", color: UIColor(red: 0.78, green: 1.0, blue: 0.58, alpha: 1.0))
+        let guardWingSuffix = guardWingCount > 0 ? " Guard wing \(guardWingCount)." : ""
+        showMessage("Hold position: \(mobileUnits.count) units guarding.\(guardWingSuffix)", color: UIColor(red: 0.78, green: 1.0, blue: 0.58, alpha: 1.0))
+    }
+
+    private func assignCarrierGuardWing(for carriers: [GameEntity]) -> Int {
+        var assignedWingIDs = Set<Int>()
+        for carrier in carriers where carrier.faction == .player && carrier.isAlive {
+            for wing in nearbyCarrierAirWing(for: carrier) where !assignedWingIDs.contains(wing.id) {
+                wing.holdPosition = wing.node.position
+                wing.attackMoveDestination = nil
+                wing.attackTarget = nil
+                wing.destination = nil
+                wing.path.removeAll()
+                assignedWingIDs.insert(wing.id)
+            }
+        }
+        return assignedWingIDs.count
     }
 
     private func issueFormationMove(to point: CGPoint, units: [GameEntity], showMarkers: Bool, showFeedback: Bool, attackMove: Bool = false) {
