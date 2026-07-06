@@ -3008,7 +3008,14 @@ final class GameScene: SKScene {
         let count = isGuarding ? guardWing.count : nearbyWing.count
         let missing = max(0, requirement - count)
         let label = isGuarding ? "Guard wing" : "Wing"
-        let contactSuffix = isGuarding ? "  Ctc \(carrierGuardContactCount(for: entity, guardWing: guardWing))" : ""
+        let contactSuffix: String
+        if isGuarding {
+            let contactSummary = carrierGuardContactSummary(for: entity, guardWing: guardWing)
+            let typeSuffix = contactSummary.type.map { " \($0)" } ?? ""
+            contactSuffix = "  Ctc \(contactSummary.count)\(typeSuffix)"
+        } else {
+            contactSuffix = ""
+        }
         if missing > 0 {
             return "\(label) \(count)/\(requirement) Need \(missing)\(contactSuffix)"
         }
@@ -3021,15 +3028,40 @@ final class GameScene: SKScene {
         }
     }
 
-    private func carrierGuardContactCount(for carrier: GameEntity, guardWing: [GameEntity]) -> Int {
+    private func carrierGuardContactSummary(for carrier: GameEntity, guardWing: [GameEntity]) -> (count: Int, type: String?) {
         var contactIDs = Set<Int>()
+        var contactTypes = Set<String>()
         for wing in guardWing {
             guard let holdPosition = wing.holdPosition else { continue }
             for target in entities.values where isCarrierGuardContact(target, for: wing, carrier: carrier, holdPosition: holdPosition) {
-                contactIDs.insert(target.id)
+                if contactIDs.insert(target.id).inserted {
+                    contactTypes.insert(carrierGuardContactType(for: target))
+                }
             }
         }
-        return contactIDs.count
+        let type: String?
+        if contactIDs.isEmpty {
+            type = nil
+        } else if contactTypes.count == 1 {
+            type = contactTypes.first
+        } else {
+            type = "Mix"
+        }
+        return (contactIDs.count, type)
+    }
+
+    private func carrierGuardContactType(for target: GameEntity) -> String {
+        if target.kind == .submarine {
+            return "Sub"
+        }
+        switch target.kind.domain {
+        case .air:
+            return "Air"
+        case .naval:
+            return "Sea"
+        case .land, .structure:
+            return "Ground"
+        }
     }
 
     private func nearbyCarrierAirWingCount(for entity: GameEntity) -> Int {
