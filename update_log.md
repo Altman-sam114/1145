@@ -2460,3 +2460,39 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `WF $cost` 与 `need WF` 的可读性、War Factory 施工完成前后的按钮切换、资金不足但有来源时的文案和点击拒绝，以及空军 / 海军来源提示不回归，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做潜艇声呐接触状态、支援资金不足提示、航母 CAP / 巡逻、航母护航命令或更多地图目标，但这些不属于 v4.28。
+
+### v4.29 / 支援按钮资金不足提示
+
+日期：2026-07-06
+
+核心变更：
+
+- `SCAN` / `REPR` / `AIRS` / `BARR` 支援按钮在未冷却、支援资产满足但玩家资金不足时，现在显示短缺金额，文案为 `need $shortfall`。
+- 支援按钮显示优先级保持为冷却秒数、具体缺失资产短码、资金短缺金额、价格；缺资产时仍显示 `need HQ/RAD`、`need HQ/MECH`、`need AF/CV` 或 `need BB/CV`。
+- 本轮只增强 HUD 只读文案，没有改变 `supportIssue(for:faction:)`、`selectSupportPower(_:)`、`executeSupportPower(...)`、支援费用、冷却、资产需求、半径、伤害、维修量、AI 支援使用、pending、目标合法性、迷雾、任务、胜负或 `SKRM` 重置。
+- README、flow、flowchart 和 v4.29 Agent A 提示词已同步当前真实行为，未宣称按钮禁用、规则变化、资金预扣或 AI 新能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.29（支援按钮资金不足提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`792173aba73f2b4b8b28ff73bf4acffb9f5b42e1`，commit subject 为 `v4.29: 支援按钮资金不足提示`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `792173aba73f2b4b8b28ff73bf4acffb9f5b42e1`。
+- GitHub Actions：run `28778944403`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.29-main-792173aba73f-run28778944403-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28778944403/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=792173aba73f2b4b8b28ff73bf4acffb9f5b42e1`、`runId=28778944403`、`runAttempt=1`、`version=v4.29`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `need $shortfall` 的可读性、缺资产且缺钱时仍优先显示具体资产、资产满足但资金跨过费用阈值时的文案切换，以及点击资金不足支援仍保持原有拒绝反馈，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做潜艇声呐接触状态、航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级或更多地图目标，但这些不属于 v4.29。
