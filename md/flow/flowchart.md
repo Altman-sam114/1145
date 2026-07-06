@@ -13,7 +13,7 @@ flowchart TD
   Holder --> Scene["GameScene.didMove\n初始化世界节点、地图、实体、HUD、相机"]
   Scene --> Init["初始化链路\n地形 -> 地图 -> 控制点 -> 初始部队 -> HUD -> 迷雾"]
   Init --> Loop["GameScene.update 每帧循环\n统一推进游戏状态"]
-  Loop --> Build["施工 / 生产\n建筑进度、RAD/SON/GT/SAM/CB、AA Truck、旗点覆盖、BuildOrder、出兵、航母甲板起飞反馈、集结点"]
+  Loop --> Build["施工 / 生产\n建筑进度、RAD/SON/GT/SAM/CB、AA Truck、旗点覆盖、BuildOrder、出兵、航母甲板起飞反馈、集结点与面板状态"]
   Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖、旗点奖金与占领进度"]
   Loop --> Commands["移动 / 命令\n普通移动、HOLD、AMOV、已知HQ指引和面板摘要、路径和编队"]
   Loop --> Combat["战斗 / 维修\n未完工攻击结构禁火、SAM/AA 防空、岸防反舰、目标搜索、有效伤害、航母 wing strike 反馈、已知潜艇 direct-fire ASW HIT 反馈、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
@@ -26,7 +26,7 @@ flowchart TD
   Combat --> Render
   AI --> Render
   Fog --> Render
-  Mission --> HUD["HUD / 小地图\n金钱、队列、选择/反潜/声呐信息、声呐覆盖圈、任务、命令高亮、相机框"]
+  Mission --> HUD["HUD / 小地图\n金钱、队列、航母甲板/集结状态、选择/反潜/声呐信息、声呐覆盖圈、任务、命令高亮、相机框"]
   Render --> HUD
 ```
 

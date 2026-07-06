@@ -2839,7 +2839,10 @@ final class GameScene: SKScene {
             rows[3] = structureStatusLine(for: entity)
         } else {
             rows[3] = veterancyProgressLine(for: entity)
-            if let status = mobileStatusLine(for: entity) {
+            if entity.kind == .carrier {
+                rows[2] = carrierDeckCapabilityLine()
+                rows[3] = carrierDeckQueueAndRallyLine(for: entity)
+            } else if let status = mobileStatusLine(for: entity) {
                 rows[2] = "\(rows[2])  \(compactVeterancyLine(for: entity))"
                 rows[3] = status
             }
@@ -2849,6 +2852,20 @@ final class GameScene: SKScene {
         }
 
         return ("\(entity.kind.displayName) \(entity.kind.shortCode)", rows)
+    }
+
+    private func carrierDeckCapabilityLine() -> String {
+        "Deck builds Helicopter/Fighter"
+    }
+
+    private func carrierDeckQueueAndRallyLine(for entity: GameEntity) -> String {
+        let rally = entity.rallyPoint == nil ? "Rally unset" : "Rally set"
+        let orders = buildOrders.filter { $0.sourceID == entity.id }
+        guard let active = orders.first else {
+            return "\(rally)  Queue idle"
+        }
+        let suffix = orders.count > 1 ? " +\(orders.count - 1)" : ""
+        return "\(rally)  Queue \(active.kind.shortCode) \(Int(ceil(active.remaining)))s\(suffix)"
     }
 
     private func groupSelectionInfo(for selected: [GameEntity]) -> (title: String, rows: [String]) {
