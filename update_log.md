@@ -1737,3 +1737,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，恢复后的 `AMOV` 按钮在真机触摸尺寸、1366 固定场景缩放和较窄设备 aspect-fill 显示下的实际手感仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.9。
+
+### v4.10 / AMOV 终局目标面板
+
+日期：2026-07-06
+
+核心变更：
+
+- `AMOV` armed 且当前任务阶段为 `Destroy Red HQ` 时，选择信息面板现在会在 Red HQ 满足 `playerKnownEnemyHQ()` 的同一合法认知边界下显示终局目标摘要。
+- 终局目标摘要保持 4 行：选中玩家存活机动作战单位数量、Red HQ 当前 / 最大 HP、最近选中作战单位到 Red HQ 的 approximate 直线距离或 `Select combat units`、以及 `Tap map to push formation`。
+- Red HQ 未知或非终局阶段时，`AMOV` armed 面板保持通用 attack-move 文案，不显示隐藏 HQ 的 HP、位置、距离或路线。
+- 本轮只新增选择面板文案 helper，没有改变 `handleHudAction(.attackMove)`、`issueAttackMoveOrder(...)`、地图点击下令、编队、沿途交战、AI、战斗、胜负、迷雾、潜艇侦测或支援技能。
+- README、flow、flowchart 和 v4.10 Agent A 提示词已同步当前真实行为，未宣称自动攻击、路径距离、ETA、新任务奖励、新 AI 能力或 HUD 重做。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.10（AMOV终局目标面板）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查或本机构建作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`203858e03e2ce7bbd1a57863c440eb67cca23dce`，commit subject 为 `v4.10: 增强AMOV终局目标面板`。
+- diff reviewer 返回 `No issues`，确认未发现迷雾泄露、AMOV 命令语义改变、README / flow 夸大或明显 Swift 编译风险；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `203858e03e2ce7bbd1a57863c440eb67cca23dce`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28760150087`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.10-main-203858e03e2c-run28760150087-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28760150087/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=203858e03e2ce7bbd1a57863c440eb67cca23dce`、`runId=28760150087`、`runAttempt=1`、`version=v4.10`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试或本地静态检查；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，终局 Red HQ 已知 / 未知时 `AMOV` armed 面板切换、nearest approximate 距离在真实地图尺度下是否足够可读、以及玩家点击地图推进时的终局操作节奏仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.10。
