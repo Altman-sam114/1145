@@ -2649,3 +2649,43 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 Carrier rally / queue 行追加 `Wing x/2 OK` 或 `Wing x/2 Need n` 后的可读性，以及 HEL/JET 进出航母半径时的文案切换，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续把本轮 wing readiness 扩展为航母 CAP / 巡逻的第一条真实命令链，或继续做 Sonar Buoy 升级、潜艇战术反馈深化或更多地图目标，但这些不属于 v4.33。
+
+### v4.34 / 航母 HOLD 空中警戒翼队
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家对选中 Carrier 下达 `HOLD` 时，Carrier 本身仍按普通 HOLD 记录当前位置并进入警戒。
+- 同一次 HOLD 会把附近同阵营、存活、operational、非结构、位于 `highValueNavalEscortRadius` 内的 Helicopter / Fighter 一次性设为 guard wing。
+- guard wing 不新增独立状态机或 Carrier 绑定，只把相关 HEL/JET 的 `holdPosition` 设置为飞机当前位置，并清理原攻击目标、attack-move、destination 和 path，复用现有 HOLD 警戒、交战和回位链路。
+- Carrier 单选 HUD 未 HOLD 时继续显示 `Wing x/2 OK` 或 `Wing x/2 Need n` readiness；Carrier HOLD 时改为只统计附近已 HOLD 的 HEL/JET，并显示 `Guard wing x/2 OK` 或 `Guard wing x/2 Need n`。
+- HOLD 反馈消息会在实际分配到 guard wing 时追加 `Guard wing n.`。
+- 本轮没有实现 CAP、巡逻、自动跟随、拦截、自动起飞、新 HUD action、AI 航母策略、战斗加成、生产来源变化、集结点变化、声呐/潜艇隐身变化、任务或胜负变化。
+- README、flow、flowchart 和 v4.34 Agent A 提示词已同步当前真实行为，未宣称未实现的自动护航能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.34（航母HOLD空中警戒翼队）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`fb8a0c0a4d52dc46b1948314ded57b83607ec0cf`，commit subject 为 `v4.34: 航母HOLD空中警戒翼队`。
+- diff reviewer 首轮发现 `nearbyCarrierAirWing(for:)` 返回类型与残留 `.count` 不一致的 Swift 类型错误；已修复后，二审返回 `No issues`。两个 reviewer 均未运行本地测试、构建、静态检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `fb8a0c0a4d52dc46b1948314ded57b83607ec0cf`。
+- GitHub Actions：run `28789672979`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.34-main-fb8a0c0a4d52-run28789672979-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28789672979/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=fb8a0c0a4d52dc46b1948314ded57b83607ec0cf`、`runId=28789672979`、`runAttempt=1`、`version=v4.34`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Guard wing x/2 OK` / `Need n` 的可读性、HOLD 航母时附近 HEL/JET 被正确设为警戒、后续单独移动/AMOV/攻击可自然脱离 HOLD、以及多艘 Carrier 半径重叠时的 guard wing 分配体验，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续在本轮 guard wing 基础上设计真正 CAP / 巡逻 / 截击或航母翼队 UI，但这些不属于 v4.34。
