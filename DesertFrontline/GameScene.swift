@@ -2999,7 +2999,12 @@ final class GameScene: SKScene {
 
     private func highValueNavalEscortLine(for entity: GameEntity) -> String? {
         guard let requirement = highValueNavalEscortRequirement(for: entity.kind) else { return nil }
-        return "Escort \(nearbyNavalEscortCount(for: entity))/\(requirement)"
+        let nearby = nearbyNavalEscortCount(for: entity)
+        let missing = max(0, requirement - nearby)
+        if missing > 0 {
+            return "Escort \(nearby)/\(requirement) Need \(missing)"
+        }
+        return "Escort \(nearby)/\(requirement) OK"
     }
 
     private func nearbyNavalEscortCount(for entity: GameEntity) -> Int {
