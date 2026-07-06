@@ -1889,3 +1889,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，支援按钮在实际设备 HUD 宽度下显示 `need asset` 的可读性，以及四个支援按钮在资产缺失 / 冷却 / 可用三态之间切换的触感，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.13。
+
+### v4.14 / 海岸资产职责面板
+
+日期：2026-07-06
+
+核心变更：
+
+- 单选 Shipyard、Sonar Buoy 或 Coastal Battery 时，选择信息面板现在显示对应海岸资产职责摘要。
+- Shipyard 显示 `Builds BB/SUB/CV`，operational 时同一行附带短队列 / rally 状态；这只是文案压缩，不改变生产来源、队列、rally 或 AI。
+- Sonar Buoy 显示 `Coastal sonar  No SCAN`，继续明确它不是 `SCAN` 支援资产；Coastal Battery 显示 `Coastal anti-ship  No sonar`，继续明确它不提供声呐。
+- 新增 `Secure Coast: counted/pending/not counted` 单体状态；只有 Blue 存活且 operational 的三类海岸资产显示 counted，未完工 Blue 显示 pending，非 Blue 显示 not counted。
+- 本轮只增强 selection info 文案，没有改变 `Secure Coast` 完成条件、任务奖励、`coastalAssetBreakdown(for:)`、建造、生产、sonar、战斗、支援、AI、迷雾、胜负或 HUD 布局。
+- README、flow、flowchart 和 v4.14 Agent A 提示词已同步当前真实行为，未宣称新增建筑能力、新任务系统、新奖励、新 AI 能力或新 sonar / combat 规则。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.14（海岸资产职责面板）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`7a3c320bb40dcabe29a321d5caf2a5ce4858c69a`，commit subject 为 `v4.14: 增强海岸资产职责面板`。
+- diff reviewer 返回 `No issues`，确认单选 Shipyard / Sonar Buoy / Coastal Battery 显示职责和 `Secure Coast` 状态，未改任务计数、建造、生产、sonar、战斗、支援、AI 或迷雾，Shipyard 队列仍可读，Sonar Buoy 保留 `No SCAN`，Coastal Battery 保留 `No sonar`，文档未夸大；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `7a3c320bb40dcabe29a321d5caf2a5ce4858c69a`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28764079979`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.14-main-7a3c320bb40d-run28764079979-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28764079979/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=7a3c320bb40dcabe29a321d5caf2a5ce4858c69a`、`runId=28764079979`、`runAttempt=1`、`version=v4.14`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，三类海岸资产单选面板在真实设备 HUD 宽度下的短文案可读性，以及 `counted/pending/not counted` 对玩家的理解度，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做支援目标面板资产状态、集结点 pending 摘要、航母生产来源提示、航母 CAP / 巡逻、航母护航行为或更多地图目标，但这些不属于 v4.14。
