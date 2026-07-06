@@ -2777,7 +2777,7 @@ final class GameScene: SKScene {
                     pendingSupportPower.repairAmount > 0
                         ? "Radius \(Int(pendingSupportPower.radius))  Repair \(Int(pendingSupportPower.repairAmount))"
                         : "Radius \(Int(pendingSupportPower.radius))  Dmg \(Int(pendingSupportPower.damage))",
-                    supportAssetLine(for: pendingSupportPower)
+                    supportAssetLine(for: pendingSupportPower, faction: .player)
                 ]
             )
         }
@@ -3109,16 +3109,24 @@ final class GameScene: SKScene {
         return "Queue \(summary)"
     }
 
-    private func supportAssetLine(for power: SupportPower) -> String {
+    private func supportAssetLine(for power: SupportPower, faction: Faction) -> String {
+        let requirement = supportAssetRequirementLabel(for: power)
+        if hasOperationalSupportAsset(for: power, faction: faction) {
+            return "Asset ready: \(requirement)"
+        }
+        return "Need \(requirement)"
+    }
+
+    private func supportAssetRequirementLabel(for power: SupportPower) -> String {
         switch power {
         case .reconSweep:
-            return "Needs HQ or RAD"
+            return "HQ/RAD"
         case .fieldRepair:
-            return "Needs HQ or Mechanic"
+            return "HQ/MECH"
         case .airStrike:
-            return "Needs Airfield or CV"
+            return "AF/CV"
         case .navalBarrage:
-            return "Needs Battleship or CV"
+            return "BB/CV"
         }
     }
 
