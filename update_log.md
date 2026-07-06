@@ -2610,3 +2610,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `HV Navy x/y escorted  Need n Air/Sea/Ground/Mix` 的可读性，以及多艘高价值海军不同缺口类型汇总为 `Mix` 的场景，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、潜艇战术反馈深化或更多地图目标，但这些不属于 v4.32。
+
+### v4.33 / 航母空中翼队状态提示
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家单选 Carrier 时，选择信息面板的 rally / queue 行现在追加附近友方 HEL/JET 空中翼队 readiness。
+- 翼队状态统计同阵营、存活、operational、非结构、kind 为 Helicopter 或 Fighter、距离 Carrier 不超过 `highValueNavalEscortRadius` 的单位。
+- 达标时显示 `Wing x/2 OK`，不足时显示 `Wing x/2 Need n`。
+- 本轮只增强 Carrier 单选 HUD 只读文案，没有实现 CAP、巡逻、自动护航、follow、拦截、自动起飞、命令队列或新 HUD action。
+- 本轮没有改变 Carrier 生产、deck launch、rally、air source hint、BuildOrder、queueBuild、高价值海军 escort 统计、AI 护航门槛、attack-move wave、玩家命令、移动、战斗、支援、迷雾、声呐、任务、胜负或 `SKRM` 重置。
+- README、flow、flowchart 和 v4.33 Agent A 提示词已同步当前真实行为，未宣称 CAP、巡逻、自动护航、拦截、战斗加成或新命令。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.33（航母空中翼队状态提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`13eb2de0a411a2b98e8c2c6f1ddbef551c274505`，commit subject 为 `v4.33: 航母空中翼队状态提示`。
+- diff reviewer 返回 `No issues`，确认本轮只做只读静态 review，未改文件、未运行测试 / 构建 / 本地检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `13eb2de0a411a2b98e8c2c6f1ddbef551c274505`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28788465753`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.33-main-13eb2de0a411-run28788465753-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28788465753/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=13eb2de0a411a2b98e8c2c6f1ddbef551c274505`、`runId=28788465753`、`runAttempt=1`、`version=v4.33`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 Carrier rally / queue 行追加 `Wing x/2 OK` 或 `Wing x/2 Need n` 后的可读性，以及 HEL/JET 进出航母半径时的文案切换，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续把本轮 wing readiness 扩展为航母 CAP / 巡逻的第一条真实命令链，或继续做 Sonar Buoy 升级、潜艇战术反馈深化或更多地图目标，但这些不属于 v4.33。
