@@ -2231,3 +2231,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Sonar 340 Ctc n` 文案的可读性，以及已知 / 未知敌方潜艇不会被 contact count 泄露的实战场景，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.22。
+
+### v4.23 / Mechanic 维修选择反馈
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家单选 Mechanic 时，选择信息面板现在显示自动维修范围和范围内己方受损可修目标数，文案为 `Repair 95  Damaged n`。
+- 玩家选中 Mechanic 时，战场显示独立绿色维修范围圈；多选多个玩家 Mechanic 时可同时显示多个圈。
+- 新增 `repairCoverageNode`，与 `sonarCoverageNode` 和 `escortCoverageNode` 分离；范围圈只由选择状态派生，未选中、敌方 Mechanic、非 Mechanic 不显示。
+- 将 Mechanic 自动维修范围和维修速度抽为私有常量，数值仍为范围 95、每秒 22；`updateRepair(dt:)` 仍保持同阵营、存活、非自身、受损目标的最近目标选择与 `< 95` 范围语义。
+- 本轮只增强 HUD / selection-derived visual，没有改变 Field Repair 支援、AI 生产 / 回修 / `REPR` 评分、移动、战斗、迷雾、潜艇侦测、声呐、护航、任务、胜负或 `SKRM` 重置。
+- README、flow、flowchart 和 v4.23 Agent A 提示词已同步当前真实行为，未宣称新增手动维修命令、维修升级、AI 新策略或规则变化。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.23（Mechanic维修选择反馈）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`dd2524d3c4c78af1531cf79246d5dbb078f7ab9c`，commit subject 为 `v4.23: 增强Mechanic维修选择反馈`。
+- diff reviewer 返回 `No issues`，确认 `updateRepair` 行为保持范围 95、维修量 22/s、候选过滤和 `<` 比较语义；damaged count 只读且与候选口径一致；维修范围圈只在选中玩家 Mechanic 时显示，未影响 fog、AI、support、combat 或 targeting；文档未夸大为手动维修或规则变化。该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `dd2524d3c4c78af1531cf79246d5dbb078f7ab9c`。
+- GitHub Actions：run `28770957347`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.23-main-dd2524d3c4c7-run28770957347-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28770957347/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=dd2524d3c4c78af1531cf79246d5dbb078f7ab9c`、`runId=28770957347`、`runAttempt=1`、`version=v4.23`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Repair 95  Damaged n` 文案可读性、多个 Mechanic 范围圈显示、取消选择 / 死亡 / `SKRM` 后范围圈不残留，以及 damaged count 随距离和 HP 变化，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.23。
