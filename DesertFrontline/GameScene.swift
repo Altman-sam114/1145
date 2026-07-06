@@ -2578,7 +2578,7 @@ final class GameScene: SKScene {
             return "\(Int(ceil(cooldown)))s"
         }
         if !hasOperationalSupportAsset(for: power, faction: .player) {
-            return "need asset"
+            return "need \(supportAssetRequirementLabel(for: power))"
         }
         return "$\(power.cost)"
     }
