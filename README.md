@@ -7,7 +7,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - iOS SwiftUI app shell with a full-screen SpriteKit scene.
 - Isometric desert map matching the reference's desert RTS layout: roads, ridges, coastline, water, oil fields, base clusters, desert villages, oases, farms, depots, wreckage, and fog of war.
 - Economy loop: HQ base income, capturable oil derricks, front-line flag control points with income, scout vision, limited build coverage, and one-time capture bonuses, visible money/income HUD, and AI income scaling by difficulty.
-- Production queues from War Factory, Airfield, Shipyard, and Carrier decks with selected/least-busy source routing, visible factory progress bars, factory/carrier rally points with pending source summaries, and ready pulses on the map.
+- Production queues from War Factory, Airfield, Shipyard, and Carrier decks with selected/least-busy source routing, `HELI` / `JET` button subtitles that show the current `AF` / `CV` source or `need AF/CV`, visible factory progress bars, factory/carrier rally points with pending source summaries, and ready pulses on the map.
 - Base construction from the HUD: place War Factory, Airfield, Radar Outpost, Sonar Buoy, Guard Tower, SAM Site, Coastal Battery, Shipyard, and Oil Derricks during play with a green/red placement preview, timed construction scaffolds, and visible build progress.
 - Building rules: structures require vision and nearby friendly operational structure or captured flag build coverage; Shipyards, Sonar Buoys, and Coastal Batteries require coast tiles; Oil Derricks require oil fields.
 - New structures are attackable while under construction but do not produce units, earn income, provide vision, provide support assets, extend base coverage, or fire weapons until operational.
@@ -20,7 +20,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - AA Trucks are War Factory-built mobile anti-air units that fire on visible air targets; they do not attack land, naval, submarine, or structure targets and do not provide sonar.
 - Air units: Helicopter, Fighter.
 - Naval units: Battleship, Submarine, Carrier.
-- Carriers act as mobile sea-based air platforms that can build Helicopters and Fighters, show short deck-launch cues when aircraft are produced, set air rally points, and report deck production plus rally set/unset state in the single-selection panel.
+- Carriers act as mobile sea-based air platforms that can build Helicopters and Fighters, show short deck-launch cues when aircraft are produced, set air rally points, surface `CV` as the `HELI` / `JET` button source when selected or least busy, and report deck production plus rally set/unset state in the single-selection panel.
 - Carrier wing-strike visuals, naval combat, air-to-ground/naval combat, artillery range advantage, submarine stealth, sonar detection, firing reveal pings, direct-fire ASW hit shock-ring feedback for player-known or visible submarines, and brief submarine exposure when `AIRS` or `BARR` actually hits a submarine.
 - Combat units gain veterancy XP and kill counts from direct-fire kills, progressing from Recruit through Hardened, Veteran, and Elite with light damage, attack cooldown, and vision bonuses.
 - Non-Recruit units show SpriteKit veterancy badges above the unit, and the selection panel reports rank, XP, kills, effective stats, ASW attack capability, sonar range, submarine stealth/detected state, group ASW/sonar summaries, and group veterancy distribution.
@@ -56,6 +56,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Tap the tactical minimap to move the camera.
 - Use two fingers to pan the battlefield; pinch with two fingers to zoom the tactical camera in or out.
 - Use `BASE` to cycle through War Factory, Airfield, Radar Outpost, Sonar Buoy, Guard Tower, SAM Site, Coastal Battery, Shipyard, and Oil Derrick placement, drag or tap the map to preview valid placement, then tap a valid tile to start constructing the selected structure.
+- `HELI` and `JET` subtitles show whether the next aircraft will come from an `AF` or `CV`; without an operational air source they show `need AF/CV`.
 - Use `SCAN`, `REPR`, `AIRS`, or `BARR`, then tap the map to target recon, field repair, air strike, or naval barrage support; their button subtitles show cooldown seconds first, then missing-asset hints, then price, and their target panels show `Asset ready` or `Need` for the required support asset.
 - `BASE`, `RLY`, `AMOV`, `SCAN`, `REPR`, `AIRS`, and `BARR` highlight while waiting for a map target.
 - Use `ARMY`, any unit production button, HQ focus, or AI difficulty to leave structure placement/rally modes.

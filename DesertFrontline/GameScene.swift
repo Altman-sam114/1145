@@ -2514,7 +2514,7 @@ final class GameScene: SKScene {
 
     private func subtitle(for action: HudAction) -> String {
         if let kind = action.buildKind {
-            return "$\(kind.cost)"
+            return productionButtonSubtitle(for: kind)
         }
         if let power = action.supportPower {
             return supportButtonSubtitle(for: power)
@@ -2543,6 +2543,18 @@ final class GameScene: SKScene {
             return "restart"
         default:
             return ""
+        }
+    }
+
+    private func productionButtonSubtitle(for kind: EntityKind) -> String {
+        switch kind {
+        case .helicopter, .fighter:
+            guard let source = productionSource(for: kind, faction: .player) else {
+                return "need AF/CV"
+            }
+            return "\(source.kind.shortCode) $\(kind.cost)"
+        default:
+            return "$\(kind.cost)"
         }
     }
 
