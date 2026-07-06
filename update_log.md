@@ -2890,3 +2890,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 面板中 `Ctc n Air/Sea/Sub/Ground/Mix` 的宽度、多个类型混合时显示 `Mix`、`Ctc 0` 不显示类型、隐藏潜艇不会通过 `Sub` 类型泄露。
 - 后续可继续在该接触类型提示基础上设计更明确的 CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.39。
+
+### v4.40 / 航母警戒翼队优先接触提示
+
+日期：2026-07-06
+
+核心变更：
+
+- Carrier HOLD guard wing 的单选 HUD 行在 `Ctc n` 非零时追加 `Tgt XXX`，用目标 `shortCode` 只读显示当前 guard wing 合法接触集合中的优先接触。
+- `Ctc 0` 不追加类型或 `Tgt`，避免无接触时显示伪目标。
+- `carrierGuardContactSummary(for:guardWing:)` 继续用同一循环统计去重数量和类型摘要，并新增 `targetCode` 返回值。
+- 优先接触候选只来自已通过 `isCarrierGuardContact(...)` 的 wing-target pair，继续要求目标已知、敌对、非中立、可被该 wing 攻击、位于 Carrier 近域内并满足 wing HOLD 站位警戒半径。
+- `Tgt XXX` 镜像现有优先规则：`carrierGuardTargetPriority(for:target:)` 值更小者优先，优先级相同时距离 Carrier 更近者优先，距离近似相同时 entity id 更小者优先。
+- 本轮只读增强 HUD，没有改变 `carrierGuardPriorityTarget(for:)` 的 combat 目标选择，没有写入 `attackTarget`、`destination`、`revealedUntil`、迷雾集合、命令状态、AI 评分、生产、支援、任务或胜负。
+- README、flow、flowchart 和 v4.40 Agent A 提示词已同步当前真实行为，未宣称完整 CAP / 巡逻 / 真实锁定 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.40（航母警戒翼队优先接触提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`f2d5d013b122b0885e3db690f907304bea56a76c`，commit subject 为 `v4.40: 航母警戒翼队优先接触提示`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `f2d5d013b122b0885e3db690f907304bea56a76c`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28798004734`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.40-main-f2d5d013b122-run28798004734-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28798004734/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=f2d5d013b122b0885e3db690f907304bea56a76c`、`runId=28798004734`、`runAttempt=1`、`version=v4.40`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 面板中 `Ctc n ... Tgt XXX` 的宽度、`Ctc 0` 不显示 `Tgt`、多个 wing 可攻击不同目标时 `Tgt` 与实际优先口径一致、隐藏潜艇不会通过 `Tgt SUB` 泄露。
+- 后续可继续在该优先接触提示基础上设计更明确的 CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.40。
