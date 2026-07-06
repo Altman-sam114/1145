@@ -2517,8 +2517,7 @@ final class GameScene: SKScene {
             return "$\(kind.cost)"
         }
         if let power = action.supportPower {
-            let cooldown = supportCooldown(for: .player, power: power)
-            return cooldown > 0 ? "\(Int(ceil(cooldown)))s" : "$\(power.cost)"
+            return supportButtonSubtitle(for: power)
         }
         switch action {
         case .selectArmy:
@@ -2545,6 +2544,17 @@ final class GameScene: SKScene {
         default:
             return ""
         }
+    }
+
+    private func supportButtonSubtitle(for power: SupportPower) -> String {
+        let cooldown = supportCooldown(for: .player, power: power)
+        if cooldown > 0 {
+            return "\(Int(ceil(cooldown)))s"
+        }
+        if !hasOperationalSupportAsset(for: power, faction: .player) {
+            return "need asset"
+        }
+        return "$\(power.cost)"
     }
 
     private func updateHUD() {
