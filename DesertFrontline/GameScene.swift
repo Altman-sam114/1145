@@ -2849,6 +2849,7 @@ final class GameScene: SKScene {
             }
             rows[2] = entity.isOperational ? "Operational  \(domainLabel(for: entity.kind.domain))" : "Build \(Int(ceil(entity.buildProgressRemaining)))s left"
             rows[3] = structureStatusLine(for: entity)
+            applyCoastalAssetInfo(for: entity, rows: &rows)
         } else {
             rows[3] = veterancyProgressLine(for: entity)
             if entity.kind == .carrier {
@@ -2864,6 +2865,57 @@ final class GameScene: SKScene {
         }
 
         return ("\(entity.kind.displayName) \(entity.kind.shortCode)", rows)
+    }
+
+    private func applyCoastalAssetInfo(for entity: GameEntity, rows: inout [String]) {
+        guard let roleLine = coastalAssetRoleLine(for: entity),
+              let missionLine = coastalAssetMissionLine(for: entity) else { return }
+
+        if entity.isOperational {
+            rows[2] = roleLine
+            rows[3] = missionLine
+        } else {
+            rows[1] = roleLine
+            rows[3] = missionLine
+        }
+    }
+
+    private func coastalAssetRoleLine(for entity: GameEntity) -> String? {
+        switch entity.kind {
+        case .shipyard:
+            let queue = entity.isOperational ? "  \(compactProductionStatusLine(for: entity))" : ""
+            return "Builds BB/SUB/CV\(queue)"
+        case .sonarBuoy:
+            return "Coastal sonar  No SCAN"
+        case .coastalBattery:
+            return "Coastal anti-ship  No sonar"
+        default:
+            return nil
+        }
+    }
+
+    private func coastalAssetMissionLine(for entity: GameEntity) -> String? {
+        guard isCoastalAssetKind(entity.kind) else { return nil }
+        let state: String
+        if entity.faction == .player {
+            state = entity.isAlive && entity.isOperational ? "counted" : "pending"
+        } else {
+            state = "not counted"
+        }
+        return "Secure Coast: \(state)"
+    }
+
+    private func isCoastalAssetKind(_ kind: EntityKind) -> Bool {
+        kind == .shipyard || kind == .sonarBuoy || kind == .coastalBattery
+    }
+
+    private func compactProductionStatusLine(for entity: GameEntity) -> String {
+        let orders = buildOrders.filter { $0.sourceID == entity.id }
+        guard let active = orders.first else {
+            return entity.kind.supportsRallyPoint ? "Q idle Rally" : "Q idle"
+        }
+        let suffix = orders.count > 1 ? "+\(orders.count - 1)" : ""
+        return "Q \(active.kind.shortCode) \(Int(ceil(active.remaining)))s\(suffix)"
     }
 
     private func carrierDeckCapabilityLine() -> String {
