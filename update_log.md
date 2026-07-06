@@ -3050,3 +3050,43 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：多选 HOLD Carrier 编队时 `CV GW x/y OK/Need Cn Eng n` 的宽度、多个 Carrier 共享同一目标时 `C` 是否按目标去重、多个 wing 攻击同一目标时 `Eng` 是否按 wing 计数、隐藏潜艇不会通过 `C` 或 `Eng` 泄露。
 - 后续可继续在 guard wing 可读性基础上设计 HOLD 下达时的短视觉反馈、CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.43。
+
+### v4.44 / 航母HOLD警戒翼队分配反馈
+
+日期：2026-07-07
+
+核心变更：
+
+- 玩家对包含 Carrier 的选择下达 `HOLD` 且本次确实绑定至少一个 guard wing 时，会在拥有绑定翼队的 Carrier 甲板位置显示短暂 `CV GUARD` cue。
+- 该 cue 复用现有 `showCarrierDeckPulse(at:faction:label:)`，自动淡出，不新增持久节点、命令状态或实体字段。
+- `issueHoldPositionOrder(units:)` 现在先保存本次 HOLD 的 Carrier 集合，再调用原有 `assignCarrierGuardWing(for:)`；绑定成功后只读回查 `boundCarrierGuardWing(for:)`，避免无翼队 Carrier 显示误导性 guard cue。
+- 原普通 `showHoldMarker(at:)` 和 `Hold position: ... Guard wing n.` 顶部消息保留。
+- 本轮没有改变 `assignCarrierGuardWing(for:)` 的筛选条件、`guardAnchorCarrierID` 写入 / 清理、`isCarrierGuardContact(...)`、`carrierGuardPriorityTarget(for:)`、单选 `GW` 行、多选 `CV GW` 摘要、迷雾、潜艇侦测、AI、移动、战斗、生产、支援、任务或胜负。
+- README、flow、flowchart 和 v4.44 Agent A 提示词已同步当前真实行为，未宣称完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.44（航母HOLD警戒翼队分配反馈）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.44 实现提示词；Agent X 并行只读 scout 确认最小安全实现是不改 `assignCarrierGuardWing` 返回结构，绑定后用 `boundCarrierGuardWing(for:)` 回查并复用 `showCarrierDeckPulse(...)`。
+- Agent B 实现提交并推送：`76d7eab1d221ca2f1cca241110e3a61040e97eb1`，commit subject 为 `v4.44: 航母HOLD警戒翼队分配反馈`。
+- diff reviewer 子 agent 返回 `No issues`，确认本轮只改 `issueHoldPositionOrder` 的视觉反馈，未发现 `assignCarrierGuardWing`、`guardAnchorCarrierID`、目标搜索、AI、迷雾、战斗或目标逻辑被误改；该 reviewer 未运行本地测试、构建、静态检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `76d7eab1d221ca2f1cca241110e3a61040e97eb1`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28806217987`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.44-main-76d7eab1d221-run28806217987-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28806217987/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=76d7eab1d221ca2f1cca241110e3a61040e97eb1`、`runId=28806217987`、`runAttempt=1`、`version=v4.44`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 成功绑定时 `CV GUARD` cue 的位置与可读性、多个 Carrier 同时 HOLD 时 cue 是否可辨认、无可绑定 HEL/JET 时不会显示 guard cue、重新 HOLD 已绑定翼队时 cue 是否符合操作预期。
+- 后续可继续在 guard wing 可读性基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统或 AI 航母使用，但这些不属于 v4.44。
