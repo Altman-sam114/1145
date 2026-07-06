@@ -3167,7 +3167,24 @@ final class GameScene: SKScene {
 
     private func sonarInfoLine(for entity: GameEntity) -> String? {
         guard isActiveSonarSensor(entity) else { return nil }
-        return "Sonar \(Int(sonarRange(for: entity.kind)))"
+        let range = Int(sonarRange(for: entity.kind))
+        if entity.faction == .player {
+            return "Sonar \(range) Ctc \(sonarContactCount(for: entity))"
+        }
+        return "Sonar \(range)"
+    }
+
+    private func sonarContactCount(for sensor: GameEntity) -> Int {
+        guard sensor.faction == .player,
+              isActiveSonarSensor(sensor) else { return 0 }
+        let range = sonarRange(for: sensor.kind)
+        return entities.values.filter { contact in
+            contact.kind == .submarine &&
+                contact.faction == .enemy &&
+                contact.isAlive &&
+                isKnownToFaction(contact, observer: .player) &&
+                sensor.node.position.distance(to: contact.node.position) <= range
+        }.count
     }
 
     private func groupAntiSubmarineSummary(for selected: [GameEntity]) -> String? {
