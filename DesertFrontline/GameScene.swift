@@ -3012,7 +3012,8 @@ final class GameScene: SKScene {
         if isGuarding {
             let contactSummary = carrierGuardContactSummary(for: entity, guardWing: guardWing)
             let typeSuffix = contactSummary.type.map { " \($0)" } ?? ""
-            contactSuffix = "  Ctc \(contactSummary.count)\(typeSuffix)"
+            let targetSuffix = contactSummary.targetCode.map { " Tgt \($0)" } ?? ""
+            contactSuffix = "  Ctc \(contactSummary.count)\(typeSuffix)\(targetSuffix)"
         } else {
             contactSuffix = ""
         }
@@ -3028,14 +3029,27 @@ final class GameScene: SKScene {
         }
     }
 
-    private func carrierGuardContactSummary(for carrier: GameEntity, guardWing: [GameEntity]) -> (count: Int, type: String?) {
+    private func carrierGuardContactSummary(for carrier: GameEntity, guardWing: [GameEntity]) -> (count: Int, type: String?, targetCode: String?) {
         var contactIDs = Set<Int>()
         var contactTypes = Set<String>()
+        var preferredTarget: GameEntity?
+        var preferredPriority = Int.max
+        var preferredDistance = CGFloat.greatestFiniteMagnitude
         for wing in guardWing {
             guard let holdPosition = wing.holdPosition else { continue }
             for target in entities.values where isCarrierGuardContact(target, for: wing, carrier: carrier, holdPosition: holdPosition) {
                 if contactIDs.insert(target.id).inserted {
                     contactTypes.insert(carrierGuardContactType(for: target))
+                }
+                let priority = carrierGuardTargetPriority(for: wing, target: target)
+                let distance = target.node.position.distance(to: carrier.node.position)
+                if preferredTarget == nil ||
+                    priority < preferredPriority ||
+                    (priority == preferredPriority && distance < preferredDistance - 0.5) ||
+                    (priority == preferredPriority && abs(distance - preferredDistance) < 0.5 && target.id < (preferredTarget?.id ?? Int.max)) {
+                    preferredTarget = target
+                    preferredPriority = priority
+                    preferredDistance = distance
                 }
             }
         }
@@ -3047,7 +3061,8 @@ final class GameScene: SKScene {
         } else {
             type = "Mix"
         }
-        return (contactIDs.count, type)
+        let targetCode = contactIDs.isEmpty ? nil : preferredTarget?.kind.shortCode
+        return (contactIDs.count, type, targetCode)
     }
 
     private func carrierGuardContactType(for target: GameEntity) -> String {
