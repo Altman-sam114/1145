@@ -1775,3 +1775,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试或本地静态检查；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，终局 Red HQ 已知 / 未知时 `AMOV` armed 面板切换、nearest approximate 距离在真实地图尺度下是否足够可读、以及玩家点击地图推进时的终局操作节奏仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.10。
+
+### v4.11 / 航母甲板状态面板
+
+日期：2026-07-06
+
+核心变更：
+
+- 单选 Carrier 时，选择信息面板现在用专用行显示 `Deck builds Helicopter/Fighter`，明确既有甲板空军生产能力。
+- 单选 Carrier 时，选择信息面板现在显示 `Rally set` 或 `Rally unset`，并保留当前 Carrier 队列状态：无队列显示 `Queue idle`，有队列显示 `Queue <shortCode> <remaining>s` 和额外排队数。
+- Carrier 的 HP、攻击 / 射程 / 视野、ASW attack / sonar 信息仍沿用现有选择面板链路；`selectionCapabilityInfoLine(for:)` 仍统一追加到攻击信息行。
+- 本轮只增强 Carrier 单选 HUD 文案，没有改变 `EntityKind.canProduce(_:)`、`productionSource(for:faction:)`、`queueBuild(...)`、`updateBuildOrders(dt:)`、出机点、deck-launch 反馈、rally 执行、AI、战斗、迷雾、潜艇侦测、支援技能、任务或胜负。
+- README、flow、flowchart 和 v4.11 Agent A 提示词已同步当前真实行为，未宣称新增生产系统、自动巡逻、CAP、AI 新能力或新单位。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.11（航母甲板状态面板）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`5427a7dd1c9d5b763b636e08d4d82a03414e943e`，commit subject 为 `v4.11: 增强航母甲板状态面板`。
+- diff reviewer 返回 `No issues`，确认只增强 Carrier 单选 selection info，未误改生产、rally、AI、战斗或迷雾路径，Carrier ASW / sonar 信息仍会追加，文档未夸大，且未发现明显 Swift 编译风险；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `5427a7dd1c9d5b763b636e08d4d82a03414e943e`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28760524538`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.11-main-5427a7dd1c9d-run28760524538-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28760524538/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=5427a7dd1c9d5b763b636e08d4d82a03414e943e`、`runId=28760524538`、`runAttempt=1`、`version=v4.11`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Carrier 单选面板在实际 HUD 宽度下的 `Deck builds Helicopter/Fighter`、`Rally set/unset` 与队列文案可读性仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.11。
