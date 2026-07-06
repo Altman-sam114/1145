@@ -2782,6 +2782,10 @@ final class GameScene: SKScene {
             )
         }
 
+        if isSettingRallyPoint {
+            return rallyPointPendingInfoContent()
+        }
+
         if isSettingAttackMove {
             let combatUnits = selected.filter {
                 $0.faction == .player && $0.isAlive && !$0.kind.isStructure && $0.kind.damage > 0
@@ -2820,6 +2824,24 @@ final class GameScene: SKScene {
         }
 
         return groupSelectionInfo(for: selected)
+    }
+
+    private func rallyPointPendingInfoContent() -> (title: String, rows: [String]) {
+        let sources = selectedPlayerRallyFactories()
+        let land = sources.filter { rallyDomain(for: $0.kind) == .land }.count
+        let air = sources.filter { rallyDomain(for: $0.kind) == .air }.count
+        let naval = sources.filter { rallyDomain(for: $0.kind) == .naval }.count
+        let setCount = sources.filter { $0.rallyPoint != nil }.count
+
+        return (
+            "RALLY POINT",
+            [
+                "Sources \(sources.count)",
+                "Land \(land)  Air \(air)  Naval \(naval)",
+                "Rally set \(setCount)  Unset \(sources.count - setCount)",
+                "Tap map to set rally"
+            ]
+        )
     }
 
     private func attackMoveHQTargetRows(combatUnits: [GameEntity], redHQ: GameEntity) -> [String] {

@@ -26,7 +26,7 @@ flowchart TD
   Combat --> Render
   AI --> Render
   Fog --> Render
-  Mission --> HUD["HUD / 小地图\n金钱、队列、航母甲板/集结状态、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、命令高亮、支援价格/冷却/资产提示、相机框"]
+  Mission --> HUD["HUD / 小地图\n金钱、队列、航母甲板/集结状态、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、命令高亮、支援价格/冷却/资产提示、相机框"]
   Render --> HUD
 ```
 
@@ -45,7 +45,7 @@ flowchart TD
   MultiTouch -- "否" --> Pending{"是否存在 pending 模式"}
   Pending -- "建筑" --> Place["放置预览 / placeStructure\n检查视野、基地/旗点覆盖、地形规则和资金"]
   Pending -- "支援技能" --> Support["executeSupportPower\n检查资金、冷却、资产需求、效果"]
-  Pending -- "集结点" --> Rally["setRallyPoint\n生产来源设置出兵目标"]
+  Pending -- "集结点" --> Rally["setRallyPoint\npending面板显示来源摘要\n生产来源设置出兵目标"]
   Pending -- "AMOV" --> AttackMove["issueAttackMoveOrder\n编队推进并沿途交战"]
   Place -- "无效目标" --> Denied["showDeniedMarker\n点击位置短暂红橙拒绝反馈"]
   Support -- "无效目标" --> Denied
