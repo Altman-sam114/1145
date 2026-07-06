@@ -1928,3 +1928,40 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，三类海岸资产单选面板在真实设备 HUD 宽度下的短文案可读性，以及 `counted/pending/not counted` 对玩家的理解度，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做支援目标面板资产状态、集结点 pending 摘要、航母生产来源提示、航母 CAP / 巡逻、航母护航行为或更多地图目标，但这些不属于 v4.14。
+
+### v4.15 / 集结点 pending 面板摘要
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家点击 `RLY` 并进入 rally pending 后，选择信息面板现在显示 `RALLY POINT` 专用摘要。
+- 摘要显示当前 `selectedPlayerRallyFactories()` 来源数量、按 `rallyDomain(for:)` 计算的 `Land` / `Air` / `Naval` 类型数量、已有 rally point 的 set/unset 数量，以及 `Tap map to set rally` 操作提示。
+- 本轮只读现有选择和 `rallyPoint` 状态，没有改变 `selectedPlayerRallyFactories()`、`handleHudAction(.setRally)`、`handleWorldTap(at:)`、`setRallyPoint(to:for:)`、`rallyDomain(for:)`、生产来源、出兵、AI、移动路径、按钮布局或 pending 优先级。
+- README、flow、flowchart 和 v4.15 Agent A 提示词已同步当前真实行为，未宣称 rally 合法性变化、生产系统变化、AI 新能力或移动路径变化。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.15（集结点pending面板摘要）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`7c076ecc58e7d60d0b588115ccd970c383522074`，commit subject 为 `v4.15: 增强集结点pending面板摘要`。
+- diff reviewer 返回 `No issues`，确认 `RLY` pending 面板显示 title、sources、land/air/naval、set/unset 和 tap map 提示，来源口径复用 `selectedPlayerRallyFactories()`，类型复用 `rallyDomain(for:)`，未改变 rally 执行、生产、AI、路径或按钮布局，construction/support/AMOV pending 未被错误覆盖，文档未夸大；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `7c076ecc58e7d60d0b588115ccd970c383522074`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28764856393`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.15-main-7c076ecc58e7-run28764856393-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28764856393/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=7c076ecc58e7d60d0b588115ccd970c383522074`、`runId=28764856393`、`runAttempt=1`、`version=v4.15`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，`RLY` pending 面板在真实设备 HUD 宽度下的 land/air/naval 与 set/unset 文案可读性，以及多来源 rally 设置时的触感，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做支援目标面板资产状态、航母生产来源提示、航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级或更多地图目标，但这些不属于 v4.15。
