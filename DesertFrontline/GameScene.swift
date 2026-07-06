@@ -2585,6 +2585,10 @@ final class GameScene: SKScene {
         if !hasOperationalSupportAsset(for: power, faction: .player) {
             return "need \(supportAssetRequirementLabel(for: power))"
         }
+        let shortfall = power.cost - money(for: .player)
+        if shortfall > 0 {
+            return "need $\(shortfall)"
+        }
         return "$\(power.cost)"
     }
 
