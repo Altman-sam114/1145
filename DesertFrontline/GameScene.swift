@@ -809,6 +809,7 @@ private final class GameEntity {
     let node = SKNode()
     let selectionNode: SKShapeNode
     let sonarCoverageNode = SKShapeNode()
+    let escortCoverageNode = SKShapeNode()
     let healthFill: SKShapeNode
     let teamFlag: SKShapeNode
     let label: SKLabelNode
@@ -1645,6 +1646,8 @@ final class GameScene: SKScene {
 
         configureSonarCoverageNode(for: entity)
         entity.node.addChild(entity.sonarCoverageNode)
+        configureEscortCoverageNode(for: entity)
+        entity.node.addChild(entity.escortCoverageNode)
 
         let healthBack = SKShapeNode(rectOf: CGSize(width: entity.kind.footprint, height: 5), cornerRadius: 1)
         healthBack.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 16)
@@ -6594,6 +6597,7 @@ final class GameScene: SKScene {
             entity.selectionNode.isHidden = !selectedIDs.contains(entity.id)
             entity.rallyNode.isHidden = !(selectedIDs.contains(entity.id) && entity.kind.supportsRallyPoint && entity.rallyPoint != nil)
             entity.sonarCoverageNode.isHidden = !shouldShowSonarCoverage(for: entity)
+            entity.escortCoverageNode.isHidden = !shouldShowHighValueNavalEscortCoverage(for: entity)
         }
     }
 
@@ -6601,6 +6605,15 @@ final class GameScene: SKScene {
         selectedIDs.contains(entity.id) &&
             entity.faction == .player &&
             isActiveSonarSensor(entity)
+    }
+
+    private func shouldShowHighValueNavalEscortCoverage(for entity: GameEntity) -> Bool {
+        selectedIDs.contains(entity.id) &&
+            entity.faction == .player &&
+            entity.isAlive &&
+            entity.isOperational &&
+            !entity.kind.isStructure &&
+            highValueNavalEscortRequirement(for: entity.kind) != nil
     }
 
     private func configureSonarCoverageNode(for entity: GameEntity) {
@@ -6620,6 +6633,25 @@ final class GameScene: SKScene {
         entity.sonarCoverageNode.glowWidth = 1.2
         entity.sonarCoverageNode.zPosition = -4
         entity.sonarCoverageNode.isHidden = true
+    }
+
+    private func configureEscortCoverageNode(for entity: GameEntity) {
+        guard highValueNavalEscortRequirement(for: entity.kind) != nil else {
+            entity.escortCoverageNode.isHidden = true
+            return
+        }
+
+        let range = highValueNavalEscortRadius
+        entity.escortCoverageNode.path = CGPath(
+            ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2),
+            transform: nil
+        )
+        entity.escortCoverageNode.fillColor = UIColor(red: 1.0, green: 0.74, blue: 0.24, alpha: 0.025)
+        entity.escortCoverageNode.strokeColor = UIColor(red: 1.0, green: 0.78, blue: 0.30, alpha: 0.34)
+        entity.escortCoverageNode.lineWidth = 2
+        entity.escortCoverageNode.glowWidth = 1.0
+        entity.escortCoverageNode.zPosition = -5
+        entity.escortCoverageNode.isHidden = true
     }
 
     private func showMessage(_ text: String, color: UIColor) {
