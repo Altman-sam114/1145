@@ -3210,3 +3210,42 @@
 - 本轮未运行本机 Xcode build、模拟器或真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：单选 HOLD Carrier 且有绑定翼队时 guard anchor 范围圈是否可读、多选多个 HOLD Carrier 时多个范围圈是否同时显示、HOLD Carrier 无绑定翼队时不显示额外范围圈、与高价值海军 escort ring 同屏时是否容易区分。
 - 后续可继续在 guard wing 可读性基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统或 AI 航母使用，但这些不属于 v4.47。
+
+
+### v4.48 / AI 航母警戒翼队
+
+日期：2026-07-06
+
+核心变更：
+
+- Red AI 指挥周期现在会让空闲 operational Carrier 绑定附近空闲 Red Helicopter / Fighter 作为 guard wing，最多补齐 2 架。
+- AI guard wing 复用现有 `holdPosition`、`guardAnchorCarrierID`、`updateCarrierGuardStation(for:)`、`carrierGuardPriorityTarget(for:)` 和 `isCarrierGuardContact(...)` 链路；Red wing 仍只会处理 Red 已知且自身可攻击的 Carrier 近域目标。
+- 正在 attack-move、已有 target、正在普通移动、占点 reservation 或撤退中的 Red HEL/JET 不会被抢去当 guard wing；已被本周期其他 Carrier 使用的 wing 也不会重复分配。
+- 后续 routine attack-move wave 仍可通过既有 `issueFormationMove(...)` 接管 Carrier / wing；本轮没有新增 CAP、巡逻、截击状态机、玩家按钮或 AI 作弊侦察。
+- 玩家 Carrier HOLD、HUD、selection ring、`CV GUARD` 文案、护航摘要、生产、支援、迷雾、潜艇侦测和胜负逻辑保持原语义。
+- README、flow、flowchart 和 v4.48 Agent A 提示词已同步当前真实行为，未宣称完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.48（AI航母警戒翼队）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 实现提交并推送：`ce5b46ed16bb679bfe6cb99b8170088b2958f98e`，commit subject 为 `v4.48: AI航母警戒翼队`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `ce5b46ed16bb679bfe6cb99b8170088b2958f98e`；`git diff --check ce5b46ed16bb679bfe6cb99b8170088b2958f98e^ ce5b46ed16bb679bfe6cb99b8170088b2958f98e` 通过。
+- GitHub Actions：run `28812163374`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.48-main-ce5b46ed16bb-run28812163374-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28812163374/`，缓存目录大小 `132K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=ce5b46ed16bb679bfe6cb99b8170088b2958f98e`、`runId=28812163374`、`runAttempt=1`、`version=v4.48`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：Red Carrier 空闲时是否稳定绑定附近 HEL/JET、正在移动 / attack-move / retreat 的空军不被抢走、routine attack-move 是否仍能接管 Carrier 与 wing、隐藏玩家目标不会被 guard wing 泄露或攻击。
+- 后续可继续在 guard wing 基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统、AI 航母进攻节奏或 Sonar Buoy 升级，但这些不属于 v4.48。
