@@ -952,6 +952,7 @@ final class GameScene: SKScene {
     private let holdReturnTolerance: CGFloat = 58
     private let attackMoveEngagementRadius: CGFloat = 285
     private let highValueNavalEscortRadius: CGFloat = 620
+    private let carrierGuardStationReanchorTolerance: CGFloat = 24
     private let mechanicRepairRange: CGFloat = 95
     private let mechanicRepairPerSecond: CGFloat = 22
     private let controlGroupRecallDelay: TimeInterval = 0.24
@@ -4704,6 +4705,38 @@ final class GameScene: SKScene {
         unit.guardAnchorCarrierID = nil
     }
 
+    private func updateCarrierGuardStation(for wing: GameEntity) {
+        guard wing.kind == .helicopter || wing.kind == .fighter,
+              let carrierID = wing.guardAnchorCarrierID
+        else { return }
+
+        guard let carrier = entities[carrierID],
+              carrier.kind == .carrier,
+              carrier.isAlive,
+              carrier.faction == wing.faction,
+              carrier.holdPosition != nil
+        else {
+            clearCarrierGuardAnchor(for: wing)
+            return
+        }
+
+        let station = carrierGuardStationPoint(for: wing, carrier: carrier)
+        if (wing.holdPosition?.distance(to: station) ?? CGFloat.greatestFiniteMagnitude) > carrierGuardStationReanchorTolerance {
+            wing.holdPosition = station
+        }
+    }
+
+    private func carrierGuardStationPoint(for wing: GameEntity, carrier: GameEntity) -> CGPoint {
+        let slot = wing.id % 6
+        let baseAngle = CGFloat(slot) * (.pi / 3)
+        let phase: CGFloat = wing.kind == .fighter ? .pi / 6 : 0
+        let radius: CGFloat = wing.kind == .fighter ? 190 : 150
+        return carrier.node.position + CGPoint(
+            x: cos(baseAngle + phase) * radius,
+            y: sin(baseAngle + phase) * radius * 0.62
+        )
+    }
+
     private func issueFormationMove(to point: CGPoint, units: [GameEntity], showMarkers: Bool, showFeedback: Bool, attackMove: Bool = false) {
         let mobileUnits = units.filter { $0.isAlive && !$0.kind.isStructure }
         guard !mobileUnits.isEmpty else { return }
@@ -5222,6 +5255,8 @@ final class GameScene: SKScene {
 
     private func updateMovement(dt: TimeInterval) {
         for entity in entities.values where entity.isAlive && !entity.kind.isStructure {
+            updateCarrierGuardStation(for: entity)
+
             if entity.attackTarget == nil, let attackMoveDestination = entity.attackMoveDestination, entity.destination == nil {
                 let arrivalRadius = max(18, entity.kind.footprint * 0.45)
                 if entity.node.position.distance(to: attackMoveDestination) <= arrivalRadius {
