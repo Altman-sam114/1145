@@ -952,6 +952,7 @@ final class GameScene: SKScene {
     private let holdReturnTolerance: CGFloat = 58
     private let attackMoveEngagementRadius: CGFloat = 285
     private let highValueNavalEscortRadius: CGFloat = 620
+    private let carrierGuardThreatRadius: CGFloat = 430
     private let carrierGuardStationReanchorTolerance: CGFloat = 24
     private let mechanicRepairRange: CGFloat = 95
     private let mechanicRepairPerSecond: CGFloat = 22
@@ -4707,15 +4708,10 @@ final class GameScene: SKScene {
 
     private func updateCarrierGuardStation(for wing: GameEntity) {
         guard wing.kind == .helicopter || wing.kind == .fighter,
-              let carrierID = wing.guardAnchorCarrierID
+              wing.guardAnchorCarrierID != nil
         else { return }
 
-        guard let carrier = entities[carrierID],
-              carrier.kind == .carrier,
-              carrier.isAlive,
-              carrier.faction == wing.faction,
-              carrier.holdPosition != nil
-        else {
+        guard let carrier = carrierGuardAnchor(for: wing) else {
             clearCarrierGuardAnchor(for: wing)
             return
         }
@@ -4735,6 +4731,61 @@ final class GameScene: SKScene {
             x: cos(baseAngle + phase) * radius,
             y: sin(baseAngle + phase) * radius * 0.62
         )
+    }
+
+    private func carrierGuardAnchor(for wing: GameEntity) -> GameEntity? {
+        guard (wing.kind == .helicopter || wing.kind == .fighter),
+              let carrierID = wing.guardAnchorCarrierID,
+              let carrier = entities[carrierID],
+              carrier.kind == .carrier,
+              carrier.isAlive,
+              carrier.faction == wing.faction,
+              carrier.holdPosition != nil
+        else { return nil }
+        return carrier
+    }
+
+    private func carrierGuardPriorityTarget(for wing: GameEntity) -> GameEntity? {
+        guard let carrier = carrierGuardAnchor(for: wing),
+              let holdPosition = wing.holdPosition
+        else { return nil }
+
+        return entities.values
+            .filter { target in
+                target.isAlive &&
+                    target.faction != wing.faction &&
+                    target.faction != .neutral &&
+                    wing.kind.canAttack(target.kind) &&
+                    target.node.position.distance(to: carrier.node.position) <= carrierGuardThreatRadius + target.kind.footprint * 0.35 &&
+                    target.node.position.distance(to: holdPosition) <= holdEngagementRadius + target.kind.footprint * 0.35 &&
+                    isKnownToFaction(target, observer: wing.faction)
+            }
+            .min { left, right in
+                let leftPriority = carrierGuardTargetPriority(for: wing, target: left)
+                let rightPriority = carrierGuardTargetPriority(for: wing, target: right)
+                if leftPriority == rightPriority {
+                    let leftDistance = left.node.position.distance(to: carrier.node.position)
+                    let rightDistance = right.node.position.distance(to: carrier.node.position)
+                    if abs(leftDistance - rightDistance) < 0.5 {
+                        return left.id < right.id
+                    }
+                    return leftDistance < rightDistance
+                }
+                return leftPriority < rightPriority
+            }
+    }
+
+    private func carrierGuardTargetPriority(for wing: GameEntity, target: GameEntity) -> Int {
+        if wing.kind == .fighter && target.kind.domain == .air {
+            return 0
+        }
+        if wing.kind == .helicopter && target.kind == .submarine {
+            return 0
+        }
+        if wing.kind == .helicopter && target.kind.domain == .naval {
+            return 1
+        }
+        return 2
     }
 
     private func issueFormationMove(to point: CGPoint, units: [GameEntity], showMarkers: Bool, showFeedback: Bool, attackMove: Bool = false) {
@@ -5384,7 +5435,7 @@ final class GameScene: SKScene {
                 } else {
                     acquisitionRange = entity.kind.attackRange
                 }
-                entity.attackTarget = nearestTarget(for: entity, maxDistance: acquisitionRange)
+                entity.attackTarget = carrierGuardPriorityTarget(for: entity) ?? nearestTarget(for: entity, maxDistance: acquisitionRange)
             }
 
             guard let target = entity.attackTarget, target.isAlive else { continue }
