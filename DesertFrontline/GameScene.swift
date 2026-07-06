@@ -7103,6 +7103,12 @@ final class GameScene: SKScene {
               entity.isAlive
         else { return false }
 
+        if selectedIDs.contains(entity.id),
+           entity.holdPosition != nil,
+           !boundCarrierGuardWing(for: entity).isEmpty {
+            return true
+        }
+
         return selectedIDs.compactMap { entities[$0] }.contains { wing in
             wing.faction == .player &&
                 wing.isAlive &&
