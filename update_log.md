@@ -2386,3 +2386,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Escort x/y OK` 与 `Escort x/y Need n` 在 Carrier deck 行和 Battleship 移动行中的可读性，以及 escort 数量跨过达标边界时的文案变化，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做多选声呐接触数摘要、潜艇声呐接触状态、陆军生产按钮来源提示、航母 CAP / 巡逻或更多地图目标，但这些不属于 v4.26。
+
+### v4.27 / 多选声呐编队接触数摘要
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家多选包含至少一个玩家 active sonar sensor 时，多选反潜 / 声呐摘要现在追加去重后的已知敌方潜艇接触数，文案为 `Ctc n`。
+- 多选摘要仍保留原有 `ASW n  Sonar n/maxRange` 格式，只在存在玩家 active sonar sensor 时追加 `Ctc n`。
+- `Ctc n` 只统计敌方、存活、kind 为 Submarine、`isKnownToFaction(..., observer: .player)` 已成立、且处于至少一个已选玩家 active sonar sensor 的 `sonarRange(for:)` 内的目标。
+- 多个已选 sonar sensor 覆盖同一潜艇时，按实体 id 去重，只计 1 次。
+- 本轮只增强 HUD 只读文案，没有改变单选 sonar contact、`isKnownToFaction(...)`、`isSubmarineDetected(...)`、`revealedUntil`、战争迷雾集合、声呐覆盖圈、AI、战斗、支援、targeting、任务、胜负或 `SKRM` 重置。
+- README、flow 和 v4.27 Agent A 提示词已同步当前真实行为；`flowchart.md` 现有 HUD 节点已覆盖选择 / 反潜 / 声呐信息，本轮未强行改图。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/prompt/v4（海军航母）/v4.27（多选声呐编队接触数摘要）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`84f1781fbc59a04a8ba514cb185ef38b1990abf9`，commit subject 为 `v4.27: 多选声呐编队接触数摘要`。
+- diff reviewer 返回 `No issues`，确认多选含玩家 active sonar sensor 时追加 `Ctc`，contact 统计必须是敌方存活 submarine、玩家已知、位于至少一个已选玩家 sensor range 内，并按 Int id 去重；未修改单选 sonar、`isKnownToFaction`、`isSubmarineDetected`、`revealedUntil`、fog、AI、combat、support 或 targeting；文档未夸大。该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `84f1781fbc59a04a8ba514cb185ef38b1990abf9`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28777394287`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.27-main-84f1781fbc59-run28777394287-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28777394287/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=84f1781fbc59a04a8ba514cb185ef38b1990abf9`、`runId=28777394287`、`runAttempt=1`、`version=v4.27`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Dmg ... Max rng ... ASW ... Sonar ... Ctc n` 第三行的可读性，以及多个 sonar sensor 重叠覆盖、隐藏潜艇不泄露、未完工 Sonar Buoy 不计入的实战场景，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做潜艇声呐接触状态、陆军生产按钮来源提示、支援资金不足提示、航母 CAP / 巡逻或更多地图目标，但这些不属于 v4.27。
