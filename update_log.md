@@ -2728,3 +2728,43 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下绑定后的 `Guard wing x/2 OK` / `Need n` 文案、多艘 Carrier 半径重叠时的改绑体验、HEL/JET 普通移动 / AMOV / 攻击 / HOLD 后旧绑定清理，以及 Carrier 移动后回到 readiness 的体验，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可在该 anchor 口径上继续设计真正 CAP / 巡逻 / 截击或航母翼队 UI，但这些不属于 v4.35。
+
+### v4.36 / 航母警戒翼队站位保持
+
+日期：2026-07-06
+
+核心变更：
+
+- Carrier HOLD guard wing 从只读绑定推进到轻量实际行为：已绑定到 Carrier 的 Helicopter / Fighter 会在 Carrier 仍 HOLD 时维护 Carrier 附近稳定站位。
+- 新增 `updateCarrierGuardStation(for:)` 和 `carrierGuardStationPoint(for:carrier:)`，每帧移动更新先刷新绑定翼队的 `holdPosition`，再继续复用既有 HOLD 回位、警戒和交战链路。
+- 站位点由 wing id 和单位类型派生，Helicopter / Fighter 使用不同相位和半径，避免所有翼队重叠；站位半径小于 `highValueNavalEscortRadius`。
+- 绑定 Carrier 不存在、死亡、阵营不匹配、不是 Carrier 或不再 HOLD 时，只清理该 HEL/JET 的 `guardAnchorCarrierID`，不强行清理其普通 HOLD、目标、destination 或 path。
+- v4.35 的普通移动、AMOV、直接攻击和普通 HOLD 清理旧 anchor 语义保持不变；再次 Carrier HOLD 仍可改写绑定。
+- 本轮没有实现完整 CAP、巡逻路径、主动截击、新 HUD action、AI 航母策略、战斗加成、生产来源变化、集结点变化、声呐 / 潜艇隐身变化、任务或胜负变化。
+- README、flow、flowchart 和 v4.36 Agent A 提示词已同步当前真实行为，未宣称未实现的 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.36（航母警戒翼队站位保持）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`5abe0e1c9d0949c5d4fc2151646afe83c85f0cc8`，commit subject 为 `v4.36: 航母警戒翼队站位保持`。
+- 本轮未运行本地 diff reviewer 子 agent；由 Agent C 直接复核实际 diff、提示词、文档和云端 artifact。Agent C 未运行本地测试、构建、静态检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `5abe0e1c9d0949c5d4fc2151646afe83c85f0cc8`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28792235758`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.36-main-5abe0e1c9d09-run28792235758-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28792235758/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=5abe0e1c9d0949c5d4fc2151646afe83c85f0cc8`、`runId=28792235758`、`runAttempt=1`、`version=v4.36`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Guard wing x/2 OK` / `Need n` 与站位保持的体验、多艘 Carrier 半径重叠时的站位分配、Carrier 警戒交战时翼队回位表现、以及 Carrier 取消 HOLD 后翼队保留普通 HOLD 的体验，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续在该站位保持基础上设计真正 CAP / 巡逻 / 截击或航母翼队 UI，但这些不属于 v4.36。
