@@ -3049,10 +3049,14 @@ final class GameScene: SKScene {
 
     private func groupHighValueNavalEscortSummary(for selected: [GameEntity]) -> String? {
         guard selected.count > 1 else { return nil }
-        let highValueNaval = selected.compactMap { entity -> (nearby: Int, required: Int)? in
+        let highValueNaval = selected.compactMap { entity -> (nearby: Int, required: Int, needType: String?)? in
             guard entity.faction == .player,
                   let required = highValueNavalEscortRequirement(for: entity.kind) else { return nil }
-            return (nearbyNavalEscortCount(for: entity), required)
+            let escorts = nearbyNavalEscorts(for: entity)
+            let nearby = escorts.count
+            let missing = max(0, required - nearby)
+            let needType = missing > 0 ? highValueNavalEscortNeedType(for: escorts) : nil
+            return (nearby, required, needType)
         }
         guard !highValueNaval.isEmpty else { return nil }
 
@@ -3061,7 +3065,9 @@ final class GameScene: SKScene {
             total + max(0, item.required - item.nearby)
         }
         if missing > 0 {
-            return "HV Navy \(satisfied)/\(highValueNaval.count) escorted  Need \(missing)"
+            let needTypes = Set(highValueNaval.compactMap { $0.needType })
+            let typeSummary = needTypes.count == 1 ? (needTypes.first ?? "Mix") : "Mix"
+            return "HV Navy \(satisfied)/\(highValueNaval.count) escorted  Need \(missing) \(typeSummary)"
         }
         return "HV Navy \(satisfied)/\(highValueNaval.count) escorted"
     }
