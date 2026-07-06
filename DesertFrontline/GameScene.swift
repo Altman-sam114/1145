@@ -2557,6 +2557,11 @@ final class GameScene: SKScene {
 
     private func productionButtonSubtitle(for kind: EntityKind) -> String {
         switch kind {
+        case .aaTruck, .humvee, .tank, .artillery, .mechanic:
+            guard let source = productionSource(for: kind, faction: .player) else {
+                return "need WF"
+            }
+            return "\(source.kind.shortCode) $\(kind.cost)"
         case .helicopter, .fighter:
             guard let source = productionSource(for: kind, faction: .player) else {
                 return "need AF/CV"
