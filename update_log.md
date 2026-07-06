@@ -2533,3 +2533,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Known sonar contact` 和 `Stealth / no known contact` 的可读性、玩家已知 / 未知敌方 sonar sensor 边界、临时暴露倒计时优先级，以及单选 / 多选声呐摘要不回归，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、潜艇战术反馈深化或更多地图目标，但这些不属于 v4.30。
+
+### v4.31 / 高价值海军护航缺口类型提示
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家单选 Carrier 或 Battleship 且附近护航不足时，选择信息面板的护航行现在在 `Need n` 后追加短缺口类型提示。
+- 缺口类型只来自当前合法 nearby escort 集合：没有 air escort 时提示 `Air`，否则没有 naval escort 时提示 `Sea`，否则没有 land escort 时提示 `Ground`，三类都有但数量仍不足时提示 `Mix`。
+- 达标时仍显示 `Escort x/y OK`，不追加缺口类型。
+- `nearbyNavalEscortCount(for:)` 和缺口类型提示现在共享 `nearbyNavalEscorts(for:)` 的同一合法 escort 集合口径，继续过滤敌方/中立、死亡、未 operational、结构、非作战、高价值海军自身和范围外单位。
+- 本轮只增强单选 HUD 只读文案，没有改变多选 `HV Navy` 摘要、escort radius ring、sonar coverage、Red AI 护航门槛、attack-move wave、玩家命令、移动、战斗、生产、支援、迷雾、任务、胜负或 `SKRM` 重置。
+- README、flow、flowchart 和 v4.31 Agent A 提示词已同步当前真实行为，未宣称自动护航、CAP、巡逻、战斗加成或新命令。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.31（高价值海军护航缺口类型提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`153562c2943a2e94b78342f1cef42cb0cd5fef93`，commit subject 为 `v4.31: 高价值海军护航缺口类型提示`。
+- diff reviewer 返回 `No issues`，确认本轮只改 HUD 文案 helper；`nearbyNavalEscorts(for:)` 与原 `nearbyNavalEscortCount(for:)` 口径一致；未破坏多选摘要、AI、escort ring、sonar、移动或战斗。该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `153562c2943a2e94b78342f1cef42cb0cd5fef93`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28786905554`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.31-main-153562c2943a-run28786905554-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28786905554/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=153562c2943a2e94b78342f1cef42cb0cd5fef93`、`runId=28786905554`、`runAttempt=1`、`version=v4.31`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Escort x/y Need n Air/Sea/Ground/Mix` 在 Carrier deck 行和 Battleship 移动行的可读性，以及护航单位组成变化时的文案切换，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、潜艇战术反馈深化或更多地图目标，但这些不属于 v4.31。
