@@ -2635,7 +2635,9 @@ final class GameScene: SKScene {
         case .captureFrontline:
             return "Hold 2 front-line flags. \(min(controlPointCount(for: .player), 2))/2 secured."
         case .secureCoast:
-            return "Hold 2 coastal assets. \(min(coastalAssetCount(for: .player), 2))/2 secured. +$600"
+            let assets = coastalAssetBreakdown(for: .player)
+            let total = assets.shipyards + assets.sonarBuoys + assets.coastalBatteries
+            return "Hold 2 coastal assets. \(min(total, 2))/2 secured. SY\(assets.shipyards) SON\(assets.sonarBuoys) CB\(assets.coastalBatteries) +$600"
         case .combinedArms:
             let counts = playerMobileDomainCounts()
             return "Field 10 units: \(min(counts.total, 10))/10  L\(counts.land) A\(counts.air) N\(counts.naval)  +$800"
@@ -4665,12 +4667,19 @@ final class GameScene: SKScene {
     }
 
     private func coastalAssetCount(for faction: Faction) -> Int {
-        entities.values.filter { entity in
-            entity.faction == faction &&
-                entity.isAlive &&
-                entity.isOperational &&
-                (entity.kind == .shipyard || entity.kind == .sonarBuoy || entity.kind == .coastalBattery)
-        }.count
+        let assets = coastalAssetBreakdown(for: faction)
+        return assets.shipyards + assets.sonarBuoys + assets.coastalBatteries
+    }
+
+    private func coastalAssetBreakdown(for faction: Faction) -> (shipyards: Int, sonarBuoys: Int, coastalBatteries: Int) {
+        let operationalAssets = entities.values.filter { entity in
+            entity.faction == faction && entity.isAlive && entity.isOperational
+        }
+        return (
+            operationalAssets.filter { $0.kind == .shipyard }.count,
+            operationalAssets.filter { $0.kind == .sonarBuoy }.count,
+            operationalAssets.filter { $0.kind == .coastalBattery }.count
+        )
     }
 
     private func updateCapture(dt: TimeInterval) {
