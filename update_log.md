@@ -2424,3 +2424,39 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Dmg ... Max rng ... ASW ... Sonar ... Ctc n` 第三行的可读性，以及多个 sonar sensor 重叠覆盖、隐藏潜艇不泄露、未完工 Sonar Buoy 不计入的实战场景，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做潜艇声呐接触状态、陆军生产按钮来源提示、支援资金不足提示、航母 CAP / 巡逻或更多地图目标，但这些不属于 v4.27。
+
+### v4.28 / 陆军生产按钮来源提示
+
+日期：2026-07-06
+
+核心变更：
+
+- `HMV` / `AA` / `TANK` / `ART` / `MECH` 陆军生产按钮 subtitle 现在复用 `productionSource(for:faction:)` 显示 War Factory 来源。
+- 有玩家 operational War Factory 来源时，陆军按钮显示 `WF $cost`；没有可用 War Factory 来源时显示 `need WF`。
+- 该提示与实际 `queueBuild(kind:faction:showFeedback:)` 的来源选择口径一致，继续过滤未完工、死亡、敌方、中立或不能生产对应单位的实体，并保留玩家选中来源优先和最短队列口径。
+- 本轮只增强 HUD 只读文案，没有改变 `queueBuild`、`productionSource`、`canQueueBuild`、`BuildOrder`、费用、建造时间、资金检查、玩家或 AI 生产、支援、迷雾、任务、胜负、按钮布局或 `SKRM` 重置。
+- README、flow 和 v4.28 Agent A 提示词已同步当前真实行为；`flowchart.md` 现有 HUD 节点已覆盖生产来源提示，本轮未强行改图。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/prompt/v4（海军航母）/v4.28（陆军生产按钮来源提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`9478ad649c38584bbf7d9928e68c6c0cb3587ff5`，commit subject 为 `v4.28: 陆军生产按钮来源提示`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `9478ad649c38584bbf7d9928e68c6c0cb3587ff5`。
+- GitHub Actions：run `28778044804`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.28-main-9478ad649c38-run28778044804-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28778044804/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=9478ad649c38584bbf7d9928e68c6c0cb3587ff5`、`runId=28778044804`、`runAttempt=1`、`version=v4.28`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `WF $cost` 与 `need WF` 的可读性、War Factory 施工完成前后的按钮切换、资金不足但有来源时的文案和点击拒绝，以及空军 / 海军来源提示不回归，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做潜艇声呐接触状态、支援资金不足提示、航母 CAP / 巡逻、航母护航命令或更多地图目标，但这些不属于 v4.28。
