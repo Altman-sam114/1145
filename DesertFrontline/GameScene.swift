@@ -5903,6 +5903,7 @@ final class GameScene: SKScene {
         }
 
         tryEnemySupportPower()
+        updateEnemyCarrierGuardWings(enemyUnits)
 
         let shouldAttack = enemyUnits.count >= aiDifficulty.attackGroupSize || enemyMoney > 4800
         guard shouldAttack else { return }
@@ -6463,6 +6464,69 @@ final class GameScene: SKScene {
             unit.kind.damage > 0 &&
             unit.isOperational &&
             !isEnemyCaptureReserved(unit)
+    }
+
+    private func updateEnemyCarrierGuardWings(_ enemyUnits: [GameEntity]) {
+        var assignedWingIDs = Set<Int>()
+        let carriers = enemyUnits.filter { carrier in
+            carrier.kind == .carrier &&
+                carrier.isOperational &&
+                carrier.attackTarget == nil &&
+                carrier.attackMoveDestination == nil &&
+                carrier.destination == nil &&
+                !isEnemyUnitRetreating(carrier)
+        }
+
+        for carrier in carriers {
+            let currentWing = boundCarrierGuardWing(for: carrier).filter { !assignedWingIDs.contains($0.id) }
+            let currentWingIDs = Set(currentWing.map(\.id))
+            let missing = max(0, 2 - currentWing.count)
+            guard missing > 0 else {
+                assignedWingIDs.formUnion(currentWingIDs)
+                continue
+            }
+
+            let candidates = nearbyCarrierAirWing(for: carrier).filter { wing in
+                !assignedWingIDs.contains(wing.id) &&
+                    !currentWingIDs.contains(wing.id) &&
+                    isAvailableEnemyCarrierGuardWing(wing) &&
+                    (wing.guardAnchorCarrierID == nil || carrierGuardAnchor(for: wing)?.id == carrier.id)
+            }
+            guard !candidates.isEmpty else {
+                assignedWingIDs.formUnion(currentWingIDs)
+                continue
+            }
+
+            carrier.holdPosition = carrier.node.position
+            carrier.attackTarget = nil
+            carrier.attackMoveDestination = nil
+            carrier.destination = nil
+            carrier.path.removeAll()
+
+            for wing in candidates.prefix(missing) {
+                wing.holdPosition = wing.node.position
+                wing.guardAnchorCarrierID = carrier.id
+                wing.attackMoveDestination = nil
+                wing.attackTarget = nil
+                wing.destination = nil
+                wing.path.removeAll()
+                assignedWingIDs.insert(wing.id)
+            }
+            assignedWingIDs.formUnion(currentWingIDs)
+        }
+    }
+
+    private func isAvailableEnemyCarrierGuardWing(_ unit: GameEntity) -> Bool {
+        unit.faction == .enemy &&
+            unit.isAlive &&
+            unit.isOperational &&
+            !unit.kind.isStructure &&
+            (unit.kind == .helicopter || unit.kind == .fighter) &&
+            unit.attackTarget == nil &&
+            unit.attackMoveDestination == nil &&
+            unit.destination == nil &&
+            !isEnemyCaptureReserved(unit) &&
+            !isEnemyUnitRetreating(unit)
     }
 
     private func enemyRetreatDestination(for unit: GameEntity) -> CGPoint {
