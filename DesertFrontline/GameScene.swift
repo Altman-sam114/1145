@@ -812,6 +812,7 @@ private final class GameEntity {
     let sonarCoverageNode = SKShapeNode()
     let escortCoverageNode = SKShapeNode()
     let repairCoverageNode = SKShapeNode()
+    let carrierGuardAnchorCoverageNode = SKShapeNode()
     let healthFill: SKShapeNode
     let teamFlag: SKShapeNode
     let label: SKLabelNode
@@ -1656,6 +1657,8 @@ final class GameScene: SKScene {
         entity.node.addChild(entity.escortCoverageNode)
         configureRepairCoverageNode(for: entity)
         entity.node.addChild(entity.repairCoverageNode)
+        configureCarrierGuardAnchorCoverageNode(for: entity)
+        entity.node.addChild(entity.carrierGuardAnchorCoverageNode)
 
         let healthBack = SKShapeNode(rectOf: CGSize(width: entity.kind.footprint, height: 5), cornerRadius: 1)
         healthBack.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 16)
@@ -7068,6 +7071,7 @@ final class GameScene: SKScene {
             entity.sonarCoverageNode.isHidden = !shouldShowSonarCoverage(for: entity)
             entity.escortCoverageNode.isHidden = !shouldShowHighValueNavalEscortCoverage(for: entity)
             entity.repairCoverageNode.isHidden = !shouldShowMechanicRepairCoverage(for: entity)
+            entity.carrierGuardAnchorCoverageNode.isHidden = !shouldShowCarrierGuardAnchorCoverage(for: entity)
         }
     }
 
@@ -7091,6 +7095,20 @@ final class GameScene: SKScene {
             entity.faction == .player &&
             entity.isAlive &&
             entity.kind == .mechanic
+    }
+
+    private func shouldShowCarrierGuardAnchorCoverage(for entity: GameEntity) -> Bool {
+        guard entity.faction == .player,
+              entity.kind == .carrier,
+              entity.isAlive
+        else { return false }
+
+        return selectedIDs.compactMap { entities[$0] }.contains { wing in
+            wing.faction == .player &&
+                wing.isAlive &&
+                (wing.kind == .helicopter || wing.kind == .fighter) &&
+                carrierGuardAnchor(for: wing)?.id == entity.id
+        }
     }
 
     private func configureSonarCoverageNode(for entity: GameEntity) {
@@ -7148,6 +7166,25 @@ final class GameScene: SKScene {
         entity.repairCoverageNode.glowWidth = 1.0
         entity.repairCoverageNode.zPosition = -4
         entity.repairCoverageNode.isHidden = true
+    }
+
+    private func configureCarrierGuardAnchorCoverageNode(for entity: GameEntity) {
+        guard entity.kind == .carrier else {
+            entity.carrierGuardAnchorCoverageNode.isHidden = true
+            return
+        }
+
+        let range = carrierGuardThreatRadius
+        entity.carrierGuardAnchorCoverageNode.path = CGPath(
+            ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2),
+            transform: nil
+        )
+        entity.carrierGuardAnchorCoverageNode.fillColor = UIColor(red: 0.46, green: 0.95, blue: 1.0, alpha: 0.025)
+        entity.carrierGuardAnchorCoverageNode.strokeColor = UIColor(red: 0.46, green: 0.95, blue: 1.0, alpha: 0.38)
+        entity.carrierGuardAnchorCoverageNode.lineWidth = 2
+        entity.carrierGuardAnchorCoverageNode.glowWidth = 1.0
+        entity.carrierGuardAnchorCoverageNode.zPosition = -4.5
+        entity.carrierGuardAnchorCoverageNode.isHidden = true
     }
 
     private func showMessage(_ text: String, color: UIColor) {
