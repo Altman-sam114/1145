@@ -3188,6 +3188,39 @@ final class GameScene: SKScene {
         return "HV Navy \(satisfied)/\(highValueNaval.count) escorted"
     }
 
+    private func groupCarrierGuardWingSummary(for selected: [GameEntity]) -> String? {
+        guard selected.count > 1 else { return nil }
+        let carriers = selected.filter { entity in
+            entity.faction == .player &&
+                entity.kind == .carrier &&
+                entity.isAlive &&
+                entity.holdPosition != nil
+        }
+        guard !carriers.isEmpty else { return nil }
+
+        var boundWingCount = 0
+        var requiredWingCount = 0
+        var contactIDs = Set<Int>()
+        var engagedCount = 0
+        for carrier in carriers {
+            let guardWing = boundCarrierGuardWing(for: carrier)
+            boundWingCount += guardWing.count
+            requiredWingCount += 2
+            engagedCount += carrierGuardEngagedCount(for: carrier, guardWing: guardWing)
+            for wing in guardWing {
+                guard let holdPosition = wing.holdPosition else { continue }
+                for target in entities.values where isCarrierGuardContact(target, for: wing, carrier: carrier, holdPosition: holdPosition) {
+                    contactIDs.insert(target.id)
+                }
+            }
+        }
+
+        let missing = max(0, requiredWingCount - boundWingCount)
+        let readiness = missing > 0 ? "Need \(missing)" : "OK"
+        let engagedSuffix = engagedCount > 0 ? " Eng \(engagedCount)" : ""
+        return "CV GW \(boundWingCount)/\(requiredWingCount) \(readiness) C\(contactIDs.count)\(engagedSuffix)"
+    }
+
     private func groupSelectionInfo(for selected: [GameEntity]) -> (title: String, rows: [String]) {
         let land = selected.filter { $0.kind.domain == .land }.count
         let air = selected.filter { $0.kind.domain == .air }.count
@@ -3199,6 +3232,7 @@ final class GameScene: SKScene {
         let holdingCount = selected.filter { $0.holdPosition != nil }.count
         let attackMoveCount = selected.filter { $0.attackMoveDestination != nil }.count
         let highValueEscortSummary = groupHighValueNavalEscortSummary(for: selected)
+        let carrierGuardWingSummary = groupCarrierGuardWingSummary(for: selected)
         let combatSummary = groupAntiSubmarineSummary(for: selected).map {
             "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))  \($0)"
         } ?? "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))"
@@ -3210,7 +3244,7 @@ final class GameScene: SKScene {
                 "HP \(Int(totalHP))/\(Int(totalMaxHP))",
                 combatSummary,
                 holdingCount > 0
-                    ? "Holding \(holdingCount)  Guard \(Int(holdEngagementRadius))"
+                    ? "Holding \(holdingCount)  \(carrierGuardWingSummary ?? "Guard \(Int(holdEngagementRadius))")"
                     : attackMoveCount > 0
                         ? "Attack move \(attackMoveCount)  Seek \(Int(attackMoveEngagementRadius))"
                         : highValueEscortSummary ?? groupVeterancyLine(for: selected)
