@@ -1813,3 +1813,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Carrier 单选面板在实际 HUD 宽度下的 `Deck builds Helicopter/Fighter`、`Rally set/unset` 与队列文案可读性仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.11。
+
+### v4.12 / 海岸据点任务摘要
+
+日期：2026-07-06
+
+核心变更：
+
+- `Secure Coast` 任务详情现在在总进度之外显示 operational player coastal assets 的分项摘要，例如 `SY1 SON0 CB1`。
+- 新增 `coastalAssetBreakdown(for:)`，用同一口径统计指定阵营、存活、已完工 operational 的 Shipyard、Sonar Buoy 和 Coastal Battery。
+- `coastalAssetCount(for:)` 现在复用分项统计并返回三项总和，`.secureCoast` 完成条件仍是任意 2 个 operational coastal assets，不要求三类各一个。
+- `missionReward(for: .secureCoast)` 仍为 `$600`，`completedMissionStages` 防重复发奖、任务顺序、完成消息和胜负逻辑不变。
+- README、flow、flowchart 和 v4.12 Agent A 提示词已同步当前真实行为，未宣称新增任务系统、新奖励、新建筑能力、AI 新能力或海岸资产新规则。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.12（海岸据点任务摘要）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`2869abc41ae8dcb28cfc7046585c40bf4ea0033e`，commit subject 为 `v4.12: 增强海岸据点任务摘要`。
+- diff reviewer 返回 `No issues`，确认 Secure Coast 完成条件仍是 `coastalAssetCount(for: .player) >= 2`，分项计数只统计指定 faction、存活、operational 的三类海岸资产，奖励、任务顺序、AI、建造、战斗、迷雾路径未改，文档未夸大，且未发现明显 Swift 编译风险；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `2869abc41ae8dcb28cfc7046585c40bf4ea0033e`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28760867129`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.12-main-2869abc41ae8-run28760867129-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28760867129/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=2869abc41ae8dcb28cfc7046585c40bf4ea0033e`、`runId=28760867129`、`runAttempt=1`、`version=v4.12`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，`Secure Coast` 任务详情在不同 HUD 宽度下的 `SY` / `SON` / `CB` 摘要可读性，以及任意 2 个已完工海岸资产完成任务的玩家理解度，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.12。
