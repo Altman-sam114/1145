@@ -3007,13 +3007,17 @@ final class GameScene: SKScene {
         let guardWing = isGuarding ? boundCarrierGuardWing(for: entity) : []
         let count = isGuarding ? guardWing.count : nearbyWing.count
         let missing = max(0, requirement - count)
-        let label = isGuarding ? "Guard wing" : "Wing"
+        let label = isGuarding ? "GW" : "Wing"
         let contactSuffix: String
         if isGuarding {
             let contactSummary = carrierGuardContactSummary(for: entity, guardWing: guardWing)
-            let typeSuffix = contactSummary.type.map { " \($0)" } ?? ""
-            let targetSuffix = contactSummary.targetCode.map { " Tgt \($0)" } ?? ""
-            contactSuffix = "  Ctc \(contactSummary.count)\(typeSuffix)\(targetSuffix)"
+            if contactSummary.count > 0 {
+                let typeSuffix = contactSummary.type.map { " \($0)" } ?? ""
+                let targetSuffix = contactSummary.targetCode.map { " Tgt \($0)" } ?? ""
+                contactSuffix = " C\(contactSummary.count)\(typeSuffix)\(targetSuffix)"
+            } else {
+                contactSuffix = " C0"
+            }
         } else {
             contactSuffix = ""
         }
