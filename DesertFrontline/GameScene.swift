@@ -3005,6 +3005,25 @@ final class GameScene: SKScene {
         }.count
     }
 
+    private func groupHighValueNavalEscortSummary(for selected: [GameEntity]) -> String? {
+        guard selected.count > 1 else { return nil }
+        let highValueNaval = selected.compactMap { entity -> (nearby: Int, required: Int)? in
+            guard entity.faction == .player,
+                  let required = highValueNavalEscortRequirement(for: entity.kind) else { return nil }
+            return (nearbyNavalEscortCount(for: entity), required)
+        }
+        guard !highValueNaval.isEmpty else { return nil }
+
+        let satisfied = highValueNaval.filter { $0.nearby >= $0.required }.count
+        let missing = highValueNaval.reduce(0) { total, item in
+            total + max(0, item.required - item.nearby)
+        }
+        if missing > 0 {
+            return "HV Navy \(satisfied)/\(highValueNaval.count) escorted  Need \(missing)"
+        }
+        return "HV Navy \(satisfied)/\(highValueNaval.count) escorted"
+    }
+
     private func groupSelectionInfo(for selected: [GameEntity]) -> (title: String, rows: [String]) {
         let land = selected.filter { $0.kind.domain == .land }.count
         let air = selected.filter { $0.kind.domain == .air }.count
@@ -3015,6 +3034,7 @@ final class GameScene: SKScene {
         let maxRange = selected.map { $0.kind.attackRange }.max() ?? 0
         let holdingCount = selected.filter { $0.holdPosition != nil }.count
         let attackMoveCount = selected.filter { $0.attackMoveDestination != nil }.count
+        let highValueEscortSummary = groupHighValueNavalEscortSummary(for: selected)
         let combatSummary = groupAntiSubmarineSummary(for: selected).map {
             "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))  \($0)"
         } ?? "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))"
@@ -3029,7 +3049,7 @@ final class GameScene: SKScene {
                     ? "Holding \(holdingCount)  Guard \(Int(holdEngagementRadius))"
                     : attackMoveCount > 0
                         ? "Attack move \(attackMoveCount)  Seek \(Int(attackMoveEngagementRadius))"
-                        : groupVeterancyLine(for: selected)
+                        : highValueEscortSummary ?? groupVeterancyLine(for: selected)
             ]
         )
     }
