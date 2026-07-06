@@ -2771,11 +2771,19 @@ final class GameScene: SKScene {
         }
 
         if isSettingAttackMove {
-            let combatCount = selected.filter { !$0.kind.isStructure && $0.kind.damage > 0 }.count
+            let combatUnits = selected.filter {
+                $0.faction == .player && $0.isAlive && !$0.kind.isStructure && $0.kind.damage > 0
+            }
+            if activeMissionStage() == .destroyHQ, let redHQ = playerKnownEnemyHQ() {
+                return (
+                    "ATTACK MOVE",
+                    attackMoveHQTargetRows(combatUnits: combatUnits, redHQ: redHQ)
+                )
+            }
             return (
                 "ATTACK MOVE",
                 [
-                    "Combat units \(combatCount)",
+                    "Combat units \(combatUnits.count)",
                     "Seek radius \(Int(attackMoveEngagementRadius))",
                     "Engage visible enemies en route",
                     "Tap map to push formation"
@@ -2800,6 +2808,18 @@ final class GameScene: SKScene {
         }
 
         return groupSelectionInfo(for: selected)
+    }
+
+    private func attackMoveHQTargetRows(combatUnits: [GameEntity], redHQ: GameEntity) -> [String] {
+        let nearestDistance = combatUnits
+            .map { $0.node.position.distance(to: redHQ.node.position) }
+            .min()
+        return [
+            "Combat units \(combatUnits.count)",
+            "Red HQ HP \(Int(redHQ.hp))/\(Int(redHQ.kind.maxHP))",
+            nearestDistance.map { "Nearest approx \(Int($0))" } ?? "Select combat units",
+            "Tap map to push formation"
+        ]
     }
 
     private func singleSelectionInfo(for entity: GameEntity) -> (title: String, rows: [String]) {
