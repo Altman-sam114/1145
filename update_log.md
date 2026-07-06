@@ -2270,3 +2270,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Repair 95  Damaged n` 文案可读性、多个 Mechanic 范围圈显示、取消选择 / 死亡 / `SKRM` 后范围圈不残留，以及 damaged count 随距离和 HP 变化，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.23。
+
+### v4.24 / 受损机动单位维修来源提示
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家单选受损、存活、己方、非结构、非 Mechanic 的机动单位时，选择信息面板现在显示最近己方存活 Mechanic 的维修来源提示。
+- 范围内显示 `MECH in range`；没有存活己方 Mechanic 时显示 `Need MECH`；有 Mechanic 但不在自动维修范围内时显示 `Need MECH  <distance>`。
+- 提示只在没有 Submarine、Mechanic、Carrier、AMOV 或 HOLD 等更高优先级状态时显示，避免覆盖潜艇状态、Mechanic 自身维修摘要、航母专用面板和战术命令状态。
+- 新增最近己方 Mechanic 距离和受损单位维修来源的纯查询 helper，只读取同阵营、存活、kind 为 Mechanic 的实体位置。
+- 本轮只增强 HUD 只读文案，没有改变 `updateRepair(dt:)`、`mechanicRepairRange = 95`、`mechanicRepairPerSecond = 22`、维修目标选择、Field Repair 支援、AI、移动、战斗、迷雾、声呐、护航、任务、胜负或 `SKRM` 重置。
+- README、flow、flowchart 和 v4.24 Agent A 提示词已同步当前真实行为，未宣称新增手动维修、自动寻路回修、维修升级或 AI 新能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.24（受损机动单位维修来源提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`93942178f4a8c7fc5f608a4617f38bae161a4596`，commit subject 为 `v4.24: 增强受损单位维修来源提示`。
+- diff reviewer 返回 `No issues`，确认提示只在玩家己方、存活、受损、非结构、非 Mechanic 单选机动单位显示；Submarine / Mechanic / Carrier / AMOV / HOLD 不被覆盖；最近 Mechanic 查询只读、同阵营、存活、kind 为 Mechanic，并用 `distance < mechanicRepairRange` 判断范围内；未改变 `updateRepair`、AI、Field Repair、移动、战斗、迷雾或任务；文档未夸大。该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `93942178f4a8c7fc5f608a4617f38bae161a4596`。
+- GitHub Actions：run `28772435918`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.24-main-93942178f4a8-run28772435918-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28772435918/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=93942178f4a8c7fc5f608a4617f38bae161a4596`、`runId=28772435918`、`runAttempt=1`、`version=v4.24`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `MECH in range` / `Need MECH <distance>` 文案可读性、满血单位不显示提示、AMOV / HOLD 优先级，以及距离跨过 95 边界时的提示变化，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.24。
