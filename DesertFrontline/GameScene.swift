@@ -2912,7 +2912,8 @@ final class GameScene: SKScene {
             if entity.kind == .carrier {
                 let escortLine = highValueNavalEscortLine(for: entity).map { "  \($0)" } ?? ""
                 rows[2] = "\(carrierDeckCapabilityLine())\(escortLine)"
-                rows[3] = carrierDeckQueueAndRallyLine(for: entity)
+                let wingLine = carrierAirWingLine(for: entity).map { "  \($0)" } ?? ""
+                rows[3] = "\(carrierDeckQueueAndRallyLine(for: entity))\(wingLine)"
             } else {
                 if let escortLine = highValueNavalEscortLine(for: entity) {
                     rows[2] = "\(rows[2])  \(escortLine)"
@@ -2993,6 +2994,28 @@ final class GameScene: SKScene {
         }
         let suffix = orders.count > 1 ? " +\(orders.count - 1)" : ""
         return "\(rally)  Queue \(active.kind.shortCode) \(Int(ceil(active.remaining)))s\(suffix)"
+    }
+
+    private func carrierAirWingLine(for entity: GameEntity) -> String? {
+        guard entity.kind == .carrier else { return nil }
+        let requirement = 2
+        let nearby = nearbyCarrierAirWingCount(for: entity)
+        let missing = max(0, requirement - nearby)
+        if missing > 0 {
+            return "Wing \(nearby)/\(requirement) Need \(missing)"
+        }
+        return "Wing \(nearby)/\(requirement) OK"
+    }
+
+    private func nearbyCarrierAirWingCount(for entity: GameEntity) -> Int {
+        entities.values.filter { wing in
+            wing.faction == entity.faction &&
+                wing.isAlive &&
+                wing.isOperational &&
+                !wing.kind.isStructure &&
+                (wing.kind == .helicopter || wing.kind == .fighter) &&
+                wing.node.position.distance(to: entity.node.position) <= highValueNavalEscortRadius
+        }.count
     }
 
     private func highValueNavalEscortRequirement(for kind: EntityKind) -> Int? {
