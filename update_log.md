@@ -3009,3 +3009,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 面板中非零 `Eng n` 的可读性、翼队目标过期 / 离开合法半径后 `Eng` 回落、两个翼队攻击同一目标时显示翼队数量而不是去重目标数、隐藏潜艇不会通过 `Eng` 与 `Tgt SUB` 泄露。
 - 后续可继续在该 guard wing 可读性基础上设计更明确的 CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.42。
+
+### v4.43 / 多选航母警戒翼队摘要
+
+日期：2026-07-06
+
+核心变更：
+
+- 多选面板在选中集合包含玩家 HOLD Carrier 时，会在 HOLD 状态行追加紧凑 `CV GW x/y OK/Need Cn Eng n` 摘要。
+- `x` 统计选中 HOLD Carrier 当前绑定的 HEL/JET 总数，复用 `boundCarrierGuardWing(for:)` 口径；`y` 为选中 HOLD Carrier 数量乘以 2。
+- `C` 按目标 entity id 跨选中 HOLD Carrier 去重，只统计仍满足 `isCarrierGuardContact(...)` 的合法 guard contact。
+- `Eng n` 只在非零时显示，统计绑定 wing 中当前 `attackTarget` 仍满足 `isCarrierGuardContact(...)` 的 HEL/JET 数量；两个 wing 攻击同一合法目标时仍按 wing 数计。
+- 没有选中 HOLD Carrier 时，多选 HOLD 行仍保持普通 `Holding n  Guard ...`；单选 Carrier 的 `GW ... Cn ... Tgt ... Eng n` 行、AMOV、高价值海军 escort 摘要和老兵摘要优先级保持原语义。
+- 本轮只读增强 HUD，没有改变 `isCarrierGuardContact(...)`、`carrierGuardPriorityTarget(for:)`、`updateCombat(dt:)` 的目标写入 / 清理、guard anchor 写入 / 清理、迷雾、潜艇侦测、AI、移动、战斗、生产、支援、任务或胜负。
+- README、flow、flowchart 和 v4.43 Agent A 提示词已同步当前真实行为，未宣称完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.43（多选航母警戒翼队摘要）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.43 实现提示词；Agent X 并行只读 scout 确认多选面板会丢失 Carrier guard wing 信息，适合补只读摘要。
+- Agent B 实现提交并推送：`4e685d7109406d7c4ac34cb27d1550ab69d7b424`，commit subject 为 `v4.43: 多选航母警戒翼队摘要`。
+- diff reviewer 子 agent 返回 `No issues`，确认本轮新增 `groupCarrierGuardWingSummary` 为只读统计，复用 `boundCarrierGuardWing`、`carrierGuardEngagedCount` 和 `isCarrierGuardContact`，未发现单选 Carrier、普通 HOLD、AMOV、高价值海军 escort、迷雾或潜艇边界被误改；该 reviewer 未运行本地测试、构建、静态检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `4e685d7109406d7c4ac34cb27d1550ab69d7b424`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28805154005`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.43-main-4e685d710940-run28805154005-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28805154005/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=4e685d7109406d7c4ac34cb27d1550ab69d7b424`、`runId=28805154005`、`runAttempt=1`、`version=v4.43`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：多选 HOLD Carrier 编队时 `CV GW x/y OK/Need Cn Eng n` 的宽度、多个 Carrier 共享同一目标时 `C` 是否按目标去重、多个 wing 攻击同一目标时 `Eng` 是否按 wing 计数、隐藏潜艇不会通过 `C` 或 `Eng` 泄露。
+- 后续可继续在 guard wing 可读性基础上设计 HOLD 下达时的短视觉反馈、CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.43。
