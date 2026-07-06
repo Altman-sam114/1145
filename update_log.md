@@ -2929,3 +2929,43 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 面板中 `Ctc n ... Tgt XXX` 的宽度、`Ctc 0` 不显示 `Tgt`、多个 wing 可攻击不同目标时 `Tgt` 与实际优先口径一致、隐藏潜艇不会通过 `Tgt SUB` 泄露。
 - 后续可继续在该优先接触提示基础上设计更明确的 CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.40。
+
+### v4.41 / 航母警戒翼队 HUD 紧凑化
+
+日期：2026-07-06
+
+核心变更：
+
+- Carrier HOLD guard wing 的单选 HUD 行从较长的 `Guard wing ... Ctc ...` 格式压缩为 `GW ... Cn` 格式，降低与 Carrier queue / rally 行拼接后的宽度压力。
+- Carrier 未 HOLD 时仍显示 `Wing x/2 OK` 或 `Wing x/2 Need n` readiness；Carrier HOLD 时显示 `GW x/2 OK C0`、`GW x/2 Need n C0` 或非零接触时的 `GW x/2 ... Cm Air/Sea/Sub/Ground/Mix Tgt XXX`。
+- `C0` 只表示 0 接触，不追加 Air / Sea / Sub / Ground / Mix 类型或 `Tgt XXX`，保留 v4.40 的 0 接触不显示伪目标语义。
+- 非零接触仍只消费 `carrierGuardContactSummary(for:guardWing:)` 的 `count`、`type` 和 `targetCode`，没有改变 contact predicate、目标排序、去重、迷雾或潜艇侦测边界。
+- 本轮只读压缩 HUD 文案，没有改变 `isCarrierGuardContact(...)`、`carrierGuardTargetPriority(for:target:)`、`carrierGuardPriorityTarget(for:)`、guard wing 绑定 / 站位、combat、AI、visibility、`revealedUntil`、迷雾集合、攻击目标、命令状态、生产、支援、任务或胜负。
+- README、flow、flowchart 和 v4.41 Agent A 提示词已同步当前真实行为，未宣称完整 CAP / 巡逻 / 真实锁定 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.41（航母警戒翼队HUD紧凑化）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.41 实现提示词；Agent X 并行只读 scout 建议优先处理 v4.38-v4.40 叠加后的 HUD 行宽风险。
+- Agent B 实现提交并推送：`59150246cde68cc6d7b45b0c5c0acdf78fa11d32`，commit subject 为 `v4.41: 航母警戒翼队HUD紧凑化`。
+- diff reviewer 子 agent 返回 `No issues`，确认本轮只压缩 Carrier HOLD guard wing HUD 文案并同步文档，未发现 contact predicate、目标排序、迷雾、潜艇侦测、AI、移动、战斗、生产或 `SKRM` 被误改；该 reviewer 未运行本地测试、构建、静态检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `59150246cde68cc6d7b45b0c5c0acdf78fa11d32`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28800608099`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.41-main-59150246cde6-run28800608099-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28800608099/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=59150246cde68cc6d7b45b0c5c0acdf78fa11d32`、`runId=28800608099`、`runAttempt=1`、`version=v4.41`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 面板中 `GW x/2 ... Cn ...` 的可读性、`C0` 不显示类型 / `Tgt`、非零接触类型和 `Tgt` 仍与实际优先口径一致、隐藏潜艇不会通过 `Sub` 或 `Tgt SUB` 泄露。
+- 后续可在该紧凑格式基础上继续设计更明确的 guard wing 交战状态、CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.41。
