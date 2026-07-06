@@ -797,6 +797,7 @@ private final class GameEntity {
     var path: [CGPoint] = []
     weak var attackTarget: GameEntity?
     var holdPosition: CGPoint?
+    var guardAnchorCarrierID: Int?
     var attackMoveDestination: CGPoint?
     var attackTimer: TimeInterval = 0
     var revealedUntil: TimeInterval = 0
@@ -3002,7 +3003,7 @@ final class GameScene: SKScene {
         let nearbyWing = nearbyCarrierAirWing(for: entity)
         let isGuarding = entity.holdPosition != nil
         let count = isGuarding
-            ? nearbyWing.filter { $0.holdPosition != nil }.count
+            ? nearbyWing.filter { $0.holdPosition != nil && $0.guardAnchorCarrierID == entity.id }.count
             : nearbyWing.count
         let missing = max(0, requirement - count)
         let label = isGuarding ? "Guard wing" : "Wing"
@@ -3958,6 +3959,7 @@ final class GameScene: SKScene {
                 var assignedAttackers = 0
                 for unit in selected where unit.kind.canAttack(tapped.kind) {
                     unit.holdPosition = nil
+                    clearCarrierGuardAnchor(for: unit)
                     unit.attackMoveDestination = nil
                     unit.attackTarget = tapped
                     unit.destination = nil
@@ -4666,6 +4668,7 @@ final class GameScene: SKScene {
         let center = mobileUnits.reduce(CGPoint.zero) { $0 + $1.node.position } / CGFloat(mobileUnits.count)
         for unit in mobileUnits {
             unit.holdPosition = unit.node.position
+            clearCarrierGuardAnchor(for: unit)
             unit.attackMoveDestination = nil
             unit.attackTarget = nil
             unit.destination = nil
@@ -4685,6 +4688,7 @@ final class GameScene: SKScene {
         for carrier in carriers where carrier.faction == .player && carrier.isAlive {
             for wing in nearbyCarrierAirWing(for: carrier) where !assignedWingIDs.contains(wing.id) {
                 wing.holdPosition = wing.node.position
+                wing.guardAnchorCarrierID = carrier.id
                 wing.attackMoveDestination = nil
                 wing.attackTarget = nil
                 wing.destination = nil
@@ -4693,6 +4697,11 @@ final class GameScene: SKScene {
             }
         }
         return assignedWingIDs.count
+    }
+
+    private func clearCarrierGuardAnchor(for unit: GameEntity) {
+        guard unit.kind == .helicopter || unit.kind == .fighter else { return }
+        unit.guardAnchorCarrierID = nil
     }
 
     private func issueFormationMove(to point: CGPoint, units: [GameEntity], showMarkers: Bool, showFeedback: Bool, attackMove: Bool = false) {
@@ -4720,6 +4729,7 @@ final class GameScene: SKScene {
             for (index, unit) in ordered.enumerated() {
                 let unitDestination = navigablePoint(for: domain, near: anchor + offsets[index])
                 unit.holdPosition = nil
+                clearCarrierGuardAnchor(for: unit)
                 unit.attackTarget = nil
                 unit.attackMoveDestination = attackMove ? unitDestination : nil
                 setDestination(for: unit, near: unitDestination)
