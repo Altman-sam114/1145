@@ -2768,3 +2768,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `Guard wing x/2 OK` / `Need n` 与站位保持的体验、多艘 Carrier 半径重叠时的站位分配、Carrier 警戒交战时翼队回位表现、以及 Carrier 取消 HOLD 后翼队保留普通 HOLD 的体验，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续在该站位保持基础上设计真正 CAP / 巡逻 / 截击或航母翼队 UI，但这些不属于 v4.36。
+
+### v4.37 / 航母警戒翼队近域威胁优先
+
+日期：2026-07-06
+
+核心变更：
+
+- Carrier HOLD guard wing 在 v4.36 站位保持基础上新增近域威胁优先目标选择。
+- 新增 `carrierGuardAnchor(for:)` 复用绑定 Carrier 有效性判断，减少站位保持和目标优先逻辑的条件重复。
+- 新增 `carrierGuardPriorityTarget(for:)`，只在 HEL/JET 仍绑定到存活、同阵营、仍 HOLD 的 Carrier 且自身仍有 `holdPosition` 时生效。
+- 绑定翼队没有当前攻击目标时，会优先选择 Carrier 近域内已知、敌对、可攻击且仍位于自身 HOLD 站位警戒半径内的威胁；无合法近域威胁时回落到原普通 HOLD / AMOV / 射程目标搜索。
+- 目标过滤继续检查 `isKnownToFaction(...)`、`EntityKind.canAttack(...)`、Carrier 近域半径和翼队 HOLD 站位半径，不绕过迷雾、潜艇隐身或可攻击规则。
+- 目标排序以靠近被守护 Carrier 为主，并给 Fighter 对空、Helicopter 对潜艇 / 海军目标一个轻量优先级；不改变伤害、射程、冷却或目标清理规则。
+- 本轮没有实现完整 CAP、巡逻路径、主动截击状态机、新 HUD action、AI 航母策略、战斗加成、生产来源变化、集结点变化、声呐 / 潜艇隐身变化、任务或胜负变化。
+- README、flow、flowchart 和 v4.37 Agent A 提示词已同步当前真实行为，未宣称未实现的完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.37（航母警戒翼队近域威胁优先）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`47916cca095d475114e58de887e107bed179d4ff`，commit subject 为 `v4.37: 航母警戒翼队近域威胁优先`。
+- 本轮未运行本地 diff reviewer 子 agent；由 Agent C 直接复核实际 diff、提示词、文档和云端 artifact。Agent C 未运行本地测试、构建、静态检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `47916cca095d475114e58de887e107bed179d4ff`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28793777782`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.37-main-47916cca095d-run28793777782-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28793777782/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=47916cca095d475114e58de887e107bed179d4ff`、`runId=28793777782`、`runAttempt=1`、`version=v4.37`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：Fighter guard wing 对 Carrier 近域空中威胁的优先级、Helicopter guard wing 对已知潜艇 / 海军威胁的优先级、威胁离开 HOLD 站位半径后的目标清理、隐藏潜艇不被 HUD 或目标选择泄露。
+- 后续可继续在该目标优先基础上设计更明确的 CAP / 巡逻 / 截击 UI 或 AI 航母使用，但这些不属于 v4.37。
