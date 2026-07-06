@@ -3171,3 +3171,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：单选 bound HEL/JET 时 anchor Carrier 范围圈的颜色和半径可读性、多选多个 guard aircraft 时多个 anchor Carrier 是否同时显示、未绑定 / anchor 失效飞机不会显示、与 Carrier / Battleship escort ring 同屏时是否容易区分。
 - 后续可继续在 guard wing 可读性基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统或 AI 航母使用，但这些不属于 v4.46。
+
+
+### v4.47 / 选中航母显示警戒锚点范围圈
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家选中正在 HOLD 且拥有至少一个有效绑定 HEL/JET guard wing 的 Carrier 时，会在该 Carrier 上显示基于 `carrierGuardThreatRadius` 的只读 guard anchor 范围圈。
+- v4.46 的“选中 bound HEL/JET 时在 anchor Carrier 上显示 guard anchor 范围圈”路径保持不变；同选 Carrier 与 bound aircraft 时仍复用同一个 Carrier 节点上的同一个范围圈。
+- 没有绑定翼队的 HOLD Carrier、非 HOLD Carrier、敌方 Carrier、死亡 Carrier、未绑定或 anchor 无效的 HEL/JET 不会触发额外 guard anchor 范围圈。
+- 现有 Carrier / Battleship escort ring、sonar ring、repair ring、`CV GUARD Dn` HUD 行、Carrier `GW ... Cn ... Tgt ... Eng n` 和多选 `CV GW ...` 摘要保持原语义。
+- 本轮没有改变 `assignCarrierGuardWing(for:)`、`clearCarrierGuardAnchor(for:)`、`updateCarrierGuardStation(for:)`、`carrierGuardAnchor(for:)`、`isCarrierGuardContact(...)`、`carrierGuardPriorityTarget(for:)`、combat、AI、迷雾、潜艇侦测、生产、支援、任务或胜负。
+- README、flow、flowchart 和 v4.47 Agent A 提示词已同步当前真实行为，未宣称完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.47（选中航母显示警戒锚点范围圈）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 本地轻量检查：`git diff --check` 通过；`git diff --cached --check` 通过。
+- Agent B 实现提交并推送：`29310c72e3a6ddab8dc4bb3e507af8a338b4c294`，commit subject 为 `v4.47: 选中航母显示警戒锚点范围圈`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `29310c72e3a6ddab8dc4bb3e507af8a338b4c294`；`gh` 当前认证账号为 `Altman-sam114`；`git diff --check 29310c72e3a6ddab8dc4bb3e507af8a338b4c294^ 29310c72e3a6ddab8dc4bb3e507af8a338b4c294` 通过。
+- GitHub Actions：run `28811684483`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.47-main-29310c72e3a6-run28811684483-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28811684483/`，缓存目录大小 `132K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=29310c72e3a6ddab8dc4bb3e507af8a338b4c294`、`runId=28811684483`、`runAttempt=1`、`version=v4.47`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器或真机交互检查；最低验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：单选 HOLD Carrier 且有绑定翼队时 guard anchor 范围圈是否可读、多选多个 HOLD Carrier 时多个范围圈是否同时显示、HOLD Carrier 无绑定翼队时不显示额外范围圈、与高价值海军 escort ring 同屏时是否容易区分。
+- 后续可继续在 guard wing 可读性基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统或 AI 航母使用，但这些不属于 v4.47。
