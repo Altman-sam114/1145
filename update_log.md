@@ -2849,3 +2849,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 面板中 `Guard wing x/2 ...  Ctc n` 的宽度、多个 wing 共同发现同一目标时的去重、隐藏潜艇不被接触数泄露、目标离开 Carrier 近域或 wing HOLD 半径后的接触数回落。
 - 后续可继续在该接触数提示基础上设计更明确的 CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.38。
+
+### v4.39 / 航母警戒翼队接触类型提示
+
+日期：2026-07-06
+
+核心变更：
+
+- Carrier HOLD guard wing 的单选 HUD 行在 `Ctc n` 非零时追加接触类型摘要：`Air`、`Sea`、`Sub`、`Ground` 或 `Mix`。
+- `Ctc 0` 不追加类型，避免无接触时显示无意义的类型。
+- `carrierGuardContactCount(for:guardWing:)` 升级为 `carrierGuardContactSummary(for:guardWing:)`，同时返回去重数量和类型摘要。
+- 新增 `carrierGuardContactType(for:)`，将已合法 contact 分为空中、水面、潜艇和地面 / 结构四类；多类型集合显示 `Mix`。
+- 类型摘要和接触数使用同一个 `Set<Int>` 目标 id 去重集合，同一个目标被多个 wing 看到或可攻击时只贡献一次数量和一次类型。
+- 类型摘要继续复用 `isCarrierGuardContact(...)` 过滤结果，保持 `isKnownToFaction(...)`、`canAttack(...)`、Carrier 近域半径和 wing HOLD 站位警戒半径边界，不泄露隐藏潜艇或未知目标。
+- 本轮只读增强 HUD，没有改变 combat/AI/visibility、`revealedUntil`、迷雾集合、攻击目标、命令状态、伤害、射程、冷却、生产、支援、任务或胜负。
+- README、flow、flowchart 和 v4.39 Agent A 提示词已同步当前真实行为，未宣称未实现的完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.39（航母警戒翼队接触类型提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`a87c213270263e93b17631d55e58be97a551c6ea`，commit subject 为 `v4.39: 航母警戒翼队接触类型提示`。
+- diff reviewer 子 agent 返回 `No issues`，确认 `Ctc n` 类型摘要复用 `isCarrierGuardContact(...)` 过滤后的同一去重 contact 集合，未发现写入 combat、AI、visibility、命令或迷雾状态的路径；该 reviewer 未运行本地测试、构建、静态检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `a87c213270263e93b17631d55e58be97a551c6ea`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28796279462`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.39-main-a87c21327026-run28796279462-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28796279462/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=a87c213270263e93b17631d55e58be97a551c6ea`、`runId=28796279462`、`runAttempt=1`、`version=v4.39`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 面板中 `Ctc n Air/Sea/Sub/Ground/Mix` 的宽度、多个类型混合时显示 `Mix`、`Ctc 0` 不显示类型、隐藏潜艇不会通过 `Sub` 类型泄露。
+- 后续可继续在该接触类型提示基础上设计更明确的 CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.39。
