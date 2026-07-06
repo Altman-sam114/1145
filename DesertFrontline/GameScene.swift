@@ -3011,12 +3011,14 @@ final class GameScene: SKScene {
         let contactSuffix: String
         if isGuarding {
             let contactSummary = carrierGuardContactSummary(for: entity, guardWing: guardWing)
+            let engagedCount = carrierGuardEngagedCount(for: entity, guardWing: guardWing)
+            let engagedSuffix = engagedCount > 0 ? " Eng \(engagedCount)" : ""
             if contactSummary.count > 0 {
                 let typeSuffix = contactSummary.type.map { " \($0)" } ?? ""
                 let targetSuffix = contactSummary.targetCode.map { " Tgt \($0)" } ?? ""
-                contactSuffix = " C\(contactSummary.count)\(typeSuffix)\(targetSuffix)"
+                contactSuffix = " C\(contactSummary.count)\(typeSuffix)\(targetSuffix)\(engagedSuffix)"
             } else {
-                contactSuffix = " C0"
+                contactSuffix = " C0\(engagedSuffix)"
             }
         } else {
             contactSuffix = ""
@@ -3025,6 +3027,17 @@ final class GameScene: SKScene {
             return "\(label) \(count)/\(requirement) Need \(missing)\(contactSuffix)"
         }
         return "\(label) \(count)/\(requirement) OK\(contactSuffix)"
+    }
+
+    private func carrierGuardEngagedCount(for carrier: GameEntity, guardWing: [GameEntity]) -> Int {
+        guard carrier.kind == .carrier, carrier.holdPosition != nil else { return 0 }
+        return guardWing.reduce(0) { total, wing in
+            guard let holdPosition = wing.holdPosition,
+                  let target = wing.attackTarget,
+                  isCarrierGuardContact(target, for: wing, carrier: carrier, holdPosition: holdPosition)
+            else { return total }
+            return total + 1
+        }
     }
 
     private func boundCarrierGuardWing(for carrier: GameEntity) -> [GameEntity] {
