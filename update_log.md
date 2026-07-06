@@ -2079,3 +2079,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，Carrier / Battleship 单选面板在真实设备 HUD 宽度下显示 `Escort x/y` 的可读性，以及玩家对护航状态只是只读提示而非自动护航命令的理解度，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.18。
+
+### v4.19 / 高价值海军护航半径圈
+
+日期：2026-07-06
+
+核心变更：
+
+- 玩家选中 operational Carrier 或 Battleship 时，场景中现在显示独立的暖色护航半径圈，对应高价值海军单位的 620 护航统计范围。
+- 多选多个玩家高价值海军单位时，可同时显示多个护航半径圈；取消选择或单位不再满足条件时自动隐藏。
+- 新增独立 `escortCoverageNode`，与声呐覆盖圈分离；声呐显示规则、潜艇侦测、护航计数口径和选择状态刷新链路保持原语义。
+- 本轮只增加选中态可视化提示，没有改变 Red AI 高价值海军护航门槛、attack-move wave、reservation、玩家命令、移动、战斗、生产、Carrier launch、rally point、支援、迷雾、任务、胜负或 HUD 布局。
+- README、flow、flowchart 和 v4.19 Agent A 提示词已同步当前真实行为，未宣称自动护航、CAP、巡逻、侦测加成、战斗加成、AI 行为变化或新命令。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.19（高价值海军护航半径圈）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`9c94c42a3e290d6c2b88c492d703299577bf7961`，commit subject 为 `v4.19: 增强高价值海军护航半径圈`。
+- diff reviewer 返回 `No issues`，确认暖色护航半径圈只在玩家选中 operational Carrier / Battleship 时显示，使用独立 `escortCoverageNode`，未改变 sonar、escort count、AI、玩家命令、战斗、生产、支援、fog、任务或 HUD 文案，文档未夸大；该 reviewer 曾误运行一次 `git diff --check --quiet` 且无输出，本轮不把该命令作为验证依据。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `9c94c42a3e290d6c2b88c492d703299577bf7961`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28767811686`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.19-main-9c94c42a3e29-run28767811686-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28767811686/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=9c94c42a3e290d6c2b88c492d703299577bf7961`、`runId=28767811686`、`runAttempt=1`、`version=v4.19`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，Carrier / Battleship 护航半径圈在真实设备 HUD 和战场缩放下的可读性，以及多个半径圈与声呐圈同时显示时的视觉区分，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.19。
