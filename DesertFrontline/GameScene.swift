@@ -810,6 +810,7 @@ private final class GameEntity {
     let selectionNode: SKShapeNode
     let sonarCoverageNode = SKShapeNode()
     let escortCoverageNode = SKShapeNode()
+    let repairCoverageNode = SKShapeNode()
     let healthFill: SKShapeNode
     let teamFlag: SKShapeNode
     let label: SKLabelNode
@@ -950,6 +951,8 @@ final class GameScene: SKScene {
     private let holdReturnTolerance: CGFloat = 58
     private let attackMoveEngagementRadius: CGFloat = 285
     private let highValueNavalEscortRadius: CGFloat = 620
+    private let mechanicRepairRange: CGFloat = 95
+    private let mechanicRepairPerSecond: CGFloat = 22
     private let controlGroupRecallDelay: TimeInterval = 0.24
 
     override func didMove(to view: SKView) {
@@ -1648,6 +1651,8 @@ final class GameScene: SKScene {
         entity.node.addChild(entity.sonarCoverageNode)
         configureEscortCoverageNode(for: entity)
         entity.node.addChild(entity.escortCoverageNode)
+        configureRepairCoverageNode(for: entity)
+        entity.node.addChild(entity.repairCoverageNode)
 
         let healthBack = SKShapeNode(rectOf: CGSize(width: entity.kind.footprint, height: 5), cornerRadius: 1)
         healthBack.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 16)
@@ -3075,7 +3080,7 @@ final class GameScene: SKScene {
             return submarineStatusLine(for: entity)
         }
         if entity.kind == .mechanic {
-            return "Repairs nearby allies"
+            return "Repair \(Int(mechanicRepairRange))  Damaged \(damagedRepairTargetCount(for: entity))"
         }
         if entity.kind == .carrier {
             return structureStatusLine(for: entity)
@@ -3094,6 +3099,18 @@ final class GameScene: SKScene {
             return "Temporary detected \(Int(ceil(entity.revealedUntil - lastUpdateTime)))s"
         }
         return "Stealth while undetected"
+    }
+
+    private func damagedRepairTargetCount(for mechanic: GameEntity) -> Int {
+        guard mechanic.kind == .mechanic,
+              mechanic.isAlive else { return 0 }
+        return entities.values.filter { target in
+            target.faction == mechanic.faction &&
+                target.isAlive &&
+                target.id != mechanic.id &&
+                target.hp < target.kind.maxHP &&
+                target.node.position.distance(to: mechanic.node.position) < mechanicRepairRange
+        }.count
     }
 
     private func groupVeterancyLine(for selected: [GameEntity]) -> String {
@@ -5021,10 +5038,10 @@ final class GameScene: SKScene {
             guard let target = entities.values
                 .filter({ $0.faction == mechanic.faction && $0.isAlive && $0.id != mechanic.id && $0.hp < $0.kind.maxHP })
                 .min(by: { $0.node.position.distance(to: mechanic.node.position) < $1.node.position.distance(to: mechanic.node.position) }),
-                target.node.position.distance(to: mechanic.node.position) < 95
+                target.node.position.distance(to: mechanic.node.position) < mechanicRepairRange
             else { continue }
 
-            target.hp = min(target.kind.maxHP, target.hp + CGFloat(dt) * 22)
+            target.hp = min(target.kind.maxHP, target.hp + CGFloat(dt) * mechanicRepairPerSecond)
             updateHealthBar(target)
             if Int.random(in: 0...20) == 0 {
                 showRepairSpark(at: target.node.position)
@@ -6640,6 +6657,7 @@ final class GameScene: SKScene {
             entity.rallyNode.isHidden = !(selectedIDs.contains(entity.id) && entity.kind.supportsRallyPoint && entity.rallyPoint != nil)
             entity.sonarCoverageNode.isHidden = !shouldShowSonarCoverage(for: entity)
             entity.escortCoverageNode.isHidden = !shouldShowHighValueNavalEscortCoverage(for: entity)
+            entity.repairCoverageNode.isHidden = !shouldShowMechanicRepairCoverage(for: entity)
         }
     }
 
@@ -6656,6 +6674,13 @@ final class GameScene: SKScene {
             entity.isOperational &&
             !entity.kind.isStructure &&
             highValueNavalEscortRequirement(for: entity.kind) != nil
+    }
+
+    private func shouldShowMechanicRepairCoverage(for entity: GameEntity) -> Bool {
+        selectedIDs.contains(entity.id) &&
+            entity.faction == .player &&
+            entity.isAlive &&
+            entity.kind == .mechanic
     }
 
     private func configureSonarCoverageNode(for entity: GameEntity) {
@@ -6694,6 +6719,25 @@ final class GameScene: SKScene {
         entity.escortCoverageNode.glowWidth = 1.0
         entity.escortCoverageNode.zPosition = -5
         entity.escortCoverageNode.isHidden = true
+    }
+
+    private func configureRepairCoverageNode(for entity: GameEntity) {
+        guard entity.kind == .mechanic else {
+            entity.repairCoverageNode.isHidden = true
+            return
+        }
+
+        let range = mechanicRepairRange
+        entity.repairCoverageNode.path = CGPath(
+            ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2),
+            transform: nil
+        )
+        entity.repairCoverageNode.fillColor = UIColor(red: 0.24, green: 1.0, blue: 0.54, alpha: 0.032)
+        entity.repairCoverageNode.strokeColor = UIColor(red: 0.38, green: 1.0, blue: 0.62, alpha: 0.40)
+        entity.repairCoverageNode.lineWidth = 2
+        entity.repairCoverageNode.glowWidth = 1.0
+        entity.repairCoverageNode.zPosition = -4
+        entity.repairCoverageNode.isHidden = true
     }
 
     private func showMessage(_ text: String, color: UIColor) {
