@@ -3244,7 +3244,35 @@ final class GameScene: SKScene {
         let sensors = selected.filter(isActiveSonarSensor)
         guard !aswAttackers.isEmpty || !sensors.isEmpty else { return nil }
         let maxRange = sensors.map { sonarRange(for: $0.kind) }.max() ?? 0
-        return "ASW \(aswAttackers.count)  Sonar \(sensors.count)/\(Int(maxRange))"
+        var summary = "ASW \(aswAttackers.count)  Sonar \(sensors.count)/\(Int(maxRange))"
+        let playerSensors = sensors.filter { $0.faction == .player }
+        if !playerSensors.isEmpty {
+            summary += "  Ctc \(groupSonarContactCount(for: playerSensors))"
+        }
+        return summary
+    }
+
+    private func groupSonarContactCount(for sensors: [GameEntity]) -> Int {
+        let playerSensors = sensors.filter { sensor in
+            sensor.faction == .player && isActiveSonarSensor(sensor)
+        }
+        guard !playerSensors.isEmpty else { return 0 }
+
+        var contactIDs = Set<Int>()
+        for contact in entities.values {
+            guard contact.kind == .submarine,
+                  contact.faction == .enemy,
+                  contact.isAlive,
+                  isKnownToFaction(contact, observer: .player) else { continue }
+
+            let isCovered = playerSensors.contains { sensor in
+                sensor.node.position.distance(to: contact.node.position) <= sonarRange(for: sensor.kind)
+            }
+            if isCovered {
+                contactIDs.insert(contact.id)
+            }
+        }
+        return contactIDs.count
     }
 
     private func playerQueueInfoLine() -> String {
