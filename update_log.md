@@ -2809,3 +2809,43 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：Fighter guard wing 对 Carrier 近域空中威胁的优先级、Helicopter guard wing 对已知潜艇 / 海军威胁的优先级、威胁离开 HOLD 站位半径后的目标清理、隐藏潜艇不被 HUD 或目标选择泄露。
 - 后续可继续在该目标优先基础上设计更明确的 CAP / 巡逻 / 截击 UI 或 AI 航母使用，但这些不属于 v4.37。
+
+### v4.38 / 航母警戒翼队接触数提示
+
+日期：2026-07-06
+
+核心变更：
+
+- Carrier HOLD guard wing 的单选 HUD 行在 `Guard wing x/2 OK` 或 `Guard wing x/2 Need n` 后追加 `Ctc n` 已知接触数。
+- `Ctc n` 只统计当前 Carrier 附近仍 HOLD 且 `guardAnchorCarrierID` 等于该 Carrier id 的 HEL/JET 可处理的近域威胁，并按目标 entity id 去重。
+- 新增 `boundCarrierGuardWing(for:)` 统一 Carrier HOLD guard wing 统计口径，避免 HUD 计数和绑定翼队列表分叉。
+- 新增 `carrierGuardContactCount(for:guardWing:)` 和 `isCarrierGuardContact(...)`，让 HUD 接触数与 v4.37 的近域威胁优先目标过滤共享同一合法性判断。
+- 接触过滤继续要求目标存活、敌对、非中立、对该 wing 可攻击、对 wing 阵营已知、位于 Carrier 近域半径内且仍满足 wing HOLD 站位警戒半径，不绕过迷雾、潜艇隐身或 `canAttack` 规则。
+- 本轮只读增强 HUD，没有改变 combat/AI/visibility、`revealedUntil`、迷雾集合、攻击目标、命令状态、伤害、射程、冷却、生产、支援、任务或胜负。
+- README、flow、flowchart 和 v4.38 Agent A 提示词已同步当前真实行为，未宣称未实现的完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.38（航母警戒翼队接触数提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`76c51dec39920afddbe2a9f905e1b49b592f0e79`，commit subject 为 `v4.38: 航母警戒翼队接触数提示`。
+- diff reviewer 子 agent 返回 `No issues`，确认 `Ctc n` 统计复用 guard wing 目标合法性 predicate，按目标 id 去重，未发现写入 combat/AI/visibility/命令状态的路径；该 reviewer 未运行本地测试、构建、静态检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `76c51dec39920afddbe2a9f905e1b49b592f0e79`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28795132865`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.38-main-76c51dec3992-run28795132865-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28795132865/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=76c51dec39920afddbe2a9f905e1b49b592f0e79`、`runId=28795132865`、`runAttempt=1`、`version=v4.38`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 面板中 `Guard wing x/2 ...  Ctc n` 的宽度、多个 wing 共同发现同一目标时的去重、隐藏潜艇不被接触数泄露、目标离开 Carrier 近域或 wing HOLD 半径后的接触数回落。
+- 后续可继续在该接触数提示基础上设计更明确的 CAP / 巡逻 / 截击 UI、航母翼队命令或 AI 航母使用，但这些不属于 v4.38。
