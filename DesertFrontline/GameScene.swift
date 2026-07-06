@@ -4791,10 +4791,17 @@ final class GameScene: SKScene {
             unit.destination = nil
             unit.path.removeAll()
         }
-        let guardWingCount = assignCarrierGuardWing(for: mobileUnits.filter { $0.kind == .carrier })
+        let holdCarriers = mobileUnits.filter { $0.kind == .carrier }
+        let guardWingCount = assignCarrierGuardWing(for: holdCarriers)
 
         refreshSelection()
         showHoldMarker(at: center)
+        if guardWingCount > 0 {
+            for carrier in holdCarriers {
+                guard !boundCarrierGuardWing(for: carrier).isEmpty else { continue }
+                showCarrierDeckPulse(at: carrier.node.position, faction: carrier.faction, label: "CV GUARD")
+            }
+        }
         updateHUD()
         let guardWingSuffix = guardWingCount > 0 ? " Guard wing \(guardWingCount)." : ""
         showMessage("Hold position: \(mobileUnits.count) units guarding.\(guardWingSuffix)", color: UIColor(red: 0.78, green: 1.0, blue: 0.58, alpha: 1.0))
