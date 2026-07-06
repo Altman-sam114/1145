@@ -2156,3 +2156,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `HV Navy x/y escorted  Need n` 文案的可读性，以及多选同时含 HOLD / AMOV 状态时玩家是否理解护航摘要被战术状态优先隐藏，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.20。
+
+### v4.21 / 海军生产按钮来源提示
+
+日期：2026-07-06
+
+核心变更：
+
+- `SHIP`、`SUB` 和 `CV` 底部生产按钮 subtitle 现在显示当前实际海军生产来源。
+- 当 `productionSource(for:faction:)` 找到 operational Shipyard 时显示 `SY $...`；没有 operational Shipyard 可生产对应海军单位时显示 `need SY`。
+- `HELI` / `JET` 继续显示 `AF $...`、`CV $...` 或 `need AF/CV`；陆军生产按钮仍显示 `$<cost>`。
+- 本轮只增强 HUD 只读文案，没有改变 `queueBuild`、`productionSource`、`canQueueBuild`、`BuildOrder`、费用、建造时间、资金检查、队列排序、AI 生产、Shipyard、Carrier、rally point、支援、迷雾、任务、胜负或按钮布局。
+- README、flow、flowchart 和 v4.21 Agent A 提示词已同步当前真实行为，未宣称新增生产来源、按钮禁用、队列变化、新海军能力、AI 行为变化或任务变化。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.21（海军生产按钮来源提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`f8fedd378dc24d2441ed17210a8ed30b3c8ccf8e`，commit subject 为 `v4.21: 增强海军生产按钮来源提示`。
+- diff reviewer 返回 `No issues`，确认当前 diff 只扩展 `SHIP` / `SUB` / `CV` subtitle 为 `SY $cost` 或 `need SY`，复用 `productionSource`，未改变 `queueBuild`、`productionSource`、`BuildOrder`、AI、生产规则、支援、fog、任务或按钮布局，`HELI` / `JET` 与陆军按钮不回归，文档未夸大；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `f8fedd378dc24d2441ed17210a8ed30b3c8ccf8e`。
+- GitHub Actions：run `28769017078`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.21-main-f8fedd378dc2-run28769017078-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28769017078/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=f8fedd378dc24d2441ed17210a8ed30b3c8ccf8e`、`runId=28769017078`、`runAttempt=1`、`version=v4.21`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `SY $...` 和 `need SY` 在 `SHIP` / `SUB` / `CV` subtitle 中的可读性，以及玩家对该提示只是来源提示而非按钮禁用的理解度，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.21。
