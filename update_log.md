@@ -2309,3 +2309,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备 HUD 宽度下 `MECH in range` / `Need MECH <distance>` 文案可读性、满血单位不显示提示、AMOV / HOLD 优先级，以及距离跨过 95 边界时的提示变化，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.24。
+
+### v4.25 / 支援按钮具体缺失资产提示
+
+日期：2026-07-06
+
+核心变更：
+
+- 支援技能按钮在无冷却但缺少 operational asset 时，不再显示泛化 `need asset`，而是显示具体缺失资产短码。
+- `SCAN` 显示 `need HQ/RAD`，`REPR` 显示 `need HQ/MECH`，`AIRS` 显示 `need AF/CV`，`BARR` 显示 `need BB/CV`。
+- 缺资产短码复用 `supportAssetRequirementLabel(for:)`，与支援 pending 目标面板的 `Asset ready` / `Need` 口径保持一致。
+- 支援按钮仍保持冷却秒数优先，资产满足时仍显示价格。
+- 本轮只增强 HUD 只读文案，没有改变 `supportIssue(for:faction:)`、`hasOperationalSupportAsset(for:faction:)`、`executeSupportPower(...)`、支援费用、冷却、半径、效果、AI、pending、目标合法性、任务或胜负。
+- README、flow、flowchart 和 v4.25 Agent A 提示词已同步当前真实行为，未宣称新增支援资产、按钮禁用、AI 行为变化或支援规则变化。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.25（支援按钮具体缺失资产提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`493e1e883205445e753eb6ef3a31d7872816282b`，commit subject 为 `v4.25: 支援按钮具体缺失资产提示`。
+- diff reviewer 返回 `No issues`，确认 `supportButtonSubtitle(for:)` 保持冷却优先，缺资产分支复用 `supportAssetRequirementLabel(for:)`，价格 fallback 保持不变，未修改 `supportIssue`、`hasOperationalSupportAsset`、`executeSupportPower`、AI、费用、冷却或效果，README / flow / flowchart 未夸大范围。该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `493e1e883205445e753eb6ef3a31d7872816282b`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28775057730`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.25-main-493e1e883205-run28775057730-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28775057730/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=493e1e883205445e753eb6ef3a31d7872816282b`、`runId=28775057730`、`runAttempt=1`、`version=v4.25`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备 HUD 宽度下 `need HQ/RAD`、`need HQ/MECH`、`need AF/CV`、`need BB/CV` 的可读性，以及支援按钮冷却 / 缺资产 / 价格三种状态切换，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航命令、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.25。
