@@ -3004,15 +3004,32 @@ final class GameScene: SKScene {
         let requirement = 2
         let nearbyWing = nearbyCarrierAirWing(for: entity)
         let isGuarding = entity.holdPosition != nil
-        let count = isGuarding
-            ? nearbyWing.filter { $0.holdPosition != nil && $0.guardAnchorCarrierID == entity.id }.count
-            : nearbyWing.count
+        let guardWing = isGuarding ? boundCarrierGuardWing(for: entity) : []
+        let count = isGuarding ? guardWing.count : nearbyWing.count
         let missing = max(0, requirement - count)
         let label = isGuarding ? "Guard wing" : "Wing"
+        let contactSuffix = isGuarding ? "  Ctc \(carrierGuardContactCount(for: entity, guardWing: guardWing))" : ""
         if missing > 0 {
-            return "\(label) \(count)/\(requirement) Need \(missing)"
+            return "\(label) \(count)/\(requirement) Need \(missing)\(contactSuffix)"
         }
-        return "\(label) \(count)/\(requirement) OK"
+        return "\(label) \(count)/\(requirement) OK\(contactSuffix)"
+    }
+
+    private func boundCarrierGuardWing(for carrier: GameEntity) -> [GameEntity] {
+        nearbyCarrierAirWing(for: carrier).filter { wing in
+            wing.holdPosition != nil && wing.guardAnchorCarrierID == carrier.id
+        }
+    }
+
+    private func carrierGuardContactCount(for carrier: GameEntity, guardWing: [GameEntity]) -> Int {
+        var contactIDs = Set<Int>()
+        for wing in guardWing {
+            guard let holdPosition = wing.holdPosition else { continue }
+            for target in entities.values where isCarrierGuardContact(target, for: wing, carrier: carrier, holdPosition: holdPosition) {
+                contactIDs.insert(target.id)
+            }
+        }
+        return contactIDs.count
     }
 
     private func nearbyCarrierAirWingCount(for entity: GameEntity) -> Int {
@@ -4752,13 +4769,7 @@ final class GameScene: SKScene {
 
         return entities.values
             .filter { target in
-                target.isAlive &&
-                    target.faction != wing.faction &&
-                    target.faction != .neutral &&
-                    wing.kind.canAttack(target.kind) &&
-                    target.node.position.distance(to: carrier.node.position) <= carrierGuardThreatRadius + target.kind.footprint * 0.35 &&
-                    target.node.position.distance(to: holdPosition) <= holdEngagementRadius + target.kind.footprint * 0.35 &&
-                    isKnownToFaction(target, observer: wing.faction)
+                isCarrierGuardContact(target, for: wing, carrier: carrier, holdPosition: holdPosition)
             }
             .min { left, right in
                 let leftPriority = carrierGuardTargetPriority(for: wing, target: left)
@@ -4773,6 +4784,16 @@ final class GameScene: SKScene {
                 }
                 return leftPriority < rightPriority
             }
+    }
+
+    private func isCarrierGuardContact(_ target: GameEntity, for wing: GameEntity, carrier: GameEntity, holdPosition: CGPoint) -> Bool {
+        target.isAlive &&
+            target.faction != wing.faction &&
+            target.faction != .neutral &&
+            wing.kind.canAttack(target.kind) &&
+            target.node.position.distance(to: carrier.node.position) <= carrierGuardThreatRadius + target.kind.footprint * 0.35 &&
+            target.node.position.distance(to: holdPosition) <= holdEngagementRadius + target.kind.footprint * 0.35 &&
+            isKnownToFaction(target, observer: wing.faction)
     }
 
     private func carrierGuardTargetPriority(for wing: GameEntity, target: GameEntity) -> Int {

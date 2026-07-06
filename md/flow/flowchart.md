@@ -26,7 +26,7 @@ flowchart TD
   Combat --> Render
   AI --> Render
   Fog --> Render
-  Mission --> HUD["HUD / 小地图\n金钱、队列、生产来源提示、航母甲板/集结/翼队/Guard wing绑定站位状态、高价值海军护航状态/缺口类型/半径圈/多选摘要、Mechanic维修反馈/来源提示/范围圈、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、命令高亮、支援按钮缺资产/资金提示、目标面板资产提示、相机框"]
+  Mission --> HUD["HUD / 小地图\n金钱、队列、生产来源提示、航母甲板/集结/翼队/Guard wing绑定站位/接触数状态、高价值海军护航状态/缺口类型/半径圈/多选摘要、Mechanic维修反馈/来源提示/范围圈、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、命令高亮、支援按钮缺资产/资金提示、目标面板资产提示、相机框"]
   Render --> HUD
 ```
 
@@ -37,7 +37,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   Touch["玩家触摸输入\nBegan / Moved / Ended"] --> HUDCheck{"是否点到 HUD 按钮"}
-  HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\nHOLD/Carrier guard wing anchor station/近域威胁优先、AMOV、生产、支援、AI、重开\n终局AMOV提示已知HQ并刷新面板摘要\npending按钮高亮由状态刷新"]
+  HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\nHOLD/Carrier guard wing anchor station/近域威胁优先状态、AMOV、生产、支援、AI、重开\n终局AMOV提示已知HQ并刷新面板摘要\npending按钮高亮由状态刷新"]
   HUDCheck -- "否" --> MiniMap{"是否点到小地图"}
   MiniMap -- "是" --> Camera["移动相机到小地图位置"]
   MiniMap -- "否" --> MultiTouch{"是否双指触摸"}
