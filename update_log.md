@@ -3130,3 +3130,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：单选已绑定 HEL/JET 时 `CV GUARD Dn` 的可读性、多选纯 guard aircraft 时 `CV GUARD n Dm` 的宽度、多选含 HOLD Carrier 时仍显示 `CV GW ...`、移动 / AMOV / 直接攻击 / 普通 HOLD 后飞机状态是否回落既有文案。
 - 后续可继续在 guard wing 可读性基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统或 AI 航母使用，但这些不属于 v4.45。
+
+### v4.46 / 航母警戒翼队锚点范围圈
+
+日期：2026-07-07
+
+核心变更：
+
+- 选中已被有效 Carrier guard anchor 绑定的玩家 Helicopter / Fighter 时，会在其 anchor Carrier 上显示只读 guard anchor 范围圈。
+- 多选多个已绑定 HEL/JET 时，所有有效 anchor Carrier 都显示范围圈；未绑定飞机、敌方飞机、失效 anchor 或非 HOLD Carrier 不显示额外范围圈。
+- 新范围圈挂在 Carrier 实体节点下，半径使用 `carrierGuardThreatRadius`，避免复用 `highValueNavalEscortRadius` 的护航半径造成语义混淆。
+- 新增 `carrierGuardAnchorCoverageNode`、`configureCarrierGuardAnchorCoverageNode(for:)` 和 `shouldShowCarrierGuardAnchorCoverage(for:)`，显隐仍由 `refreshSelection()` 统一驱动，并复用 `carrierGuardAnchor(for:)` 判断 anchor 是否有效。
+- 现有 sonar / escort / repair coverage、Carrier / Battleship escort ring、`CV GUARD Dn` HUD 行、Carrier `GW ... Cn ... Tgt ... Eng n`、多选 `CV GW ...` 摘要保持原语义。
+- 本轮没有改变 `assignCarrierGuardWing(for:)`、`clearCarrierGuardAnchor(for:)`、`updateCarrierGuardStation(for:)`、`carrierGuardAnchor(for:)`、`isCarrierGuardContact(...)`、`carrierGuardPriorityTarget(for:)`、combat、AI、迷雾、潜艇侦测、生产、支援、任务或胜负。
+- README、flow、flowchart 和 v4.46 Agent A 提示词已同步当前真实行为，未宣称完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.46（航母警戒翼队锚点范围圈）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.46 实现提示词；Agent X 并行只读 scout 确认最小安全入口是现有 selection-derived coverage visual 链路，推荐使用独立 guard anchor 范围圈并复用 `carrierGuardAnchor(for:)`。
+- Agent B 实现提交并推送：`75577319e7646b8d10914d6fd59276fc7fd4850a`，commit subject 为 `v4.46: 航母警戒翼队锚点范围圈`。
+- diff reviewer 子 agent 返回 `No issues`，确认本轮新增 coverage node / 显隐逻辑不破坏 sonar / escort / repair coverage、selection、guard anchor、combat、AI、fog，文档未夸大为 CAP / 巡逻 / 截击；该 reviewer 未运行本地测试、构建、静态检查或 `git diff --check`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `75577319e7646b8d10914d6fd59276fc7fd4850a`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28808841103`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.46-main-75577319e764-run28808841103-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28808841103/`，缓存目录大小 `116K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=75577319e7646b8d10914d6fd59276fc7fd4850a`、`runId=28808841103`、`runAttempt=1`、`version=v4.46`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：单选 bound HEL/JET 时 anchor Carrier 范围圈的颜色和半径可读性、多选多个 guard aircraft 时多个 anchor Carrier 是否同时显示、未绑定 / anchor 失效飞机不会显示、与 Carrier / Battleship escort ring 同屏时是否容易区分。
+- 后续可继续在 guard wing 可读性基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统或 AI 航母使用，但这些不属于 v4.46。
