@@ -3008,15 +3008,20 @@ final class GameScene: SKScene {
 
     private func highValueNavalEscortLine(for entity: GameEntity) -> String? {
         guard let requirement = highValueNavalEscortRequirement(for: entity.kind) else { return nil }
-        let nearby = nearbyNavalEscortCount(for: entity)
+        let escorts = nearbyNavalEscorts(for: entity)
+        let nearby = escorts.count
         let missing = max(0, requirement - nearby)
         if missing > 0 {
-            return "Escort \(nearby)/\(requirement) Need \(missing)"
+            return "Escort \(nearby)/\(requirement) Need \(missing) \(highValueNavalEscortNeedType(for: escorts))"
         }
         return "Escort \(nearby)/\(requirement) OK"
     }
 
     private func nearbyNavalEscortCount(for entity: GameEntity) -> Int {
+        nearbyNavalEscorts(for: entity).count
+    }
+
+    private func nearbyNavalEscorts(for entity: GameEntity) -> [GameEntity] {
         entities.values.filter { escort in
             escort.faction == entity.faction &&
                 escort.isAlive &&
@@ -3026,7 +3031,20 @@ final class GameScene: SKScene {
                 escort.isOperational &&
                 highValueNavalEscortRequirement(for: escort.kind) == nil &&
                 escort.node.position.distance(to: entity.node.position) <= highValueNavalEscortRadius
-        }.count
+        }
+    }
+
+    private func highValueNavalEscortNeedType(for escorts: [GameEntity]) -> String {
+        if !escorts.contains(where: { $0.kind.domain == .air }) {
+            return "Air"
+        }
+        if !escorts.contains(where: { $0.kind.domain == .naval }) {
+            return "Sea"
+        }
+        if !escorts.contains(where: { $0.kind.domain == .land }) {
+            return "Ground"
+        }
+        return "Mix"
     }
 
     private func groupHighValueNavalEscortSummary(for selected: [GameEntity]) -> String? {
