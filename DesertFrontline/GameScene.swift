@@ -948,6 +948,7 @@ final class GameScene: SKScene {
     private let holdEngagementRadius: CGFloat = 340
     private let holdReturnTolerance: CGFloat = 58
     private let attackMoveEngagementRadius: CGFloat = 285
+    private let highValueNavalEscortRadius: CGFloat = 620
     private let controlGroupRecallDelay: TimeInterval = 0.24
 
     override func didMove(to view: SKView) {
@@ -2887,11 +2888,17 @@ final class GameScene: SKScene {
         } else {
             rows[3] = veterancyProgressLine(for: entity)
             if entity.kind == .carrier {
-                rows[2] = carrierDeckCapabilityLine()
+                let escortLine = highValueNavalEscortLine(for: entity).map { "  \($0)" } ?? ""
+                rows[2] = "\(carrierDeckCapabilityLine())\(escortLine)"
                 rows[3] = carrierDeckQueueAndRallyLine(for: entity)
-            } else if let status = mobileStatusLine(for: entity) {
-                rows[2] = "\(rows[2])  \(compactVeterancyLine(for: entity))"
-                rows[3] = status
+            } else {
+                if let escortLine = highValueNavalEscortLine(for: entity) {
+                    rows[2] = "\(rows[2])  \(escortLine)"
+                }
+                if let status = mobileStatusLine(for: entity) {
+                    rows[2] = "\(rows[2])  \(compactVeterancyLine(for: entity))"
+                    rows[3] = status
+                }
             }
         }
         if let capabilityInfo = selectionCapabilityInfoLine(for: entity) {
@@ -2953,7 +2960,7 @@ final class GameScene: SKScene {
     }
 
     private func carrierDeckCapabilityLine() -> String {
-        "Deck builds Helicopter/Fighter"
+        "Deck HEL/JET"
     }
 
     private func carrierDeckQueueAndRallyLine(for entity: GameEntity) -> String {
@@ -2964,6 +2971,35 @@ final class GameScene: SKScene {
         }
         let suffix = orders.count > 1 ? " +\(orders.count - 1)" : ""
         return "\(rally)  Queue \(active.kind.shortCode) \(Int(ceil(active.remaining)))s\(suffix)"
+    }
+
+    private func highValueNavalEscortRequirement(for kind: EntityKind) -> Int? {
+        switch kind {
+        case .battleship:
+            return 1
+        case .carrier:
+            return 2
+        default:
+            return nil
+        }
+    }
+
+    private func highValueNavalEscortLine(for entity: GameEntity) -> String? {
+        guard let requirement = highValueNavalEscortRequirement(for: entity.kind) else { return nil }
+        return "Escort \(nearbyNavalEscortCount(for: entity))/\(requirement)"
+    }
+
+    private func nearbyNavalEscortCount(for entity: GameEntity) -> Int {
+        entities.values.filter { escort in
+            escort.faction == entity.faction &&
+                escort.isAlive &&
+                escort.id != entity.id &&
+                !escort.kind.isStructure &&
+                escort.kind.damage > 0 &&
+                escort.isOperational &&
+                highValueNavalEscortRequirement(for: escort.kind) == nil &&
+                escort.node.position.distance(to: entity.node.position) <= highValueNavalEscortRadius
+        }.count
     }
 
     private func groupSelectionInfo(for selected: [GameEntity]) -> (title: String, rows: [String]) {
