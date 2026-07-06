@@ -1851,3 +1851,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，`Secure Coast` 任务详情在不同 HUD 宽度下的 `SY` / `SON` / `CB` 摘要可读性，以及任意 2 个已完工海岸资产完成任务的玩家理解度，仍建议在可用模拟器或真机上做人工 Stage Regression。
 - 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.12。
+
+### v4.13 / 支援按钮资产提示
+
+日期：2026-07-06
+
+核心变更：
+
+- `SCAN`、`REPR`、`AIRS` 和 `BARR` 的底部 HUD subtitle 现在按冷却秒数、`need asset`、价格的优先级显示状态。
+- 新增 `supportButtonSubtitle(for:)`，缺资产提示复用 `hasOperationalSupportAsset(for:faction:)` 的真实 operational asset 口径。
+- 资金不足但资产满足且未冷却时仍显示价格；点击后仍由 `supportIssue(for:faction:)` 按原顺序处理冷却、资金和资产提示。
+- 本轮只增强支援按钮可读性，没有改变支援技能费用、冷却、资产需求、执行效果、pending support、denied marker、AI、迷雾、潜艇暴露、维修、伤害、任务或胜负。
+- README、flow、flowchart 和 v4.13 Agent A 提示词已同步当前真实行为，未宣称按钮禁用、灰化、资金状态提示或新支援系统。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.13（支援按钮资产提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent B 实现提交并推送：`18abd75c3a634dd422c66f00600b4793571c389c`，commit subject 为 `v4.13: 增强支援按钮资产提示`。
+- diff reviewer 返回 `No issues`，确认本轮只改支援 HUD subtitle，冷却优先于缺资产，缺资产复用 `hasOperationalSupportAsset`，不检查资金，未改变 `supportIssue`、执行、AI 或迷雾路径，文档未夸大为禁用按钮；该 reviewer 未运行本地测试、构建或静态检查。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `18abd75c3a634dd422c66f00600b4793571c389c`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28763108746`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.13-main-18abd75c3a63-run28763108746-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28763108746/`，缓存目录大小 `100K`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=18abd75c3a634dd422c66f00600b4793571c389c`、`runId=28763108746`、`runAttempt=1`、`version=v4.13`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，支援按钮在实际设备 HUD 宽度下显示 `need asset` 的可读性，以及四个支援按钮在资产缺失 / 冷却 / 可用三态之间切换的触感，仍建议在可用模拟器或真机上做人工 Stage Regression。
+- 后续可继续做航母 CAP / 巡逻、航母护航行为、Sonar Buoy 升级、终局攻势提示深化或更多地图目标，但这些不属于 v4.13。
