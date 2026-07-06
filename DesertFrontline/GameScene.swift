@@ -3233,6 +3233,7 @@ final class GameScene: SKScene {
         let attackMoveCount = selected.filter { $0.attackMoveDestination != nil }.count
         let highValueEscortSummary = groupHighValueNavalEscortSummary(for: selected)
         let carrierGuardWingSummary = groupCarrierGuardWingSummary(for: selected)
+        let selectedCarrierGuardWingSummary = groupSelectedCarrierGuardWingSummary(for: selected)
         let combatSummary = groupAntiSubmarineSummary(for: selected).map {
             "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))  \($0)"
         } ?? "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))"
@@ -3244,7 +3245,7 @@ final class GameScene: SKScene {
                 "HP \(Int(totalHP))/\(Int(totalMaxHP))",
                 combatSummary,
                 holdingCount > 0
-                    ? "Holding \(holdingCount)  \(carrierGuardWingSummary ?? "Guard \(Int(holdEngagementRadius))")"
+                    ? "Holding \(holdingCount)  \(carrierGuardWingSummary ?? selectedCarrierGuardWingSummary ?? "Guard \(Int(holdEngagementRadius))")"
                     : attackMoveCount > 0
                         ? "Attack move \(attackMoveCount)  Seek \(Int(attackMoveEngagementRadius))"
                         : highValueEscortSummary ?? groupVeterancyLine(for: selected)
@@ -3273,6 +3274,9 @@ final class GameScene: SKScene {
         if entity.kind == .carrier {
             return structureStatusLine(for: entity)
         }
+        if let guardWingStatus = carrierGuardWingStatusLine(for: entity) {
+            return guardWingStatus
+        }
         if entity.attackMoveDestination != nil {
             return "Attack-moving  Seek \(Int(attackMoveEngagementRadius))"
         }
@@ -3283,6 +3287,29 @@ final class GameScene: SKScene {
             return repairSource
         }
         return nil
+    }
+
+    private func carrierGuardWingStatusLine(for wing: GameEntity) -> String? {
+        guard wing.faction == .player,
+              wing.kind == .helicopter || wing.kind == .fighter,
+              let carrier = carrierGuardAnchor(for: wing)
+        else { return nil }
+
+        let distance = wing.node.position.distance(to: carrier.node.position)
+        return "CV GUARD D\(Int(distance))  Guard \(Int(holdEngagementRadius))"
+    }
+
+    private func groupSelectedCarrierGuardWingSummary(for selected: [GameEntity]) -> String? {
+        guard selected.count > 1 else { return nil }
+        let guardWingDistances = selected.compactMap { wing -> CGFloat? in
+            guard wing.faction == .player,
+                  wing.kind == .helicopter || wing.kind == .fighter,
+                  let carrier = carrierGuardAnchor(for: wing)
+            else { return nil }
+            return wing.node.position.distance(to: carrier.node.position)
+        }
+        guard let nearestDistance = guardWingDistances.min() else { return nil }
+        return "CV GUARD \(guardWingDistances.count) D\(Int(nearestDistance))"
     }
 
     private func submarineStatusLine(for entity: GameEntity) -> String {
