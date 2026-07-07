@@ -3877,3 +3877,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：选中普通移动单位时 `HOLD` subtitle 是否仍为 `guard`，选中 Carrier 时是否显示 `CV GW`，选中已绑定 Carrier guard HEL/JET 且未选中 Carrier 时是否显示 `CV rel`，点击 HOLD 后原有绑定 / 释放行为是否保持。
 - 后续可继续细化 Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.64。
+
+### v4.65 / HOLD 航母警戒缺口反馈
+
+日期：2026-07-07
+
+核心变更：
+
+- 玩家对包含 Carrier 的机动单位选择下达 `HOLD` 后，顶部成功消息现在总会只读汇总该次 Carrier guard wing 最终绑定结果。
+- 单 Carrier 没有绑定到 HEL/JET 时，消息会显示 `Guard wing 0 Need 2.`；只绑定 1 架时显示 `Guard wing 1 Hn/Jn Need 1.`；满编时继续显示 `Guard wing 2 Hn/Jn.` 且不显示 `Need 0`。
+- 多 Carrier 同选时，需求数按 `Carrier 数 * carrierGuardWingRequirement` 聚合，绑定 HEL/JET 按实体 id 去重，组成后缀继续复用 `carrierAirWingCompositionSuffix(for:)` 的 `Hn/Jn` 口径。
+- 甲板 cue 仍只在实际绑定到 guard wing 时显示，不为 `0 Need n` 新增 cue。
+- 本轮只改变 `issueHoldPositionOrder(units:)` 中成功消息的只读 suffix；不改变 `assignCarrierGuardWing(...)`、`guardAnchorCarrierID` 写入 / 清理、普通 HOLD、release 反馈、AI、战斗、迷雾、生产、支援、任务或胜负逻辑。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/prompt/v4（海军航母）/v4.65（HOLD航母警戒缺口反馈）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.65 实现提示词；Agent X 基于 v4.64 遗留事项和两个只读子 agent 侦查结果，选定 Carrier HOLD 后 guard wing 缺口反馈作为小范围命令 UI 可读性增量。
+- 只读 reviewer 子 agent 复核当前 diff，结论为 `No issues`；该子 agent 未改文件、未运行本地测试、构建或静态检查。
+- Agent B 实现提交并推送：`b031c32a6974b9cd333d8b81e5c9cb390ae75c75`，commit subject 为 `v4.65: HOLD航母警戒缺口反馈`。
+- Agent C 复核：GitHub Actions run head branch 为 `main`，head SHA 为 `b031c32a6974b9cd333d8b81e5c9cb390ae75c75`，与本轮实现 commit 一致。
+- GitHub Actions：run `28855983038`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.65-main-b031c32a6974-run28855983038-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28855983038/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=b031c32a6974b9cd333d8b81e5c9cb390ae75c75`、`runId=28855983038`、`runAttempt=1`、`version=v4.65`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+- artifact 下载目录大小约 `100K`，未下载大体积无关产物。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 附近无 HEL/JET、1 架 HEL/JET、满 2 架 HEL/JET 和多 Carrier 同选时的顶部消息是否分别显示预期 `Guard wing` / `Need` 结果，且普通 HOLD release 反馈是否保持。
+- 后续可继续细化 Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.65。
