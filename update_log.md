@@ -4032,3 +4032,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：普通 combat selection 的 `AMOV` subtitle 是否仍为 `push`，bound HEL/JET 或带 bound guard wing 的 HOLD Carrier 选择是否显示 `CV rel`，点击 AMOV 后原有 release feedback 和 attack-move 行为是否保持。
 - 后续可继续细化 bound HEL/JET `CV GUARD` 接触数 `C0/Cn`、Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.68。
+
+### v4.69 / 启动视口自适应修复
+
+日期：2026-07-07
+
+核心变更：
+
+- `GameView` 改为用 `GeometryReader` 承载全屏 `SpriteView`，并显式设置 SpriteKit 视图 frame 为当前 SwiftUI 容器尺寸。
+- `SpriteView` 和外层容器增加黑色背景兜底，降低场景尚未渲染或视图未铺满时露出系统白屏的风险。
+- `SceneHolder` 保留非零初始 `GameScene(size: 1366x1024)`，但将 `scaleMode` 从 `.aspectFill` 改为 `.resizeFill`。
+- 新增 `resizeScene(to:)`，在 `onAppear` 和窗口尺寸变化时把有效容器尺寸同步到 `scene.size`，让 HUD、camera clamp、小地图 camera box 和触摸坐标以真实窗口尺寸布局。
+- 本轮只修改 SwiftUI / SpriteKit 宿主和启动视口适配；不改变 `GameScene.didMove(to:)` 初始化链路、地图、单位、AI、战斗、HUD 内容、命令、迷雾、任务、胜负或经济规则。
+- 当前工作区存在用户本地 `DesertFrontline.xcodeproj/project.pbxproj` 的 `DEVELOPMENT_TEAM = C9YV46L3GA;` 签名改动；本轮提交未包含该无关改动。
+
+关键文件：
+
+- `DesertFrontline/GameView.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.69（启动视口自适应修复）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.69 实现提示词；用户反馈打开后黑屏 / 白屏不可玩，Agent X 暂停继续扩展玩法，优先选择 SwiftUI / SpriteKit 视口自适应作为启动阻断热修。
+- 只读 reviewer 子 agent 复核当前 diff，确认 `GameView` 修复方向无问题、文档已同步、暂存区未混入 `project.pbxproj`；该子 agent 未改文件、未构建、未联网，但误运行了一次仅针对已暂存文件的 `git diff --cached --check`，未作为本轮验收依据。
+- Agent B 实现提交并推送：`53d82d9a4b4189948ab14b3869ba63e15b681a02`，commit subject 为 `v4.69: 修复启动视口空白`。
+- Agent C 复核：GitHub Actions run head branch 为 `main`，head SHA 为 `53d82d9a4b4189948ab14b3869ba63e15b681a02`，与本轮实现 commit 一致。
+- GitHub Actions：run `28868381367`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.69-main-53d82d9a4b41-run28868381367-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28868381367/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=53d82d9a4b4189948ab14b3869ba63e15b681a02`、`runId=28868381367`、`runAttempt=1`、`version=v4.69`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+- artifact 下载目录大小约 `100K`，未下载大体积无关产物。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 黑屏 / 白屏是否完全消失仍需要人工打开最新 `origin/main` 构建在目标设备或云端可交互环境确认；若仍为空白，下一轮应优先采集启动日志或截图，而不是继续扩展玩法。
+- 后续可继续细化 bound HEL/JET `CV GUARD` 接触数 `C0/Cn`、Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.69。
