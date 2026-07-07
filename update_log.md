@@ -3802,3 +3802,40 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：多选多个 HOLD Carrier 且存在已知合法 guard contacts 时，`CV GW` 是否追加类型和 `Tgt XXX`；`C0` 时是否仍保持紧凑；隐藏敌方是否不会通过该摘要泄露。
 - 后续可继续微调 AI wave HUD 的“已感知子集”措辞、Carrier guard wing 命令 UI 或更完整的舰载机巡逻 / 截击能力；这些不属于 v4.62。
+
+### v4.63 / AI 主攻波已感知摘要措辞
+
+日期：2026-07-07
+
+核心变更：
+
+- Red routine assault wave 成功下发后，HUD Red 状态行的玩家可感知 wave 子集摘要首段从 `Wave n` 改为 `Seen n`。
+- `Seen n` 仍只统计 `knownWave = wave.filter { isKnownToFaction($0, observer: .player) }` 的玩家已知子集数量，不表示完整 Red wave 总规模。
+- 组成摘要仍保持 `Lx/Ax/Nx`，非零时追加 `CVc`、`Hh`、`Jj`。
+- 12 秒过期、`SKRM` 清空、隐藏单位过滤、AI 选波、目标、护航门槛、低血撤退、Carrier guard wing、战斗、生产、支援、任务和胜负逻辑均未改变。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/prompt/v4（海军航母）/v4.63（AI主攻波已感知摘要措辞）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.63 实现提示词；Agent X 基于 v4.62 遗留事项选定 AI 主攻波 HUD “已感知子集”措辞作为小范围 HUD 可读性增量。
+- 只读 explorer 子 agent 定位并确认：最小安全改动点是 `enemyAssaultWaveSummary(for:)` 中的字符串前缀；`wave.count` 实际来自已过滤的 `knownWave`，该 helper 只返回字符串，不影响 AI、战斗、移动、迷雾或感知状态；该子 agent 未改文件、未运行本地测试、构建、静态检查或联网。
+- Agent B 实现提交并推送：`47dd836e0b30a077dc2f5417d7aa9973ab62c639`，commit subject 为 `v4.63: AI主攻波已感知摘要措辞`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `47dd836e0b30a077dc2f5417d7aa9973ab62c639`。
+- GitHub Actions：run `28850163391`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.63-main-47dd836e0b30-run28850163391-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28850163391/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=47dd836e0b30a077dc2f5417d7aa9973ab62c639`、`runId=28850163391`、`runAttempt=1`、`version=v4.63`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：玩家看见 Red routine assault wave 子集时 HUD 是否显示 `R# F# Seen n Lx/Ax/Nx`，约 12 秒后是否恢复 `AI <difficulty>`，隐藏 Red wave 是否不会提前泄露数量或组成。
+- 后续可继续细化 Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.63。
