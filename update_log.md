@@ -3290,3 +3290,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：单选 HOLD Carrier 的 `GW ... Hn/Jn ...` 宽度、多选 HOLD Carrier 的 `CV GW ... Hn/Jn ...` 宽度、空 wing 不显示组成、隐藏或未绑定 HEL/JET 不会进入组成统计。
 - 后续可继续在 guard wing 基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统、AI 航母进攻节奏或 Sonar Buoy 升级，但这些不属于 v4.49。
+
+
+### v4.50 / 航母警戒翼队脱离反馈
+
+日期：2026-07-07
+
+核心变更：
+
+- 玩家对已被有效 Carrier guard anchor 绑定的 Helicopter / Fighter 成功下达普通移动、AMOV、直接攻击或 ordinary HOLD 时，原成功消息会追加 `CV guard released n.` 短反馈。
+- 普通移动和 AMOV 在 `issueFormationMove(...)` 清理 guard anchor 前统计 release 数，并只在 `showFeedback == true` 的玩家命令路径显示消息；Red AI routine wave 的 `showFeedback=false` 路径不会外显。
+- 直接攻击只统计本次实际 `canAttack` 且会被赋予 `attackTarget` 的玩家单位，避免混编选择中不能攻击目标的 bound wing 被误报。
+- ordinary HOLD 会在清理前记录有效 bound wing，执行可能的 Carrier guard 重新绑定后再按最终有效 anchor 统计 release，避免同次 Carrier HOLD 重绑定误报。
+- `clearCarrierGuardAnchor(for:)` 仍只清理字段，不显示消息；内部 anchor 失效维护、AI guard wing、routine wave、combat、迷雾、潜艇侦测、生产、支援、任务和胜负逻辑保持原语义。
+- README、flow、flowchart 和 v4.50 Agent A 提示词已同步当前真实行为，未宣称完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.50（航母警戒翼队脱离反馈）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.50 实现提示词；Agent X 并行只读 scout 确认该目标适合做小增量，并指出必须避免在 `clearCarrierGuardAnchor(for:)` 内产生 UI 副作用。
+- Agent B 实现提交并推送：`32d3ac42c8f12bca1a5640fe5e9bdface567b568`，commit subject 为 `v4.50: 航母警戒翼队脱离反馈`。
+- scout 复核当前实现方向正确：普通移动 / AMOV 只在 `showFeedback=true` 时外显、直接攻击只统计 attackers、ordinary HOLD 重绑定后再统计最终 release，Red AI routine wave 不外显；该 scout 未运行本地测试、构建、静态检查或联网。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `32d3ac42c8f12bca1a5640fe5e9bdface567b568`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28838998545`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.50-main-32d3ac42c8f1-run28838998545-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28838998545/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`ci-run.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=32d3ac42c8f12bca1a5640fe5e9bdface567b568`、`runId=28838998545`、`runAttempt=1`、`version=v4.50`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：移动 / AMOV / 直接攻击 / ordinary HOLD 的 release 消息是否可读，Carrier + wing 同次 HOLD 重绑定时不误报，AI wave 和内部 anchor 失效清理不会产生玩家消息。
+- 后续可继续在 guard wing 基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统、AI 航母进攻节奏或未 HOLD Carrier 的 `Wing Hn/Jn` 组成提示，但这些不属于 v4.50。
