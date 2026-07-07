@@ -953,6 +953,7 @@ final class GameScene: SKScene {
     private let holdReturnTolerance: CGFloat = 58
     private let attackMoveEngagementRadius: CGFloat = 285
     private let highValueNavalEscortRadius: CGFloat = 620
+    private let carrierGuardWingRequirement = 2
     private let carrierGuardThreatRadius: CGFloat = 430
     private let carrierGuardStationReanchorTolerance: CGFloat = 24
     private let mechanicRepairRange: CGFloat = 95
@@ -3004,7 +3005,7 @@ final class GameScene: SKScene {
 
     private func carrierAirWingLine(for entity: GameEntity) -> String? {
         guard entity.kind == .carrier else { return nil }
-        let requirement = 2
+        let requirement = carrierGuardWingRequirement
         let nearbyWing = nearbyCarrierAirWing(for: entity)
         let isGuarding = entity.holdPosition != nil
         let guardWing = isGuarding ? boundCarrierGuardWing(for: entity) : []
@@ -3225,7 +3226,7 @@ final class GameScene: SKScene {
             let guardWing = boundCarrierGuardWing(for: carrier)
             guardWings.append(contentsOf: guardWing)
             boundWingCount += guardWing.count
-            requiredWingCount += 2
+            requiredWingCount += carrierGuardWingRequirement
             engagedCount += carrierGuardEngagedCount(for: carrier, guardWing: guardWing)
             for wing in guardWing {
                 guard let holdPosition = wing.holdPosition else { continue }
@@ -4895,7 +4896,17 @@ final class GameScene: SKScene {
     private func assignCarrierGuardWing(for carriers: [GameEntity]) -> Int {
         var assignedWingIDs = Set<Int>()
         for carrier in carriers where carrier.faction == .player && carrier.isAlive {
-            for wing in nearbyCarrierAirWing(for: carrier) where !assignedWingIDs.contains(wing.id) {
+            let candidates = nearbyCarrierAirWing(for: carrier)
+                .filter { !assignedWingIDs.contains($0.id) }
+                .sorted { left, right in
+                    let leftDistance = left.node.position.distance(to: carrier.node.position)
+                    let rightDistance = right.node.position.distance(to: carrier.node.position)
+                    if leftDistance == rightDistance {
+                        return left.id < right.id
+                    }
+                    return leftDistance < rightDistance
+                }
+            for wing in candidates.prefix(carrierGuardWingRequirement) {
                 wing.holdPosition = wing.node.position
                 wing.guardAnchorCarrierID = carrier.id
                 wing.attackMoveDestination = nil
@@ -6536,7 +6547,7 @@ final class GameScene: SKScene {
         for carrier in carriers {
             let currentWing = boundCarrierGuardWing(for: carrier).filter { !assignedWingIDs.contains($0.id) }
             let currentWingIDs = Set(currentWing.map(\.id))
-            let missing = max(0, 2 - currentWing.count)
+            let missing = max(0, carrierGuardWingRequirement - currentWing.count)
             guard missing > 0 else {
                 assignedWingIDs.formUnion(currentWingIDs)
                 continue
