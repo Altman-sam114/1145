@@ -2546,7 +2546,7 @@ final class GameScene: SKScene {
         case .controlGroup2:
             return controlGroupSubtitle(for: 2)
         case .holdPosition:
-            return "guard"
+            return holdButtonSubtitle()
         case .attackMove:
             return "push"
         case .buildBase:
@@ -2563,6 +2563,20 @@ final class GameScene: SKScene {
         default:
             return ""
         }
+    }
+
+    private func holdButtonSubtitle() -> String {
+        let mobileUnits = selectedMobilePlayerUnits()
+        if mobileUnits.contains(where: { $0.kind == .carrier }) {
+            return "CV GW"
+        }
+        if mobileUnits.contains(where: { unit in
+            (unit.kind == .helicopter || unit.kind == .fighter) &&
+                carrierGuardAnchor(for: unit) != nil
+        }) {
+            return "CV rel"
+        }
+        return "guard"
     }
 
     private func productionButtonSubtitle(for kind: EntityKind) -> String {
