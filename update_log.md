@@ -3371,3 +3371,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：未 HOLD Carrier 的 `Wing ... Hn/Jn` 宽度、附近空翼队进出范围时组成是否刷新、空翼队不显示组成、HOLD Carrier 的 `GW` / 多选 `CV GW` 组成和接触信息不回退。
 - 后续可继续在 guard wing 基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统、AI 航母进攻节奏或多选 bound guard aircraft 的 `CV GUARD Hn/Jn` 摘要，但这些不属于 v4.51。
+
+
+### v4.52 / 航母警戒翼队多选组成提示
+
+日期：2026-07-07
+
+核心变更：
+
+- 多选已被有效 Carrier guard anchor 绑定的玩家 Helicopter / Fighter，且未选中 HOLD Carrier 时，HOLD 行摘要从 `CV GUARD n Dm` 扩展为 `CV GUARD n Hn/Jn Dm`。
+- 组成统计复用 `carrierAirWingCompositionSuffix(for:)` 口径，只统计当前选中且 `carrierGuardAnchor(for:)` 仍有效的玩家 HEL/JET；未选中、敌方、非 HEL/JET、anchor 失效或未绑定的飞机不会计入。
+- 单一类型时只显示存在的类型，例如 `CV GUARD 2 H2 D140` 或 `CV GUARD 1 J1 D95`；混合翼队显示如 `CV GUARD 2 H1 J1 D180`。
+- 多选 HOLD Carrier 时仍优先显示 `CV GW x/y OK/Need Hn/Jn Cn Eng n`，不会被 bound HEL/JET 自身摘要覆盖。
+- Guard anchor、Carrier HOLD、Red AI guard wing、`CV guard released n.` 反馈、combat、迷雾、潜艇侦测、生产、支援、任务和胜负逻辑保持原语义。
+- README、flow、flowchart 和 v4.52 Agent A 提示词已同步当前真实行为，未宣称完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.52（航母警戒翼队多选组成提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.52 实现提示词；Agent X 基于 v4.51 遗留建议选定多选 bound guard aircraft 组成提示作为低风险 HUD-only 小目标。
+- 并行只读 explorer 子 agent 复核确认：只改 `groupSelectedCarrierGuardWingSummary(for:)` 字符串组装并复用 `carrierAirWingCompositionSuffix(for:)` 是安全范围；不得改变 `groupSelectionInfo` 优先级、guard 绑定/释放、目标选择、迷雾、AI、生产或战斗逻辑。该子 agent 未改文件、未运行本地测试、构建、静态检查或联网。
+- Agent B 实现提交并推送：`8d9c0349bbdb27f4e4aa8035c1e823e297542a7a`，commit subject 为 `v4.52: 航母警戒翼队多选组成提示`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `8d9c0349bbdb27f4e4aa8035c1e823e297542a7a`；`gh` 当前认证账号为 `Altman-sam114`。
+- GitHub Actions：run `28840037641`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.52-main-8d9c0349bbdb-run28840037641-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28840037641/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=8d9c0349bbdb27f4e4aa8035c1e823e297542a7a`、`runId=28840037641`、`runAttempt=1`、`version=v4.52`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：多选 bound HEL/JET 的 `CV GUARD ... Hn/Jn ...` 宽度、混合 / 单一类型显示、未绑定或 anchor 失效飞机不计入、多选 HOLD Carrier 仍显示 `CV GW ...` 优先摘要。
+- 后续可继续在 guard wing 基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统、AI 航母进攻节奏或海军科技层，但这些不属于 v4.52。
