@@ -3382,7 +3382,28 @@ final class GameScene: SKScene {
         guard let nearestDistance = guardWingsAndDistances.map({ $0.distance }).min() else { return nil }
         let guardWings = guardWingsAndDistances.map { $0.wing }
         let compositionSuffix = carrierAirWingCompositionSuffix(for: guardWings)
-        return "CV GUARD \(guardWings.count)\(compositionSuffix) D\(Int(nearestDistance))"
+        let targetSuffix = carrierGuardWingTargetSuffix(for: guardWings)
+        return "CV GUARD \(guardWings.count)\(compositionSuffix) D\(Int(nearestDistance))\(targetSuffix)"
+    }
+
+    private func carrierGuardWingTargetSuffix(for guardWings: [GameEntity]) -> String {
+        var preferred: (target: GameEntity, priority: Int, distance: CGFloat)?
+        for wing in guardWings {
+            guard let carrier = carrierGuardAnchor(for: wing),
+                  let target = carrierGuardPriorityTarget(for: wing)
+            else { continue }
+            let priority = carrierGuardTargetPriority(for: wing, target: target)
+            let distance = target.node.position.distance(to: carrier.node.position)
+            if let current = preferred {
+                guard priority < current.priority ||
+                    (priority == current.priority && distance < current.distance - 0.5) ||
+                    (priority == current.priority && abs(distance - current.distance) < 0.5 && target.id < current.target.id)
+                else { continue }
+            }
+            preferred = (target, priority, distance)
+        }
+        guard let target = preferred?.target else { return "" }
+        return " Tgt \(target.kind.shortCode) \(carrierGuardContactType(for: target))"
     }
 
     private func submarineStatusLine(for entity: GameEntity) -> String {
