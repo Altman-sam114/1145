@@ -4855,12 +4855,23 @@ final class GameScene: SKScene {
         showHoldMarker(at: center)
         if guardWingCount > 0 {
             for carrier in holdCarriers {
-                guard !boundCarrierGuardWing(for: carrier).isEmpty else { continue }
-                showCarrierDeckPulse(at: carrier.node.position, faction: carrier.faction, label: "CV GUARD")
+                let guardWing = boundCarrierGuardWing(for: carrier)
+                guard !guardWing.isEmpty else { continue }
+                let compositionSuffix = carrierAirWingCompositionSuffix(for: guardWing)
+                let label = compositionSuffix.isEmpty ? "CV GUARD" : "GW\(compositionSuffix)"
+                showCarrierDeckPulse(at: carrier.node.position, faction: carrier.faction, label: label)
             }
         }
         updateHUD()
-        let guardWingSuffix = guardWingCount > 0 ? " Guard wing \(guardWingCount)." : ""
+        let guardWingSuffix: String
+        if guardWingCount > 0 {
+            var seenWingIDs = Set<Int>()
+            let guardWing = holdCarriers.flatMap { boundCarrierGuardWing(for: $0) }.filter { seenWingIDs.insert($0.id).inserted }
+            let compositionSuffix = carrierAirWingCompositionSuffix(for: guardWing)
+            guardWingSuffix = " Guard wing \(guardWingCount)\(compositionSuffix)."
+        } else {
+            guardWingSuffix = ""
+        }
         let guardReleaseCount = previouslyGuardedWingIDs.reduce(0) { total, id in
             guard let unit = entities[id], carrierGuardAnchor(for: unit) == nil else { return total }
             return total + 1
