@@ -3361,7 +3361,13 @@ final class GameScene: SKScene {
         else { return nil }
 
         let distance = wing.node.position.distance(to: carrier.node.position)
-        return "CV GUARD D\(Int(distance))  Guard \(Int(holdEngagementRadius))"
+        let targetSuffix: String
+        if let target = carrierGuardPriorityTarget(for: wing) {
+            targetSuffix = " Tgt \(target.kind.shortCode) \(carrierGuardContactType(for: target))"
+        } else {
+            targetSuffix = ""
+        }
+        return "CV GUARD D\(Int(distance))\(targetSuffix)  Guard \(Int(holdEngagementRadius))"
     }
 
     private func groupSelectedCarrierGuardWingSummary(for selected: [GameEntity]) -> String? {
