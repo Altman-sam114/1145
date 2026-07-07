@@ -3011,6 +3011,7 @@ final class GameScene: SKScene {
         let count = isGuarding ? guardWing.count : nearbyWing.count
         let missing = max(0, requirement - count)
         let label = isGuarding ? "GW" : "Wing"
+        let compositionSuffix = isGuarding ? carrierGuardWingCompositionSuffix(for: guardWing) : ""
         let contactSuffix: String
         if isGuarding {
             let contactSummary = carrierGuardContactSummary(for: entity, guardWing: guardWing)
@@ -3027,9 +3028,23 @@ final class GameScene: SKScene {
             contactSuffix = ""
         }
         if missing > 0 {
-            return "\(label) \(count)/\(requirement) Need \(missing)\(contactSuffix)"
+            return "\(label) \(count)/\(requirement) Need \(missing)\(compositionSuffix)\(contactSuffix)"
         }
-        return "\(label) \(count)/\(requirement) OK\(contactSuffix)"
+        return "\(label) \(count)/\(requirement) OK\(compositionSuffix)\(contactSuffix)"
+    }
+
+    private func carrierGuardWingCompositionSuffix(for guardWing: [GameEntity]) -> String {
+        let helicopterCount = guardWing.filter { $0.kind == .helicopter }.count
+        let fighterCount = guardWing.filter { $0.kind == .fighter }.count
+        var parts: [String] = []
+        if helicopterCount > 0 {
+            parts.append("H\(helicopterCount)")
+        }
+        if fighterCount > 0 {
+            parts.append("J\(fighterCount)")
+        }
+        guard !parts.isEmpty else { return "" }
+        return " \(parts.joined(separator: " "))"
     }
 
     private func carrierGuardEngagedCount(for carrier: GameEntity, guardWing: [GameEntity]) -> Int {
@@ -3203,10 +3218,12 @@ final class GameScene: SKScene {
 
         var boundWingCount = 0
         var requiredWingCount = 0
+        var guardWings: [GameEntity] = []
         var contactIDs = Set<Int>()
         var engagedCount = 0
         for carrier in carriers {
             let guardWing = boundCarrierGuardWing(for: carrier)
+            guardWings.append(contentsOf: guardWing)
             boundWingCount += guardWing.count
             requiredWingCount += 2
             engagedCount += carrierGuardEngagedCount(for: carrier, guardWing: guardWing)
@@ -3220,8 +3237,9 @@ final class GameScene: SKScene {
 
         let missing = max(0, requiredWingCount - boundWingCount)
         let readiness = missing > 0 ? "Need \(missing)" : "OK"
+        let compositionSuffix = carrierGuardWingCompositionSuffix(for: guardWings)
         let engagedSuffix = engagedCount > 0 ? " Eng \(engagedCount)" : ""
-        return "CV GW \(boundWingCount)/\(requiredWingCount) \(readiness) C\(contactIDs.count)\(engagedSuffix)"
+        return "CV GW \(boundWingCount)/\(requiredWingCount) \(readiness)\(compositionSuffix) C\(contactIDs.count)\(engagedSuffix)"
     }
 
     private func groupSelectionInfo(for selected: [GameEntity]) -> (title: String, rows: [String]) {
