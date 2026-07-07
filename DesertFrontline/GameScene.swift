@@ -4910,11 +4910,15 @@ final class GameScene: SKScene {
         }
         updateHUD()
         let guardWingSuffix: String
-        if guardWingCount > 0 {
+        if !holdCarriers.isEmpty {
             var seenWingIDs = Set<Int>()
             let guardWing = holdCarriers.flatMap { boundCarrierGuardWing(for: $0) }.filter { seenWingIDs.insert($0.id).inserted }
             let compositionSuffix = carrierAirWingCompositionSuffix(for: guardWing)
-            guardWingSuffix = " Guard wing \(guardWingCount)\(compositionSuffix)."
+            let requiredWingCount = holdCarriers.count * carrierGuardWingRequirement
+            let boundWingCount = min(guardWing.count, requiredWingCount)
+            let missingWingCount = max(0, requiredWingCount - boundWingCount)
+            let missingSuffix = missingWingCount > 0 ? " Need \(missingWingCount)" : ""
+            guardWingSuffix = " Guard wing \(boundWingCount)\(compositionSuffix)\(missingSuffix)."
         } else {
             guardWingSuffix = ""
         }
