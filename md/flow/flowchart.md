@@ -8,8 +8,8 @@
 
 ```mermaid
 flowchart TD
-  App["DesertFrontlineApp\n创建窗口入口"] --> View["GameView\nSwiftUI SpriteView 承载场景"]
-  View --> Holder["SceneHolder\n创建 GameScene 1366x1024"]
+  App["DesertFrontlineApp\n创建窗口入口"] --> View["GameView\nGeometryReader + 全屏 SpriteView\n黑色背景兜底并同步视口尺寸"]
+  View --> Holder["SceneHolder\n创建非零初始 GameScene\nresizeFill 并跟随窗口尺寸"]
   Holder --> Scene["GameScene.didMove\n初始化世界节点、地图、实体、HUD、相机"]
   Scene --> Init["初始化链路\n地形 -> 地图 -> 控制点 -> 初始部队 -> HUD -> 迷雾"]
   Init --> Loop["GameScene.update 每帧循环\n统一推进游戏状态"]

@@ -29,8 +29,8 @@
 ## 2. 当前核心执行流
 
 1. `DesertFrontlineApp` 创建 `GameView`。
-2. `GameView` 用 `SpriteView` 挂载 `SceneHolder.scene`。
-3. `SceneHolder` 创建固定尺寸 `GameScene(size: 1366x1024)`，`scaleMode = .aspectFill`。
+2. `GameView` 用 `GeometryReader` 包住全屏 `SpriteView` 挂载 `SceneHolder.scene`，并用黑色背景兜底，避免 SpriteKit 视图尚未铺满时露出系统白屏或空黑屏。
+3. `SceneHolder` 先创建非零初始尺寸 `GameScene(size: 1366x1024)`，`scaleMode = .resizeFill`，随后在 SwiftUI 提供有效容器尺寸时同步 `scene.size`，让 HUD、相机 clamp 和 SpriteKit viewport 以真实窗口尺寸布局。
 4. `GameScene.didMove(to:)` 初始化 world、map、entity、effect、fog、HUD、camera 节点。
 5. 初始化流程依次构建地形、绘制地图、生成控制点、生成初始单位/建筑、布局 HUD、刷新迷雾、刷新 HUD。
 6. `GameScene.update(_:)` 每帧推进施工、生产、支援冷却、经济、占领、维修、移动、战斗、AI、迷雾、死亡清理、任务进度、胜负和 HUD。
