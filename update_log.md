@@ -3993,3 +3993,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互或本地测试；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：多选 bound HEL/JET 无合法 contact 时是否保持 `CV GUARD n Hn/Jn Dm`，有合法 contact 时是否追加 `Tgt XXX Air/Sea/Sub/Ground`，且隐藏目标不会通过 HUD 泄露。
 - 后续可继续细化 Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.67。
+
+### v4.68 / AMOV 按钮航母警戒释放提示
+
+日期：2026-07-07
+
+核心变更：
+
+- `AMOV` 按钮 subtitle 不再固定只显示 `push`，会在当前 attack-move 选择会释放 Carrier guard 关系时只读显示 `CV rel`。
+- 选中玩家可战斗移动单位中存在已绑定有效 Carrier guard anchor 的 HEL/JET 时，`AMOV` subtitle 显示 `CV rel`。
+- 选中玩家 HOLD Carrier 且该 Carrier 当前有 bound guard wing 时，`AMOV` subtitle 显示 `CV rel`，预告该 Carrier 退出 HOLD 后会让相关 guard anchor 失效。
+- 其他可战斗移动单位选择仍显示 `push`。
+- 本轮只新增 `attackMoveButtonSubtitle()` 并接入 `subtitle(for:)` 的 `.attackMove` 分支；不改变 AMOV 执行、release feedback、`clearCarrierGuardAnchor(...)`、HOLD、Carrier guard station keeping、AI、战斗、迷雾、生产、支援、任务或胜负逻辑。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/prompt/v4（海军航母）/v4.68（AMOV按钮航母警戒释放提示）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.68 实现提示词；Agent X 基于 v4.67 遗留事项和只读子 agent 侦查结果，选定 `AMOV` 按钮 Carrier guard release 预告作为小范围命令 UI 可读性增量。
+- 只读 reviewer 子 agent 复核当前 diff，结论为 `No issues`；该子 agent 未改文件、未运行本地测试、构建、静态检查或联网。
+- Agent B 实现提交并推送：`23b052215bfc7f14178e7d596f29b567526227f0`，commit subject 为 `v4.68: AMOV按钮航母警戒释放提示`。
+- Agent C 复核：GitHub Actions run head branch 为 `main`，head SHA 为 `23b052215bfc7f14178e7d596f29b567526227f0`，与本轮实现 commit 一致。
+- GitHub Actions：run `28865889903`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.68-main-23b052215bfc-run28865889903-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28865889903/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=23b052215bfc7f14178e7d596f29b567526227f0`、`runId=28865889903`、`runAttempt=1`、`version=v4.68`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+- artifact 下载目录大小约 `116K`，未下载大体积无关产物。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：普通 combat selection 的 `AMOV` subtitle 是否仍为 `push`，bound HEL/JET 或带 bound guard wing 的 HOLD Carrier 选择是否显示 `CV rel`，点击 AMOV 后原有 release feedback 和 attack-move 行为是否保持。
+- 后续可继续细化 bound HEL/JET `CV GUARD` 接触数 `C0/Cn`、Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.68。
