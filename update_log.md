@@ -3493,3 +3493,42 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：一艘 Carrier 附近超过 2 架 HEL/JET 时只绑定最近 2 架、多艘 Carrier 同时 HOLD 时 wing 不重复归属、额外飞机未被误报为 `CV GUARD`。
 - 后续可继续在 guard wing 基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统、AI 航母进攻节奏或海军科技层，但这些不属于 v4.54。
+
+### v4.55 / 航母警戒翼队脱离组成反馈
+
+日期：2026-07-07
+
+核心变更：
+
+- 玩家移动、AMOV、直接攻击或 ordinary HOLD 让有效 bound Carrier guard HEL/JET 脱离 anchor 时，顶部成功消息从 `CV guard released n.` 扩展为 `CV guard released n Hn/Jn.`。
+- 新增 `carrierGuardReleaseWing(for:)` 作为 release feedback 的统一只读 wing 列表口径，并让 `carrierGuardReleaseSuffix(for:)` 复用现有 `carrierAirWingCompositionSuffix(for:)` 生成 HEL/JET 组成。
+- 直接攻击、普通移动和 AMOV 都在清理 anchor 前保存本次会释放的 bound wing 列表，再复用同一 suffix 输出消息。
+- ordinary HOLD 继续先记录旧 bound wing id，执行 HOLD 和可能的 Carrier 重新绑定后，再只统计最终已经脱离 anchor 的 wing 及组成，保持“同次重新绑定不误报 released”的语义。
+- 不改变 `clearCarrierGuardAnchor(for:)`、`assignCarrierGuardWing(for:)`、`boundCarrierGuardWing(for:)`、候选资格、guard anchor、station keeping、target priority、combat、fog、潜艇侦测、AI、生产、支援、任务、胜负或 SKRM 重置语义。
+- README、flow 和 v4.55 Agent A 提示词已同步当前真实行为，未新增或宣称完整 CAP / 巡逻 / 截击能力。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/prompt/v4（海军航母）/v4.55（航母警戒翼队脱离组成反馈）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.55 实现提示词；Agent X 基于 v4.54 后的当前代码选定 Carrier guard wing release feedback 组成补齐作为低风险小目标。
+- 并行只读 explorer 子 agent 复核确认：该目标合理，推荐只在 `carrierGuardReleaseSuffix(for:)` 复用组成 helper，并避免改变 release 候选、ordinary HOLD 统计时机、AI、combat、fog、selection ring、HOLD 绑定和 guard contact；该子 agent 未改文件、未运行本地测试、构建、静态检查或联网。
+- Agent B 实现提交并推送：`f3ce1920e5679b4dc1bdc2bc64fcb8a2dec559ca`，commit subject 为 `v4.55: 航母警戒翼队脱离组成反馈`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `f3ce1920e5679b4dc1bdc2bc64fcb8a2dec559ca`。
+- GitHub Actions：run `28841685944`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.55-main-f3ce1920e567-run28841685944-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28841685944/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=f3ce1920e5679b4dc1bdc2bc64fcb8a2dec559ca`、`runId=28841685944`、`runAttempt=1`、`version=v4.55`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：移动、AMOV、直接攻击和 ordinary HOLD 四条释放路径的顶部消息是否都显示 `CV guard released n Hn/Jn.`，以及同次 Carrier HOLD 重新绑定时不会误报 release。
+- 后续可继续在 guard wing 基础上设计更明确的舰载机命令 UI、CAP / 巡逻 / 截击系统、AI 航母进攻节奏或海军科技层，但这些不属于 v4.55。
