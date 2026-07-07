@@ -3322,15 +3322,17 @@ final class GameScene: SKScene {
 
     private func groupSelectedCarrierGuardWingSummary(for selected: [GameEntity]) -> String? {
         guard selected.count > 1 else { return nil }
-        let guardWingDistances = selected.compactMap { wing -> CGFloat? in
+        let guardWingsAndDistances = selected.compactMap { wing -> (wing: GameEntity, distance: CGFloat)? in
             guard wing.faction == .player,
                   wing.kind == .helicopter || wing.kind == .fighter,
                   let carrier = carrierGuardAnchor(for: wing)
             else { return nil }
-            return wing.node.position.distance(to: carrier.node.position)
+            return (wing, wing.node.position.distance(to: carrier.node.position))
         }
-        guard let nearestDistance = guardWingDistances.min() else { return nil }
-        return "CV GUARD \(guardWingDistances.count) D\(Int(nearestDistance))"
+        guard let nearestDistance = guardWingsAndDistances.map({ $0.distance }).min() else { return nil }
+        let guardWings = guardWingsAndDistances.map { $0.wing }
+        let compositionSuffix = carrierAirWingCompositionSuffix(for: guardWings)
+        return "CV GUARD \(guardWings.count)\(compositionSuffix) D\(Int(nearestDistance))"
     }
 
     private func submarineStatusLine(for entity: GameEntity) -> String {
