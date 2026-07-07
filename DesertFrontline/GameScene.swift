@@ -6650,11 +6650,60 @@ final class GameScene: SKScene {
 
         let waveSize = min(idleAttackers.count, max(aiDifficulty.attackGroupSize + 2, idleAttackers.count / 2))
         let provisionalWave = enemyProvisionalAssaultWave(from: idleAttackers, toward: objective, waveSize: waveSize)
+        let assaultCandidates = enemyAssaultCandidatesWithCarrierGuardWings(from: provisionalWave)
         let retreatingIDs = retreatEnemyAssaultUnits(provisionalWave)
-        let wave = enemyAssaultWave(from: provisionalWave).filter { !retreatingIDs.contains($0.id) }
+        let availableCandidates = enemyAssaultCandidates(
+            from: assaultCandidates,
+            excludingRetreatingIDs: retreatingIDs
+        )
+        let acceptedWave = enemyAssaultWave(from: availableCandidates)
+        let wave = enemyAssaultWaveKeepingCarrierGuardAnchors(acceptedWave)
         guard !wave.isEmpty else { return }
 
         issueFormationMove(to: objective, units: wave, showMarkers: false, showFeedback: false, attackMove: true)
+    }
+
+    private func enemyAssaultCandidatesWithCarrierGuardWings(from provisionalWave: [GameEntity]) -> [GameEntity] {
+        var candidates = provisionalWave
+        var candidateIDs = Set(provisionalWave.map(\.id))
+
+        for carrier in provisionalWave where carrier.faction == .enemy && carrier.kind == .carrier {
+            let guardWing = boundCarrierGuardWing(for: carrier).filter { wing in
+                !candidateIDs.contains(wing.id) &&
+                    isAvailableEnemyCarrierGuardWing(wing) &&
+                    !shouldRetreatEnemyAssaultUnit(wing) &&
+                    carrierGuardAnchor(for: wing)?.id == carrier.id
+            }
+            for wing in guardWing {
+                candidates.append(wing)
+                candidateIDs.insert(wing.id)
+            }
+        }
+
+        return candidates
+    }
+
+    private func enemyAssaultCandidates(
+        from candidates: [GameEntity],
+        excludingRetreatingIDs retreatingIDs: Set<Int>
+    ) -> [GameEntity] {
+        candidates.filter { unit in
+            guard !retreatingIDs.contains(unit.id) else { return false }
+            guard isEnemyCarrierGuardWingReservedForAnchor(unit),
+                  let carrier = carrierGuardAnchor(for: unit)
+            else { return true }
+            return !retreatingIDs.contains(carrier.id)
+        }
+    }
+
+    private func enemyAssaultWaveKeepingCarrierGuardAnchors(_ acceptedWave: [GameEntity]) -> [GameEntity] {
+        let acceptedIDs = Set(acceptedWave.map(\.id))
+        return acceptedWave.filter { unit in
+            guard isEnemyCarrierGuardWingReservedForAnchor(unit),
+                  let carrier = carrierGuardAnchor(for: unit)
+            else { return true }
+            return acceptedIDs.contains(carrier.id)
+        }
     }
 
     private func enemyProvisionalAssaultWave(from candidates: [GameEntity], toward objective: CGPoint, waveSize: Int) -> [GameEntity] {
