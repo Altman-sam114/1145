@@ -3726,3 +3726,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：HUD 状态行在可感知 wave 后短暂显示 `R# F# Wave ...`，约 12 秒后恢复 `R# F# AI ...`，新的可感知 wave 能刷新摘要，隐藏 Red wave 不提前泄露组成，`SKRM` 重开后摘要清空。
 - 后续可继续细化更多玩家可感知战场事件摘要、AI 主攻节奏提示或 Carrier battle group 可读性，但这些不属于 v4.60。
+
+### v4.61 / AI 航母战斗群携带站位翼队
+
+日期：2026-07-07
+
+核心变更：
+
+- 新增 `canEnemyCarrierGuardWingJoinAssault(_:with:)`，作为 Red Carrier 入波携带自身 bound guard wing 的专用过滤 helper。
+- 当 Red anchor Carrier 自身进入 routine provisional assault wave 时，同 anchor、有效、无 attack target、无 attack-move、未撤退且不应低血回修的 bound HEL/JET 可加入本轮 assault candidates，即使它们正在返回 guard station。
+- `isAvailableEnemyCarrierGuardWing(_:)` 保持原样，Red Carrier 自动绑定候选和 ordinary idle 语义仍要求 wing 没有 destination。
+- ordinary routine assault candidates 仍排除已绑定 Red Carrier guard wing；只有 anchor Carrier 自身入波时，站位中的 wing 才可随队。
+- 不改变玩家 Carrier guard wing、玩家命令释放语义、AI 目标、escort 门槛、低血撤退、fog、combat、production、support、mission 或 victory 语义。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/prompt/v4（海军航母）/v4.61（AI航母战斗群携带站位翼队）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.61 实现提示词；Agent X 基于 v4.60 后的当前代码选定 Red Carrier battle group 携带站位中的 guard wing 作为窄范围 AI 航母行为补齐。
+- 并行只读 explorer 子 agent 复核候选目标；另一只读 explorer 子 agent 复核最终 diff，确认新 helper 只放宽 `destination == nil` 条件，未影响 ordinary routine candidates、自动绑定候选、玩家 release、低血撤退、迷雾或战斗；这些子 agent 均未改文件、未运行本地测试、构建、静态检查或联网。
+- Agent B 实现提交并推送：`4d8b604beb2e21ddb04267ad5f676d8134530205`，commit subject 为 `v4.61: AI航母战斗群携带站位翼队`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `4d8b604beb2e21ddb04267ad5f676d8134530205`。
+- GitHub Actions：run `28848767781`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.61-main-4d8b604beb2e-run28848767781-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28848767781/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=4d8b604beb2e21ddb04267ad5f676d8134530205`、`runId=28848767781`、`runAttempt=1`、`version=v4.61`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：Red Carrier 被接受出击时，正在返回 guard station 的同 anchor HEL/JET 是否随队 attack-move；有 attack target、attack-move、低血应撤退或其他 anchor 的 wing 是否仍不会被携带；普通 bound guard wing 是否仍不会在 anchor Carrier 未出击时被 routine wave 单独抽走。
+- 后续可继续细化 AI wave HUD 的“已感知子集”措辞、多选 HOLD Carrier 接触类型 / 目标摘要，或更完整的舰载机命令 UI；这些不属于 v4.61。
