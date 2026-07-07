@@ -6598,6 +6598,12 @@ final class GameScene: SKScene {
             !isEnemyUnitRetreating(unit)
     }
 
+    private func isEnemyCarrierGuardWingReservedForAnchor(_ unit: GameEntity) -> Bool {
+        unit.faction == .enemy &&
+            (unit.kind == .helicopter || unit.kind == .fighter) &&
+            carrierGuardAnchor(for: unit) != nil
+    }
+
     private func enemyRetreatDestination(for unit: GameEntity) -> CGPoint {
         enemyRepairAnchor(for: unit) ?? enemyBaseAnchorPoint()
     }
@@ -6623,6 +6629,7 @@ final class GameScene: SKScene {
             unit.attackMoveDestination == nil &&
             unit.destination == nil &&
             !isEnemyCaptureReserved(unit) &&
+            !isEnemyCarrierGuardWingReservedForAnchor(unit) &&
             !isEnemyUnitRetreating(unit) &&
             unit.kind.damage > 0 &&
             unit.isOperational
