@@ -4121,8 +4121,10 @@ final class GameScene: SKScene {
 
             let selected = selectedMobilePlayerUnits()
             if !selected.isEmpty && tapped.faction == .enemy {
+                let attackers = selected.filter { $0.kind.canAttack(tapped.kind) }
+                let guardReleaseCount = carrierGuardReleaseCount(for: attackers)
                 var assignedAttackers = 0
-                for unit in selected where unit.kind.canAttack(tapped.kind) {
+                for unit in attackers {
                     unit.holdPosition = nil
                     clearCarrierGuardAnchor(for: unit)
                     unit.attackMoveDestination = nil
@@ -4132,7 +4134,7 @@ final class GameScene: SKScene {
                     assignedAttackers += 1
                 }
                 if assignedAttackers > 0 {
-                    showMessage("Attack order: \(tapped.kind.displayName).", color: UIColor(red: 1.0, green: 0.62, blue: 0.35, alpha: 1.0))
+                    showMessage("Attack order: \(tapped.kind.displayName).\(carrierGuardReleaseSuffix(count: guardReleaseCount))", color: UIColor(red: 1.0, green: 0.62, blue: 0.35, alpha: 1.0))
                 } else {
                     showDeniedMarker(at: tapped.node.position, reason: "NO ATK")
                     showMessage("Selected units cannot attack that target.", color: .orange)
@@ -4830,6 +4832,11 @@ final class GameScene: SKScene {
             return
         }
 
+        let previouslyGuardedWingIDs = Set(mobileUnits.filter { unit in
+            unit.faction == .player &&
+                (unit.kind == .helicopter || unit.kind == .fighter) &&
+                carrierGuardAnchor(for: unit) != nil
+        }.map(\.id))
         let center = mobileUnits.reduce(CGPoint.zero) { $0 + $1.node.position } / CGFloat(mobileUnits.count)
         for unit in mobileUnits {
             unit.holdPosition = unit.node.position
@@ -4852,7 +4859,24 @@ final class GameScene: SKScene {
         }
         updateHUD()
         let guardWingSuffix = guardWingCount > 0 ? " Guard wing \(guardWingCount)." : ""
-        showMessage("Hold position: \(mobileUnits.count) units guarding.\(guardWingSuffix)", color: UIColor(red: 0.78, green: 1.0, blue: 0.58, alpha: 1.0))
+        let guardReleaseCount = previouslyGuardedWingIDs.reduce(0) { total, id in
+            guard let unit = entities[id], carrierGuardAnchor(for: unit) == nil else { return total }
+            return total + 1
+        }
+        showMessage("Hold position: \(mobileUnits.count) units guarding.\(guardWingSuffix)\(carrierGuardReleaseSuffix(count: guardReleaseCount))", color: UIColor(red: 0.78, green: 1.0, blue: 0.58, alpha: 1.0))
+    }
+
+    private func carrierGuardReleaseCount(for units: [GameEntity]) -> Int {
+        units.filter { unit in
+            unit.faction == .player &&
+                unit.isAlive &&
+                (unit.kind == .helicopter || unit.kind == .fighter) &&
+                carrierGuardAnchor(for: unit) != nil
+        }.count
+    }
+
+    private func carrierGuardReleaseSuffix(count: Int) -> String {
+        count > 0 ? " CV guard released \(count)." : ""
     }
 
     private func assignCarrierGuardWing(for carriers: [GameEntity]) -> Int {
@@ -4966,6 +4990,7 @@ final class GameScene: SKScene {
         let mobileUnits = units.filter { $0.isAlive && !$0.kind.isStructure }
         guard !mobileUnits.isEmpty else { return }
 
+        let guardReleaseCount = carrierGuardReleaseCount(for: mobileUnits)
         var markerPoints: [CGPoint] = []
         var activeGroups = 0
         for domain in [Domain.land, .air, .naval] {
@@ -5014,7 +5039,7 @@ final class GameScene: SKScene {
             } else {
                 text = activeGroups > 1 ? "Formation move: land, air, and naval groups." : "Move order issued."
             }
-            showMessage(text, color: attackMove
+            showMessage("\(text)\(carrierGuardReleaseSuffix(count: guardReleaseCount))", color: attackMove
                 ? UIColor(red: 1.0, green: 0.72, blue: 0.46, alpha: 1.0)
                 : UIColor(red: 0.80, green: 0.95, blue: 0.80, alpha: 1.0))
         }
