@@ -6706,9 +6706,7 @@ final class GameScene: SKScene {
         for carrier in provisionalWave where carrier.faction == .enemy && carrier.kind == .carrier {
             let guardWing = boundCarrierGuardWing(for: carrier).filter { wing in
                 !candidateIDs.contains(wing.id) &&
-                    isAvailableEnemyCarrierGuardWing(wing) &&
-                    !shouldRetreatEnemyAssaultUnit(wing) &&
-                    carrierGuardAnchor(for: wing)?.id == carrier.id
+                    canEnemyCarrierGuardWingJoinAssault(wing, with: carrier)
             }
             for wing in guardWing {
                 candidates.append(wing)
@@ -6717,6 +6715,20 @@ final class GameScene: SKScene {
         }
 
         return candidates
+    }
+
+    private func canEnemyCarrierGuardWingJoinAssault(_ wing: GameEntity, with carrier: GameEntity) -> Bool {
+        wing.faction == .enemy &&
+            wing.isAlive &&
+            wing.isOperational &&
+            !wing.kind.isStructure &&
+            (wing.kind == .helicopter || wing.kind == .fighter) &&
+            wing.attackTarget == nil &&
+            wing.attackMoveDestination == nil &&
+            !isEnemyCaptureReserved(wing) &&
+            !isEnemyUnitRetreating(wing) &&
+            !shouldRetreatEnemyAssaultUnit(wing) &&
+            carrierGuardAnchor(for: wing)?.id == carrier.id
     }
 
     private func enemyAssaultCandidates(
