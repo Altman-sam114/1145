@@ -3225,6 +3225,10 @@ final class GameScene: SKScene {
         var requiredWingCount = 0
         var guardWings: [GameEntity] = []
         var contactIDs = Set<Int>()
+        var contactTypes = Set<String>()
+        var preferredTarget: GameEntity?
+        var preferredPriority = Int.max
+        var preferredDistance = CGFloat.greatestFiniteMagnitude
         var engagedCount = 0
         for carrier in carriers {
             let guardWing = boundCarrierGuardWing(for: carrier)
@@ -3235,7 +3239,19 @@ final class GameScene: SKScene {
             for wing in guardWing {
                 guard let holdPosition = wing.holdPosition else { continue }
                 for target in entities.values where isCarrierGuardContact(target, for: wing, carrier: carrier, holdPosition: holdPosition) {
-                    contactIDs.insert(target.id)
+                    if contactIDs.insert(target.id).inserted {
+                        contactTypes.insert(carrierGuardContactType(for: target))
+                    }
+                    let priority = carrierGuardTargetPriority(for: wing, target: target)
+                    let distance = target.node.position.distance(to: carrier.node.position)
+                    if preferredTarget == nil ||
+                        priority < preferredPriority ||
+                        (priority == preferredPriority && distance < preferredDistance - 0.5) ||
+                        (priority == preferredPriority && abs(distance - preferredDistance) < 0.5 && target.id < (preferredTarget?.id ?? Int.max)) {
+                        preferredTarget = target
+                        preferredPriority = priority
+                        preferredDistance = distance
+                    }
                 }
             }
         }
@@ -3243,8 +3259,17 @@ final class GameScene: SKScene {
         let missing = max(0, requiredWingCount - boundWingCount)
         let readiness = missing > 0 ? "Need \(missing)" : "OK"
         let compositionSuffix = carrierAirWingCompositionSuffix(for: guardWings)
+        let contactTypeSuffix: String
+        if contactIDs.isEmpty {
+            contactTypeSuffix = ""
+        } else if contactTypes.count == 1 {
+            contactTypeSuffix = " \(contactTypes.first ?? "Mix")"
+        } else {
+            contactTypeSuffix = " Mix"
+        }
+        let targetSuffix = contactIDs.isEmpty ? "" : preferredTarget.map { " Tgt \($0.kind.shortCode)" } ?? ""
         let engagedSuffix = engagedCount > 0 ? " Eng \(engagedCount)" : ""
-        return "CV GW \(boundWingCount)/\(requiredWingCount) \(readiness)\(compositionSuffix) C\(contactIDs.count)\(engagedSuffix)"
+        return "CV GW \(boundWingCount)/\(requiredWingCount) \(readiness)\(compositionSuffix) C\(contactIDs.count)\(contactTypeSuffix)\(targetSuffix)\(engagedSuffix)"
     }
 
     private func groupSelectionInfo(for selected: [GameEntity]) -> (title: String, rows: [String]) {
