@@ -3011,7 +3011,7 @@ final class GameScene: SKScene {
         let count = isGuarding ? guardWing.count : nearbyWing.count
         let missing = max(0, requirement - count)
         let label = isGuarding ? "GW" : "Wing"
-        let compositionSuffix = isGuarding ? carrierGuardWingCompositionSuffix(for: guardWing) : ""
+        let compositionSuffix = carrierAirWingCompositionSuffix(for: isGuarding ? guardWing : nearbyWing)
         let contactSuffix: String
         if isGuarding {
             let contactSummary = carrierGuardContactSummary(for: entity, guardWing: guardWing)
@@ -3033,9 +3033,9 @@ final class GameScene: SKScene {
         return "\(label) \(count)/\(requirement) OK\(compositionSuffix)\(contactSuffix)"
     }
 
-    private func carrierGuardWingCompositionSuffix(for guardWing: [GameEntity]) -> String {
-        let helicopterCount = guardWing.filter { $0.kind == .helicopter }.count
-        let fighterCount = guardWing.filter { $0.kind == .fighter }.count
+    private func carrierAirWingCompositionSuffix(for wing: [GameEntity]) -> String {
+        let helicopterCount = wing.filter { $0.kind == .helicopter }.count
+        let fighterCount = wing.filter { $0.kind == .fighter }.count
         var parts: [String] = []
         if helicopterCount > 0 {
             parts.append("H\(helicopterCount)")
@@ -3237,7 +3237,7 @@ final class GameScene: SKScene {
 
         let missing = max(0, requiredWingCount - boundWingCount)
         let readiness = missing > 0 ? "Need \(missing)" : "OK"
-        let compositionSuffix = carrierGuardWingCompositionSuffix(for: guardWings)
+        let compositionSuffix = carrierAirWingCompositionSuffix(for: guardWings)
         let engagedSuffix = engagedCount > 0 ? " Eng \(engagedCount)" : ""
         return "CV GW \(boundWingCount)/\(requiredWingCount) \(readiness)\(compositionSuffix) C\(contactIDs.count)\(engagedSuffix)"
     }
