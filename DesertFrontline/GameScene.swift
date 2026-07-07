@@ -889,6 +889,7 @@ final class GameScene: SKScene {
     private var enemyRetreatingUnitIDs = Set<Int>()
     private var aiBuildCursor = 0
     private var aiDifficulty: AIDifficulty = .normal
+    private var lastEnemyAssaultWaveSummary: String?
     private let buildableStructures: [EntityKind] = [.barracks, .airfield, .radarOutpost, .sonarBuoy, .guardTower, .samSite, .coastalBattery, .shipyard, .oilDerrick]
     private var structureBuildCursor = 0
     private var pendingConstructionKind: EntityKind?
@@ -2604,7 +2605,8 @@ final class GameScene: SKScene {
         moneyLabel.text = "$\(playerMoney)"
         incomeLabel.text = "+$\(income)/sec  Oil \(oilCount(for: .player))  Flags \(controlPointCount(for: .player))"
         forcesLabel.text = "Blue \(mobileCount(for: .player)) units  Oil \(oilCount(for: .player))  Flags \(controlPointCount(for: .player))"
-        aiStatusLabel.text = "Red \(mobileCount(for: .enemy)) units  Flags \(controlPointCount(for: .enemy))  AI \(aiDifficulty.displayName)"
+        let enemyStatus = lastEnemyAssaultWaveSummary ?? "AI \(aiDifficulty.displayName)"
+        aiStatusLabel.text = "R\(mobileCount(for: .enemy)) F\(controlPointCount(for: .enemy)) \(enemyStatus)"
         let missionStatus = missionStatusContent()
         missionTitleLabel.text = missionStatus.title
         missionDetailLabel.text = missionStatus.detail
@@ -4701,6 +4703,7 @@ final class GameScene: SKScene {
         playerMoney = 5200
         enemyMoney = 5200
         aiBuildCursor = 0
+        lastEnemyAssaultWaveSummary = nil
         pendingConstructionKind = nil
         pendingSupportPower = nil
         structureBuildCursor = 0
@@ -6660,7 +6663,29 @@ final class GameScene: SKScene {
         let wave = enemyAssaultWaveKeepingCarrierGuardAnchors(acceptedWave)
         guard !wave.isEmpty else { return }
 
+        updateEnemyAssaultWaveSummary(for: wave)
         issueFormationMove(to: objective, units: wave, showMarkers: false, showFeedback: false, attackMove: true)
+    }
+
+    private func updateEnemyAssaultWaveSummary(for wave: [GameEntity]) {
+        let knownWave = wave.filter { isKnownToFaction($0, observer: .player) }
+        guard !knownWave.isEmpty else { return }
+        lastEnemyAssaultWaveSummary = enemyAssaultWaveSummary(for: knownWave)
+    }
+
+    private func enemyAssaultWaveSummary(for wave: [GameEntity]) -> String {
+        let land = wave.filter { $0.kind.domain == .land }.count
+        let air = wave.filter { $0.kind.domain == .air }.count
+        let naval = wave.filter { $0.kind.domain == .naval }.count
+        let carriers = wave.filter { $0.kind == .carrier }.count
+        let helicopters = wave.filter { $0.kind == .helicopter }.count
+        let fighters = wave.filter { $0.kind == .fighter }.count
+
+        var parts = ["Wave \(wave.count)", "L\(land)/A\(air)/N\(naval)"]
+        if carriers > 0 { parts.append("CV\(carriers)") }
+        if helicopters > 0 { parts.append("H\(helicopters)") }
+        if fighters > 0 { parts.append("J\(fighters)") }
+        return parts.joined(separator: " ")
     }
 
     private func enemyAssaultCandidatesWithCarrierGuardWings(from provisionalWave: [GameEntity]) -> [GameEntity] {
