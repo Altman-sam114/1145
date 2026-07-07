@@ -2548,7 +2548,7 @@ final class GameScene: SKScene {
         case .holdPosition:
             return holdButtonSubtitle()
         case .attackMove:
-            return "push"
+            return attackMoveButtonSubtitle()
         case .buildBase:
             let kind = pendingConstructionKind ?? nextStructureKind()
             return "$\(kind.cost) \(kind.shortCode)"
@@ -2577,6 +2577,24 @@ final class GameScene: SKScene {
             return "CV rel"
         }
         return "guard"
+    }
+
+    private func attackMoveButtonSubtitle() -> String {
+        let combatUnits = selectedMobilePlayerUnits().filter { $0.kind.damage > 0 }
+        if combatUnits.contains(where: { unit in
+            (unit.kind == .helicopter || unit.kind == .fighter) &&
+                carrierGuardAnchor(for: unit) != nil
+        }) {
+            return "CV rel"
+        }
+        if combatUnits.contains(where: { unit in
+            unit.kind == .carrier &&
+                unit.holdPosition != nil &&
+                !boundCarrierGuardWing(for: unit).isEmpty
+        }) {
+            return "CV rel"
+        }
+        return "push"
     }
 
     private func productionButtonSubtitle(for kind: EntityKind) -> String {
