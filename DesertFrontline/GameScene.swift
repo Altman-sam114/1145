@@ -6717,7 +6717,7 @@ final class GameScene: SKScene {
         let helicopters = wave.filter { $0.kind == .helicopter }.count
         let fighters = wave.filter { $0.kind == .fighter }.count
 
-        var parts = ["Wave \(wave.count)", "L\(land)/A\(air)/N\(naval)"]
+        var parts = ["Seen \(wave.count)", "L\(land)/A\(air)/N\(naval)"]
         if carriers > 0 { parts.append("CV\(carriers)") }
         if helicopters > 0 { parts.append("H\(helicopters)") }
         if fighters > 0 { parts.append("J\(fighters)") }
