@@ -3688,3 +3688,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：HUD 状态行在无可感知 wave 时显示 `R# F# AI ...`，有可感知 wave 后显示 `R# F# Wave ...` 且不溢出，隐藏 Red wave 不提前泄露组成，`SKRM` 重开后摘要清空。
 - 后续可继续细化 AI wave 状态的持续时间、更多玩家可感知事件摘要或 Carrier battle group 可读性，但这些不属于 v4.59。
+
+### v4.60 / AI 主攻波 HUD 摘要过期
+
+日期：2026-07-07
+
+核心变更：
+
+- 新增 `lastEnemyAssaultWaveSummaryTime` 和 `enemyAssaultWaveSummaryDuration = 12`，让 Red 主攻波 HUD 摘要成为有时效的显示状态。
+- `updateEnemyAssaultWaveSummary(for:)` 仍只在玩家已知 wave 子集非空时更新摘要，并同步刷新摘要时间戳。
+- `updateHUD()` 通过 `currentEnemyAssaultWaveSummary()` 判断摘要是否仍有效；超过约 12 秒后恢复显示 `AI <difficulty>`。
+- `SKRM` 重开会同时清空 `lastEnemyAssaultWaveSummary` 和时间戳。
+- 不改变 AI 进攻选择、Carrier guard wing battle group、低血撤退、escort 门槛、fog、combat、production、support、mission 或 victory 语义。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/prompt/v4（海军航母）/v4.60（AI主攻波HUD摘要过期）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.60 实现提示词；Agent X 基于 v4.59 后的当前代码选定 Red 主攻波 HUD 摘要过期作为低风险 AI 可读性小目标。
+- 并行只读 explorer 子 agent 复核确认：时间戳使用 `lastUpdateTime`，过期 helper 只影响 HUD 展示，不参与 AI 决策、战斗、移动或目标选择；该子 agent 未改文件、未运行本地测试、构建、静态检查或联网。
+- Agent B 实现提交并推送：`2309520f91d199f635be05da27b7ebe3a2a4ecdd`，commit subject 为 `v4.60: AI主攻波HUD摘要过期`。
+- Agent C 复核：本地 `main`、`origin/main`、`HEAD` 和 Actions run head SHA 均为 `2309520f91d199f635be05da27b7ebe3a2a4ecdd`。
+- GitHub Actions：run `28846987775`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.60-main-2309520f91d1-run28846987775-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28846987775/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=2309520f91d199f635be05da27b7ebe3a2a4ecdd`、`runId=28846987775`、`runAttempt=1`、`version=v4.60`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：HUD 状态行在可感知 wave 后短暂显示 `R# F# Wave ...`，约 12 秒后恢复 `R# F# AI ...`，新的可感知 wave 能刷新摘要，隐藏 Red wave 不提前泄露组成，`SKRM` 重开后摘要清空。
+- 后续可继续细化更多玩家可感知战场事件摘要、AI 主攻节奏提示或 Carrier battle group 可读性，但这些不属于 v4.60。
