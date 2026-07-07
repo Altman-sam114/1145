@@ -7237,8 +7237,7 @@ final class GameScene: SKScene {
         else { return false }
 
         if selectedIDs.contains(entity.id),
-           entity.holdPosition != nil,
-           !boundCarrierGuardWing(for: entity).isEmpty {
+           entity.holdPosition != nil {
             return true
         }
 
