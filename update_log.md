@@ -3916,3 +3916,41 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 当前没有独立 XCTest target，真实设备上仍建议人工检查：Carrier HOLD 附近无 HEL/JET、1 架 HEL/JET、满 2 架 HEL/JET 和多 Carrier 同选时的顶部消息是否分别显示预期 `Guard wing` / `Need` 结果，且普通 HOLD release 反馈是否保持。
 - 后续可继续细化 Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.65。
+
+### v4.66 / 单机警戒目标状态
+
+日期：2026-07-07
+
+核心变更：
+
+- 单选玩家已绑定有效 Carrier guard anchor 的 HEL/JET 时，`CV GUARD` 状态行现在会在存在合法 Carrier guard contact 时追加只读 `Tgt XXX Air/Sea/Sub/Ground` 摘要。
+- 目标短码来自 `target.kind.shortCode`，类型复用 `carrierGuardContactType(for:)`；目标选择复用 `carrierGuardPriorityTarget(for:)`，继续间接遵守 `isCarrierGuardContact(...)`、`canAttack(...)`、Carrier 近域、HOLD 站位警戒半径和 `isKnownToFaction(...)` 迷雾边界。
+- 没有合法 contact 时，单选 bound HEL/JET 状态行仍保持 `CV GUARD Dn  Guard ...`。
+- 本轮只改变 `carrierGuardWingStatusLine(for:)` 的只读 HUD 文案；不写入 `attackTarget`、`revealedUntil`、迷雾集合、命令状态或 AI 状态，也不改变 Carrier 单选 / 多选摘要、`Eng n`、release feedback、guard ring、AI、战斗、生产、支援、任务或胜负逻辑。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/prompt/v4（海军航母）/v4.66（单机警戒目标状态）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮不以本地测试、本地静态检查、本机构建或 `git diff --check` 作为验收依据；提交后通过 GitHub Actions 云端验证。
+- Agent A 创建 v4.66 实现提示词；Agent X 基于 v4.65 遗留事项和只读子 agent 侦查结果，选定单选 bound HEL/JET 的合法 guard target 状态作为小范围命令 UI 可读性增量。
+- 只读 reviewer 子 agent 复核当前 diff，结论为 `No issues`；该子 agent 未改文件、未运行本地测试、构建或静态检查。
+- Agent B 实现提交并推送：`cedc0259f09bf5602c6f890704a9069d8b1e3d7d`，commit subject 为 `v4.66: 单机警戒目标状态`。
+- Agent C 复核：GitHub Actions run head branch 为 `main`，head SHA 为 `cedc0259f09bf5602c6f890704a9069d8b1e3d7d`，与本轮实现 commit 一致。
+- GitHub Actions：run `28862100898`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.66-main-cedc0259f09b-run28862100898-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-28862100898/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=cedc0259f09bf5602c6f890704a9069d8b1e3d7d`、`runId=28862100898`、`runAttempt=1`、`version=v4.66`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`testOutcome=skipped`；`xcodebuild.log` 包含 `** BUILD SUCCEEDED **`。
+- artifact 下载目录大小约 `100K`，未下载大体积无关产物。
+
+遗留事项：
+
+- 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
+- 当前没有独立 XCTest target，真实设备上仍建议人工检查：单选未绑定 HEL/JET、bound HEL/JET 无合法 contact、bound HEL/JET 有合法 contact 时的 `CV GUARD` 状态行是否分别保持/显示预期 `Tgt`，且隐藏目标不会通过 HUD 泄露。
+- 后续可继续细化 Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.66。
