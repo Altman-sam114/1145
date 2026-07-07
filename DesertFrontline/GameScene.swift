@@ -890,6 +890,7 @@ final class GameScene: SKScene {
     private var aiBuildCursor = 0
     private var aiDifficulty: AIDifficulty = .normal
     private var lastEnemyAssaultWaveSummary: String?
+    private var lastEnemyAssaultWaveSummaryTime: TimeInterval = -100
     private let buildableStructures: [EntityKind] = [.barracks, .airfield, .radarOutpost, .sonarBuoy, .guardTower, .samSite, .coastalBattery, .shipyard, .oilDerrick]
     private var structureBuildCursor = 0
     private var pendingConstructionKind: EntityKind?
@@ -913,6 +914,7 @@ final class GameScene: SKScene {
 
     private let enemyRetreatHealthThreshold: CGFloat = 0.38
     private let enemyRetreatRecoveryThreshold: CGFloat = 0.62
+    private let enemyAssaultWaveSummaryDuration: TimeInterval = 12
 
     private var moneyLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     private var incomeLabel = SKLabelNode(fontNamed: "Menlo")
@@ -2605,7 +2607,7 @@ final class GameScene: SKScene {
         moneyLabel.text = "$\(playerMoney)"
         incomeLabel.text = "+$\(income)/sec  Oil \(oilCount(for: .player))  Flags \(controlPointCount(for: .player))"
         forcesLabel.text = "Blue \(mobileCount(for: .player)) units  Oil \(oilCount(for: .player))  Flags \(controlPointCount(for: .player))"
-        let enemyStatus = lastEnemyAssaultWaveSummary ?? "AI \(aiDifficulty.displayName)"
+        let enemyStatus = currentEnemyAssaultWaveSummary() ?? "AI \(aiDifficulty.displayName)"
         aiStatusLabel.text = "R\(mobileCount(for: .enemy)) F\(controlPointCount(for: .enemy)) \(enemyStatus)"
         let missionStatus = missionStatusContent()
         missionTitleLabel.text = missionStatus.title
@@ -4704,6 +4706,7 @@ final class GameScene: SKScene {
         enemyMoney = 5200
         aiBuildCursor = 0
         lastEnemyAssaultWaveSummary = nil
+        lastEnemyAssaultWaveSummaryTime = -100
         pendingConstructionKind = nil
         pendingSupportPower = nil
         structureBuildCursor = 0
@@ -6671,6 +6674,14 @@ final class GameScene: SKScene {
         let knownWave = wave.filter { isKnownToFaction($0, observer: .player) }
         guard !knownWave.isEmpty else { return }
         lastEnemyAssaultWaveSummary = enemyAssaultWaveSummary(for: knownWave)
+        lastEnemyAssaultWaveSummaryTime = lastUpdateTime
+    }
+
+    private func currentEnemyAssaultWaveSummary() -> String? {
+        guard let summary = lastEnemyAssaultWaveSummary,
+              lastUpdateTime - lastEnemyAssaultWaveSummaryTime <= enemyAssaultWaveSummaryDuration
+        else { return nil }
+        return summary
     }
 
     private func enemyAssaultWaveSummary(for wave: [GameEntity]) -> String {
