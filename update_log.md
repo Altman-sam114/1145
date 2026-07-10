@@ -4073,3 +4073,44 @@
 - 本轮未运行本机 Xcode build、模拟器、真机交互、本地测试、本地静态检查或 `git diff --check`；验证依据是云端 generic iOS device build 结果包。
 - 黑屏 / 白屏是否完全消失仍需要人工打开最新 `origin/main` 构建在目标设备或云端可交互环境确认；若仍为空白，下一轮应优先采集启动日志或截图，而不是继续扩展玩法。
 - 后续可继续细化 bound HEL/JET `CV GUARD` 接触数 `C0/Cn`、Carrier guard wing 命令 UI、更多玩家可感知战场事件摘要，或拆分更完整的舰载机巡逻 / 截击能力；这些不属于 v4.69。
+
+### v4.70 / 启动闪退保护与云端探针
+
+日期：2026-07-10
+
+核心变更：
+
+- `GameScene.didChangeSize(_:)` 在地形尚未初始化时提前返回，避免 `.resizeFill` 启动阶段过早调用 `layoutHUD()` 并由小地图读取空 `terrain` 导致数组越界。
+- GitHub Actions 在 generic iOS device build 后增加 iOS Simulator 启动探针，动态选择可用 iPhone simulator，构建、安装并启动 App，等待后保存截图和 App 日志。
+- 启动探针捕获 `simctl launch` 返回的 PID，并通过宿主机 `kill -0` 确认 App 在等待后仍存活；不再依赖模拟器运行时中不存在的 `ps`。
+- CI manifest、JUnit、failure summary 和最终失败门禁加入 `simulatorLaunchOutcome`，结果包增加 `simulator-launch.log`、`simulator-app.log` 和 `simulator-screenshot.png`。
+- `md/flow/flow.md` 和 `md/test/test.md` 已同步云端启动探针数据流、artifact 内容和 Agent C 验收门槛；玩法、AI、战斗、迷雾、任务、经济和胜负规则未改变。
+- 当前工作区的 `DesertFrontline.xcodeproj/project.pbxproj` 团队签名改动保持未暂存，未进入 v4.70 提交。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `.github/workflows/ci-results.yml`
+- `md/flow/flow.md`
+- `md/test/test.md`
+- `md/prompt/v4（海军航母）/v4.70（启动闪退保护与云端探针）.md`
+- `update_log.md`
+
+验证结果：
+
+- Agent B 实现提交并推送：`c59b1793dcb3dd7aa5b4d40bf11f3e656587be72`，commit subject 为 `v4.70: 修复启动闪退并加入云端探针`。
+- 首次 GitHub Actions run `29095993664` 的 generic iOS build、静态检查和工程检查成功，App 也已启动并生成截图，但模拟器运行时没有 `ps`，导致 `simulatorLaunchOutcome=failure`；Agent C 据此退回修复，未把该 run 计为通过。
+- Agent B 追加修复提交并推送：`684913271101c0c9a48544a0cfca4c98f25255ee`，commit subject 为 `v4.70: 修复模拟器进程存活检查`。
+- Agent C 独立复核：`origin/main`、Actions run head SHA 和 artifact manifest commit SHA 均为 `684913271101c0c9a48544a0cfca4c98f25255ee`。
+- GitHub Actions：run `29098058752`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.70-main-684913271101-run29098058752-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-29098058752/`。
+- 已核对 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md`、`static-checks.log`、`project-lint.log`、`simulator-launch.log`、`simulator-app.log`、`simulator-screenshot.png` 和 `DesertFrontline.xcresult`。
+- manifest 记录 `branch=main`、`commitSha=684913271101c0c9a48544a0cfca4c98f25255ee`、`runId=29098058752`、`runAttempt=1`、`version=v4.70`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`simulatorLaunchOutcome=success`、`testOutcome=skipped`。
+- JUnit 记录 4 个 CI testcase、0 失败、1 skipped；skipped 仅表示当前没有独立 XCTest target。generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`。
+- `simulator-launch.log` 确认 `DesertFrontline process 10507 is still running.`；App 日志未发现启动崩溃或数组越界关键字，`1206x2622` PNG 截图显示真实游戏画面而非空白页。
+
+遗留事项：
+
+- 云端启动探针验证了 App 可启动、可渲染并在短等待后存活，但不能替代真机上的触摸、旋转、性能和长时间玩法检查。
+- 当前没有独立 XCTest target；`didChangeSize(_:)` 的初始化时序保护仍缺少自动化单元测试，主要由云端 simulator launch probe 覆盖。
+- 若目标设备仍发生闪退，应采集对应设备 crash log，与本轮 `simulator-app.log` 对照定位；在启动阻断确认解除前不应以新增玩法掩盖设备问题。
