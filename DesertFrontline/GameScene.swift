@@ -3684,12 +3684,8 @@ final class GameScene: SKScene {
             if entity.faction == .enemy && !isKnownToFaction(entity, observer: .player) {
                 continue
             }
-            let radius: CGFloat = entity.kind.isStructure ? 3.3 : 2.5
-            let blip = SKShapeNode(circleOfRadius: radius)
+            let blip = minimapBlipNode(for: entity)
             blip.position = minimapPoint(forWorldPoint: entity.node.position)
-            blip.fillColor = minimapBlipColor(for: entity)
-            blip.strokeColor = UIColor.black.withAlphaComponent(0.5)
-            blip.lineWidth = 0.8
             minimapBlipsNode.addChild(blip)
         }
 
@@ -3711,6 +3707,58 @@ final class GameScene: SKScene {
             transform: nil
         )
         minimapCameraBox.position = minimapPoint(forWorldPoint: cameraRig.position)
+    }
+
+    private func minimapBlipNode(for entity: GameEntity) -> SKNode {
+        let node = SKNode()
+        let color = minimapBlipColor(for: entity)
+        let symbol: SKShapeNode
+        let selectionRadius: CGFloat
+
+        switch entity.kind.domain {
+        case .structure:
+            symbol = SKShapeNode(rectOf: CGSize(width: 6.6, height: 6.6), cornerRadius: 1.1)
+            selectionRadius = 5.2
+        case .land:
+            symbol = SKShapeNode(circleOfRadius: 2.6)
+            selectionRadius = 4.6
+        case .air:
+            symbol = SKShapeNode(path: trianglePath(size: 6.8))
+            selectionRadius = 4.9
+        case .naval:
+            let isHighValue = entity.kind == .battleship || entity.kind == .carrier
+            let width: CGFloat = isHighValue ? 8.8 : 7.2
+            let height: CGFloat = isHighValue ? 6.4 : 5.0
+            symbol = SKShapeNode(path: diamondPath(width: width, height: height))
+            selectionRadius = isHighValue ? 5.8 : 5.0
+        }
+
+        symbol.fillColor = color
+        symbol.strokeColor = UIColor.black.withAlphaComponent(0.58)
+        symbol.lineWidth = 0.8
+
+        if entity.kind == .submarine {
+            symbol.fillColor = color.withAlphaComponent(0.18)
+            symbol.strokeColor = color
+            symbol.lineWidth = 1.4
+        } else if entity.kind == .battleship || entity.kind == .carrier {
+            symbol.strokeColor = UIColor.white.withAlphaComponent(0.88)
+            symbol.lineWidth = 1.2
+        }
+
+        node.addChild(symbol)
+
+        if selectedIDs.contains(entity.id) {
+            let selectionRing = SKShapeNode(circleOfRadius: selectionRadius)
+            selectionRing.fillColor = .clear
+            selectionRing.strokeColor = UIColor(red: 0.78, green: 0.98, blue: 1.0, alpha: 1.0)
+            selectionRing.lineWidth = 1.25
+            selectionRing.glowWidth = 0.7
+            selectionRing.zPosition = -1
+            node.addChild(selectionRing)
+        }
+
+        return node
     }
 
     private func minimapBlipColor(for entity: GameEntity) -> UIColor {
