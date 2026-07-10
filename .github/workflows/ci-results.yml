@@ -109,11 +109,21 @@ jobs:
             xcrun simctl install "${sim_udid}" "${app_path}"
             bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${app_path}/Info.plist")"
             echo "Launching ${bundle_id}"
-            xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}"
+            launch_output="$(xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}")"
+            echo "${launch_output}"
+            app_pid="${launch_output##*: }"
+            if [[ ! "${app_pid}" =~ ^[0-9]+$ ]]; then
+              echo "Could not parse app PID from simctl launch output: ${launch_output}"
+              exit 1
+            fi
             sleep 8
             xcrun simctl io "${sim_udid}" screenshot ci-results/simulator-screenshot.png || true
             xcrun simctl spawn "${sim_udid}" log show --last 2m --predicate 'process == "DesertFrontline"' > ci-results/simulator-app.log || true
-            xcrun simctl spawn "${sim_udid}" ps -ax | grep -v grep | grep DesertFrontline
+            if ! kill -0 "${app_pid}" 2>/dev/null; then
+              echo "DesertFrontline process ${app_pid} exited during the launch probe."
+              exit 1
+            fi
+            echo "DesertFrontline process ${app_pid} is still running."
             xcrun simctl shutdown "${sim_udid}" || true
           } 2>&1 | tee ci-results/simulator-launch.log
 
