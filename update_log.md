@@ -4235,3 +4235,35 @@
 - 当前云端截图只证明确定性 BB/CV 航迹和启动稳定性；真实连续转向、不同缩放、密集舰队、敌方迷雾切换和真机性能仍需人工玩法检查。
 - 当前没有独立 XCTest target，航迹方向与迷雾同步主要由源码边界、云端 build 和 simulator screenshot 覆盖。
 - 下一轮可增加舰炮命中水柱和水面冲击圈，继续保持单一海战视觉增量。
+
+### v4.74 / 舰炮命中水柱与冲击圈
+
+日期：2026-07-11
+
+核心变更：
+
+- 参考 Noble Master 官方 Desert Stormfront 产品页、官方预告片入口和官方截图资源，采用适合俯视等距战场的短促高对比海战反馈。
+- Battleship、Coastal Battery、Artillery 通过共享 `fire(attacker:target:)` 链路命中水面舰艇时，显示双层椭圆冲击圈、窄水柱、冠状泡沫和四个碎滴。
+- 命中位置按目标 id 确定性偏离舰体中心，减少水柱完全遮挡舰体；Battleship 使用较大效果，岸防炮和火炮使用较小效果。
+- 玩家舰艇被命中时可显示；敌方舰艇必须满足玩家已知边界。Submarine 继续使用既有 `ASW HIT`，Carrier 继续使用 wing-strike，不叠加错误反馈。
+- 普通战斗效果约 0.56 秒后整体移除，不持续增加节点；CI capture mode 才在 BB/CV 附近保留两个确定性效果，经 runner 长延迟仍可截图。
+- 伤害、射速、射程、护甲、攻击合法性、AI、路径、经济、任务、胜负、声呐和潜艇暴露均未改变。
+- README、核心 flow、flowchart、测试规范和 v4.74 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.74 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`9a423cb70de22b2587a9567815d31fb37b9e1eff`，commit subject 为 `v4.74: 增强舰炮水面命中反馈`。
+- GitHub Actions run：`29123274761`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.74-main-9a423cb70de2-run29123274761-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29123274761/`。
+- manifest 记录 `branch=main`、`commitSha=9a423cb70de22b2587a9567815d31fb37b9e1eff`、`runId=29123274761`、`version=v4.74`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；启动 PID `11581` 等待后仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 simulator screenshot 显示稳定的 `$5200` 初始战场、Shipyard、BB/CV、舰艉航迹、两组水柱、冲击圈、泡沫冠、碎滴、小地图和 HUD，不是黑屏或白屏。
+
+遗留事项：
+
+- 云端截图证明持久化 CI 样例的构图和层级；真实 0.56 秒动画节奏、连续齐射、多个舰队密集命中、缩放和真机性能仍需人工玩法检查。
+- 当前没有独立 XCTest target，攻击者 / 目标过滤与迷雾边界主要由源码审阅、云端 build 和 simulator screenshot 覆盖。
+- 下一轮可强化空战：加入战机投影、导弹尾迹或防空命中反馈，仍保持每轮一个可验证增量。
