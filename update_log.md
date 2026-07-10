@@ -4114,3 +4114,45 @@
 - 云端启动探针验证了 App 可启动、可渲染并在短等待后存活，但不能替代真机上的触摸、旋转、性能和长时间玩法检查。
 - 当前没有独立 XCTest target；`didChangeSize(_:)` 的初始化时序保护仍缺少自动化单元测试，主要由云端 simulator launch probe 覆盖。
 - 若目标设备仍发生闪退，应采集对应设备 crash log，与本轮 `simulator-app.log` 对照定位；在启动阻断确认解除前不应以新增玩法掩盖设备问题。
+
+### v4.71 / 小地图海空态势图标
+
+日期：2026-07-11
+
+核心变更：
+
+- 小地图实体符号从主要依赖同类圆点，升级为按领域区分的轻量图形：结构方块、陆军圆点、空军三角和海军菱形。
+- 潜艇使用低填充空心菱形，Battleship / Carrier 使用更大的菱形和高对比描边，密集混合编队中更容易判断海空单位和高价值舰艇。
+- 当前 `selectedIDs` 中的实体在小地图上显示青白色选择外圈，便于快速定位当前编队或建筑。
+- 敌方实体仍在创建小地图符号前经过 `isKnownToFaction(..., observer: .player)`；本轮没有修改战争迷雾、声呐、潜艇暴露或目标合法性，不会通过新符号泄露未知敌人。
+- 控制点、小地图相机框、点击跳转、单位命令、AI、战斗、生产、经济、任务和胜负规则保持不变。
+- `README.md`、`md/flow/flow.md` 和 `md/flow/flowchart.md` 已同步当前真实行为。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队签名改动保持未暂存，未进入 v4.71 提交。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/prompt/v4（海军航母）/v4.71（小地图海空态势图标）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；验证依据是 GitHub Actions 云端结果包。
+- Agent B 实现提交并推送：`42ad136c2f1c461a8eb136d10c7a5fafc39c5201`，commit subject 为 `v4.71: 强化小地图海空态势图标`。
+- Agent C 复核：本地 `main`、`origin/main`、Actions run head SHA 和 artifact manifest commit SHA 均为 `42ad136c2f1c461a8eb136d10c7a5fafc39c5201`。
+- GitHub Actions：run `29117377034`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.71-main-42ad136c2f1c-run29117377034-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-29117377034/`。
+- manifest 记录 `branch=main`、`commitSha=42ad136c2f1c461a8eb136d10c7a5fafc39c5201`、`runId=29117377034`、`runAttempt=1`、`version=v4.71`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`simulatorLaunchOutcome=success`、`testOutcome=skipped`。
+- JUnit 记录 4 个 CI testcase、0 失败、1 skipped；skipped 仅表示当前没有独立 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`。
+- `simulator-launch.log` 确认 `DesertFrontline process 8904 is still running.`；App 日志未发现启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- simulator screenshot 显示真实游戏画面而非黑屏 / 白屏，小地图已渲染方形结构、圆形陆军、三角空军、菱形海军、空心潜艇符号、高价值舰艇描边和选择外圈。
+
+遗留事项：
+
+- 云端截图证明新符号已渲染，但不能替代真机上对密集编队、缩放、触摸跳转和长时间性能的人工检查。
+- 当前没有独立 XCTest target，小地图迷雾过滤和选择外圈主要由现有逻辑审阅、云端 build 与 simulator screenshot 覆盖。
+- 下一轮可继续做海岸浅滩、浪线和近岸水面层次，强化 Desert Stormfront 风格海战区域；该视觉增量不属于 v4.71。
