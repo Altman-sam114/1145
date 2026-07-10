@@ -962,6 +962,7 @@ final class GameScene: SKScene {
     private let mechanicRepairRange: CGFloat = 95
     private let mechanicRepairPerSecond: CGFloat = 22
     private let controlGroupRecallDelay: TimeInterval = 0.24
+    private let isCICaptureMode = ProcessInfo.processInfo.environment["DESERT_CI_CAPTURE_MODE"] == "1"
 
     override func didMove(to view: SKView) {
         backgroundColor = UIColor(white: 0.04, alpha: 1.0)
@@ -1009,6 +1010,12 @@ final class GameScene: SKScene {
     }
 
     override func update(_ currentTime: TimeInterval) {
+        if isCICaptureMode {
+            lastUpdateTime = currentTime
+            updateHUD()
+            return
+        }
+
         if lastUpdateTime == 0 {
             lastUpdateTime = currentTime
             return
