@@ -4267,3 +4267,37 @@
 - 云端截图证明持久化 CI 样例的构图和层级；真实 0.56 秒动画节奏、连续齐射、多个舰队密集命中、缩放和真机性能仍需人工玩法检查。
 - 当前没有独立 XCTest target，攻击者 / 目标过滤与迷雾边界主要由源码审阅、云端 build 和 simulator screenshot 覆盖。
 - 下一轮可强化空战：加入战机投影、导弹尾迹或防空命中反馈，仍保持每轮一个可验证增量。
+
+### v4.75 / 空军投影与导弹尾迹
+
+日期：2026-07-11
+
+核心变更：
+
+- 参考 Noble Master 官方 1 分钟 trailer、TouchGameplay 15 分钟 gameplay 和官方产品页中的 Helicopter / Plane 俯视战斗表现。
+- Helicopter 新增机身、尾梁和旋翼轮廓投影；Fighter 新增缩小 jet 轮廓投影。旧通用椭圆影子只对空军隐藏，不影响陆海单位。
+- 空军投影作为 `GameEntity.airShadowNode` 子节点随实体迷雾隐藏；实际移动时按方向和实体镜像调整局部偏移，并轻微调制透明度，不按帧创建节点。
+- Fighter、SAM Site、AA Truck 的 `showProjectile(...)` 分支改为宽低透明度烟迹、阵营弹道色高亮线和沿轨迹移动的发光弹体。
+- 上述三类攻击命中玩家空军或玩家已知敌方空军时显示双环和六向火花；隐藏敌方空军不通过反馈泄露位置。
+- 普通导弹烟迹和命中反馈约 0.38 / 0.42 秒后清理；CI air capture scene 才临时编排 Blue / Red HEL/JET 并持久化一条 Fighter 导弹和命中环。
+- workflow 从 coast screenshot 切换到 `DESERT_CI_CAMERA_FOCUS=air`，当前版本优先验证空战主体；普通启动的单位、镜头和实时循环不变。
+- 飞行速度、高度、路径、伤害、射速、射程、目标合法性、AI、Carrier guard、经济、任务、胜负和迷雾规则均未改变。
+- README、核心 flow、flowchart、测试规范和 v4.75 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.75 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`f10bbaca59ad9bbb8247ee7c68c6739488e85fa1`，commit subject 为 `v4.75: 强化空军投影与导弹尾迹`。
+- GitHub Actions run：`29124625386`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.75-main-f10bbaca59ad-run29124625386-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29124625386/`。
+- manifest 记录 `branch=main`、`commitSha=f10bbaca59ad9bbb8247ee7c68c6739488e85fa1`、`runId=29124625386`、`version=v4.75`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；启动 PID `15703` 等待后仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 air screenshot 显示 `$5200` 稳定战场、Blue / Red HEL/JET、空军轮廓投影、导弹高亮线、烟迹、白色弹体、双环 / 六向命中火花、小地图和 HUD，不是黑屏或白屏。
+
+遗留事项：
+
+- 云端截图证明持久化空战样例的构图和层级；真实 0.38 秒导弹运动、连续防空齐射、密集空军、缩放和真机性能仍需人工玩法检查。
+- 当前没有独立 XCTest target，三类导弹分流、目标可见性和节点清理主要由源码审阅、云端 build 与 simulator screenshot 覆盖。
+- 下一轮可细化空军模型：Fighter 机翼挂点、Helicopter 旋翼盘 / 尾桨或空军编队间距，保持单一可验证增量。
