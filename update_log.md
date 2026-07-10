@@ -4333,3 +4333,33 @@
 - 云端静态截图不能证明主旋翼 / 尾桨动画节奏、快速镜像转向或密集编队性能，仍需人工真机玩法检查。
 - 当前没有独立 XCTest target，模型层级和 footprint 主要由源码审阅、云端 build 和 simulator screenshot 覆盖。
 - 下一轮可优化空军编队间距和同域避让，减少 HEL/JET 密集叠放，同时保持移动命令语义不变。
+
+### v4.77 / 空军编队间距与同域避让
+
+日期：2026-07-11
+
+核心变更：
+
+- 空军 formation slot 间距由 58 提高到 84；陆军 40、海军 70 保持不变，玩家和 AI 继续共享既有编队命令入口。
+- 空军实际移动时对 76pt 内同阵营存活空军叠加轻量分离方向，并要求调整方向保留到目的地的正向分量；不推开敌军、结构或其他领域单位，也不引入物理碰撞。
+- 空军攻击接近点按 attacker id 分配为目标周围 8 个确定性椭圆站位，减少 HEL/JET 同时收敛到目标中心造成的机体、投影和生命条重叠；射程、伤害、目标合法性和开火链路保持不变。
+- CI air capture scene 改用真实 `formationOffsets(...)` 编排 Blue / Red 各 3 架 HEL/JET，并保留 Fighter 导弹和命中环证据。
+- README、核心 flow、flowchart、测试规范和 v4.77 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.77 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`c51e104882fbf2011925665d4e52fe0731f11116`，commit subject 为 `v4.77: 优化空军编队间距与避让`。
+- GitHub Actions run：`29129470381`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.77-main-c51e104882fb-run29129470381-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29129470381/`。
+- manifest 记录 `branch=main`、`commitSha=c51e104882fbf2011925665d4e52fe0731f11116`、`runId=29129470381`、`version=v4.77`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；启动 PID `49193` 等待后仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 air screenshot 显示 Blue / Red 各 3 架 HEL/JET 以清晰间距分组，机体、投影、生命条、队旗、导弹和命中环均已渲染，不是黑屏或白屏。
+
+遗留事项：
+
+- 云端静态 capture scene 冻结玩法循环，可证明编队初始间距和渲染层级，但不能覆盖真实移动中的持续避让、目标移动、密集空战和长时间性能，仍需人工真机玩法检查。
+- 当前没有独立 XCTest target，同域过滤、正向分量和攻击站位主要由源码审阅、云端 build 和 simulator screenshot 覆盖。
+- 下一轮可继续优化空军战斗可读性，例如防空威胁提示或选择态航线，但应保持单一、可云端验证的增量。
