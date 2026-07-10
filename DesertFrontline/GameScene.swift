@@ -821,6 +821,7 @@ private final class GameEntity {
     let veterancyNode = SKNode()
     let captureNode = SKNode()
     let constructionNode = SKNode()
+    let navalWakeNode = SKNode()
 
     init(id: Int, kind: EntityKind, faction: Faction, position: CGPoint) {
         self.id = id
@@ -991,6 +992,7 @@ final class GameScene: SKScene {
         spawnInitialForces()
         layoutHUD()
         updateFog(force: true)
+        prepareCICaptureScene()
         updateHUD()
         showMessage("Capture oil and flags, secure the coast, build combined forces, destroy the enemy HQ.", color: .white)
     }
@@ -1718,6 +1720,8 @@ final class GameScene: SKScene {
             addNavalUnitBody(for: entity, to: base)
         }
 
+        configureNavalWakeNode(for: entity)
+
         entity.selectionNode.fillColor = UIColor.clear
         entity.selectionNode.strokeColor = UIColor(red: 0.2, green: 1.0, blue: 0.35, alpha: 1.0)
         entity.selectionNode.lineWidth = 3
@@ -2242,6 +2246,43 @@ final class GameScene: SKScene {
         default:
             break
         }
+    }
+
+    private func configureNavalWakeNode(for entity: GameEntity) {
+        guard entity.kind.domain == .naval else { return }
+
+        let wakeLength: CGFloat = entity.kind == .carrier ? 78 : (entity.kind == .battleship ? 64 : 50)
+        let wakeSpread: CGFloat = entity.kind == .carrier ? 22 : (entity.kind == .battleship ? 18 : 13)
+        let startX = entity.kind.footprint * 0.24
+
+        let washPath = CGMutablePath()
+        washPath.move(to: CGPoint(x: startX, y: -4))
+        washPath.addLine(to: CGPoint(x: wakeLength, y: -wakeSpread))
+        washPath.move(to: CGPoint(x: startX, y: 4))
+        washPath.addLine(to: CGPoint(x: wakeLength, y: wakeSpread))
+        let wash = SKShapeNode(path: washPath)
+        wash.strokeColor = UIColor(red: 0.48, green: 0.94, blue: 1.0, alpha: entity.kind == .submarine ? 0.16 : 0.24)
+        wash.lineWidth = entity.kind == .carrier ? 11 : 8
+        wash.lineCap = .round
+        entity.navalWakeNode.addChild(wash)
+
+        let foam = SKShapeNode(path: washPath)
+        foam.strokeColor = UIColor(white: 0.96, alpha: entity.kind == .submarine ? 0.34 : 0.72)
+        foam.lineWidth = entity.kind == .carrier ? 2.8 : 2.2
+        foam.lineCap = .round
+        entity.navalWakeNode.addChild(foam)
+
+        for index in 0..<3 {
+            let churn = SKShapeNode(ellipseOf: CGSize(width: 10 - CGFloat(index) * 1.6, height: 4.5 - CGFloat(index) * 0.6))
+            churn.position = CGPoint(x: startX + 12 + CGFloat(index) * 13, y: 0)
+            churn.fillColor = UIColor(white: 0.98, alpha: entity.kind == .submarine ? 0.22 : 0.58 - CGFloat(index) * 0.10)
+            churn.strokeColor = .clear
+            entity.navalWakeNode.addChild(churn)
+        }
+
+        entity.navalWakeNode.zPosition = -3
+        entity.navalWakeNode.isHidden = true
+        entity.node.addChild(entity.navalWakeNode)
     }
 
     private func layoutHUD() {
@@ -5800,7 +5841,18 @@ final class GameScene: SKScene {
             if abs(direction.x) > 0.01 {
                 entity.node.xScale = direction.x < 0 ? -1 : 1
             }
+            updateNavalWake(for: entity, direction: direction)
         }
+    }
+
+    private func updateNavalWake(for entity: GameEntity, direction: CGPoint) {
+        guard entity.kind.domain == .naval else { return }
+
+        let horizontalScale = entity.node.xScale == 0 ? 1 : entity.node.xScale
+        let localWakeDirection = CGPoint(x: -direction.x / horizontalScale, y: -direction.y)
+        entity.navalWakeNode.zRotation = atan2(localWakeDirection.y, localWakeDirection.x)
+        entity.navalWakeNode.alpha = 0.82 + sin(CGFloat(lastUpdateTime) * 7 + CGFloat(entity.id)) * 0.10
+        entity.navalWakeNode.isHidden = false
     }
 
     private func movementSpeed(for entity: GameEntity) -> CGFloat {
@@ -5825,9 +5877,23 @@ final class GameScene: SKScene {
     }
 
     private func animateIdle(_ entity: GameEntity, dt: TimeInterval) {
+        entity.navalWakeNode.isHidden = true
         if entity.kind.domain == .air {
             let bob = sin(CGFloat(lastUpdateTime) * 3.4 + CGFloat(entity.id)) * 2.2
             entity.node.position.y += bob * CGFloat(dt)
+        }
+    }
+
+    private func prepareCICaptureScene() {
+        guard isCICaptureMode else { return }
+
+        let playerNavy = entities.values
+            .filter { $0.faction == .player && $0.kind.domain == .naval && $0.isAlive }
+            .sorted { $0.id < $1.id }
+        for (index, entity) in playerNavy.enumerated() {
+            let direction = CGPoint(x: -0.94, y: index.isMultiple(of: 2) ? 0.34 : -0.34).normalized
+            entity.destination = entity.node.position + direction * 180
+            updateNavalWake(for: entity, direction: direction)
         }
     }
 
