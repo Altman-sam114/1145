@@ -4156,3 +4156,50 @@
 - 云端截图证明新符号已渲染，但不能替代真机上对密集编队、缩放、触摸跳转和长时间性能的人工检查。
 - 当前没有独立 XCTest target，小地图迷雾过滤和选择外圈主要由现有逻辑审阅、云端 build 与 simulator screenshot 覆盖。
 - 下一轮可继续做海岸浅滩、浪线和近岸水面层次，强化 Desert Stormfront 风格海战区域；该视觉增量不属于 v4.71。
+
+### v4.72 / 海岸浅滩与浪线细节
+
+日期：2026-07-11
+
+核心变更：
+
+- 邻接陆地的水格增加内缩浅水菱形，形成深水到近岸青绿色的层次过渡。
+- 水格四个正交邻格映射到等距菱形四边；每条真实水陆边绘制低透明度青白冲洗带和细白泡沫线，开阔水格保留稀疏方向波纹。
+- 岸线节点只在静态 `drawMap()` 阶段生成，位于 terrain detail 层，不增加每帧动画，不修改 fog、entity 或 HUD 层级。
+- `terrain`、`isWaterCoordinate(_:)`、`isCoastal(_:)`、陆海寻路、海岸建造、AI、战斗、声呐、潜艇、经济、任务和胜负规则保持不变。
+- 云端 simulator launch 通过 `DESERT_CI_CAMERA_FOCUS=coast` 聚焦玩家 Shipyard 海岸，普通玩家默认启动镜头保持原中央 tile。
+- Agent C 首次截图复核发现 runner 延迟期间 skirmish 已推进到玩家失败，Shipyard 被摧毁，无法稳定证明初始海岸资产；追加 `DESERT_CI_CAPTURE_MODE=1`，仅云端截图时保持 HUD 渲染并暂停经济、AI、战斗和胜负推进。普通玩家不设置该变量，实时循环不变。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md` 和 `md/test/test.md` 已同步当前行为与云端截图规则。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.72 提交。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `.github/workflows/ci-results.yml`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/test/test.md`
+- `md/prompt/v4（海军航母）/v4.72（海岸浅滩与浪线细节）.md`
+- `update_log.md`
+
+验证结果：
+
+- 按人工要求，本轮未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端结果包。
+- Agent B 实现提交并推送：`e3aa719f215dd761d626f90f071704944ef78051`，commit subject 为 `v4.72: 增强海岸浅滩与浪线细节`。
+- 首次实现 run：`29119227669`，conclusion `success`；manifest、JUnit、两类 build 和 PID 存活均通过，海岸聚焦截图已显示浅水层和岸线泡沫。
+- Agent C 未直接接受首次 run：截图时显示 `$15340`、Blue 0、任务失败且玩家 Shipyard 已消失，说明 runner 延迟让 skirmish 继续推进，不能稳定满足初始海岸视觉验收。
+- Agent B 追加修复提交并推送：`fd3ad07849d2c6b7086bfcbf73fb906ecce88860`，commit subject 为 `v4.72: 稳定云端海岸截图状态`。
+- GitHub Actions 修复 run：`29119817302`，attempt `1`，workflow `Desert Frontline CI Results`，conclusion `success`，head branch 为 `main`。
+- artifact：`desert-frontline-ci-v4.72-main-fd3ad07849d2-run29119817302-attempt1`，已下载到 `/private/tmp/desert-frontline-c-review-29119817302/`。
+- manifest 记录 `branch=main`、`commitSha=fd3ad07849d2c6b7086bfcbf73fb906ecce88860`、`runId=29119817302`、`runAttempt=1`、`version=v4.72`、`buildOutcome=success`、`staticChecksOutcome=success`、`projectLintOutcome=success`、`simulatorLaunchOutcome=success`、`testOutcome=skipped`。
+- JUnit 记录 4 个 CI testcase、0 失败、1 skipped；skipped 仅表示当前没有独立 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`。
+- `simulator-launch.log` 确认 `DesertFrontline process 11962 is still running.`；App 日志未发现启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 修复后的 simulator screenshot 在长 runner 延迟后仍保持初始 `$5200`、Blue 8 / Red 7、Oil 1、任务未失败，并显示玩家 Shipyard、Battleship、Carrier、浅滩、冲洗带、泡沫线、小地图和 HUD，不是黑屏或白屏。
+
+遗留事项：
+
+- 云端截图模式用于稳定视觉证据，会暂停玩法推进；普通实时循环仍由 generic iOS build 覆盖，但真机长时间玩法、触摸和性能仍需人工检查。
+- 当前没有独立 XCTest target，四边岸线映射和默认镜头 / CI 镜头分流主要由源码审阅、云端 build 和 simulator screenshot 覆盖。
+- 后续可继续增加海军航迹、舰炮命中水柱或空军投影等海空战细节，但应保持每轮一个可验证增量。
