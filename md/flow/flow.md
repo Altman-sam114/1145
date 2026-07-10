@@ -20,9 +20,9 @@
   -> Agent X（可选）拆分轮次目标并调度 Agent A/B/C
   -> Agent A 生成版本化提示词
   -> Agent B 在 main 上实现、本地轻量检查、commit、push origin/main
-  -> GitHub Actions 云端 build / 静态检查
+  -> GitHub Actions 云端 build / 静态检查 / iOS Simulator 启动探针
   -> 未加密 CI 结果包
-  -> Agent C 下载并核对 manifest / JUnit / xcodebuild.log / failure summary
+  -> Agent C 下载并核对 manifest / JUnit / xcodebuild.log / simulator-launch.log / failure summary
   -> Agent X 或人工根据验收结果判断继续、退回、暂停或完成
 ```
 

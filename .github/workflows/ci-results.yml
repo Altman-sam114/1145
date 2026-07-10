@@ -75,6 +75,48 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee ci-results/xcodebuild.log
 
+      - name: iOS simulator launch probe
+        id: simulator-launch
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          {
+            set -euo pipefail
+            rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-app.log
+
+            /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
+              -project DesertFrontline.xcodeproj \
+              -scheme DesertFrontline \
+              -configuration Debug \
+              -sdk iphonesimulator \
+              -destination 'generic/platform=iOS Simulator' \
+              -derivedDataPath .derivedData-sim \
+              CODE_SIGNING_ALLOWED=NO \
+              build
+
+            app_path="$(find .derivedData-sim/Build/Products/Debug-iphonesimulator -name 'DesertFrontline.app' -type d -print -quit)"
+            if [[ -z "${app_path}" ]]; then
+              echo "DesertFrontline.app not found in simulator build products."
+              exit 1
+            fi
+
+            sim_udid="$(xcrun simctl list devices available --json | python3 -c 'import json, sys; data = json.load(sys.stdin); devices = [device for runtime, runtime_devices in data.get("devices", {}).items() if "iOS" in runtime for device in runtime_devices if device.get("isAvailable") and device.get("name", "").startswith("iPhone")]; print(devices[0]["udid"] if devices else "", end=""); sys.exit(0 if devices else 1)')"
+            echo "Using simulator ${sim_udid}"
+
+            xcrun simctl boot "${sim_udid}" || true
+            xcrun simctl bootstatus "${sim_udid}" -b
+            xcrun simctl install "${sim_udid}" "${app_path}"
+            bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${app_path}/Info.plist")"
+            echo "Launching ${bundle_id}"
+            xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}"
+            sleep 8
+            xcrun simctl io "${sim_udid}" screenshot ci-results/simulator-screenshot.png || true
+            xcrun simctl spawn "${sim_udid}" log show --last 2m --predicate 'process == "DesertFrontline"' > ci-results/simulator-app.log || true
+            xcrun simctl spawn "${sim_udid}" ps -ax | grep -v grep | grep DesertFrontline
+            xcrun simctl shutdown "${sim_udid}" || true
+          } 2>&1 | tee ci-results/simulator-launch.log
+
       - name: Write manifest and summaries
         id: package-metadata
         shell: bash
@@ -82,6 +124,7 @@ jobs:
           STATIC_OUTCOME: ${{ steps.static-checks.outcome }}
           PROJECT_LINT_OUTCOME: ${{ steps.project-lint.outcome }}
           BUILD_OUTCOME: ${{ steps.xcode-build.outcome }}
+          SIMULATOR_LAUNCH_OUTCOME: ${{ steps.simulator-launch.outcome }}
           WORKFLOW_NAME: ${{ github.workflow }}
         run: |
           set -euo pipefail
@@ -103,7 +146,7 @@ jobs:
           export CI_CREATED_AT="$created_at"
 
           failure_count=0
-          for outcome in "$STATIC_OUTCOME" "$PROJECT_LINT_OUTCOME" "$BUILD_OUTCOME"; do
+          for outcome in "$STATIC_OUTCOME" "$PROJECT_LINT_OUTCOME" "$BUILD_OUTCOME" "$SIMULATOR_LAUNCH_OUTCOME"; do
             if [[ "$outcome" != "success" ]]; then
               failure_count=$((failure_count + 1))
             fi
@@ -119,6 +162,7 @@ jobs:
           - Static checks: ${STATIC_OUTCOME}
           - Project lint: ${PROJECT_LINT_OUTCOME}
           - Build: ${BUILD_OUTCOME}
+          - Simulator launch probe: ${SIMULATOR_LAUNCH_OUTCOME}
           - XCTest: skipped (no XCTest target exists in the current project)
 
           Logs:
@@ -126,6 +170,8 @@ jobs:
           - ci-results/static-checks.log
           - ci-results/project-lint.log
           - ci-results/xcodebuild.log
+          - ci-results/simulator-launch.log
+          - ci-results/simulator-app.log
           EOF
 
           python3 - <<'PY'
@@ -138,15 +184,22 @@ jobs:
           static_outcome = os.environ["STATIC_OUTCOME"]
           project_lint_outcome = os.environ["PROJECT_LINT_OUTCOME"]
           build_outcome = os.environ["BUILD_OUTCOME"]
+          simulator_launch_outcome = os.environ["SIMULATOR_LAUNCH_OUTCOME"]
           failure_count = sum(
               outcome != "success"
-              for outcome in (static_outcome, project_lint_outcome, build_outcome)
+              for outcome in (
+                  static_outcome,
+                  project_lint_outcome,
+                  build_outcome,
+                  simulator_launch_outcome,
+              )
           )
 
           checks = [
               ("static-checks", static_outcome, "ci-results/static-checks.log"),
               ("project-lint", project_lint_outcome, "ci-results/project-lint.log"),
               ("xcode-build", build_outcome, "ci-results/xcodebuild.log"),
+              ("simulator-launch", simulator_launch_outcome, "ci-results/simulator-launch.log"),
           ]
           testcases = []
           for name, outcome, log_path in checks:
@@ -187,12 +240,19 @@ jobs:
               "resultBundlePath": "ci-results/DesertFrontline.xcresult",
               "junitPath": "ci-results/junit.xml",
               "buildLogPath": "ci-results/xcodebuild.log",
+              "simulatorLaunchLogPath": "ci-results/simulator-launch.log",
               "failureSummaryPath": "ci-results/ci-failure-summary.md",
               "staticChecksOutcome": static_outcome,
               "projectLintOutcome": project_lint_outcome,
               "buildOutcome": build_outcome,
+              "simulatorLaunchOutcome": simulator_launch_outcome,
               "testOutcome": "skipped",
-              "projectSpecificReports": ["ci-results/DesertFrontline.xcresult"],
+              "projectSpecificReports": [
+                  "ci-results/DesertFrontline.xcresult",
+                  "ci-results/simulator-launch.log",
+                  "ci-results/simulator-app.log",
+                  "ci-results/simulator-screenshot.png",
+              ],
           }
           (results_dir / "ci-artifact-manifest.json").write_text(
               json.dumps(manifest, indent=2, sort_keys=True) + "\n",
@@ -214,9 +274,10 @@ jobs:
           STATIC_OUTCOME: ${{ steps.static-checks.outcome }}
           PROJECT_LINT_OUTCOME: ${{ steps.project-lint.outcome }}
           BUILD_OUTCOME: ${{ steps.xcode-build.outcome }}
+          SIMULATOR_LAUNCH_OUTCOME: ${{ steps.simulator-launch.outcome }}
         run: |
           set -euo pipefail
-          if [[ "$STATIC_OUTCOME" != "success" || "$PROJECT_LINT_OUTCOME" != "success" || "$BUILD_OUTCOME" != "success" ]]; then
+          if [[ "$STATIC_OUTCOME" != "success" || "$PROJECT_LINT_OUTCOME" != "success" || "$BUILD_OUTCOME" != "success" || "$SIMULATOR_LAUNCH_OUTCOME" != "success" ]]; then
             echo "One or more CI checks failed. Download the CI results artifact for details."
             exit 1
           fi

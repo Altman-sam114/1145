@@ -69,6 +69,7 @@ GitHub Actions 负责运行：
 - `git diff --check`，检查最新提交的空白和补丁残留。
 - `plutil -lint DesertFrontline.xcodeproj/project.pbxproj`。
 - generic iOS device build。
+- iOS Simulator launch probe：额外构建 simulator app、安装到可用 iPhone simulator、启动 App、等待短时间、截图、抓取 App 日志，并确认 `DesertFrontline` 进程仍在运行，用于捕捉启动闪退 / 白屏黑屏一类 build-only 无法覆盖的问题。
 - 结果包生成和上传。
 
 云端 Xcode build 命令：
@@ -100,6 +101,9 @@ GitHub Actions 负责运行：
 - `xcodebuild.log`
 - `static-checks.log`
 - `project-lint.log`
+- `simulator-launch.log`
+- `simulator-app.log`
+- `simulator-screenshot.png`
 - `DesertFrontline.xcresult`
 
 artifact 命名规则：
@@ -125,6 +129,7 @@ desert-frontline-ci-${version}-${branch_slug}-${short_sha}-run${run_id}-attempt$
 - failureSummaryPath
 - staticChecksOutcome
 - buildOutcome
+- simulatorLaunchOutcome
 - testOutcome
 - projectSpecificReports
 
@@ -185,7 +190,7 @@ gh run download <run_id> --dir /private/tmp/desert-frontline-c-review-<run_id>/
 - `headSha` 等于 `origin/main` 最新 commit。
 - manifest 的 `branch`、`commitSha`、`runId`、`runAttempt` 与 GitHub run 完全一致。
 - `junit.xml`、`xcodebuild.log`、`ci-failure-summary.md` 可以打开并对应同一次 run。
-- `buildOutcome=success` 且 workflow conclusion 成功，才可把云端构建视为通过。
+- `buildOutcome=success`、`simulatorLaunchOutcome=success` 且 workflow conclusion 成功，才可把云端构建与启动探针视为通过。
 
 CI 失败时，Agent C 输出退回清单；默认由 Agent B 在 `main` 上追加修复 commit 后再次 push。不要回滚式处理远端 `main`，除非人工明确要求。
 

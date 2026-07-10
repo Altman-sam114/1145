@@ -996,6 +996,7 @@ final class GameScene: SKScene {
 
     override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
+        guard !terrain.isEmpty else { return }
         cameraRig.position = clampCamera(cameraRig.position)
         layoutHUD()
     }
