@@ -964,6 +964,10 @@ final class GameScene: SKScene {
     private let mechanicRepairRange: CGFloat = 95
     private let mechanicRepairPerSecond: CGFloat = 22
     private let controlGroupRecallDelay: TimeInterval = 0.24
+    private let airFormationSpacing: CGFloat = 84
+    private let airSeparationRadius: CGFloat = 76
+    private let airSeparationWeight: CGFloat = 0.68
+    private let airAttackStationRadius: CGFloat = 104
     private let isCICaptureMode = ProcessInfo.processInfo.environment["DESERT_CI_CAPTURE_MODE"] == "1"
 
     override func didMove(to view: SKView) {
@@ -5527,7 +5531,7 @@ final class GameScene: SKScene {
         case .land:
             spacing = 40
         case .air:
-            spacing = 58
+            spacing = airFormationSpacing
         case .naval:
             spacing = 70
         case .structure:
@@ -5980,8 +5984,16 @@ final class GameScene: SKScene {
 
             if let attackTarget = entity.attackTarget, attackTarget.isAlive {
                 let distance = entity.node.position.distance(to: attackTarget.node.position)
-                if distance > entity.kind.attackRange * 0.82 {
-                    setDestination(for: entity, near: attackDestination(for: entity, target: attackTarget))
+                let approachPoint = attackDestination(for: entity, target: attackTarget)
+                if entity.kind.domain == .air {
+                    if entity.node.position.distance(to: approachPoint) > 18 {
+                        setDestination(for: entity, near: approachPoint)
+                    } else {
+                        entity.destination = nil
+                        entity.path.removeAll()
+                    }
+                } else if distance > entity.kind.attackRange * 0.82 {
+                    setDestination(for: entity, near: approachPoint)
                 } else {
                     entity.destination = nil
                     entity.path.removeAll()
@@ -6006,7 +6018,8 @@ final class GameScene: SKScene {
             }
 
             let step = min(distance, movementSpeed(for: entity) * CGFloat(dt))
-            let direction = vector.normalized
+            let desiredDirection = vector.normalized
+            let direction = separatedMovementDirection(for: entity, desired: desiredDirection)
             entity.node.position = current + direction * step
             entity.node.zPosition = entityZPosition(entity)
             if abs(direction.x) > 0.01 {
@@ -6015,6 +6028,34 @@ final class GameScene: SKScene {
             updateNavalWake(for: entity, direction: direction)
             updateAirShadow(for: entity, direction: direction)
         }
+    }
+
+    private func separatedMovementDirection(for entity: GameEntity, desired: CGPoint) -> CGPoint {
+        guard entity.kind.domain == .air else { return desired }
+
+        var separation = CGPoint.zero
+        for neighbor in entities.values where
+            neighbor.id != entity.id &&
+            neighbor.isAlive &&
+            neighbor.faction == entity.faction &&
+            neighbor.kind.domain == .air {
+            let delta = entity.node.position - neighbor.node.position
+            let distance = delta.length
+            guard distance < airSeparationRadius else { continue }
+
+            if distance < 0.5 {
+                let sign: CGFloat = entity.id < neighbor.id ? -1 : 1
+                separation = separation + CGPoint(x: sign, y: neighbor.id.isMultiple(of: 2) ? 0.45 : -0.45)
+            } else {
+                let pressure = 1 - distance / airSeparationRadius
+                separation = separation + delta.normalized * pressure
+            }
+        }
+
+        guard separation.length > 0.001 else { return desired }
+        let candidate = (desired + separation.normalized * airSeparationWeight).normalized
+        let forwardDot = candidate.x * desired.x + candidate.y * desired.y
+        return forwardDot >= 0.30 ? candidate : desired
     }
 
     private func updateNavalWake(for entity: GameEntity, direction: CGPoint) {
@@ -6107,27 +6148,50 @@ final class GameScene: SKScene {
     private func prepareCIAirCaptureScene() {
         let playerHelicopter = entities.values.first { $0.faction == .player && $0.kind == .helicopter }
         let enemyHelicopter = entities.values.first { $0.faction == .enemy && $0.kind == .helicopter }
-        playerHelicopter?.node.position = tileCenter(TileCoord(row: 16, col: 14)) + CGPoint(x: 0, y: 28)
-        enemyHelicopter?.node.position = tileCenter(TileCoord(row: 16, col: 18)) + CGPoint(x: 0, y: 28)
 
         let playerFighter = addEntity(
             kind: .fighter,
             faction: .player,
-            at: tileCenter(TileCoord(row: 14, col: 15)) + CGPoint(x: 0, y: 28)
+            at: tileCenter(TileCoord(row: 15, col: 14))
+        )
+        let playerFighterTwo = addEntity(
+            kind: .fighter,
+            faction: .player,
+            at: tileCenter(TileCoord(row: 15, col: 14))
         )
         let enemyFighter = addEntity(
             kind: .fighter,
             faction: .enemy,
-            at: tileCenter(TileCoord(row: 14, col: 18)) + CGPoint(x: 0, y: 28)
+            at: tileCenter(TileCoord(row: 15, col: 18))
+        )
+        let enemyFighterTwo = addEntity(
+            kind: .fighter,
+            faction: .enemy,
+            at: tileCenter(TileCoord(row: 15, col: 18))
         )
 
-        let stagedAircraft = [playerHelicopter, enemyHelicopter, playerFighter, enemyFighter].compactMap { $0 }
-        for (index, aircraft) in stagedAircraft.enumerated() {
+        let playerAir = [playerHelicopter, playerFighter, playerFighterTwo].compactMap { $0 }
+        let enemyAir = [enemyHelicopter, enemyFighter, enemyFighterTwo].compactMap { $0 }
+        let playerFacing = CGPoint(x: 0.96, y: 0.18).normalized
+        let enemyFacing = CGPoint(x: -0.96, y: -0.18).normalized
+        let playerOffsets = formationOffsets(count: playerAir.count, domain: .air, facing: playerFacing)
+        let enemyOffsets = formationOffsets(count: enemyAir.count, domain: .air, facing: enemyFacing)
+        let playerAnchor = tileCenter(TileCoord(row: 15, col: 14)) + CGPoint(x: 0, y: 28)
+        let enemyAnchor = tileCenter(TileCoord(row: 15, col: 18)) + CGPoint(x: 0, y: 28)
+
+        for (index, aircraft) in playerAir.enumerated() {
+            aircraft.node.position = playerAnchor + playerOffsets[index]
             aircraft.node.zPosition = entityZPosition(aircraft)
-            let direction = CGPoint(x: index.isMultiple(of: 2) ? 0.94 : -0.94, y: index < 2 ? 0.22 : -0.18).normalized
-            aircraft.destination = aircraft.node.position + direction * 180
-            aircraft.node.xScale = direction.x < 0 ? -1 : 1
-            updateAirShadow(for: aircraft, direction: direction)
+            aircraft.destination = aircraft.node.position + playerFacing * 180
+            aircraft.node.xScale = 1
+            updateAirShadow(for: aircraft, direction: playerFacing)
+        }
+        for (index, aircraft) in enemyAir.enumerated() {
+            aircraft.node.position = enemyAnchor + enemyOffsets[index]
+            aircraft.node.zPosition = entityZPosition(aircraft)
+            aircraft.destination = aircraft.node.position + enemyFacing * 180
+            aircraft.node.xScale = -1
+            updateAirShadow(for: aircraft, direction: enemyFacing)
         }
 
         updateFog(force: true)
@@ -7680,7 +7744,13 @@ final class GameScene: SKScene {
     private func attackDestination(for attacker: GameEntity, target: GameEntity) -> CGPoint {
         switch attacker.kind.domain {
         case .air:
-            return target.node.position
+            let slot = attacker.id % 8
+            let angle = CGFloat(slot) * (.pi / 4)
+            let radius = max(airAttackStationRadius, target.kind.footprint * 0.78)
+            return target.node.position + CGPoint(
+                x: cos(angle) * radius,
+                y: sin(angle) * radius * 0.64
+            )
         case .land, .naval:
             if let firingPoint = firingPosition(for: attacker, target: target) {
                 return firingPoint
