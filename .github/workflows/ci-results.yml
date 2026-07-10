@@ -109,7 +109,7 @@ jobs:
             xcrun simctl install "${sim_udid}" "${app_path}"
             bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${app_path}/Info.plist")"
             echo "Launching ${bundle_id}"
-            launch_output="$(xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}")"
+            launch_output="$(SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=coast xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}")"
             echo "${launch_output}"
             app_pid="${launch_output##*: }"
             if [[ ! "${app_pid}" =~ ^[0-9]+$ ]]; then

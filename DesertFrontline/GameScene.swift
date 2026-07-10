@@ -976,7 +976,7 @@ final class GameScene: SKScene {
         camera = cameraRig
         addChild(cameraRig)
         cameraRig.addChild(hudNode)
-        cameraRig.position = tileCenter(TileCoord(row: 12, col: 14))
+        cameraRig.position = initialCameraPosition()
 
         mapNode.zPosition = 0
         entityLayer.zPosition = 100
@@ -992,6 +992,13 @@ final class GameScene: SKScene {
         updateFog(force: true)
         updateHUD()
         showMessage("Capture oil and flags, secure the coast, build combined forces, destroy the enemy HQ.", color: .white)
+    }
+
+    private func initialCameraPosition() -> CGPoint {
+        if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "coast" {
+            return tileCenter(TileCoord(row: 17, col: 21))
+        }
+        return tileCenter(TileCoord(row: 12, col: 14))
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -1182,11 +1189,46 @@ final class GameScene: SKScene {
     private func addTerrainDetail(for tile: TileCoord, terrain: Terrain, at center: CGPoint) {
         switch terrain {
         case .water:
-            if (tile.row + tile.col) % 3 == 0 {
+            let shoreSegments = shorelineSegments(for: tile)
+            if !shoreSegments.isEmpty {
+                let shallowWater = SKShapeNode(
+                    path: diamondPath(width: tileWidth - 5, height: tileHeight - 3)
+                )
+                shallowWater.position = center
+                shallowWater.fillColor = UIColor(red: 0.12, green: 0.72, blue: 0.68, alpha: 0.34)
+                shallowWater.strokeColor = .clear
+                shallowWater.zPosition = zPosition(for: center) + 0.12
+                mapNode.addChild(shallowWater)
+
+                for segment in shoreSegments {
+                    let start = CGPoint(x: segment.start.x * 0.88, y: segment.start.y * 0.88)
+                    let end = CGPoint(x: segment.end.x * 0.88, y: segment.end.y * 0.88)
+                    let path = CGMutablePath()
+                    path.move(to: start)
+                    path.addLine(to: end)
+
+                    let wash = SKShapeNode(path: path)
+                    wash.position = center
+                    wash.strokeColor = UIColor(red: 0.62, green: 0.94, blue: 0.86, alpha: 0.32)
+                    wash.lineWidth = 7
+                    wash.lineCap = .round
+                    wash.zPosition = zPosition(for: center) + 0.22
+                    mapNode.addChild(wash)
+
+                    let foam = SKShapeNode(path: path)
+                    foam.position = center
+                    foam.strokeColor = UIColor.white.withAlphaComponent(0.72)
+                    foam.lineWidth = 2
+                    foam.lineCap = .round
+                    foam.zPosition = zPosition(for: center) + 0.26
+                    mapNode.addChild(foam)
+                }
+            } else if (tile.row + tile.col) % 3 == 0 {
                 let wave = SKShapeNode(rectOf: CGSize(width: 28, height: 2), cornerRadius: 1)
                 wave.position = center + CGPoint(x: 2, y: CGFloat((tile.row % 3) - 1) * 5)
                 wave.fillColor = UIColor.white.withAlphaComponent(0.25)
                 wave.strokeColor = .clear
+                wave.zRotation = (tile.row + tile.col) % 2 == 0 ? -0.42 : 0.42
                 wave.zPosition = zPosition(for: center) + 0.2
                 mapNode.addChild(wave)
             }
@@ -1223,6 +1265,26 @@ final class GameScene: SKScene {
                 shrub.zPosition = zPosition(for: center) + 0.5
                 mapNode.addChild(shrub)
             }
+        }
+    }
+
+    private func shorelineSegments(for tile: TileCoord) -> [(start: CGPoint, end: CGPoint)] {
+        guard terrain(at: tile) == .water else { return [] }
+
+        let top = CGPoint(x: 0, y: tileHeight / 2)
+        let right = CGPoint(x: tileWidth / 2, y: 0)
+        let bottom = CGPoint(x: 0, y: -tileHeight / 2)
+        let left = CGPoint(x: -tileWidth / 2, y: 0)
+        let edges: [(neighbor: TileCoord, start: CGPoint, end: CGPoint)] = [
+            (neighbor: TileCoord(row: tile.row - 1, col: tile.col), start: top, end: right),
+            (neighbor: TileCoord(row: tile.row, col: tile.col + 1), start: right, end: bottom),
+            (neighbor: TileCoord(row: tile.row + 1, col: tile.col), start: bottom, end: left),
+            (neighbor: TileCoord(row: tile.row, col: tile.col - 1), start: left, end: top)
+        ]
+
+        return edges.compactMap { edge in
+            guard isValid(edge.neighbor), terrain(at: edge.neighbor) != .water else { return nil }
+            return (start: edge.start, end: edge.end)
         }
     }
 
