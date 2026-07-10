@@ -4203,3 +4203,35 @@
 - 云端截图模式用于稳定视觉证据，会暂停玩法推进；普通实时循环仍由 generic iOS build 覆盖，但真机长时间玩法、触摸和性能仍需人工检查。
 - 当前没有独立 XCTest target，四边岸线映射和默认镜头 / CI 镜头分流主要由源码审阅、云端 build 和 simulator screenshot 覆盖。
 - 后续可继续增加海军航迹、舰炮命中水柱或空军投影等海空战细节，但应保持每轮一个可验证增量。
+
+### v4.73 / 移动海军方向航迹
+
+日期：2026-07-11
+
+核心变更：
+
+- Battleship、Submarine 和 Carrier 各自预创建方向化 `navalWakeNode`，包含双侧青白冲洗、细泡沫线和中心扰流，尺寸按舰种区分。
+- `updateMovement(dt:)` 只在海军单位实际位移时按世界方向和实体镜像换算局部舰艉方向，显示并轻微调制航迹；idle 时隐藏。
+- 航迹是实体子节点，随敌方实体迷雾可见性一起隐藏，不创建独立残留效果，不泄露隐藏海军位置，节点数量不按帧增长。
+- 航迹不修改速度、寻路、编队、碰撞、攻击、AI、声呐、潜艇暴露、经济、任务或胜负。
+- CI capture scene 仅在 `DESERT_CI_CAPTURE_MODE=1` 时把初始玩家 Carrier 临时编排到可见近岸水域，并给玩家海军设置确定性移动意图以稳定展示 BB/CV 航迹；普通启动的初始位置和实时玩法不变。
+- README、核心 flow、flowchart、测试规则和 v4.73 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.73 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部重验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`691dab259add2168f4e7b0bba4f4a20c1c457012`，run `29121258596` 成功，artifact 的 manifest、JUnit、两类 build、PID 和日志检查通过。
+- Agent C 首次截图未直接接受：Battleship 航迹可见，但初始 Carrier 被底部 HUD / 取景边缘遮挡，不能同时证明 Carrier 航迹。
+- 取景修复提交：`105d783dc9c4b47e99f151c8f2b89d3730645f10`，run `29121967218` 成功。
+- 修复 artifact：`desert-frontline-ci-v4.73-main-105d783dc9c4-run29121967218-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29121967218/`。
+- manifest 记录 `branch=main`、`commitSha=105d783dc9c4b47e99f151c8f2b89d3730645f10`、`runId=29121967218`、`version=v4.73`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；启动 PID `6430` 等待后仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 simulator screenshot 显示稳定的 `$5200` 初始战场、玩家 Shipyard、Carrier `CV`、Battleship `BB`、两艘舰体后的方向泡沫 / 冲洗航迹、海岸层次、小地图和 HUD，不是黑屏或白屏。
+
+遗留事项：
+
+- 当前云端截图只证明确定性 BB/CV 航迹和启动稳定性；真实连续转向、不同缩放、密集舰队、敌方迷雾切换和真机性能仍需人工玩法检查。
+- 当前没有独立 XCTest target，航迹方向与迷雾同步主要由源码边界、云端 build 和 simulator screenshot 覆盖。
+- 下一轮可增加舰炮命中水柱和水面冲击圈，继续保持单一海战视觉增量。
