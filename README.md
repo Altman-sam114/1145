@@ -16,6 +16,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Guard Towers are buildable land defense structures that automatically fire on visible land, air, and structure targets once operational; they do not attack naval units or submarines and do not provide sonar.
 - SAM Sites are buildable land anti-air structures that automatically fire on visible air targets once operational; they do not attack land, naval, submarine, or structure targets and do not provide sonar.
 - Coastal Batteries are buildable coastal defense structures that automatically fire on visible surface naval targets once operational; they do not attack submarines and do not provide sonar.
+- Battleship, Coastal Battery, and Artillery shell hits on visible surface ships produce compact water columns, elliptical impact rings, and spray droplets without changing damage or target rules.
 - Land units: Humvee scout, AA Truck, Tank, Artillery, Mechanic.
 - AA Trucks are War Factory-built mobile anti-air units that fire on visible air targets; they do not attack land, naval, submarine, or structure targets and do not provide sonar.
 - Air units: Helicopter, Fighter.

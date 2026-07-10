@@ -5899,6 +5899,23 @@ final class GameScene: SKScene {
             entity.destination = entity.node.position + direction * 180
             updateNavalWake(for: entity, direction: direction)
         }
+
+        if let battleship = playerNavy.first(where: { $0.kind == .battleship }) {
+            showNavalWaterImpact(
+                at: battleship.node.position + CGPoint(x: 88, y: 18),
+                faction: .player,
+                scale: 1.0,
+                persistent: true
+            )
+        }
+        if let carrier = playerNavy.first(where: { $0.kind == .carrier }) {
+            showNavalWaterImpact(
+                at: carrier.node.position + CGPoint(x: 96, y: -14),
+                faction: .enemy,
+                scale: 1.15,
+                persistent: true
+            )
+        }
     }
 
     private func updateCombat(dt: TimeInterval) {
@@ -6005,6 +6022,18 @@ final class GameScene: SKScene {
         if showASWHit {
             showAntiSubmarineHit(at: target.node.position, faction: attacker.faction)
         }
+        if shouldShowNavalWaterImpact(attacker: attacker, target: target) {
+            let side: CGFloat = target.id.isMultiple(of: 2) ? 1 : -1
+            let impactPoint = target.node.position + CGPoint(
+                x: side * target.kind.footprint * 0.30,
+                y: -target.kind.footprint * 0.08
+            )
+            showNavalWaterImpact(
+                at: impactPoint,
+                faction: attacker.faction,
+                scale: attacker.kind == .battleship ? 1.15 : 0.92
+            )
+        }
         showPlayerUnderAttackAlertIfNeeded(target: target, attacker: attacker)
         triggerEnemyDefenseIfNeeded(target: target, attacker: attacker)
         if wasAlive && target.hp <= 0 {
@@ -6015,6 +6044,14 @@ final class GameScene: SKScene {
 
     private func shouldShowAntiSubmarineHitFeedback(for target: GameEntity) -> Bool {
         guard target.kind == .submarine else { return false }
+        return target.faction == .player || isKnownToFaction(target, observer: .player)
+    }
+
+    private func shouldShowNavalWaterImpact(attacker: GameEntity, target: GameEntity) -> Bool {
+        guard target.kind.domain == .naval,
+              target.kind != .submarine,
+              attacker.kind == .battleship || attacker.kind == .coastalBattery || attacker.kind == .artillery
+        else { return false }
         return target.faction == .player || isKnownToFaction(target, observer: .player)
     }
 
@@ -8277,6 +8314,92 @@ final class GameScene: SKScene {
             .group([.moveBy(x: 0, y: 12, duration: 0.48), .fadeOut(withDuration: 0.48)]),
             .removeFromParent()
         ]))
+    }
+
+    private func showNavalWaterImpact(
+        at point: CGPoint,
+        faction: Faction,
+        scale: CGFloat,
+        persistent: Bool = false
+    ) {
+        guard faction == .player || isVisible(point: point) else { return }
+
+        let node = SKNode()
+        node.position = point
+        node.zPosition = 284
+
+        let waterColor = UIColor(red: 0.62, green: 0.94, blue: 1.0, alpha: 1.0)
+        let accentColor = faction == .enemy
+            ? UIColor(red: 1.0, green: 0.70, blue: 0.42, alpha: 1.0)
+            : UIColor(white: 1.0, alpha: 1.0)
+
+        let wash = SKShapeNode(ellipseOf: CGSize(width: 58 * scale, height: 24 * scale))
+        wash.fillColor = waterColor.withAlphaComponent(0.16)
+        wash.strokeColor = waterColor.withAlphaComponent(0.92)
+        wash.lineWidth = 3
+        node.addChild(wash)
+
+        let innerRing = SKShapeNode(ellipseOf: CGSize(width: 34 * scale, height: 13 * scale))
+        innerRing.fillColor = UIColor.white.withAlphaComponent(0.10)
+        innerRing.strokeColor = accentColor.withAlphaComponent(0.82)
+        innerRing.lineWidth = 2
+        node.addChild(innerRing)
+
+        let columnPath = CGMutablePath()
+        columnPath.move(to: CGPoint(x: -9 * scale, y: 1 * scale))
+        columnPath.addQuadCurve(
+            to: CGPoint(x: -4 * scale, y: 48 * scale),
+            control: CGPoint(x: -13 * scale, y: 25 * scale)
+        )
+        columnPath.addQuadCurve(
+            to: CGPoint(x: 6 * scale, y: 46 * scale),
+            control: CGPoint(x: 1 * scale, y: 58 * scale)
+        )
+        columnPath.addQuadCurve(
+            to: CGPoint(x: 10 * scale, y: 1 * scale),
+            control: CGPoint(x: 14 * scale, y: 24 * scale)
+        )
+        columnPath.closeSubpath()
+        let column = SKShapeNode(path: columnPath)
+        column.fillColor = waterColor.withAlphaComponent(0.82)
+        column.strokeColor = UIColor.white.withAlphaComponent(0.92)
+        column.lineWidth = 1.8
+        node.addChild(column)
+
+        let crown = SKShapeNode(ellipseOf: CGSize(width: 22 * scale, height: 9 * scale))
+        crown.position = CGPoint(x: 1 * scale, y: 47 * scale)
+        crown.fillColor = UIColor.white.withAlphaComponent(0.88)
+        crown.strokeColor = waterColor
+        crown.lineWidth = 1.5
+        node.addChild(crown)
+
+        let dropletOffsets = [
+            CGPoint(x: -24, y: 23), CGPoint(x: -16, y: 36),
+            CGPoint(x: 18, y: 34), CGPoint(x: 27, y: 20)
+        ]
+        for (index, offset) in dropletOffsets.enumerated() {
+            let radius: CGFloat = index.isMultiple(of: 2) ? 3.2 : 2.4
+            let droplet = SKShapeNode(circleOfRadius: radius * scale)
+            droplet.position = CGPoint(x: offset.x * scale, y: offset.y * scale)
+            droplet.fillColor = index.isMultiple(of: 2) ? waterColor : UIColor.white
+            droplet.strokeColor = .clear
+            node.addChild(droplet)
+        }
+
+        effectsLayer.addChild(node)
+        guard !persistent else { return }
+
+        wash.run(.group([.scale(to: 1.8, duration: 0.48), .fadeOut(withDuration: 0.48)]))
+        innerRing.run(.group([.scale(to: 2.15, duration: 0.44), .fadeOut(withDuration: 0.44)]))
+        column.run(.group([.scaleY(to: 1.18, duration: 0.16), .fadeOut(withDuration: 0.52)]))
+        crown.run(.group([.moveBy(x: 0, y: 8 * scale, duration: 0.42), .fadeOut(withDuration: 0.42)]))
+        for child in node.children.dropFirst(4) {
+            child.run(.group([
+                .moveBy(x: child.position.x * 0.55, y: 10 * scale, duration: 0.44),
+                .fadeOut(withDuration: 0.44)
+            ]))
+        }
+        node.run(.sequence([.wait(forDuration: 0.56), .removeFromParent()]))
     }
 
     private func money(for faction: Faction) -> Int {
