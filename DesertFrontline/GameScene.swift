@@ -5891,6 +5891,10 @@ final class GameScene: SKScene {
             .filter { $0.faction == .player && $0.kind.domain == .naval && $0.isAlive }
             .sorted { $0.id < $1.id }
         for (index, entity) in playerNavy.enumerated() {
+            if entity.kind == .carrier {
+                entity.node.position = tileCenter(TileCoord(row: 19, col: 22))
+                entity.node.zPosition = entityZPosition(entity)
+            }
             let direction = CGPoint(x: -0.94, y: index.isMultiple(of: 2) ? 0.34 : -0.34).normalized
             entity.destination = entity.node.position + direction * 180
             updateNavalWake(for: entity, direction: direction)
