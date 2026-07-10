@@ -4301,3 +4301,35 @@
 - 云端截图证明持久化空战样例的构图和层级；真实 0.38 秒导弹运动、连续防空齐射、密集空军、缩放和真机性能仍需人工玩法检查。
 - 当前没有独立 XCTest target，三类导弹分流、目标可见性和节点清理主要由源码审阅、云端 build 与 simulator screenshot 覆盖。
 - 下一轮可细化空军模型：Fighter 机翼挂点、Helicopter 旋翼盘 / 尾桨或空军编队间距，保持单一可验证增量。
+
+### v4.76 / 空军模型几何细化
+
+日期：2026-07-11
+
+核心变更：
+
+- 再次参考 Desert Stormfront 官方截图、官方 trailer 和 TouchGameplay 15 分钟 gameplay，以移动端俯视辨识为目标细化 HEL/JET 几何。
+- Helicopter 增加阵营化座舱玻璃、双侧武器短舱、主旋翼盘和轴心、动画尾桨、双侧滑橇和四根起落架支杆。
+- Fighter 增加阵营化座舱玻璃、机身脊线、双侧翼下挂弹和挂架、尾部稳定翼及机鼻传感器。
+- Blue / Red 继续使用原机身阵营色；Blue 玻璃偏青蓝，Red 玻璃偏橙红，在同一 air screenshot 中保持阵营可读性。
+- 所有新部件都位于现有 `addAirUnitBody(...)` 的 `base` 子树内，随实体移动、镜像、迷雾、选择和销毁，不新增独立玩法对象或逐帧节点。
+- 模型细节保持在现有 footprint 内，不修改碰撞、弹药、挂载消耗、攻击、速度、路径、AI、Carrier guard、经济、任务或胜负。
+- README、核心 flow、flowchart、测试规范和 v4.76 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.76 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`c3b645d5a6349105153b01b23ff4c690cf09a306`，commit subject 为 `v4.76: 细化空军机体模型`。
+- GitHub Actions run：`29127209976`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.76-main-c3b645d5a634-run29127209976-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29127209976/`。
+- manifest 记录 `branch=main`、`commitSha=c3b645d5a6349105153b01b23ff4c690cf09a306`、`runId=29127209976`、`version=v4.76`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；启动 PID `8602` 等待后仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 air screenshot 清楚显示 Red HEL 的座舱、短舱、旋翼盘 / 轴心、尾桨、滑橇，以及 Red JET 的座舱、挂弹、挂架、尾翼和机鼻传感器；空军投影、导弹、命中环、小地图和 HUD 仍正常，不是黑屏或白屏。
+
+遗留事项：
+
+- 云端静态截图不能证明主旋翼 / 尾桨动画节奏、快速镜像转向或密集编队性能，仍需人工真机玩法检查。
+- 当前没有独立 XCTest target，模型层级和 footprint 主要由源码审阅、云端 build 和 simulator screenshot 覆盖。
+- 下一轮可优化空军编队间距和同域避让，减少 HEL/JET 密集叠放，同时保持移动命令语义不变。
