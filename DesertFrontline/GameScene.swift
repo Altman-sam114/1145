@@ -822,6 +822,7 @@ private final class GameEntity {
     let captureNode = SKNode()
     let constructionNode = SKNode()
     let navalWakeNode = SKNode()
+    let airShadowNode = SKNode()
 
     init(id: Int, kind: EntityKind, faction: Faction, position: CGPoint) {
         self.id = id
@@ -998,6 +999,9 @@ final class GameScene: SKScene {
     }
 
     private func initialCameraPosition() -> CGPoint {
+        if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "air" {
+            return tileCenter(TileCoord(row: 15, col: 16))
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "coast" {
             return tileCenter(TileCoord(row: 17, col: 21))
         }
@@ -1707,6 +1711,7 @@ final class GameScene: SKScene {
         shadow.strokeColor = .clear
         shadow.position = CGPoint(x: 0, y: -6)
         shadow.zPosition = -2
+        shadow.isHidden = entity.kind.domain == .air
         base.addChild(shadow)
 
         switch entity.kind {
@@ -1721,6 +1726,7 @@ final class GameScene: SKScene {
         }
 
         configureNavalWakeNode(for: entity)
+        configureAirShadowNode(for: entity)
 
         entity.selectionNode.fillColor = UIColor.clear
         entity.selectionNode.strokeColor = UIColor(red: 0.2, green: 1.0, blue: 0.35, alpha: 1.0)
@@ -2192,6 +2198,39 @@ final class GameScene: SKScene {
             jet.lineWidth = 2
             base.addChild(jet)
         }
+    }
+
+    private func configureAirShadowNode(for entity: GameEntity) {
+        guard entity.kind.domain == .air else { return }
+
+        if entity.kind == .helicopter {
+            let body = SKShapeNode(ellipseOf: CGSize(width: 31, height: 13))
+            body.fillColor = UIColor.black.withAlphaComponent(0.30)
+            body.strokeColor = .clear
+            entity.airShadowNode.addChild(body)
+
+            let tail = SKShapeNode(rectOf: CGSize(width: 24, height: 4), cornerRadius: 1)
+            tail.position = CGPoint(x: -22, y: 0)
+            tail.fillColor = UIColor.black.withAlphaComponent(0.26)
+            tail.strokeColor = .clear
+            entity.airShadowNode.addChild(tail)
+
+            let rotor = SKShapeNode(rectOf: CGSize(width: 46, height: 2.5), cornerRadius: 1)
+            rotor.position = CGPoint(x: 0, y: 7)
+            rotor.fillColor = UIColor.black.withAlphaComponent(0.20)
+            rotor.strokeColor = .clear
+            entity.airShadowNode.addChild(rotor)
+        } else {
+            let jet = SKShapeNode(path: jetPath())
+            jet.setScale(0.78)
+            jet.fillColor = UIColor.black.withAlphaComponent(0.30)
+            jet.strokeColor = .clear
+            entity.airShadowNode.addChild(jet)
+        }
+
+        entity.airShadowNode.position = CGPoint(x: -10, y: -12)
+        entity.airShadowNode.zPosition = -3
+        entity.node.addChild(entity.airShadowNode)
     }
 
     private func addNavalUnitBody(for entity: GameEntity, to base: SKNode) {
@@ -5842,6 +5881,7 @@ final class GameScene: SKScene {
                 entity.node.xScale = direction.x < 0 ? -1 : 1
             }
             updateNavalWake(for: entity, direction: direction)
+            updateAirShadow(for: entity, direction: direction)
         }
     }
 
@@ -5853,6 +5893,16 @@ final class GameScene: SKScene {
         entity.navalWakeNode.zRotation = atan2(localWakeDirection.y, localWakeDirection.x)
         entity.navalWakeNode.alpha = 0.82 + sin(CGFloat(lastUpdateTime) * 7 + CGFloat(entity.id)) * 0.10
         entity.navalWakeNode.isHidden = false
+    }
+
+    private func updateAirShadow(for entity: GameEntity, direction: CGPoint) {
+        guard entity.kind.domain == .air else { return }
+        let horizontalScale = entity.node.xScale == 0 ? 1 : entity.node.xScale
+        entity.airShadowNode.position = CGPoint(
+            x: -direction.x * 11 / horizontalScale,
+            y: -12 - direction.y * 6
+        )
+        entity.airShadowNode.alpha = 0.88 + sin(CGFloat(lastUpdateTime) * 4 + CGFloat(entity.id)) * 0.08
     }
 
     private func movementSpeed(for entity: GameEntity) -> CGFloat {
@@ -5886,6 +5936,10 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "air" {
+            prepareCIAirCaptureScene()
+            return
+        }
 
         let playerNavy = entities.values
             .filter { $0.faction == .player && $0.kind.domain == .naval && $0.isAlive }
@@ -5916,6 +5970,46 @@ final class GameScene: SKScene {
                 persistent: true
             )
         }
+    }
+
+    private func prepareCIAirCaptureScene() {
+        let playerHelicopter = entities.values.first { $0.faction == .player && $0.kind == .helicopter }
+        let enemyHelicopter = entities.values.first { $0.faction == .enemy && $0.kind == .helicopter }
+        playerHelicopter?.node.position = tileCenter(TileCoord(row: 16, col: 14)) + CGPoint(x: 0, y: 28)
+        enemyHelicopter?.node.position = tileCenter(TileCoord(row: 16, col: 18)) + CGPoint(x: 0, y: 28)
+
+        let playerFighter = addEntity(
+            kind: .fighter,
+            faction: .player,
+            at: tileCenter(TileCoord(row: 14, col: 15)) + CGPoint(x: 0, y: 28)
+        )
+        let enemyFighter = addEntity(
+            kind: .fighter,
+            faction: .enemy,
+            at: tileCenter(TileCoord(row: 14, col: 18)) + CGPoint(x: 0, y: 28)
+        )
+
+        let stagedAircraft = [playerHelicopter, enemyHelicopter, playerFighter, enemyFighter].compactMap { $0 }
+        for (index, aircraft) in stagedAircraft.enumerated() {
+            aircraft.node.zPosition = entityZPosition(aircraft)
+            let direction = CGPoint(x: index.isMultiple(of: 2) ? 0.94 : -0.94, y: index < 2 ? 0.22 : -0.18).normalized
+            aircraft.destination = aircraft.node.position + direction * 180
+            aircraft.node.xScale = direction.x < 0 ? -1 : 1
+            updateAirShadow(for: aircraft, direction: direction)
+        }
+
+        updateFog(force: true)
+        showGuidedMissileTrail(
+            from: playerFighter.node.position,
+            to: enemyFighter.node.position,
+            kind: .fighter,
+            persistent: true
+        )
+        showAirMissileImpact(
+            at: enemyFighter.node.position + CGPoint(x: -12, y: 4),
+            faction: .player,
+            persistent: true
+        )
     }
 
     private func updateCombat(dt: TimeInterval) {
@@ -6034,6 +6128,9 @@ final class GameScene: SKScene {
                 scale: attacker.kind == .battleship ? 1.15 : 0.92
             )
         }
+        if shouldShowAirMissileImpact(attacker: attacker, target: target) {
+            showAirMissileImpact(at: target.node.position, faction: attacker.faction)
+        }
         showPlayerUnderAttackAlertIfNeeded(target: target, attacker: attacker)
         triggerEnemyDefenseIfNeeded(target: target, attacker: attacker)
         if wasAlive && target.hp <= 0 {
@@ -6051,6 +6148,13 @@ final class GameScene: SKScene {
         guard target.kind.domain == .naval,
               target.kind != .submarine,
               attacker.kind == .battleship || attacker.kind == .coastalBattery || attacker.kind == .artillery
+        else { return false }
+        return target.faction == .player || isKnownToFaction(target, observer: .player)
+    }
+
+    private func shouldShowAirMissileImpact(attacker: GameEntity, target: GameEntity) -> Bool {
+        guard target.kind.domain == .air,
+              attacker.kind == .fighter || attacker.kind == .samSite || attacker.kind == .aaTruck
         else { return false }
         return target.faction == .player || isKnownToFaction(target, observer: .player)
     }
@@ -8098,6 +8202,11 @@ final class GameScene: SKScene {
     }
 
     private func showProjectile(from start: CGPoint, to end: CGPoint, kind: EntityKind) {
+        if kind == .fighter || kind == .samSite || kind == .aaTruck {
+            showGuidedMissileTrail(from: start, to: end, kind: kind)
+            return
+        }
+
         let path = CGMutablePath()
         path.move(to: start)
         path.addLine(to: end)
@@ -8108,6 +8217,94 @@ final class GameScene: SKScene {
         tracer.zPosition = 250
         effectsLayer.addChild(tracer)
         tracer.run(.sequence([.fadeOut(withDuration: 0.16), .removeFromParent()]))
+    }
+
+    private func showGuidedMissileTrail(
+        from start: CGPoint,
+        to end: CGPoint,
+        kind: EntityKind,
+        persistent: Bool = false
+    ) {
+        let path = CGMutablePath()
+        path.move(to: start)
+        path.addLine(to: end)
+
+        let smoke = SKShapeNode(path: path)
+        smoke.strokeColor = UIColor(white: 0.88, alpha: 0.34)
+        smoke.lineWidth = kind == .samSite ? 7 : 5
+        smoke.lineCap = .round
+        smoke.zPosition = 282
+        effectsLayer.addChild(smoke)
+
+        let trail = SKShapeNode(path: path)
+        trail.strokeColor = projectileColor(for: kind).withAlphaComponent(0.92)
+        trail.lineWidth = kind == .samSite ? 3.5 : 2.5
+        trail.glowWidth = 3
+        trail.zPosition = 283
+        effectsLayer.addChild(trail)
+
+        let missile = SKShapeNode(rectOf: CGSize(width: 18, height: 5), cornerRadius: 2)
+        missile.position = persistent
+            ? CGPoint(x: (start.x + end.x) * 0.5, y: (start.y + end.y) * 0.5)
+            : start
+        missile.zRotation = atan2(end.y - start.y, end.x - start.x)
+        missile.fillColor = UIColor.white
+        missile.strokeColor = projectileColor(for: kind)
+        missile.lineWidth = 1.5
+        missile.glowWidth = 2
+        missile.zPosition = 284
+        effectsLayer.addChild(missile)
+
+        guard !persistent else { return }
+        smoke.run(.sequence([.fadeOut(withDuration: 0.38), .removeFromParent()]))
+        trail.run(.sequence([.fadeOut(withDuration: 0.30), .removeFromParent()]))
+        missile.run(.sequence([
+            .group([.move(to: end, duration: 0.26), .fadeOut(withDuration: 0.26)]),
+            .removeFromParent()
+        ]))
+    }
+
+    private func showAirMissileImpact(
+        at point: CGPoint,
+        faction: Faction,
+        persistent: Bool = false
+    ) {
+        guard faction == .player || isVisible(point: point) else { return }
+        let node = SKNode()
+        node.position = point
+        node.zPosition = 286
+
+        let color = faction == .enemy
+            ? UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0)
+            : UIColor(red: 1.0, green: 0.82, blue: 0.28, alpha: 1.0)
+        for size in [22.0, 38.0] {
+            let ring = SKShapeNode(circleOfRadius: CGFloat(size) * 0.5)
+            ring.fillColor = color.withAlphaComponent(0.10)
+            ring.strokeColor = color.withAlphaComponent(0.94)
+            ring.lineWidth = size < 30 ? 3 : 2
+            ring.glowWidth = 2
+            node.addChild(ring)
+        }
+
+        for index in 0..<6 {
+            let angle = CGFloat(index) * .pi / 3
+            let spark = SKShapeNode(rectOf: CGSize(width: 16, height: 2.5), cornerRadius: 1)
+            spark.position = CGPoint(x: cos(angle) * 17, y: sin(angle) * 17)
+            spark.zRotation = angle
+            spark.fillColor = index.isMultiple(of: 2) ? UIColor.white : color
+            spark.strokeColor = .clear
+            node.addChild(spark)
+        }
+        effectsLayer.addChild(node)
+        guard !persistent else { return }
+
+        for (index, child) in node.children.enumerated() {
+            child.run(.sequence([
+                .wait(forDuration: TimeInterval(index) * 0.015),
+                .group([.scale(to: 1.55, duration: 0.30), .fadeOut(withDuration: 0.30)])
+            ]))
+        }
+        node.run(.sequence([.wait(forDuration: 0.42), .removeFromParent()]))
     }
 
     private func projectileColor(for kind: EntityKind) -> UIColor {
