@@ -48,6 +48,8 @@
 
 空军实体另持有预创建的 `airShadowNode`：Helicopter 使用机身、尾梁和旋翼投影，Fighter 使用缩小 jet 轮廓；移动更新按方向调整投影偏移和透明度。投影是实体子节点，会随敌方实体迷雾隐藏，不产生独立残留节点或位置泄露。
 
+`addAirUnitBody(...)` 在原 footprint 内细化空军几何：Helicopter 由座舱、双侧武器短舱、旋翼盘 / 轴心、动画尾桨、起落架支杆和滑橇组成；Fighter 由座舱、机身脊线、双侧翼下挂弹 / 挂架、尾部稳定翼和机鼻传感器组成。这些都只属于原实体 `base` 子树，不新增碰撞、挂载消耗、武器状态或独立玩法对象。
+
 `veterancyRank` 由 XP 计算得到，不保存第二份等级状态；`veterancyNode` 作为实体节点子节点显示非 Recruit 单位的老兵徽章，并随实体迷雾隐藏。
 
 ### `BuildOrder`

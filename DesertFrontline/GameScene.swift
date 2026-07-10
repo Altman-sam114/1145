@@ -2171,13 +2171,66 @@ final class GameScene: SKScene {
         let bodyColor = entity.faction == .enemy
             ? UIColor(red: 0.72, green: 0.28, blue: 0.22, alpha: 1.0)
             : UIColor(red: 0.78, green: 0.68, blue: 0.42, alpha: 1.0)
+        let glassColor = entity.faction == .enemy
+            ? UIColor(red: 1.0, green: 0.55, blue: 0.30, alpha: 0.92)
+            : UIColor(red: 0.42, green: 0.88, blue: 1.0, alpha: 0.92)
 
         if entity.kind == .helicopter {
+            let rotorDisc = SKShapeNode(ellipseOf: CGSize(width: 62, height: 19))
+            rotorDisc.position = CGPoint(x: 0, y: 13)
+            rotorDisc.fillColor = UIColor.clear
+            rotorDisc.strokeColor = UIColor.white.withAlphaComponent(0.28)
+            rotorDisc.lineWidth = 1.3
+            rotorDisc.zPosition = 5
+            base.addChild(rotorDisc)
+
+            let skidOffsets: [CGFloat] = [-12, 12]
+            for yOffset in skidOffsets {
+                let skid = SKShapeNode(rectOf: CGSize(width: 28, height: 2.5), cornerRadius: 1)
+                skid.position = CGPoint(x: 1, y: yOffset)
+                skid.fillColor = UIColor(white: 0.12, alpha: 0.90)
+                skid.strokeColor = .clear
+                skid.zPosition = -1
+                base.addChild(skid)
+            }
+
+            let skidStrutOffsets: [CGFloat] = [-9, 10]
+            for xOffset in skidStrutOffsets {
+                for yOffset in skidOffsets {
+                    let strut = SKShapeNode(rectOf: CGSize(width: 2.5, height: 8), cornerRadius: 1)
+                    strut.position = CGPoint(x: xOffset, y: yOffset * 0.68)
+                    strut.zRotation = xOffset < 0 ? -0.25 : 0.25
+                    strut.fillColor = UIColor(white: 0.16, alpha: 0.92)
+                    strut.strokeColor = .clear
+                    strut.zPosition = -0.5
+                    base.addChild(strut)
+                }
+            }
+
             let body = SKShapeNode(ellipseOf: CGSize(width: 34, height: 17))
             body.fillColor = bodyColor
             body.strokeColor = UIColor(white: 0.18, alpha: 1.0)
             body.lineWidth = 2
             base.addChild(body)
+
+            let cockpit = SKShapeNode(ellipseOf: CGSize(width: 15, height: 10))
+            cockpit.position = CGPoint(x: 10, y: 1)
+            cockpit.fillColor = glassColor
+            cockpit.strokeColor = UIColor.white.withAlphaComponent(0.62)
+            cockpit.lineWidth = 1.2
+            cockpit.zPosition = 2
+            base.addChild(cockpit)
+
+            let weaponPodOffsets: [CGFloat] = [-10, 10]
+            for yOffset in weaponPodOffsets {
+                let pod = SKShapeNode(rectOf: CGSize(width: 18, height: 5), cornerRadius: 2)
+                pod.position = CGPoint(x: 0, y: yOffset)
+                pod.fillColor = bodyColor.darker(by: 0.18)
+                pod.strokeColor = UIColor(white: 0.12, alpha: 0.9)
+                pod.lineWidth = 1
+                pod.zPosition = 1
+                base.addChild(pod)
+            }
 
             let tail = SKShapeNode(rectOf: CGSize(width: 28, height: 5), cornerRadius: 2)
             tail.fillColor = bodyColor.darker(by: 0.1)
@@ -2185,18 +2238,97 @@ final class GameScene: SKScene {
             tail.position = CGPoint(x: -25, y: 1)
             base.addChild(tail)
 
+            let tailRotorNode = SKNode()
+            tailRotorNode.position = CGPoint(x: -41, y: 1)
+            tailRotorNode.zPosition = 3
+            for angle in [CGFloat.zero, .pi / 2] {
+                let blade = SKShapeNode(rectOf: CGSize(width: 15, height: 2.2), cornerRadius: 1)
+                blade.zRotation = angle
+                blade.fillColor = UIColor(white: 0.10, alpha: 0.88)
+                blade.strokeColor = .clear
+                tailRotorNode.addChild(blade)
+            }
+            let tailHub = SKShapeNode(circleOfRadius: 2.4)
+            tailHub.fillColor = glassColor
+            tailHub.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            tailHub.lineWidth = 1
+            tailRotorNode.addChild(tailHub)
+            base.addChild(tailRotorNode)
+            tailRotorNode.run(.repeatForever(.rotate(byAngle: .pi, duration: 0.22)))
+
             let rotor = SKShapeNode(rectOf: CGSize(width: 58, height: 3), cornerRadius: 1)
             rotor.fillColor = UIColor(white: 0.10, alpha: 0.85)
             rotor.strokeColor = .clear
             rotor.position = CGPoint(x: 0, y: 14)
+            rotor.zPosition = 6
             base.addChild(rotor)
             rotor.run(.repeatForever(.sequence([.rotate(byAngle: .pi, duration: 0.18), .rotate(byAngle: .pi, duration: 0.18)])))
+
+            let rotorHub = SKShapeNode(circleOfRadius: 4)
+            rotorHub.position = CGPoint(x: 0, y: 14)
+            rotorHub.fillColor = bodyColor.darker(by: 0.22)
+            rotorHub.strokeColor = UIColor.white.withAlphaComponent(0.72)
+            rotorHub.lineWidth = 1.2
+            rotorHub.zPosition = 7
+            base.addChild(rotorHub)
         } else {
             let jet = SKShapeNode(path: jetPath())
             jet.fillColor = bodyColor
             jet.strokeColor = UIColor(white: 0.16, alpha: 1.0)
             jet.lineWidth = 2
             base.addChild(jet)
+
+            let spine = SKShapeNode(rectOf: CGSize(width: 34, height: 3.5), cornerRadius: 1.5)
+            spine.position = CGPoint(x: 1, y: 0)
+            spine.fillColor = bodyColor.darker(by: 0.18)
+            spine.strokeColor = .clear
+            spine.zPosition = 1
+            base.addChild(spine)
+
+            let canopy = SKShapeNode(ellipseOf: CGSize(width: 15, height: 8))
+            canopy.position = CGPoint(x: 8, y: 0)
+            canopy.fillColor = glassColor
+            canopy.strokeColor = UIColor.white.withAlphaComponent(0.70)
+            canopy.lineWidth = 1.2
+            canopy.zPosition = 3
+            base.addChild(canopy)
+
+            let hardpointOffsets: [CGFloat] = [-13, 13]
+            for yOffset in hardpointOffsets {
+                let missile = SKShapeNode(rectOf: CGSize(width: 22, height: 3.5), cornerRadius: 1.5)
+                missile.position = CGPoint(x: -1, y: yOffset)
+                missile.fillColor = UIColor(white: 0.90, alpha: 1.0)
+                missile.strokeColor = bodyColor.darker(by: 0.28)
+                missile.lineWidth = 1
+                missile.zPosition = 2
+                base.addChild(missile)
+
+                let pylon = SKShapeNode(rectOf: CGSize(width: 4, height: 7), cornerRadius: 1)
+                pylon.position = CGPoint(x: -4, y: yOffset * 0.72)
+                pylon.fillColor = bodyColor.darker(by: 0.14)
+                pylon.strokeColor = .clear
+                pylon.zPosition = 1.5
+                base.addChild(pylon)
+            }
+
+            let stabilizerOffsets: [CGFloat] = [-7, 7]
+            for yOffset in stabilizerOffsets {
+                let stabilizer = SKShapeNode(rectOf: CGSize(width: 15, height: 3.5), cornerRadius: 1)
+                stabilizer.position = CGPoint(x: -22, y: yOffset)
+                stabilizer.zRotation = yOffset < 0 ? -0.28 : 0.28
+                stabilizer.fillColor = bodyColor.darker(by: 0.12)
+                stabilizer.strokeColor = .clear
+                stabilizer.zPosition = 1
+                base.addChild(stabilizer)
+            }
+
+            let noseSensor = SKShapeNode(circleOfRadius: 3)
+            noseSensor.position = CGPoint(x: 24, y: 0)
+            noseSensor.fillColor = glassColor
+            noseSensor.strokeColor = UIColor.white.withAlphaComponent(0.75)
+            noseSensor.lineWidth = 1
+            noseSensor.zPosition = 4
+            base.addChild(noseSensor)
         }
     }
 

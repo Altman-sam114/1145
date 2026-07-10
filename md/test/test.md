@@ -69,7 +69,7 @@ GitHub Actions 负责运行：
 - `git diff --check`，检查最新提交的空白和补丁残留。
 - `plutil -lint DesertFrontline.xcodeproj/project.pbxproj`。
 - generic iOS device build。
-- iOS Simulator launch probe：额外构建 simulator app、安装到可用 iPhone simulator、启动 App、等待短时间、截图、抓取 App 日志，并确认 `DesertFrontline` 进程仍在运行，用于捕捉启动闪退 / 白屏黑屏一类 build-only 无法覆盖的问题。云端 launch 当前通过 `SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=air` 聚焦中央空战区域，并通过 `SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE=1` 暂停经济、AI、战斗和胜负推进；air capture scene 临时编排 Blue / Red HEL/JET、方向投影和持久 Fighter 导弹烟迹 / 弹体 / 命中环，供空战视觉验收。普通 App 启动不设置这些变量，初始单位、默认镜头和实时玩法不变。
+- iOS Simulator launch probe：额外构建 simulator app、安装到可用 iPhone simulator、启动 App、等待短时间、截图、抓取 App 日志，并确认 `DesertFrontline` 进程仍在运行，用于捕捉启动闪退 / 白屏黑屏一类 build-only 无法覆盖的问题。云端 launch 当前通过 `SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=air` 聚焦中央空战区域，并通过 `SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE=1` 暂停经济、AI、战斗和胜负推进；air capture scene 临时编排 Blue / Red HEL/JET、方向投影和持久 Fighter 导弹烟迹 / 弹体 / 命中环，同时用于核对 HEL 座舱 / 旋翼 / 尾桨与 JET 座舱 / 挂弹 / 尾翼轮廓。普通 App 启动不设置这些变量，初始单位、默认镜头和实时玩法不变。
 - 结果包生成和上传。
 
 云端 Xcode build 命令：
