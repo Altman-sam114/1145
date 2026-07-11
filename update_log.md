@@ -4553,3 +4553,32 @@
 - 云端冻结截图证明多选集火标与启动稳定性，但不能覆盖真实切换目标、目标死亡 / 迷雾切换、陆海混选和长时间性能，仍需人工真机玩法检查。
 - 当前没有独立 XCTest target，共用目标统计主要由源码边界、云端 build 与差分截图覆盖。
 - 下一轮可继续增强海空战斗细节，例如舰炮方位扇区、爆炸分层或编队集火 HUD 摘要，并保持单一可云端验证增量。
+### v4.84 / 选中舰炮射程圈
+
+日期：2026-07-12
+
+核心变更：
+
+- 选中玩家存活且 operational 的 Battleship / Coastal Battery 时，实体 `navalGunRangeNode` 显示基于 `attackRange` 的暖色等距压缩射程椭圆。
+- 取消选中即隐藏；与护航半径环、声呐圈、防空威胁圈分离，只读不改射程、伤害、AI 或迷雾。
+- CI air capture 额外把玩家 Battleship 加入选中集合，使主截图可同时保留空战证据与舰炮射程圈。
+- README、核心 flow、flowchart、测试规范和 v4.84 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.84 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`853ebf4b39143714efbcf67800dcc28282ce74d3`，commit subject 为 `v4.84: 增加选中舰炮射程圈`。
+- GitHub Actions run：`29166894912`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.84-main-853ebf4b3914-run29166894912-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29166894912/`。
+- manifest 记录 `branch=main`、`commitSha=853ebf4b39143714efbcf67800dcc28282ce74d3`、`runId=29166894912`、`version=v4.84`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；八次启动 PID `6582`、`8057`、`8692`、`9286`、`9834`、`10370`、`10579`、`11296` 等待后均仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 云端截图为真实战场而非黑屏或白屏；相对 v4.83 baseline 差分热区约 0.68%，下半幅暖橙色样本显著增加，符合舰炮射程圈叠加；空战意图线、集火标、伤害飘字与 command marker 探针继续可用。
+- 源码审阅确认 `shouldShowNavalGunRange` 仅对玩家选中 operational BB/CB 生效。
+
+遗留事项：
+
+- 云端冻结截图证明选中舰炮射程圈与启动稳定性，但不能覆盖真实旋转朝向扇区、岸防炮单独选中、雾内目标切换和长时间性能，仍需人工真机玩法检查。
+- 当前没有独立 XCTest target，显示过滤主要由源码边界、云端 build 与差分截图覆盖。
+- 下一轮可继续增强海空细节，例如爆炸分层、舰艏朝向射击弧或编队集火 HUD 摘要，并保持单一可云端验证增量。
