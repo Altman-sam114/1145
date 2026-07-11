@@ -4493,3 +4493,32 @@
 - 云端冻结截图证明选中态分色意图线与启动稳定性，但不能覆盖真实连续下令、目标死亡 / 迷雾切换、多 domain 混选和长时间性能，仍需人工真机玩法检查。
 - 当前没有独立 XCTest target，意图优先级与隐藏逻辑主要由源码边界、云端 build 与差分截图覆盖。
 - 下一轮可继续增强战斗可读性，例如命中飘字 / 伤害数字、海军交战方位扇区或选中编队共用目标标记，并保持单一可云端验证增量。
+### v4.82 / 命中伤害飘字
+
+日期：2026-07-12
+
+核心变更：
+
+- `fire(attacker:target:)` 对玩家单位或玩家已知敌方目标显示短促伤害飘字 `-\(Int)`，进入 `effectsLayer` 后上浮淡出。
+- 显示边界复用 `isKnownToFaction(..., observer: .player)`；未知敌军不显示，不改变伤害、目标、AI 或迷雾。
+- CI air capture 在导弹命中附近冻结 persistent 示例飘字，便于主截图核对。
+- README、核心 flow、flowchart、测试规范和 v4.82 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.82 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`09c728597b7b0cba0ba838da26eab8ffd4a5b027`，commit subject 为 `v4.82: 增加命中伤害飘字反馈`。
+- GitHub Actions run：`29166263191`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.82-main-09c728597b7b-run29166263191-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29166263191/`。
+- manifest 记录 `branch=main`、`commitSha=09c728597b7b0cba0ba838da26eab8ffd4a5b027`、`runId=29166263191`、`version=v4.82`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；八次启动 PID `19362`、`20538`、`21233`、`22123`、`22639`、`23091`、`23401`、`23868` 等待后均仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 云端截图为真实战场而非黑屏或白屏；相对 v4.81 baseline 差分热区约 0.12%，空战区域可见黄橙色伤害飘字样本，command marker 与意图线探针继续可用。
+- 源码审阅确认飘字只读、迷雾边界正确，CI persistent 示例不进入普通启动。
+
+遗留事项：
+
+- 云端冻结截图证明可见命中飘字与启动稳定性，但不能覆盖真实连射、多单位重叠、目标移出迷雾和长时间性能，仍需人工真机玩法检查。
+- 当前没有独立 XCTest target，显示过滤主要由源码边界、云端 build 与差分截图覆盖。
+- 下一轮可继续增强战斗/海空细节，例如选中编队共用目标标线、舰炮方位扇区或更细的爆炸分层，并保持单一可云端验证增量。
