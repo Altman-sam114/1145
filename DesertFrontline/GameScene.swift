@@ -567,6 +567,49 @@ private enum HudAction: String, CaseIterable {
     }
 }
 
+private enum HudPage: String, CaseIterable {
+    case tactical
+    case build
+    case air
+    case naval
+    case support
+
+    var title: String {
+        switch self {
+        case .tactical: "TACT"
+        case .build: "BUILD"
+        case .air: "AIR"
+        case .naval: "SEA"
+        case .support: "SUP"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .tactical: "orders"
+        case .build: "base"
+        case .air: "wing"
+        case .naval: "fleet"
+        case .support: "ops"
+        }
+    }
+
+    var actions: [HudAction] {
+        switch self {
+        case .tactical:
+            [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .attackMove, .setRally, .focusHQ]
+        case .build:
+            [.buildHumvee, .buildAATruck, .buildTank, .buildArtillery, .buildMechanic, .buildBase]
+        case .air:
+            [.buildHelicopter, .buildFighter]
+        case .naval:
+            [.buildBattleship, .buildSubmarine, .buildCarrier]
+        case .support:
+            [.reconSweep, .fieldRepair, .airStrike, .navalBarrage, .cycleAI, .newSkirmish]
+        }
+    }
+}
+
 private enum SupportPower: CaseIterable, Hashable {
     case reconSweep
     case fieldRepair
@@ -934,6 +977,9 @@ final class GameScene: SKScene {
     private var hudButtonFrames: [HudAction: CGRect] = [:]
     private var hudButtonSubtitleLabels: [HudAction: SKLabelNode] = [:]
     private var hudButtonShapes: [HudAction: SKShapeNode] = [:]
+    private var hudPage: HudPage = .tactical
+    private var hudPageFrames: [HudPage: CGRect] = [:]
+    private var hudPageShapes: [HudPage: SKShapeNode] = [:]
     private var minimapFrame = CGRect.zero
     private var minimapBlipsNode = SKNode()
     private var minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 36, height: 24), cornerRadius: 2)
@@ -975,6 +1021,11 @@ final class GameScene: SKScene {
     override func didMove(to view: SKView) {
         backgroundColor = UIColor(white: 0.04, alpha: 1.0)
         view.isMultipleTouchEnabled = true
+        if isCICaptureMode,
+           let rawPage = ProcessInfo.processInfo.environment["DESERT_CI_HUD_PAGE"],
+           let ciPage = HudPage(rawValue: rawPage) {
+            hudPage = ciPage
+        }
 
         addChild(worldNode)
         worldNode.addChild(mapNode)
@@ -2470,6 +2521,8 @@ final class GameScene: SKScene {
         hudButtonFrames.removeAll()
         hudButtonSubtitleLabels.removeAll()
         hudButtonShapes.removeAll()
+        hudPageFrames.removeAll()
+        hudPageShapes.removeAll()
         selectionInfoRowLabels.removeAll()
 
         let halfW = size.width / 2
@@ -2505,14 +2558,12 @@ final class GameScene: SKScene {
         incomeLabel.position = CGPoint(x: -halfW + 79, y: halfH - 75)
         hudNode.addChild(incomeLabel)
 
-        let actions: [HudAction] = [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .attackMove, .buildHumvee, .buildAATruck, .buildTank, .buildArtillery, .buildMechanic, .buildHelicopter, .buildFighter, .buildBattleship, .buildSubmarine, .buildCarrier, .setRally, .buildBase, .reconSweep, .fieldRepair, .airStrike, .navalBarrage, .cycleAI, .focusHQ, .newSkirmish]
-        let minimumCommandButtonWidth: CGFloat = 48
-        let nonCompactCommandGap: CGFloat = 7
-        let nonCompactCommandWidth = CGFloat(actions.count) * minimumCommandButtonWidth + CGFloat(actions.count - 1) * nonCompactCommandGap + 32
-        let compactHUD = size.width < max(1180, nonCompactCommandWidth)
-        let commandBarRows = compactHUD ? 2 : 1
-        let commandButtonHeight: CGFloat = compactHUD ? 54 : 76
-        let commandBarHeight = CGFloat(commandBarRows) * commandButtonHeight + CGFloat(commandBarRows - 1) * 6
+        let actions = hudPage.actions
+        let pages = HudPage.allCases
+        let compactHUD = size.width < 1180
+        let minimumCommandButtonWidth: CGFloat = compactHUD ? 40 : 48
+        let commandButtonHeight: CGFloat = compactHUD ? 54 : 68
+        let commandBarHeight = commandButtonHeight
         let commandBarTop = -halfH + 18 + commandBarHeight
 
         selectedLabel = SKLabelNode(fontNamed: "Menlo-Bold")
@@ -2605,35 +2656,32 @@ final class GameScene: SKScene {
 
         let gap: CGFloat = compactHUD ? 5 : 7
         let availableWidth = size.width - 32
-        let maxButtonsPerRow = compactHUD ? Int(ceil(Double(actions.count) / 2.0)) : actions.count
-        let buttonWidth = min(compactHUD ? 76 : 86, (availableWidth - CGFloat(maxButtonsPerRow - 1) * gap) / CGFloat(maxButtonsPerRow))
-        let buttonSize = CGSize(width: max(minimumCommandButtonWidth, buttonWidth), height: commandButtonHeight)
-        let rowCounts = commandRowCounts(total: actions.count, rows: commandBarRows)
-        var actionIndex = 0
+        let pageButtonWidth: CGFloat = compactHUD ? 44 : 64
+        let elementCount = pages.count + actions.count
+        let gapWidth = CGFloat(max(0, elementCount - 1)) * gap
+        let actionWidth = min(
+            compactHUD ? 76 : 86,
+            (availableWidth - CGFloat(pages.count) * pageButtonWidth - gapWidth) / CGFloat(actions.count)
+        )
+        let buttonSize = CGSize(width: max(minimumCommandButtonWidth, actionWidth), height: commandButtonHeight)
+        let totalWidth = CGFloat(pages.count) * pageButtonWidth + CGFloat(actions.count) * buttonSize.width + gapWidth
+        var x = -totalWidth / 2
+        let y = -halfH + 18 + commandButtonHeight / 2
 
-        for row in 0..<commandBarRows {
-            let count = rowCounts[row]
-            let totalWidth = CGFloat(count) * buttonSize.width + CGFloat(count - 1) * gap
-            var x = -totalWidth / 2 + buttonSize.width / 2
-            let y = -halfH + 18 + buttonSize.height / 2 + CGFloat(commandBarRows - row - 1) * (buttonSize.height + gap)
-
-            for _ in 0..<count {
-                let action = actions[actionIndex]
-                let frame = CGRect(x: x - buttonSize.width / 2, y: y - buttonSize.height / 2, width: buttonSize.width, height: buttonSize.height)
-                hudButtonFrames[action] = frame
-                hudNode.addChild(makeButton(action: action, frame: frame))
-                x += buttonSize.width + gap
-                actionIndex += 1
-            }
+        for page in pages {
+            let frame = CGRect(x: x, y: y - commandButtonHeight / 2, width: pageButtonWidth, height: commandButtonHeight)
+            hudPageFrames[page] = frame
+            hudNode.addChild(makeHudPageTab(page: page, frame: frame))
+            x += pageButtonWidth + gap
+        }
+        for action in actions {
+            let frame = CGRect(x: x, y: y - commandButtonHeight / 2, width: buttonSize.width, height: commandButtonHeight)
+            hudButtonFrames[action] = frame
+            hudNode.addChild(makeButton(action: action, frame: frame))
+            x += buttonSize.width + gap
         }
 
         refreshHudButtonStyles()
-    }
-
-    private func commandRowCounts(total: Int, rows: Int) -> [Int] {
-        guard rows > 1 else { return [total] }
-        let firstRow = Int(ceil(Double(total) / Double(rows)))
-        return [firstRow, total - firstRow]
     }
 
     private func addMinimap(frame: CGRect) {
@@ -2733,7 +2781,7 @@ final class GameScene: SKScene {
 
         let title = SKLabelNode(fontNamed: "Menlo-Bold")
         title.text = action.title
-        title.fontSize = frame.width < 62 ? 13 : 16
+        title.fontSize = frame.width < 48 ? 10 : (frame.width < 62 ? 13 : 16)
         title.fontColor = .white
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
@@ -2742,7 +2790,7 @@ final class GameScene: SKScene {
 
         let subtitleLabel = SKLabelNode(fontNamed: "Menlo")
         subtitleLabel.text = subtitle(for: action)
-        subtitleLabel.fontSize = frame.width < 62 ? 7 : 9
+        subtitleLabel.fontSize = frame.width < 48 ? 6 : (frame.width < 62 ? 7 : 9)
         subtitleLabel.fontColor = UIColor(white: 0.92, alpha: 1.0)
         subtitleLabel.verticalAlignmentMode = .center
         subtitleLabel.horizontalAlignmentMode = .center
@@ -2750,6 +2798,38 @@ final class GameScene: SKScene {
         node.addChild(subtitleLabel)
         hudButtonSubtitleLabels[action] = subtitleLabel
 
+        return node
+    }
+
+    private func makeHudPageTab(page: HudPage, frame: CGRect) -> SKNode {
+        let node = SKNode()
+        node.name = "hud-page:\(page.rawValue)"
+        node.position = CGPoint(x: frame.midX, y: frame.midY)
+
+        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 7)
+        shape.fillColor = hudPageColor(page, active: page == hudPage)
+        shape.strokeColor = UIColor.black
+        shape.lineWidth = 3
+        node.addChild(shape)
+        hudPageShapes[page] = shape
+
+        let title = SKLabelNode(fontNamed: "Menlo-Bold")
+        title.text = page.title
+        title.fontSize = frame.width < 48 ? 9 : (frame.width < 60 ? 10 : 12)
+        title.fontColor = .white
+        title.verticalAlignmentMode = .center
+        title.horizontalAlignmentMode = .center
+        title.position = CGPoint(x: 0, y: 8)
+        node.addChild(title)
+
+        let subtitle = SKLabelNode(fontNamed: "Menlo")
+        subtitle.text = page.subtitle
+        subtitle.fontSize = frame.width < 48 ? 5.5 : (frame.width < 60 ? 6 : 7)
+        subtitle.fontColor = UIColor(white: 0.88, alpha: 1.0)
+        subtitle.verticalAlignmentMode = .center
+        subtitle.horizontalAlignmentMode = .center
+        subtitle.position = CGPoint(x: 0, y: -13)
+        node.addChild(subtitle)
         return node
     }
 
@@ -2782,6 +2862,36 @@ final class GameScene: SKScene {
                 shape.lineWidth = 4
                 shape.glowWidth = 0
             }
+        }
+        refreshHudPageStyles()
+    }
+
+    private func refreshHudPageStyles() {
+        for (page, shape) in hudPageShapes {
+            let isActive = page == hudPage
+            let containsArmedAction = page.actions.contains { isHudActionArmed($0) }
+            shape.fillColor = hudPageColor(page, active: isActive)
+            shape.strokeColor = isActive || containsArmedAction
+                ? UIColor(red: 1.0, green: 0.82, blue: 0.28, alpha: 1.0)
+                : UIColor.black
+            shape.lineWidth = isActive ? 4 : (containsArmedAction ? 3.5 : 3)
+            shape.glowWidth = containsArmedAction ? 2.5 : (isActive ? 1.2 : 0)
+        }
+    }
+
+    private func hudPageColor(_ page: HudPage, active: Bool) -> UIColor {
+        let alpha: CGFloat = active ? 0.98 : 0.82
+        switch page {
+        case .tactical:
+            return UIColor(red: active ? 0.16 : 0.10, green: active ? 0.48 : 0.25, blue: active ? 0.32 : 0.22, alpha: alpha)
+        case .build:
+            return UIColor(red: active ? 0.58 : 0.27, green: active ? 0.43 : 0.27, blue: active ? 0.18 : 0.20, alpha: alpha)
+        case .air:
+            return UIColor(red: active ? 0.30 : 0.16, green: active ? 0.48 : 0.28, blue: active ? 0.66 : 0.36, alpha: alpha)
+        case .naval:
+            return UIColor(red: active ? 0.10 : 0.08, green: active ? 0.42 : 0.25, blue: active ? 0.56 : 0.32, alpha: alpha)
+        case .support:
+            return UIColor(red: active ? 0.40 : 0.20, green: active ? 0.36 : 0.25, blue: active ? 0.48 : 0.30, alpha: alpha)
         }
     }
 
@@ -4151,6 +4261,12 @@ final class GameScene: SKScene {
             beginPinchPan(with: activeTouches)
             return
         }
+        if let page = hudPage(at: uiPoint) {
+            handleHudPage(page)
+            touchStartScene = nil
+            touchStartWorld = nil
+            return
+        }
         if let action = hudAction(at: uiPoint) {
             handleHudAction(action, tapCount: touch.tapCount)
             touchStartScene = nil
@@ -4355,6 +4471,20 @@ final class GameScene: SKScene {
             return action
         }
         return nil
+    }
+
+    private func hudPage(at point: CGPoint) -> HudPage? {
+        for (page, frame) in hudPageFrames where frame.contains(point) {
+            return page
+        }
+        return nil
+    }
+
+    private func handleHudPage(_ page: HudPage) {
+        guard page != hudPage else { return }
+        hudPage = page
+        layoutHUD()
+        updateHUD()
     }
 
     private func handleHudAction(_ action: HudAction, tapCount: Int = 1) {
@@ -5180,6 +5310,7 @@ final class GameScene: SKScene {
         pendingConstructionKind = nil
         pendingSupportPower = nil
         structureBuildCursor = 0
+        hudPage = .tactical
         supportCooldowns.removeAll()
         supportRevealTiles.removeAll()
         isSettingRallyPoint = false

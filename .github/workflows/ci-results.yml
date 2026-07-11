@@ -83,7 +83,7 @@ jobs:
           set -o pipefail
           {
             set -euo pipefail
-            rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-app.log
+            rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-hud-build.png ci-results/simulator-hud-air.png ci-results/simulator-hud-naval.png ci-results/simulator-hud-support.png ci-results/simulator-app.log
 
             /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
               -project DesertFrontline.xcodeproj \
@@ -108,22 +108,36 @@ jobs:
             xcrun simctl bootstatus "${sim_udid}" -b
             xcrun simctl install "${sim_udid}" "${app_path}"
             bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${app_path}/Info.plist")"
-            echo "Launching ${bundle_id}"
-            launch_output="$(SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=air SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE=1 xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}")"
-            echo "${launch_output}"
-            app_pid="${launch_output##*: }"
-            if [[ ! "${app_pid}" =~ ^[0-9]+$ ]]; then
-              echo "Could not parse app PID from simctl launch output: ${launch_output}"
-              exit 1
-            fi
-            sleep 8
-            xcrun simctl io "${sim_udid}" screenshot ci-results/simulator-screenshot.png || true
+            launch_hud_page() {
+              local page="$1"
+              local screenshot_path="$2"
+              local wait_seconds="$3"
+              local launch_output
+              local app_pid
+
+              echo "Launching ${bundle_id} with HUD page ${page}"
+              launch_output="$(SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=air SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE=1 SIMCTL_CHILD_DESERT_CI_HUD_PAGE="${page}" xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}")"
+              echo "${launch_output}"
+              app_pid="${launch_output##*: }"
+              if [[ ! "${app_pid}" =~ ^[0-9]+$ ]]; then
+                echo "Could not parse app PID from simctl launch output: ${launch_output}"
+                exit 1
+              fi
+              sleep "${wait_seconds}"
+              xcrun simctl io "${sim_udid}" screenshot "${screenshot_path}"
+              if ! kill -0 "${app_pid}" 2>/dev/null; then
+                echo "DesertFrontline ${page} HUD process ${app_pid} exited during the launch probe."
+                exit 1
+              fi
+              echo "DesertFrontline ${page} HUD process ${app_pid} is still running."
+            }
+
+            launch_hud_page tactical ci-results/simulator-screenshot.png 8
+            launch_hud_page build ci-results/simulator-hud-build.png 4
+            launch_hud_page air ci-results/simulator-hud-air.png 4
+            launch_hud_page naval ci-results/simulator-hud-naval.png 4
+            launch_hud_page support ci-results/simulator-hud-support.png 4
             xcrun simctl spawn "${sim_udid}" log show --last 2m --predicate 'process == "DesertFrontline"' > ci-results/simulator-app.log || true
-            if ! kill -0 "${app_pid}" 2>/dev/null; then
-              echo "DesertFrontline process ${app_pid} exited during the launch probe."
-              exit 1
-            fi
-            echo "DesertFrontline process ${app_pid} is still running."
             xcrun simctl shutdown "${sim_udid}" || true
           } 2>&1 | tee ci-results/simulator-launch.log
 
@@ -262,6 +276,10 @@ jobs:
                   "ci-results/simulator-launch.log",
                   "ci-results/simulator-app.log",
                   "ci-results/simulator-screenshot.png",
+                  "ci-results/simulator-hud-build.png",
+                  "ci-results/simulator-hud-air.png",
+                  "ci-results/simulator-hud-naval.png",
+                  "ci-results/simulator-hud-support.png",
               ],
           }
           (results_dir / "ci-artifact-manifest.json").write_text(

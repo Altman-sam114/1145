@@ -26,7 +26,7 @@ flowchart TD
   Combat --> Render
   AI --> Render
   Fog --> Render
-  Mission --> HUD["HUD / 小地图\n金钱、队列、生产来源提示、航母甲板/集结/普通翼队组成/GW组成与紧凑绑定站位/接触数类型目标交战状态/多选CV GW组成摘要/HEL-JET CV GUARD组成与距离状态/HOLD Carrier无bound wing也显示anchor范围圈、高价值海军护航状态/缺口类型/半径圈/多选摘要、Mechanic维修反馈/来源提示/范围圈、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、命令高亮、支援按钮缺资产/资金提示、目标面板资产提示、领域化小地图符号/选择外圈/相机框"]
+  Mission --> HUD["HUD / 小地图\nTACT/BUILD/AIR/SEA/SUP五页单排命令条、金钱、队列、生产来源提示、航母甲板/集结/普通翼队组成/GW组成与紧凑绑定站位/接触数类型目标交战状态/多选CV GW组成摘要/HEL-JET CV GUARD组成与距离状态/HOLD Carrier无bound wing也显示anchor范围圈、高价值海军护航状态/缺口类型/半径圈/多选摘要、Mechanic维修反馈/来源提示/范围圈、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、跨页命令高亮、支援按钮缺资产/资金提示、目标面板资产提示、领域化小地图符号/选择外圈/相机框"]
   Render --> HUD
 ```
 
@@ -36,8 +36,10 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  Touch["玩家触摸输入\nBegan / Moved / Ended"] --> HUDCheck{"是否点到 HUD 按钮"}
-  HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\nHOLD/Carrier guard wing anchor station/分配cue/脱离反馈/近域威胁优先状态、AMOV、生产、支援、AI、重开\n终局AMOV提示已知HQ并刷新面板摘要\npending按钮高亮由状态刷新"]
+  Touch["玩家触摸输入\nBegan / Moved / Ended"] --> PageCheck{"是否点到 TACT/BUILD/AIR/SEA/SUP 页签"}
+  PageCheck -- "是" --> PageSwitch["handleHudPage\n只切换单排动作页并重建HUD\n保留选择/队列/pending状态"]
+  PageCheck -- "否" --> HUDCheck{"是否点到当前页 HUD 按钮"}
+  HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\nHOLD/Carrier guard wing anchor station/分配cue/脱离反馈/近域威胁优先状态、AMOV、生产、支援、AI、重开\n终局AMOV提示已知HQ并刷新面板摘要\npending按钮及所属隐藏页签高亮由状态刷新"]
   HUDCheck -- "否" --> MiniMap{"是否点到小地图"}
   MiniMap -- "是" --> Camera["移动相机到小地图位置"]
   MiniMap -- "否" --> MultiTouch{"是否双指触摸"}
