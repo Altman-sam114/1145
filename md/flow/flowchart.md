@@ -15,7 +15,7 @@ flowchart TD
   Init --> Loop["GameScene.update 每帧循环\n统一推进游戏状态"]
   Loop --> Build["施工 / 生产\n建筑进度、RAD/SON/GT/SAM/CB、AA Truck、旗点覆盖、BuildOrder、出兵、航母甲板起飞反馈、集结点与面板状态"]
   Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖、旗点奖金与占领进度"]
-  Loop --> Commands["移动 / 命令\n普通移动、海军方向航迹、空军方向投影/84间距/同阵营避让/攻击环站位、HOLD、Carrier guard wing最多2架anchor station/分配组成cue/脱离反馈、AMOV、已知HQ指引和面板摘要、路径和编队"]
+  Loop --> Commands["移动 / 命令\nMOVE青绿落点、AMOV琥珀双环、已知目标ATK红框、海军方向航迹、空军方向投影/84间距/同阵营避让/攻击环站位、HOLD、Carrier guard wing最多2架anchor station/分配组成cue/脱离反馈、已知HQ指引和面板摘要、路径和编队"]
   Loop --> Combat["战斗 / 维修\n未完工攻击结构禁火、SAM/AA 防空与选中空军已知覆盖威胁圈/顶标/摘要、岸防反舰、目标搜索、Carrier guard wing近域威胁优先、有效伤害、空战导弹烟迹/弹体/命中环、航母 wing strike、可见水面舰炮命中水柱、已知潜艇 direct-fire ASW HIT、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
   Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、已知潜艇压力补 ASW、合法认知 SCAN 巡扫、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、海岸目标权重、跳过不可生产兵种、支援、混编主攻波次、低血单位撤退回修、受损老兵保护、空闲Carrier警戒翼队、高价值海军护航门槛、attack-move 波次"]
   Loop --> Fog["战争迷雾\n单位/已完工建筑/RAD/脆弱专职 SON/GT/SAM/CB 视野、侦察、潜艇检测、支援命中暴露"]
@@ -48,7 +48,7 @@ flowchart TD
   Pending -- "建筑" --> Place["放置预览 / placeStructure\n检查视野、基地/旗点覆盖、地形规则和资金"]
   Pending -- "支援技能" --> Support["executeSupportPower\n检查资金、冷却、资产需求、效果"]
   Pending -- "集结点" --> Rally["setRallyPoint\npending面板显示来源摘要\n生产来源设置出兵目标"]
-  Pending -- "AMOV" --> AttackMove["issueAttackMoveOrder\n编队推进并沿途交战"]
+  Pending -- "AMOV" --> AttackMove["issueAttackMoveOrder\n编队推进并沿途交战\n琥珀AMOV双环落点"]
   Place -- "无效目标" --> Denied["showDeniedMarker\n点击位置短暂红橙拒绝反馈"]
   Support -- "无效目标" --> Denied
   Rally -- "无有效来源" --> Denied
@@ -56,8 +56,8 @@ flowchart TD
   Pending -- "无" --> WorldTap{"世界点击目标"}
   WorldTap -- "双击己方机动单位" --> TypeSelect["选择当前视野内同 kind 玩家机动单位"]
   WorldTap -- "单击己方实体/建筑" --> Select["选中实体 / refreshSelection"]
-  WorldTap -- "可见敌人" --> Attack["设置 attackTarget\n进入攻击链路\n必要时提示CV guard released"]
-  WorldTap -- "地面" --> Move["issueFormationMove\n按陆空海分组移动\n必要时提示CV guard released"]
+  WorldTap -- "可见敌人" --> Attack["至少一个合法攻击者设置attackTarget\n红色footprint-aware ATK框\n必要时提示CV guard released"]
+  WorldTap -- "地面" --> Move["issueFormationMove\n按陆空海分组移动\n青绿色MOVE落点\n必要时提示CV guard released"]
   Attack -- "选中单位都不能攻击" --> Denied
   Move -- "无移动单位或集结来源" --> Denied
   Touch --> Drag{"单指拖动空地"}

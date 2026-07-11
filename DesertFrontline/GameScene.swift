@@ -4741,6 +4741,11 @@ final class GameScene: SKScene {
                     assignedAttackers += 1
                 }
                 if assignedAttackers > 0 {
+                    showAttackTargetMarker(
+                        at: tapped.node.position,
+                        footprint: tapped.kind.footprint,
+                        label: tapped.kind.shortCode
+                    )
                     showMessage("Attack order: \(tapped.kind.displayName).\(carrierGuardReleaseSuffix(for: guardReleaseWing))", color: UIColor(red: 1.0, green: 0.62, blue: 0.35, alpha: 1.0))
                 } else {
                     showDeniedMarker(at: tapped.node.position, reason: "NO ATK")
@@ -6403,6 +6408,28 @@ final class GameScene: SKScene {
             faction: .player,
             persistent: true
         )
+
+        switch ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] {
+        case "move":
+            showMoveMarker(
+                at: playerAnchor + CGPoint(x: -120, y: -150),
+                persistent: true
+            )
+        case "attack-move":
+            showAttackMoveMarker(
+                at: (playerAnchor + enemyAnchor) * 0.5 + CGPoint(x: 0, y: -150),
+                persistent: true
+            )
+        case "attack-target":
+            showAttackTargetMarker(
+                at: enemyFighter.node.position,
+                footprint: enemyFighter.kind.footprint,
+                label: enemyFighter.kind.shortCode,
+                persistent: true
+            )
+        default:
+            break
+        }
     }
 
     private func updateCombat(dt: TimeInterval) {
@@ -8310,42 +8337,156 @@ final class GameScene: SKScene {
         messageLabel.run(.sequence([.wait(forDuration: 3.2), .fadeAlpha(to: victoryState == nil ? 0.25 : 1, duration: 0.45)]))
     }
 
-    private func showMoveMarker(at point: CGPoint) {
-        let marker = SKShapeNode(ellipseOf: CGSize(width: 28, height: 14))
-        marker.position = point
-        marker.strokeColor = UIColor(red: 0.2, green: 1.0, blue: 0.35, alpha: 1.0)
-        marker.fillColor = .clear
-        marker.lineWidth = 3
-        marker.zPosition = 260
-        effectsLayer.addChild(marker)
-        marker.run(.sequence([.group([.scale(to: 1.8, duration: 0.35), .fadeOut(withDuration: 0.35)]), .removeFromParent()]))
-    }
+    private func showMoveMarker(at point: CGPoint, persistent: Bool = false) {
+        let color = UIColor(red: 0.24, green: 1.0, blue: 0.62, alpha: 1.0)
+        let node = SKNode()
+        node.position = point
+        node.zPosition = 264
 
-    private func showAttackMoveMarker(at point: CGPoint) {
-        let color = UIColor(red: 1.0, green: 0.58, blue: 0.20, alpha: 1.0)
-        let ring = SKShapeNode(ellipseOf: CGSize(width: 42, height: 20))
-        ring.position = point
+        let ring = SKShapeNode(ellipseOf: CGSize(width: 50, height: 24))
         ring.strokeColor = color
-        ring.fillColor = color.withAlphaComponent(0.08)
+        ring.fillColor = color.withAlphaComponent(0.12)
         ring.lineWidth = 3
         ring.glowWidth = 1.5
-        ring.zPosition = 264
-        effectsLayer.addChild(ring)
-        ring.run(.sequence([.group([.scale(to: 1.65, duration: 0.42), .fadeOut(withDuration: 0.42)]), .removeFromParent()]))
+        node.addChild(ring)
+
+        let arrowPath = CGMutablePath()
+        arrowPath.move(to: CGPoint(x: -13, y: 0))
+        arrowPath.addLine(to: CGPoint(x: 8, y: 0))
+        arrowPath.move(to: CGPoint(x: 1, y: 7))
+        arrowPath.addLine(to: CGPoint(x: 9, y: 0))
+        arrowPath.addLine(to: CGPoint(x: 1, y: -7))
+        for side in [-1.0, 1.0] {
+            let x = CGFloat(side) * 30
+            arrowPath.move(to: CGPoint(x: x, y: -5))
+            arrowPath.addLine(to: CGPoint(x: x, y: 5))
+        }
+        let arrow = SKShapeNode(path: arrowPath)
+        arrow.strokeColor = color
+        arrow.lineWidth = 3
+        arrow.lineCap = .round
+        arrow.lineJoin = .round
+        node.addChild(arrow)
+
+        let label = commandMarkerLabel(text: "MOVE", color: color, y: 22)
+        node.addChild(label)
+        presentCommandMarker(node, persistent: persistent, exitScale: 1.28)
+    }
+
+    private func showAttackMoveMarker(at point: CGPoint, persistent: Bool = false) {
+        let color = UIColor(red: 1.0, green: 0.58, blue: 0.20, alpha: 1.0)
+        let node = SKNode()
+        node.position = point
+        node.zPosition = 266
+
+        let ring = SKShapeNode(ellipseOf: CGSize(width: 62, height: 30))
+        ring.strokeColor = color
+        ring.fillColor = color.withAlphaComponent(0.14)
+        ring.lineWidth = 3
+        ring.glowWidth = 2
+        node.addChild(ring)
+
+        let innerRing = SKShapeNode(ellipseOf: CGSize(width: 38, height: 18))
+        innerRing.strokeColor = color.withAlphaComponent(0.78)
+        innerRing.fillColor = .clear
+        innerRing.lineWidth = 2
+        node.addChild(innerRing)
 
         let crossPath = CGMutablePath()
-        crossPath.move(to: CGPoint(x: -16, y: 0))
-        crossPath.addLine(to: CGPoint(x: 16, y: 0))
-        crossPath.move(to: CGPoint(x: 0, y: -12))
-        crossPath.addLine(to: CGPoint(x: 0, y: 12))
+        crossPath.move(to: CGPoint(x: -18, y: 0))
+        crossPath.addLine(to: CGPoint(x: 18, y: 0))
+        crossPath.move(to: CGPoint(x: 0, y: -11))
+        crossPath.addLine(to: CGPoint(x: 0, y: 11))
+        crossPath.move(to: CGPoint(x: 8, y: 7))
+        crossPath.addLine(to: CGPoint(x: 18, y: 0))
+        crossPath.addLine(to: CGPoint(x: 8, y: -7))
         let cross = SKShapeNode(path: crossPath)
-        cross.position = point
         cross.strokeColor = color
         cross.lineWidth = 3
         cross.lineCap = .round
-        cross.zPosition = 265
-        effectsLayer.addChild(cross)
-        cross.run(.sequence([.group([.scale(to: 1.35, duration: 0.42), .fadeOut(withDuration: 0.42)]), .removeFromParent()]))
+        cross.lineJoin = .round
+        node.addChild(cross)
+
+        let label = commandMarkerLabel(text: "AMOV", color: color, y: 26)
+        node.addChild(label)
+        presentCommandMarker(node, persistent: persistent, exitScale: 1.24)
+    }
+
+    private func showAttackTargetMarker(at point: CGPoint, footprint: CGFloat, label: String, persistent: Bool = false) {
+        let color = UIColor(red: 1.0, green: 0.30, blue: 0.20, alpha: 1.0)
+        let width = max(64, min(112, footprint * 1.55))
+        let height = max(34, width * 0.52)
+        let halfWidth = width * 0.5
+        let halfHeight = height * 0.5
+        let cornerLength = min(18, width * 0.22)
+        let node = SKNode()
+        node.position = point
+        node.zPosition = 268
+
+        let ring = SKShapeNode(ellipseOf: CGSize(width: width * 0.82, height: height * 0.72))
+        ring.strokeColor = color.withAlphaComponent(0.82)
+        ring.fillColor = color.withAlphaComponent(0.08)
+        ring.lineWidth = 2
+        ring.glowWidth = 1.5
+        node.addChild(ring)
+
+        let bracketPath = CGMutablePath()
+        for xSide in [-1.0, 1.0] {
+            for ySide in [-1.0, 1.0] {
+                let x = CGFloat(xSide) * halfWidth
+                let y = CGFloat(ySide) * halfHeight
+                bracketPath.move(to: CGPoint(x: x - CGFloat(xSide) * cornerLength, y: y))
+                bracketPath.addLine(to: CGPoint(x: x, y: y))
+                bracketPath.addLine(to: CGPoint(x: x, y: y - CGFloat(ySide) * cornerLength * 0.65))
+            }
+        }
+        let brackets = SKShapeNode(path: bracketPath)
+        brackets.strokeColor = color
+        brackets.lineWidth = 4
+        brackets.lineCap = .square
+        brackets.lineJoin = .round
+        node.addChild(brackets)
+
+        let dot = SKShapeNode(circleOfRadius: 3.5)
+        dot.fillColor = color
+        dot.strokeColor = .white
+        dot.lineWidth = 1
+        node.addChild(dot)
+
+        let labelNode = commandMarkerLabel(text: "ATK \(label)", color: color, y: halfHeight + 11)
+        node.addChild(labelNode)
+        presentCommandMarker(node, persistent: persistent, exitScale: 1.16)
+    }
+
+    private func commandMarkerLabel(text: String, color: UIColor, y: CGFloat) -> SKLabelNode {
+        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label.text = text
+        label.fontSize = 11
+        label.fontColor = color
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.position = CGPoint(x: 0, y: y)
+        return label
+    }
+
+    private func presentCommandMarker(_ node: SKNode, persistent: Bool, exitScale: CGFloat) {
+        effectsLayer.addChild(node)
+        guard !persistent else { return }
+
+        node.alpha = 0.25
+        node.setScale(0.78)
+        node.run(.sequence([
+            .group([
+                .fadeAlpha(to: 1.0, duration: 0.08),
+                .scale(to: 1.0, duration: 0.08)
+            ]),
+            .wait(forDuration: 0.18),
+            .group([
+                .scale(to: exitScale, duration: 0.42),
+                .fadeOut(withDuration: 0.42)
+            ]),
+            .removeFromParent()
+        ]))
     }
 
     private func showObjectiveTargetMarker(at point: CGPoint, label: String) {
