@@ -854,6 +854,7 @@ private final class GameEntity {
     let selectionNode: SKShapeNode
     let sonarCoverageNode = SKShapeNode()
     let escortCoverageNode = SKShapeNode()
+    let navalGunRangeNode = SKShapeNode()
     let repairCoverageNode = SKShapeNode()
     let carrierGuardAnchorCoverageNode = SKShapeNode()
     let airDefenseThreatCoverageNode = SKShapeNode()
@@ -1801,6 +1802,8 @@ final class GameScene: SKScene {
         entity.node.addChild(entity.sonarCoverageNode)
         configureEscortCoverageNode(for: entity)
         entity.node.addChild(entity.escortCoverageNode)
+        configureNavalGunRangeNode(for: entity)
+        entity.node.addChild(entity.navalGunRangeNode)
         configureRepairCoverageNode(for: entity)
         entity.node.addChild(entity.repairCoverageNode)
         configureCarrierGuardAnchorCoverageNode(for: entity)
@@ -6404,6 +6407,9 @@ final class GameScene: SKScene {
         }
 
         selectedIDs = Set(playerAir.map(\.id))
+        if let playerBattleship = entities.values.first(where: { $0.faction == .player && $0.kind == .battleship && $0.isAlive }) {
+            selectedIDs.insert(playerBattleship.id)
+        }
         // Freeze representative command intents for CI screenshot readability.
         playerFighter.attackTarget = enemyFighter
         playerFighter.destination = nil
@@ -8188,6 +8194,7 @@ final class GameScene: SKScene {
             entity.rallyNode.isHidden = !(selectedIDs.contains(entity.id) && entity.kind.supportsRallyPoint && entity.rallyPoint != nil)
             entity.sonarCoverageNode.isHidden = !shouldShowSonarCoverage(for: entity)
             entity.escortCoverageNode.isHidden = !shouldShowHighValueNavalEscortCoverage(for: entity)
+            entity.navalGunRangeNode.isHidden = !shouldShowNavalGunRange(for: entity)
             entity.repairCoverageNode.isHidden = !shouldShowMechanicRepairCoverage(for: entity)
             entity.carrierGuardAnchorCoverageNode.isHidden = !shouldShowCarrierGuardAnchorCoverage(for: entity)
             if !selectedIDs.contains(entity.id) {
@@ -8225,6 +8232,14 @@ final class GameScene: SKScene {
             entity.isOperational &&
             !entity.kind.isStructure &&
             highValueNavalEscortRequirement(for: entity.kind) != nil
+    }
+
+    private func shouldShowNavalGunRange(for entity: GameEntity) -> Bool {
+        selectedIDs.contains(entity.id) &&
+            entity.faction == .player &&
+            entity.isAlive &&
+            entity.isOperational &&
+            (entity.kind == .battleship || entity.kind == .coastalBattery)
     }
 
     private func shouldShowMechanicRepairCoverage(for entity: GameEntity) -> Bool {
@@ -8476,6 +8491,28 @@ final class GameScene: SKScene {
         entity.escortCoverageNode.glowWidth = 1.0
         entity.escortCoverageNode.zPosition = -5
         entity.escortCoverageNode.isHidden = true
+    }
+
+    private func configureNavalGunRangeNode(for entity: GameEntity) {
+        guard entity.kind == .battleship || entity.kind == .coastalBattery else {
+            entity.navalGunRangeNode.isHidden = true
+            return
+        }
+
+        let range = entity.kind.attackRange
+        // isometric-friendly ellipse: full horizontal range, compressed vertical
+        let width = range * 2
+        let height = range * 1.05
+        entity.navalGunRangeNode.path = CGPath(
+            ellipseIn: CGRect(x: -width * 0.5, y: -height * 0.5, width: width, height: height),
+            transform: nil
+        )
+        entity.navalGunRangeNode.fillColor = UIColor(red: 1.0, green: 0.55, blue: 0.18, alpha: 0.03)
+        entity.navalGunRangeNode.strokeColor = UIColor(red: 1.0, green: 0.62, blue: 0.22, alpha: 0.58)
+        entity.navalGunRangeNode.lineWidth = entity.kind == .battleship ? 2.6 : 2.2
+        entity.navalGunRangeNode.glowWidth = 1.1
+        entity.navalGunRangeNode.zPosition = -6
+        entity.navalGunRangeNode.isHidden = true
     }
 
     private func configureRepairCoverageNode(for entity: GameEntity) {
