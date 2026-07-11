@@ -4582,3 +4582,33 @@
 - 云端冻结截图证明选中舰炮射程圈与启动稳定性，但不能覆盖真实旋转朝向扇区、岸防炮单独选中、雾内目标切换和长时间性能，仍需人工真机玩法检查。
 - 当前没有独立 XCTest target，显示过滤主要由源码边界、云端 build 与差分截图覆盖。
 - 下一轮可继续增强海空细节，例如爆炸分层、舰艏朝向射击弧或编队集火 HUD 摘要，并保持单一可云端验证增量。
+### v4.85 / 分层爆炸与集火摘要
+
+日期：2026-07-12
+
+核心变更：
+
+- `explode` 改为烟尘底环、火核、亮芯、冲击环和确定性碎片点的分层短动画；支持 CI `persistent` 冻结。
+- 多选共享玩家已知攻击目标时，选择信息面板增加只读 `FOCUS n Tgt <shortCode>` 摘要，与战场集火标共用 `sharedFocusFireTarget`。
+- CI air capture 在敌机附近显示 persistent 分层爆炸样本。
+- 不修改伤害、击杀结算、寻路、AI 或迷雾。
+- README、核心 flow、flowchart、测试规范和 v4.85 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.85 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`9b6b1bcb771830b485f50c22ab30342d2f1aeae6`，commit subject 为 `v4.85: 增强分层爆炸与集火摘要`。
+- GitHub Actions run：`29167897282`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.85-main-9b6b1bcb7718-run29167897282-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29167897282/`。
+- manifest 记录 `branch=main`、`commitSha=9b6b1bcb771830b485f50c22ab30342d2f1aeae6`、`runId=29167897282`、`version=v4.85`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；八次启动 PID `4808`、`5243`、`5775`、`6808`、`7167`、`7527`、`7718`、`7790` 等待后均仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 云端截图为真实战场而非黑屏或白屏；相对 v4.84 baseline 差分热区约 0.68%，橙色 / 亮核样本增加，符合分层爆炸叠加；既有意图线、集火标、伤害飘字、舰炮圈与 command marker 继续可用。
+- 源码审阅确认爆炸只改视觉，集火摘要与战场标共用同一过滤边界。
+
+遗留事项：
+
+- 云端冻结截图证明分层爆炸与 FOCUS 摘要的启动稳定性，但不能覆盖真实连杀、重叠爆炸性能和面板文案在所有多选组合下的优先级，仍需人工真机玩法检查。
+- 当前没有独立 XCTest target，摘要优先级主要由源码边界、云端 build 与差分截图覆盖。
+- 下一轮可继续增强海空细节，例如舰艏朝向射击弧、爆炸声画同步或小地图集火脉冲，并保持单一可云端验证增量。
