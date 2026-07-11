@@ -3753,7 +3753,10 @@ final class GameScene: SKScene {
                     ? "Holding \(holdingCount)  \(carrierGuardWingSummary ?? selectedCarrierGuardWingSummary ?? "Guard \(Int(holdEngagementRadius))")"
                     : attackMoveCount > 0
                         ? "Attack move \(attackMoveCount)  Seek \(Int(attackMoveEngagementRadius))"
-                        : airDefenseThreatSummary ?? highValueEscortSummary ?? groupVeterancyLine(for: selected)
+                        : focusFireSummaryLine(for: selected)
+                            ?? airDefenseThreatSummary
+                            ?? highValueEscortSummary
+                            ?? groupVeterancyLine(for: selected)
             ]
         )
     }
@@ -6448,6 +6451,11 @@ final class GameScene: SKScene {
             faction: .player,
             persistent: true
         )
+        explode(
+            at: enemyFighter.node.position + CGPoint(x: -28, y: -10),
+            scale: 0.85,
+            persistent: true
+        )
 
         switch ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] {
         case "move":
@@ -8268,9 +8276,7 @@ final class GameScene: SKScene {
         }
     }
 
-    private func refreshFocusFireMarker(for selected: [GameEntity]) {
-        focusFireMarkerNode.removeAllChildren()
-
+    private func sharedFocusFireTarget(for selected: [GameEntity]) -> (target: GameEntity, count: Int)? {
         let attackers = selected.filter {
             $0.faction == .player &&
             $0.isAlive &&
@@ -8289,13 +8295,26 @@ final class GameScene: SKScene {
                 counts[target.id] = (target, 1)
             }
         }
-
         guard let focus = counts.values.max(by: { left, right in
             if left.count == right.count {
                 return left.target.id > right.target.id
             }
             return left.count < right.count
         }), focus.count >= 2 else {
+            return nil
+        }
+        return focus
+    }
+
+    private func focusFireSummaryLine(for selected: [GameEntity]) -> String? {
+        guard let focus = sharedFocusFireTarget(for: selected) else { return nil }
+        return "FOCUS \(focus.count) Tgt \(focus.target.kind.shortCode)"
+    }
+
+    private func refreshFocusFireMarker(for selected: [GameEntity]) {
+        focusFireMarkerNode.removeAllChildren()
+
+        guard let focus = sharedFocusFireTarget(for: selected) else {
             focusFireMarkerNode.isHidden = true
             return
         }
@@ -9359,17 +9378,78 @@ final class GameScene: SKScene {
         return node
     }
 
-    private func explode(at point: CGPoint, scale: CGFloat) {
-        for index in 0..<4 {
-            let circle = SKShapeNode(circleOfRadius: CGFloat(16 + index * 8) * scale)
-            circle.position = point
-            circle.fillColor = UIColor(red: 1.0, green: 0.48, blue: 0.14, alpha: 0.36)
-            circle.strokeColor = UIColor(red: 1.0, green: 0.85, blue: 0.30, alpha: 0.7)
-            circle.lineWidth = 2
-            circle.zPosition = 280 + CGFloat(index)
-            effectsLayer.addChild(circle)
-            circle.run(.sequence([.group([.scale(to: 1.5, duration: 0.35), .fadeOut(withDuration: 0.35)]), .removeFromParent()]))
+    private func explode(at point: CGPoint, scale: CGFloat, persistent: Bool = false) {
+        let root = SKNode()
+        root.position = point
+        root.zPosition = 286
+        effectsLayer.addChild(root)
+
+        let smoke = SKShapeNode(ellipseOf: CGSize(width: 54 * scale, height: 28 * scale))
+        smoke.fillColor = UIColor(white: 0.18, alpha: 0.34)
+        smoke.strokeColor = UIColor(white: 0.55, alpha: 0.55)
+        smoke.lineWidth = 1.5
+        smoke.zPosition = 0
+        root.addChild(smoke)
+
+        let fire = SKShapeNode(circleOfRadius: 18 * scale)
+        fire.fillColor = UIColor(red: 1.0, green: 0.42, blue: 0.12, alpha: 0.55)
+        fire.strokeColor = UIColor(red: 1.0, green: 0.78, blue: 0.28, alpha: 0.9)
+        fire.lineWidth = 2
+        fire.glowWidth = 1.2
+        fire.zPosition = 1
+        root.addChild(fire)
+
+        let core = SKShapeNode(circleOfRadius: 8 * scale)
+        core.fillColor = UIColor(red: 1.0, green: 0.95, blue: 0.75, alpha: 0.95)
+        core.strokeColor = .clear
+        core.zPosition = 2
+        root.addChild(core)
+
+        let ring = SKShapeNode(circleOfRadius: 22 * scale)
+        ring.fillColor = .clear
+        ring.strokeColor = UIColor(red: 1.0, green: 0.70, blue: 0.25, alpha: 0.85)
+        ring.lineWidth = 2.4
+        ring.zPosition = 3
+        root.addChild(ring)
+
+        for index in 0..<6 {
+            let angle = CGFloat(index) * (.pi / 3.0) + CGFloat(Int(point.x + point.y) % 7) * 0.05
+            let debris = SKShapeNode(circleOfRadius: 2.4 * scale)
+            debris.fillColor = UIColor(red: 1.0, green: 0.55, blue: 0.18, alpha: 1.0)
+            debris.strokeColor = .clear
+            debris.position = CGPoint(x: cos(angle) * 6 * scale, y: sin(angle) * 4 * scale)
+            debris.zPosition = 4
+            root.addChild(debris)
+            if !persistent {
+                let outward = CGVector(dx: cos(angle) * 26 * scale, dy: sin(angle) * 18 * scale)
+                debris.run(.sequence([
+                    .group([
+                        .move(by: outward, duration: 0.38),
+                        .fadeOut(withDuration: 0.38)
+                    ]),
+                    .removeFromParent()
+                ]))
+            }
         }
+
+        guard !persistent else { return }
+        smoke.run(.sequence([
+            .group([.scale(to: 1.55, duration: 0.42), .fadeOut(withDuration: 0.42)]),
+            .removeFromParent()
+        ]))
+        fire.run(.sequence([
+            .group([.scale(to: 1.7, duration: 0.28), .fadeOut(withDuration: 0.28)]),
+            .removeFromParent()
+        ]))
+        core.run(.sequence([
+            .group([.scale(to: 1.9, duration: 0.18), .fadeOut(withDuration: 0.18)]),
+            .removeFromParent()
+        ]))
+        ring.run(.sequence([
+            .group([.scale(to: 2.1, duration: 0.34), .fadeOut(withDuration: 0.34)]),
+            .removeFromParent()
+        ]))
+        root.run(.sequence([.wait(forDuration: 0.45), .removeFromParent()]))
     }
 
     private func showRepairSpark(at point: CGPoint) {
