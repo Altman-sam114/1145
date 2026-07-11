@@ -4428,3 +4428,37 @@
 - 云端五页截图和进程存活证明页面构成与启动稳定性，但真实触摸切页、连续快速切页、跨页 pending mode 辉光和真机横屏适配仍需人工玩法检查。
 - 当前没有独立 XCTest target，页签状态保持、skirmish 重置和武装态跨页提示主要由源码边界、云端 build 与确定性截图覆盖。
 - 下一轮可增强移动、攻击移动和攻击目标的落点反馈，使压缩 HUD 后的战场操作意图更清晰，并保持单一可云端验证增量。
+
+### v4.80 / 三类战场命令落点反馈
+
+日期：2026-07-12
+
+核心变更：
+
+- 参考 Noble Master 官方 Desert Stormfront 产品截图与 trailer 中“瞬时、高对比、贴地、低遮挡”的命令确认方式，不复制原素材或 UI 布局。
+- 普通移动在 domain anchor 显示青绿色 `MOVE` 贴地环、方向箭头与短刻度。
+- 攻击移动显示琥珀色双环 `AMOV`、十字推进箭头和标签，视觉上与 `MOVE` 明显区分。
+- 直接攻击仅在 `assignedAttackers > 0` 后，对 `entity(at:)` 已通过玩家迷雾认知过滤的目标显示红色 footprint-aware `ATK <shortCode>` 四角框。
+- 三类组合节点进入 `effectsLayer`，普通启动约 0.68 秒淡出移除；CI 通过 `DESERT_CI_COMMAND_MARKER=move|attack-move|attack-target` 持久冻结以便云端截图。
+- 不修改目的地、攻击合法性、编队、伤害、射程、AI、HUD 五页映射或迷雾集合。
+- README、核心 flow、flowchart、测试规范和 v4.80 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.80 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`3e55966d9f9292d6880a755303104825a95f0baa`，commit subject 为 `v4.80: 强化战场命令落点反馈`。
+- GitHub Actions run：`29144924115`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.80-main-3e55966d9f92-run29144924115-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29144924115/`。
+- manifest 记录 `branch=main`、`commitSha=3e55966d9f9292d6880a755303104825a95f0baa`、`runId=29144924115`、`version=v4.80`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；八次启动 PID `12536`、`13706`、`14056`、`14572`、`14600`、`15130`、`15909`、`16316` 等待后均仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 八张 1206x2622 云端截图均显示真实战场而非黑屏或白屏。对 command 截图与 baseline HUD 截图做像素差分：`MOVE` 热区以青绿色为主（cyan_frac≈0.51），`AMOV` 热区以琥珀色为主（amber_frac≈0.72），`ATK` 热区以红色为主（red_frac≈0.61）；三类 marker 彼此可区分，目标框不遮挡机体主体。
+- 源码审阅确认 `showAttackTargetMarker` 仅在分配成功后调用，目标来自 `entity(at:)` 迷雾过滤；普通 marker 经 `presentCommandMarker` 自动移除，CI `persistent` 不进入普通启动。
+
+遗留事项：
+
+- 云端冻结截图证明三类落点反馈的颜色、标签与启动稳定性，但不能覆盖真实触摸落点、多 domain 同时下达、密集单位遮挡和长时间性能，仍需人工真机玩法检查。
+- 当前没有独立 XCTest target，命令 marker 生命周期与迷雾边界主要由源码边界、云端 build 与差分截图覆盖。
+- 下一轮可继续增强战斗可读性，例如选中单位当前命令意图线 / 目标连线，或海军 / 空战命中反馈细化，并保持单一可云端验证增量。
+
