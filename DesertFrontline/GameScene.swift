@@ -6429,6 +6429,12 @@ final class GameScene: SKScene {
             faction: .player,
             persistent: true
         )
+        showDamageFloater(
+            at: enemyFighter.node.position + CGPoint(x: 16, y: 22),
+            amount: 24,
+            faction: .player,
+            persistent: true
+        )
 
         switch ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] {
         case "move":
@@ -6554,6 +6560,10 @@ final class GameScene: SKScene {
 
         target.hp -= damage * armorMultiplier
         updateHealthBar(target)
+        let appliedDamage = damage * armorMultiplier
+        if shouldShowDamageFloater(for: target) {
+            showDamageFloater(at: target.node.position, amount: appliedDamage, faction: attacker.faction)
+        }
         if showASWHit {
             showAntiSubmarineHit(at: target.node.position, faction: attacker.faction)
         }
@@ -8995,6 +9005,55 @@ final class GameScene: SKScene {
         trail.run(.sequence([.fadeOut(withDuration: 0.30), .removeFromParent()]))
         missile.run(.sequence([
             .group([.move(to: end, duration: 0.26), .fadeOut(withDuration: 0.26)]),
+            .removeFromParent()
+        ]))
+    }
+
+    private func shouldShowDamageFloater(for target: GameEntity) -> Bool {
+        target.faction == .player || isKnownToFaction(target, observer: .player)
+    }
+
+    private func showDamageFloater(at point: CGPoint, amount: CGFloat, faction: Faction, persistent: Bool = false) {
+        let value = max(1, Int(amount.rounded()))
+        let node = SKNode()
+        node.position = point + CGPoint(x: CGFloat((Int(point.x) + Int(point.y)) % 17) - 8, y: 18)
+        node.zPosition = 280
+
+        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label.text = "-\(value)"
+        label.fontSize = 13
+        label.fontColor = faction == .player
+            ? UIColor(red: 1.0, green: 0.82, blue: 0.30, alpha: 1.0)
+            : UIColor(red: 1.0, green: 0.42, blue: 0.28, alpha: 1.0)
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.zPosition = 1
+        node.addChild(label)
+
+        let shadow = SKLabelNode(fontNamed: "Menlo-Bold")
+        shadow.text = label.text
+        shadow.fontSize = 13
+        shadow.fontColor = UIColor.black.withAlphaComponent(0.55)
+        shadow.verticalAlignmentMode = .center
+        shadow.horizontalAlignmentMode = .center
+        shadow.position = CGPoint(x: 1, y: -1)
+        shadow.zPosition = 0
+        node.addChild(shadow)
+
+        effectsLayer.addChild(node)
+        guard !persistent else { return }
+        node.alpha = 0.2
+        node.setScale(0.82)
+        node.run(.sequence([
+            .group([
+                .fadeAlpha(to: 1.0, duration: 0.06),
+                .scale(to: 1.08, duration: 0.08),
+                .moveBy(x: 0, y: 10, duration: 0.08)
+            ]),
+            .group([
+                .moveBy(x: 0, y: 28, duration: 0.55),
+                .fadeOut(withDuration: 0.55)
+            ]),
             .removeFromParent()
         ]))
     }
