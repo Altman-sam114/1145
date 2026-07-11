@@ -4363,3 +4363,35 @@
 - 云端静态 capture scene 冻结玩法循环，可证明编队初始间距和渲染层级，但不能覆盖真实移动中的持续避让、目标移动、密集空战和长时间性能，仍需人工真机玩法检查。
 - 当前没有独立 XCTest target，同域过滤、正向分量和攻击站位主要由源码审阅、云端 build 和 simulator screenshot 覆盖。
 - 下一轮可继续优化空军战斗可读性，例如防空威胁提示或选择态航线，但应保持单一、可云端验证的增量。
+
+### v4.78 / 选中空军防空威胁态势
+
+日期：2026-07-11
+
+核心变更：
+
+- 参考 Noble Master 官方 Desert Stormfront itch.io 产品页的 5 张 1280x800 截图，借鉴其密集战场中橙色顶标、红色地面标记、高对比投影和紧凑态势反馈，不复制原素材或 UI 布局。
+- 玩家选中 Helicopter / Fighter 时，只收集玩家当前已知、存活、operational 且真实射程覆盖至少一架选中空军的敌方 SAM Site / AA Truck。
+- 合法威胁显示低填充红橙射程圈、三重橙色顶标和核心警示点；节点随实体迷雾隐藏，不为未知敌军扩大视野或泄露位置。
+- 选择状态行及普通单选 / 多选信息显示紧凑 `AA THRn Sn Mn Cx/y` 摘要，其中 `S` 为 SAM、`M` 为 mobile AA、`C` 为被覆盖的选中空军；无合法威胁显示 `CLEAR`。HOLD、CV GUARD 和 attack-move 原状态行保持不变。
+- 覆盖判断复用 `isKnownToFaction(...)`、`canAttack(...)`、静态 `attackRange`、存活与 operational 边界；不修改防空射程、伤害、冷却、目标获取、AI、移动、生产或迷雾。
+- CI air capture scene 选中 Blue 三架 HEL/JET，并在真实覆盖距离内布置 Red SAM Site / AA Truck，继续保留空军模型、投影、导弹、命中环和 v4.77 编队证据。
+- README、核心 flow、flowchart、测试规范和 v4.78 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.78 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`3d7fa81a2068ae563151bca58ea120f444c3de9c`，commit subject 为 `v4.78: 增强空军防空威胁态势`。
+- GitHub Actions run：`29134910857`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.78-main-3d7fa81a2068-run29134910857-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29134910857/`。
+- manifest 记录 `branch=main`、`commitSha=3d7fa81a2068ae563151bca58ea120f444c3de9c`、`runId=29134910857`、`version=v4.78`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；启动 PID `9520` 等待后仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 air screenshot 显示 Blue 三机绿色选择环、Red SAM / AA 机体、两个红橙覆盖圈、两处橙色三重顶标、`AA THR2 S1 M1 C3/3` 状态摘要、空军投影、导弹和命中环，不是黑屏或白屏；圈线未完全遮挡战场主体。
+
+遗留事项：
+
+- 云端冻结截图证明确定性覆盖判定、HUD 和视觉层级，但不能覆盖真实飞入 / 飞出射程、敌方移动 AA、迷雾切换、密集防空区和长时间性能，仍需人工真机玩法检查。
+- 当前没有独立 XCTest target，威胁过滤、覆盖计数和未知敌军不泄露主要由源码边界、云端 build 与 simulator screenshot 覆盖。
+- 下一轮可依据官方截图继续压缩战场 HUD 占用或增强移动 / 攻击目标标记，优先改善小屏幕战场可见面积与操作效率。
