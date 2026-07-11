@@ -4461,4 +4461,35 @@
 - 云端冻结截图证明三类落点反馈的颜色、标签与启动稳定性，但不能覆盖真实触摸落点、多 domain 同时下达、密集单位遮挡和长时间性能，仍需人工真机玩法检查。
 - 当前没有独立 XCTest target，命令 marker 生命周期与迷雾边界主要由源码边界、云端 build 与差分截图覆盖。
 - 下一轮可继续增强战斗可读性，例如选中单位当前命令意图线 / 目标连线，或海军 / 空战命中反馈细化，并保持单一可云端验证增量。
+### v4.81 / 选中单位命令意图线
 
+日期：2026-07-12
+
+核心变更：
+
+- 玩家选中且存活的己方机动单位显示只读命令意图线，优先级为已知 `attackTarget`（红虚线）>`attackMoveDestination`（琥珀虚线）>`destination/path`（青绿虚线）>`holdPosition`（淡金虚线）。
+- 节点挂在实体 `commandIntentNode`，经 `refreshSelection` / `updateHUD` 刷新；取消选中即隐藏并清空子节点。
+- 直接攻击线仅当目标存活且 `isKnownToFaction(..., observer: .player)` 时绘制，不泄露隐藏敌军或潜艇。
+- CI air capture 场景为选中玩家空军冻结代表性意图：主战 Fighter 指向已知敌机，一架 HEL 保留 AMOV 终点，其余 Fighter 保留 move destination，便于主截图验证分色意图线。
+- 不修改命令语义、寻路、伤害、射程、AI、HUD 五页映射或迷雾集合。
+- README、核心 flow、flowchart、测试规范和 v4.81 提示词已同步。
+- 同步清理 v4.80 验收日志末尾多余空行，避免 `git diff --check` static checks 失败。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.81 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`9319000131a647266a43df608c6ed541e16e0ff8`，commit subject 为 `v4.81: 增加选中单位命令意图线`。
+- GitHub Actions run：`29165208722`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.81-main-9319000131a6-run29165208722-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29165208722/`。
+- manifest 记录 `branch=main`、`commitSha=9319000131a647266a43df608c6ed541e16e0ff8`、`runId=29165208722`、`version=v4.81`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；八次启动 PID `10811`、`12084`、`12838`、`12994`、`13656`、`13992`、`14670`、`15354` 等待后均仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 八张 1206x2622 云端截图均为真实战场而非黑屏或白屏。相对 v4.80 baseline 主截图差分热区约 0.34%，热区颜色同时覆盖青绿 / 琥珀 / 红色意图反馈；command marker 三张图继续可用。
+- 源码审阅确认意图线只读、选中边界正确，攻击线复用玩家迷雾认知过滤。
+
+遗留事项：
+
+- 云端冻结截图证明选中态分色意图线与启动稳定性，但不能覆盖真实连续下令、目标死亡 / 迷雾切换、多 domain 混选和长时间性能，仍需人工真机玩法检查。
+- 当前没有独立 XCTest target，意图优先级与隐藏逻辑主要由源码边界、云端 build 与差分截图覆盖。
+- 下一轮可继续增强战斗可读性，例如命中飘字 / 伤害数字、海军交战方位扇区或选中编队共用目标标记，并保持单一可云端验证增量。
