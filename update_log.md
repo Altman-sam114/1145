@@ -4522,3 +4522,34 @@
 - 云端冻结截图证明可见命中飘字与启动稳定性，但不能覆盖真实连射、多单位重叠、目标移出迷雾和长时间性能，仍需人工真机玩法检查。
 - 当前没有独立 XCTest target，显示过滤主要由源码边界、云端 build 与差分截图覆盖。
 - 下一轮可继续增强战斗/海空细节，例如选中编队共用目标标线、舰炮方位扇区或更细的爆炸分层，并保持单一可云端验证增量。
+### v4.83 / 选中编队共用集火目标标
+
+日期：2026-07-12
+
+核心变更：
+
+- 当至少 2 个玩家选中机动单位共享同一存活且玩家已知 `attackTarget` 时，在目标位置显示红色 `FOCUS n` 双环 / 十字集火标。
+- 节点挂在 `effectsLayer.focusFireMarkerNode`，随 `refreshSelection` / `updateHUD` 刷新；无共用目标时隐藏。
+- 只读覆盖，不改变攻击分配、伤害、寻路、AI 或迷雾；单选或未知目标不显示。
+- CI air capture 让至少两架 Blue Fighter 共享同一 Red 目标，主截图可验证集火标。
+- README、核心 flow、flowchart、测试规范和 v4.83 提示词已同步（实现提交后补了 flow 文档同步提交）。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.83 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`e207a6bc7667eb3c345d8d2cd55e220ea49f33cb`，commit subject 为 `v4.83: 增加选中编队共用集火目标标`。
+- 文档同步提交：`7b44340e567f98a714810f6e7ba23abf0739970d`，commit subject 为 `v4.83: 同步集火目标标文档`。
+- GitHub Actions 实现 run：`29166656840`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.83-main-e207a6bc7667-run29166656840-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29166656840/`。
+- manifest 记录 `branch=main`、`commitSha=e207a6bc7667eb3c345d8d2cd55e220ea49f33cb`、`runId=29166656840`、`version=v4.83`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；八次启动 PID `14217`、`15428`、`16197`、`16225`、`16701`、`16846`、`17067`、`17645` 等待后均仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 1206x2622 云端截图为真实战场而非黑屏或白屏；相对 v4.82 baseline 差分热区约 0.73%，空战区域红色样本显著增加，符合共用集火标与额外攻击意图线叠加；command marker 探针继续可用。
+- 源码审阅确认 `refreshFocusFireMarker` 只统计玩家选中机动单位、要求目标已知且 count>=2，不改战斗结算。
+
+遗留事项：
+
+- 云端冻结截图证明多选集火标与启动稳定性，但不能覆盖真实切换目标、目标死亡 / 迷雾切换、陆海混选和长时间性能，仍需人工真机玩法检查。
+- 当前没有独立 XCTest target，共用目标统计主要由源码边界、云端 build 与差分截图覆盖。
+- 下一轮可继续增强海空战斗细节，例如舰炮方位扇区、爆炸分层或编队集火 HUD 摘要，并保持单一可云端验证增量。
