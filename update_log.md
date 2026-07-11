@@ -4395,3 +4395,36 @@
 - 云端冻结截图证明确定性覆盖判定、HUD 和视觉层级，但不能覆盖真实飞入 / 飞出射程、敌方移动 AA、迷雾切换、密集防空区和长时间性能，仍需人工真机玩法检查。
 - 当前没有独立 XCTest target，威胁过滤、覆盖计数和未知敌军不泄露主要由源码边界、云端 build 与 simulator screenshot 覆盖。
 - 下一轮可依据官方截图继续压缩战场 HUD 占用或增强移动 / 攻击目标标记，优先改善小屏幕战场可见面积与操作效率。
+
+### v4.79 / 五页单排战术 HUD
+
+日期：2026-07-11
+
+核心变更：
+
+- 继续参考 Noble Master 官方 Desert Stormfront 产品截图与玩法视频中紧凑、按作战域分组的移动端命令区，优先扩大横屏战场可视面积和降低常用命令查找成本，不复制原素材或 UI 布局。
+- 原固定两排 24 个按钮改为 `TACT`、`BUILD`、`AIR`、`SEA`、`SUP` 五个常驻页签和单排动作区，底部命令区高度由约 114pt 压缩至约 54pt。
+- `TACT` 提供 `ARMY / G1 / G2 / HOLD / AMOV / RLY / HQ`；`BUILD` 提供 `HMV / AA / TANK / ART / MECH / BASE`；`AIR` 提供 `HELI / JET`；`SEA` 提供 `SHIP / SUB / CV`；`SUP` 提供 `SCAN / REPR / AIRS / BARR / AI / SKRM`。
+- 当前页签使用金色描边与辉光；隐藏页若持有已武装的待执行命令，也保留提示辉光，避免切页后遗忘支援、建造或攻击移动状态。
+- 切换页面只重建 HUD，不清空选择、编队、生产队列或 pending mode；重新开始 skirmish 时命令页恢复为 `TACT`。
+- GitHub Actions 新增 `DESERT_CI_HUD_PAGE=tactical/build/air/naval/support`，同一 run 分别启动并截图五个页面，覆盖页面映射、页签高亮和单排布局。
+- README、核心 flow、flowchart、测试规范和 v4.79 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.79 提交。
+
+验证结果：
+
+- 按人工要求未运行本地测试、本地静态检查、本机 Xcode build、本地模拟器或本地探针；全部验证来自 GitHub Actions 云端 artifact。
+- 实现提交：`ddf0c3e2ae5fdcc0660937f7886ae68ef08a5071`，commit subject 为 `v4.79: 重构五页单排战术HUD`。
+- GitHub Actions run：`29138765401`，attempt `1`，conclusion `success`。
+- artifact：`desert-frontline-ci-v4.79-main-ddf0c3e2ae5f-run29138765401-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29138765401/`。
+- manifest 记录 `branch=main`、`commitSha=ddf0c3e2ae5fdcc0660937f7886ae68ef08a5071`、`runId=29138765401`、`version=v4.79`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`；五次页面启动 PID `29927`、`31194`、`32381`、`33116`、`33847` 等待后均仍存活，App 日志未命中启动崩溃、数组越界、未捕获异常或异常退出关键字。
+- 五张 1206x2622 云端截图均显示真实战场而非黑屏或白屏；`TACT / BUILD / AIR / SEA / SUP` 各页正确金色高亮，页面动作完整显示在一排且无文字或按钮裁切。
+- 战场纵向可视面积相较 v4.78 双排 HUD 明显增加；空军编队、SAM / AA 威胁圈、导弹与命中反馈、小地图和 `AA THR2 S1 M1 C3/3` 状态摘要仍正常显示。
+
+遗留事项：
+
+- 云端五页截图和进程存活证明页面构成与启动稳定性，但真实触摸切页、连续快速切页、跨页 pending mode 辉光和真机横屏适配仍需人工玩法检查。
+- 当前没有独立 XCTest target，页签状态保持、skirmish 重置和武装态跨页提示主要由源码边界、云端 build 与确定性截图覆盖。
+- 下一轮可增强移动、攻击移动和攻击目标的落点反馈，使压缩 HUD 后的战场操作意图更清晰，并保持单一可云端验证增量。
