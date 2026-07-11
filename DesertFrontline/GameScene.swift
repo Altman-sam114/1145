@@ -912,6 +912,7 @@ final class GameScene: SKScene {
     private let mapNode = SKNode()
     private let entityLayer = SKNode()
     private let effectsLayer = SKNode()
+    private let focusFireMarkerNode = SKNode()
     private let fogLayer = SKNode()
     private let hudNode = SKNode()
     private let cameraRig = SKCameraNode()
@@ -1032,6 +1033,9 @@ final class GameScene: SKScene {
         worldNode.addChild(mapNode)
         worldNode.addChild(entityLayer)
         worldNode.addChild(effectsLayer)
+        effectsLayer.addChild(focusFireMarkerNode)
+        focusFireMarkerNode.zPosition = 20
+        focusFireMarkerNode.isHidden = true
         worldNode.addChild(fogLayer)
 
         camera = cameraRig
@@ -3063,6 +3067,7 @@ final class GameScene: SKScene {
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
         refreshAirDefenseThreatVisuals(for: selected)
         refreshCommandIntentVisuals(for: selected)
+        refreshFocusFireMarker(for: selected)
         if let pendingConstructionKind {
             selectedLabel.text = "Place \(pendingConstructionKind.displayName): tap valid ground."
         } else if isSettingRallyPoint {
@@ -6410,9 +6415,11 @@ final class GameScene: SKScene {
             playerHeli.path.removeAll()
         }
         for aircraft in playerAir where aircraft.kind == .fighter && aircraft.id != playerFighter.id {
-            // remaining fighters keep destination move intent
-            aircraft.attackTarget = nil
+            // second fighter shares focus-fire target for CI marker evidence
+            aircraft.attackTarget = enemyFighter
+            aircraft.destination = nil
             aircraft.attackMoveDestination = nil
+            aircraft.path.removeAll()
         }
         updateFog(force: true)
         refreshSelection()
@@ -8190,6 +8197,7 @@ final class GameScene: SKScene {
         }
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
         refreshCommandIntentVisuals(for: selected)
+        refreshFocusFireMarker(for: selected)
     }
 
     private func refreshAirDefenseThreatVisuals(for selected: [GameEntity]) {
@@ -8243,6 +8251,82 @@ final class GameScene: SKScene {
                 (wing.kind == .helicopter || wing.kind == .fighter) &&
                 carrierGuardAnchor(for: wing)?.id == entity.id
         }
+    }
+
+    private func refreshFocusFireMarker(for selected: [GameEntity]) {
+        focusFireMarkerNode.removeAllChildren()
+
+        let attackers = selected.filter {
+            $0.faction == .player &&
+            $0.isAlive &&
+            !$0.kind.isStructure
+        }
+        var counts: [Int: (target: GameEntity, count: Int)] = [:]
+        for unit in attackers {
+            guard let target = unit.attackTarget,
+                  target.isAlive,
+                  isKnownToFaction(target, observer: .player)
+            else { continue }
+            if var entry = counts[target.id] {
+                entry.count += 1
+                counts[target.id] = entry
+            } else {
+                counts[target.id] = (target, 1)
+            }
+        }
+
+        guard let focus = counts.values.max(by: { left, right in
+            if left.count == right.count {
+                return left.target.id > right.target.id
+            }
+            return left.count < right.count
+        }), focus.count >= 2 else {
+            focusFireMarkerNode.isHidden = true
+            return
+        }
+
+        let target = focus.target
+        let color = UIColor(red: 1.0, green: 0.28, blue: 0.22, alpha: 1.0)
+        let footprint = max(28, target.kind.footprint)
+        focusFireMarkerNode.position = target.node.position
+        focusFireMarkerNode.zPosition = 20
+
+        let outer = SKShapeNode(ellipseOf: CGSize(width: footprint * 1.9, height: footprint * 1.05))
+        outer.strokeColor = color
+        outer.fillColor = color.withAlphaComponent(0.08)
+        outer.lineWidth = 2.5
+        outer.glowWidth = 1.2
+        focusFireMarkerNode.addChild(outer)
+
+        let inner = SKShapeNode(ellipseOf: CGSize(width: footprint * 1.15, height: footprint * 0.62))
+        inner.strokeColor = color.withAlphaComponent(0.85)
+        inner.fillColor = .clear
+        inner.lineWidth = 1.6
+        focusFireMarkerNode.addChild(inner)
+
+        let cross = CGMutablePath()
+        let armX = footprint * 0.95
+        let armY = footprint * 0.55
+        cross.move(to: CGPoint(x: -armX, y: 0))
+        cross.addLine(to: CGPoint(x: armX, y: 0))
+        cross.move(to: CGPoint(x: 0, y: -armY))
+        cross.addLine(to: CGPoint(x: 0, y: armY))
+        let crossNode = SKShapeNode(path: cross)
+        crossNode.strokeColor = color
+        crossNode.lineWidth = 2.2
+        crossNode.lineCap = .round
+        focusFireMarkerNode.addChild(crossNode)
+
+        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label.text = "FOCUS \(focus.count)"
+        label.fontSize = 11
+        label.fontColor = color
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.position = CGPoint(x: 0, y: footprint * 0.72 + 12)
+        focusFireMarkerNode.addChild(label)
+
+        focusFireMarkerNode.isHidden = false
     }
 
     private func refreshCommandIntentVisuals(for selected: [GameEntity]) {
