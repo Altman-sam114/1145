@@ -93,3 +93,5 @@ flowchart TD
   Pause --> Human
   XJudge -- "总目标完成" --> Done["完成\n输出总目标闭环结果"]
 ```
+
+- v4.81：选中玩家机动单位显示分色命令意图线（攻/移/AMOV/HOLD），只读刷新。

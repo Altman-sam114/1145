@@ -863,6 +863,7 @@ private final class GameEntity {
     let label: SKLabelNode
     let productionNode = SKNode()
     let rallyNode = SKNode()
+    let commandIntentNode = SKNode()
     let veterancyNode = SKNode()
     let captureNode = SKNode()
     let constructionNode = SKNode()
@@ -1839,6 +1840,10 @@ final class GameScene: SKScene {
         entity.rallyNode.zPosition = 26
         entity.rallyNode.isHidden = true
         entity.node.addChild(entity.rallyNode)
+
+        entity.commandIntentNode.zPosition = 25
+        entity.commandIntentNode.isHidden = true
+        entity.node.addChild(entity.commandIntentNode)
 
         entity.veterancyNode.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 30)
         entity.veterancyNode.zPosition = 27
@@ -3057,6 +3062,7 @@ final class GameScene: SKScene {
 
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
         refreshAirDefenseThreatVisuals(for: selected)
+        refreshCommandIntentVisuals(for: selected)
         if let pendingConstructionKind {
             selectedLabel.text = "Place \(pendingConstructionKind.displayName): tap valid ground."
         } else if isSettingRallyPoint {
@@ -6393,6 +6399,21 @@ final class GameScene: SKScene {
         }
 
         selectedIDs = Set(playerAir.map(\.id))
+        // Freeze representative command intents for CI screenshot readability.
+        playerFighter.attackTarget = enemyFighter
+        playerFighter.destination = nil
+        playerFighter.attackMoveDestination = nil
+        if let playerHeli = playerAir.first(where: { $0.kind == .helicopter }) {
+            playerHeli.attackTarget = nil
+            playerHeli.attackMoveDestination = playerHeli.node.position + playerFacing * 210
+            playerHeli.destination = nil
+            playerHeli.path.removeAll()
+        }
+        for aircraft in playerAir where aircraft.kind == .fighter && aircraft.id != playerFighter.id {
+            // remaining fighters keep destination move intent
+            aircraft.attackTarget = nil
+            aircraft.attackMoveDestination = nil
+        }
         updateFog(force: true)
         refreshSelection()
         enemySAM.node.zPosition = entityZPosition(enemySAM)
@@ -8152,7 +8173,13 @@ final class GameScene: SKScene {
             entity.escortCoverageNode.isHidden = !shouldShowHighValueNavalEscortCoverage(for: entity)
             entity.repairCoverageNode.isHidden = !shouldShowMechanicRepairCoverage(for: entity)
             entity.carrierGuardAnchorCoverageNode.isHidden = !shouldShowCarrierGuardAnchorCoverage(for: entity)
+            if !selectedIDs.contains(entity.id) {
+                entity.commandIntentNode.isHidden = true
+                entity.commandIntentNode.removeAllChildren()
+            }
         }
+        let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
+        refreshCommandIntentVisuals(for: selected)
     }
 
     private func refreshAirDefenseThreatVisuals(for selected: [GameEntity]) {
@@ -8206,6 +8233,117 @@ final class GameScene: SKScene {
                 (wing.kind == .helicopter || wing.kind == .fighter) &&
                 carrierGuardAnchor(for: wing)?.id == entity.id
         }
+    }
+
+    private func refreshCommandIntentVisuals(for selected: [GameEntity]) {
+        let selectedMobileIDs = Set(
+            selected
+                .filter { $0.faction == .player && $0.isAlive && !$0.kind.isStructure }
+                .map(\.id)
+        )
+        for entity in entities.values {
+            guard selectedMobileIDs.contains(entity.id) else {
+                entity.commandIntentNode.isHidden = true
+                entity.commandIntentNode.removeAllChildren()
+                continue
+            }
+            updateCommandIntentMarker(for: entity)
+        }
+    }
+
+    private func updateCommandIntentMarker(for entity: GameEntity) {
+        entity.commandIntentNode.removeAllChildren()
+
+        enum IntentKind {
+            case attack
+            case attackMove
+            case move
+            case hold
+        }
+
+        let intent: (kind: IntentKind, point: CGPoint)?
+        if let target = entity.attackTarget,
+           target.isAlive,
+           isKnownToFaction(target, observer: .player) {
+            intent = (.attack, target.node.position)
+        } else if let attackMoveDestination = entity.attackMoveDestination {
+            intent = (.attackMove, attackMoveDestination)
+        } else if let destination = entity.destination {
+            intent = (.move, destination)
+        } else if let pathEnd = entity.path.last {
+            intent = (.move, pathEnd)
+        } else if let holdPosition = entity.holdPosition {
+            intent = (.hold, holdPosition)
+        } else {
+            intent = nil
+        }
+
+        guard let intent else {
+            entity.commandIntentNode.isHidden = true
+            return
+        }
+
+        let color: UIColor
+        let lineWidth: CGFloat
+        let dash: [CGFloat]?
+        switch intent.kind {
+        case .attack:
+            color = UIColor(red: 1.0, green: 0.30, blue: 0.20, alpha: 1.0)
+            lineWidth = 2.4
+            dash = [7, 5]
+        case .attackMove:
+            color = UIColor(red: 1.0, green: 0.58, blue: 0.20, alpha: 1.0)
+            lineWidth = 2.3
+            dash = [8, 4]
+        case .move:
+            color = UIColor(red: 0.24, green: 1.0, blue: 0.62, alpha: 1.0)
+            lineWidth = 2.1
+            dash = [6, 5]
+        case .hold:
+            color = UIColor(red: 1.0, green: 0.86, blue: 0.34, alpha: 1.0)
+            lineWidth = 1.8
+            dash = [3, 4]
+        }
+
+        let localPoint = intent.point - entity.node.position
+        let solidPath = CGMutablePath()
+        solidPath.move(to: .zero)
+        solidPath.addLine(to: localPoint)
+        let strokedPath: CGPath
+        if let dash {
+            strokedPath = solidPath.copy(dashingWithPhase: 0, lengths: dash)
+        } else {
+            strokedPath = solidPath
+        }
+        let line = SKShapeNode(path: strokedPath)
+        line.strokeColor = color.withAlphaComponent(0.88)
+        line.lineWidth = lineWidth
+        line.glowWidth = 0.8
+        line.lineCap = .round
+        entity.commandIntentNode.addChild(line)
+
+        let tip = SKShapeNode(ellipseOf: CGSize(width: intent.kind == .attack ? 18 : 14, height: intent.kind == .attack ? 12 : 9))
+        tip.position = localPoint
+        tip.fillColor = color.withAlphaComponent(0.14)
+        tip.strokeColor = color
+        tip.lineWidth = 2
+        tip.glowWidth = 0.6
+        entity.commandIntentNode.addChild(tip)
+
+        if intent.kind == .attack {
+            let cross = CGMutablePath()
+            cross.move(to: CGPoint(x: localPoint.x - 6, y: localPoint.y))
+            cross.addLine(to: CGPoint(x: localPoint.x + 6, y: localPoint.y))
+            cross.move(to: CGPoint(x: localPoint.x, y: localPoint.y - 5))
+            cross.addLine(to: CGPoint(x: localPoint.x, y: localPoint.y + 5))
+            let crossNode = SKShapeNode(path: cross)
+            crossNode.strokeColor = color
+            crossNode.lineWidth = 1.8
+            crossNode.lineCap = .round
+            entity.commandIntentNode.addChild(crossNode)
+        }
+
+        entity.commandIntentNode.isHidden = false
     }
 
     private func configureSonarCoverageNode(for entity: GameEntity) {
