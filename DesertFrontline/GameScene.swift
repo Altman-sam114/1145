@@ -813,6 +813,8 @@ private final class GameEntity {
     let escortCoverageNode = SKShapeNode()
     let repairCoverageNode = SKShapeNode()
     let carrierGuardAnchorCoverageNode = SKShapeNode()
+    let airDefenseThreatCoverageNode = SKShapeNode()
+    let airDefenseThreatMarkerNode = SKNode()
     let healthFill: SKShapeNode
     let teamFlag: SKShapeNode
     let label: SKLabelNode
@@ -1747,6 +1749,9 @@ final class GameScene: SKScene {
         entity.node.addChild(entity.repairCoverageNode)
         configureCarrierGuardAnchorCoverageNode(for: entity)
         entity.node.addChild(entity.carrierGuardAnchorCoverageNode)
+        configureAirDefenseThreatNodes(for: entity)
+        entity.node.addChild(entity.airDefenseThreatCoverageNode)
+        entity.node.addChild(entity.airDefenseThreatMarkerNode)
 
         let healthBack = SKShapeNode(rectOf: CGSize(width: entity.kind.footprint, height: 5), cornerRadius: 1)
         healthBack.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 16)
@@ -2941,6 +2946,7 @@ final class GameScene: SKScene {
         refreshHudButtonStyles()
 
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
+        refreshAirDefenseThreatVisuals(for: selected)
         if let pendingConstructionKind {
             selectedLabel.text = "Place \(pendingConstructionKind.displayName): tap valid ground."
         } else if isSettingRallyPoint {
@@ -2961,6 +2967,9 @@ final class GameScene: SKScene {
             }
         } else {
             selectedLabel.text = "\(selected.count) units selected"
+        }
+        if let threatSummary = airDefenseThreatSummaryLine(for: selected) {
+            selectedLabel.text = "\(selectedLabel.text ?? "")  |  \(threatSummary)"
         }
 
         let playerQueue = buildOrders.filter { $0.faction == .player }
@@ -3250,6 +3259,8 @@ final class GameScene: SKScene {
                 if let status = mobileStatusLine(for: entity) {
                     rows[2] = "\(rows[2])  \(compactVeterancyLine(for: entity))"
                     rows[3] = status
+                } else if let threatSummary = airDefenseThreatSummaryLine(for: [entity]) {
+                    rows[3] = threatSummary
                 }
             }
         }
@@ -3603,6 +3614,7 @@ final class GameScene: SKScene {
         let highValueEscortSummary = groupHighValueNavalEscortSummary(for: selected)
         let carrierGuardWingSummary = groupCarrierGuardWingSummary(for: selected)
         let selectedCarrierGuardWingSummary = groupSelectedCarrierGuardWingSummary(for: selected)
+        let airDefenseThreatSummary = airDefenseThreatSummaryLine(for: selected)
         let combatSummary = groupAntiSubmarineSummary(for: selected).map {
             "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))  \($0)"
         } ?? "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))"
@@ -3617,9 +3629,49 @@ final class GameScene: SKScene {
                     ? "Holding \(holdingCount)  \(carrierGuardWingSummary ?? selectedCarrierGuardWingSummary ?? "Guard \(Int(holdEngagementRadius))")"
                     : attackMoveCount > 0
                         ? "Attack move \(attackMoveCount)  Seek \(Int(attackMoveEngagementRadius))"
-                        : highValueEscortSummary ?? groupVeterancyLine(for: selected)
+                        : airDefenseThreatSummary ?? highValueEscortSummary ?? groupVeterancyLine(for: selected)
             ]
         )
+    }
+
+    private func airDefenseThreatSummaryLine(for selected: [GameEntity]) -> String? {
+        let selectedAir = selected.filter {
+            $0.faction == .player && $0.isAlive && $0.kind.domain == .air
+        }
+        guard !selectedAir.isEmpty else { return nil }
+
+        let threats = activeKnownAirDefenseThreats(for: selectedAir)
+        guard !threats.isEmpty else { return "AA THR0 CLEAR C0/\(selectedAir.count)" }
+        let samCount = threats.filter { $0.kind == .samSite }.count
+        let mobileCount = threats.filter { $0.kind == .aaTruck }.count
+        let coveredCount = selectedAir.filter { aircraft in
+            threats.contains { isAirDefenseThreat($0, covering: aircraft) }
+        }.count
+        return "AA THR\(threats.count) S\(samCount) M\(mobileCount) C\(coveredCount)/\(selectedAir.count)"
+    }
+
+    private func activeKnownAirDefenseThreats(for selectedAir: [GameEntity]) -> [GameEntity] {
+        entities.values
+            .filter { threat in
+                threat.faction == .enemy &&
+                    threat.isAlive &&
+                    threat.isOperational &&
+                    (threat.kind == .samSite || threat.kind == .aaTruck) &&
+                    isKnownToFaction(threat, observer: .player) &&
+                    selectedAir.contains { isAirDefenseThreat(threat, covering: $0) }
+            }
+            .sorted { lhs, rhs in
+                if lhs.kind == rhs.kind { return lhs.id < rhs.id }
+                return lhs.kind == .samSite
+            }
+    }
+
+    private func isAirDefenseThreat(_ threat: GameEntity, covering aircraft: GameEntity) -> Bool {
+        aircraft.faction == .player &&
+            aircraft.isAlive &&
+            aircraft.kind.domain == .air &&
+            threat.kind.canAttack(aircraft.kind) &&
+            threat.node.position.distance(to: aircraft.node.position) <= threat.kind.attackRange + aircraft.kind.footprint * 0.35
     }
 
     private func veterancyProgressLine(for entity: GameEntity) -> String {
@@ -6169,6 +6221,16 @@ final class GameScene: SKScene {
             faction: .enemy,
             at: tileCenter(TileCoord(row: 15, col: 18))
         )
+        let enemySAM = addEntity(
+            kind: .samSite,
+            faction: .enemy,
+            at: tileCenter(TileCoord(row: 14, col: 16))
+        )
+        let enemyAA = addEntity(
+            kind: .aaTruck,
+            faction: .enemy,
+            at: tileCenter(TileCoord(row: 16, col: 17))
+        )
 
         let playerAir = [playerHelicopter, playerFighter, playerFighterTwo].compactMap { $0 }
         let enemyAir = [enemyHelicopter, enemyFighter, enemyFighterTwo].compactMap { $0 }
@@ -6194,7 +6256,11 @@ final class GameScene: SKScene {
             updateAirShadow(for: aircraft, direction: enemyFacing)
         }
 
+        selectedIDs = Set(playerAir.map(\.id))
         updateFog(force: true)
+        refreshSelection()
+        enemySAM.node.zPosition = entityZPosition(enemySAM)
+        enemyAA.node.zPosition = entityZPosition(enemyAA)
         showGuidedMissileTrail(
             from: playerFighter.node.position,
             to: enemyFighter.node.position,
@@ -7931,6 +7997,18 @@ final class GameScene: SKScene {
         }
     }
 
+    private func refreshAirDefenseThreatVisuals(for selected: [GameEntity]) {
+        let selectedAir = selected.filter {
+            $0.faction == .player && $0.isAlive && $0.kind.domain == .air
+        }
+        let threatIDs = Set(activeKnownAirDefenseThreats(for: selectedAir).map(\.id))
+        for entity in entities.values {
+            let show = threatIDs.contains(entity.id)
+            entity.airDefenseThreatCoverageNode.isHidden = !show
+            entity.airDefenseThreatMarkerNode.isHidden = !show
+        }
+    }
+
     private func shouldShowSonarCoverage(for entity: GameEntity) -> Bool {
         selectedIDs.contains(entity.id) &&
             entity.faction == .player &&
@@ -8046,6 +8124,51 @@ final class GameScene: SKScene {
         entity.carrierGuardAnchorCoverageNode.glowWidth = 1.0
         entity.carrierGuardAnchorCoverageNode.zPosition = -4.5
         entity.carrierGuardAnchorCoverageNode.isHidden = true
+    }
+
+    private func configureAirDefenseThreatNodes(for entity: GameEntity) {
+        guard entity.kind == .samSite || entity.kind == .aaTruck else {
+            entity.airDefenseThreatCoverageNode.isHidden = true
+            entity.airDefenseThreatMarkerNode.isHidden = true
+            return
+        }
+
+        let range = entity.kind.attackRange
+        entity.airDefenseThreatCoverageNode.path = CGPath(
+            ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2),
+            transform: nil
+        )
+        entity.airDefenseThreatCoverageNode.fillColor = UIColor(red: 1.0, green: 0.22, blue: 0.12, alpha: 0.018)
+        entity.airDefenseThreatCoverageNode.strokeColor = UIColor(red: 1.0, green: 0.36, blue: 0.16, alpha: 0.56)
+        entity.airDefenseThreatCoverageNode.lineWidth = entity.kind == .samSite ? 2.8 : 2.2
+        entity.airDefenseThreatCoverageNode.glowWidth = 1.4
+        entity.airDefenseThreatCoverageNode.zPosition = -7
+        entity.airDefenseThreatCoverageNode.isHidden = true
+
+        let markerColor = UIColor(red: 1.0, green: 0.52, blue: 0.16, alpha: 1.0)
+        let markerBaseY = entity.kind.footprint * 0.52 + 34
+        for index in 0..<3 {
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: -8, y: 4))
+            path.addLine(to: CGPoint(x: 0, y: -4))
+            path.addLine(to: CGPoint(x: 8, y: 4))
+            let chevron = SKShapeNode(path: path)
+            chevron.position = CGPoint(x: 0, y: markerBaseY + CGFloat(index) * 9)
+            chevron.strokeColor = markerColor.withAlphaComponent(1.0 - CGFloat(index) * 0.18)
+            chevron.lineWidth = 3
+            chevron.lineCap = .round
+            chevron.lineJoin = .round
+            chevron.glowWidth = 1
+            entity.airDefenseThreatMarkerNode.addChild(chevron)
+        }
+        let core = SKShapeNode(circleOfRadius: 4)
+        core.position = CGPoint(x: 0, y: markerBaseY - 10)
+        core.fillColor = UIColor(red: 1.0, green: 0.24, blue: 0.14, alpha: 1.0)
+        core.strokeColor = UIColor.white.withAlphaComponent(0.92)
+        core.lineWidth = 1.2
+        entity.airDefenseThreatMarkerNode.addChild(core)
+        entity.airDefenseThreatMarkerNode.zPosition = 32
+        entity.airDefenseThreatMarkerNode.isHidden = true
     }
 
     private func showMessage(_ text: String, color: UIColor) {
