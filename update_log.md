@@ -4612,3 +4612,32 @@
 - 云端冻结截图证明分层爆炸与 FOCUS 摘要的启动稳定性，但不能覆盖真实连杀、重叠爆炸性能和面板文案在所有多选组合下的优先级，仍需人工真机玩法检查。
 - 当前没有独立 XCTest target，摘要优先级主要由源码边界、云端 build 与差分截图覆盖。
 - 下一轮可继续增强海空细节，例如舰艏朝向射击弧、爆炸声画同步或小地图集火脉冲，并保持单一可云端验证增量。
+
+### v4.86 / 坦克模型与地面战云端探针
+
+日期：2026-07-13
+
+核心变更：
+
+- 参考 Desert Stormfront 官方 trailer、TouchGameplay 长玩法视频和 Noble Master 公开截图中的俯视装甲单位轮廓，在原 Tank gameplay footprint 内加入双侧履带、负重轮、车体前装甲、炮塔环、舱盖、Blue / Red 阵营化光学件、炮盾、炮管和制退器。
+- 所有新几何继续位于 `GameEntity` 的既有 `base` 子树，随实体移动、镜像、迷雾和销毁；坦克 HP、速度、射程、伤害、冷却、碰撞、AI、寻路、生产和任务均未改变。
+- 新增 `DESERT_CI_CAMERA_FOCUS=land` 分流，只在 `DESERT_CI_CAPTURE_MODE=1` 时编排 Blue / Red Tank 对峙和 persistent 爆炸样本；普通开局、默认镜头和实时循环不变。
+- GitHub Actions simulator launch probe 从八次扩展到九次，新增 `simulator-land-combat.png`，沿用每次启动解析 PID、等待截图和存活检查，并写入 artifact manifest。
+- README、核心 flow、flowchart、测试规范和 v4.86 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.86 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；提交前只运行 `git diff --check`、workflow YAML 解析和 `plutil -lint` 轻量检查，均通过。
+- 初始实现提交：`876226e175bad711709d2f49012ee5663170cd9f`；首次 run `29218727539` 的静态检查 / project lint 成功，但 device 与 simulator build 因两处不存在的 `UIColor.lighter(by:)` 编译失败，artifact 已下载到 `/private/tmp/desert-frontline-c-review-29218727539/` 并据实核对，没有计为成功。
+- 修复提交：`ca94f91b91124997324edded4c05c7f6650ec993`，commit subject 为 `v4.86: 修复坦克高光颜色编译`，改为复用项目已有 `darker(by:)` 颜色 API。
+- GitHub Actions run：`29218807347`，attempt `1`，conclusion `success`，总耗时约 6 分 22 秒。
+- artifact：`desert-frontline-ci-v4.86-main-ca94f91b9112-run29218807347-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29218807347/`，目录约 11 MB。
+- manifest 记录 `branch=main`、`commitSha=ca94f91b91124997324edded4c05c7f6650ec993`、`runId=29218807347`、`version=v4.86`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`。
+- 九次 simulator launch 的 PID 均在截图后存活；1206x2622 `simulator-land-combat.png` 显示 Blue / Red 共 4 辆 Tank、双方阵营标识、履带 / 负重轮、分层炮塔、长炮管、光学件和中央爆炸样本，画面不是黑屏或白屏；原八张 air / HUD / command 截图也全部存在。
+
+遗留事项：
+
+- 云端冻结截图能证明模型轮廓、阵营差异、截图产物和启动稳定性，但不能覆盖真实行进镜像、炮塔独立旋转、密集坦克交战、缩放或真机性能，仍需人工玩法检查。
+- 当前没有独立 XCTest target；下一轮可继续细化 Artillery / Humvee 地面模型、地貌层次或海空交战效果，但仍应保持单一、可云端验收的增量。
