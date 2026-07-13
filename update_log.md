@@ -4671,3 +4671,34 @@
 
 - 云端冻结截图能证明模型、炮口反馈、炮线和启动稳定性，但不能覆盖真实连续齐射、敌方炮位进出迷雾、快速镜像、密集烟尘或真机性能，仍需人工玩法检查。
 - 当前没有独立 XCTest target；下一轮可继续按已确认的 Desert Stormfront 单位与任务范围细化 Humvee / Mechanic、地图随机化表现、护航任务或海空交战，但应保持单一可验收增量。
+
+### v4.88 / 悍马模型与沙地扬尘
+
+日期：2026-07-13
+
+核心变更：
+
+- 参考对象继续固定为[百度百科 lemma id `4042982`](https://baike.baidu.com/item/%E6%B2%99%E6%BC%A0%E9%A3%8E%E6%9A%B4Desert%20Stormfront/4042982)所述 Noble Master Games《沙漠风暴 Desert Stormfront》；词条明确列出悍马、坦克、火炮、机械师、直升机、飞机、舰船和潜艇等现代陆海空单位，不与其他同名作品混用。
+- Humvee 在原 gameplay footprint 内增加四个可见车轮、前后装甲、引擎盖、装甲座舱、Blue / Red 阵营化风挡、车顶枪座 / 枪管、前灯、保险杠和天线，未修改数值、碰撞、生产或 AI。
+- 所有机动陆军实体持有预创建的 `landDustNode`，由双胎迹 / 履带印和三组确定性尘团组成；`updateMovement(...)` 按实际方向与镜像更新，只在 sand / oil 移动时显示，在 road / water / ridge、停止或无效位置时隐藏。
+- 扬尘节点属于实体子树，随实体移动、迷雾隐藏和销毁，不按帧创建独立 `effectsLayer` 残留，未知敌方单位不会通过尘迹泄露位置。
+- CI land capture 增加 Blue / Red Humvee 并用 capture-only `forceVisible` 冻结方向化扬尘，同时保留 Tank / Artillery、炮口亮焰、炮线和中央爆炸证据；普通开局不走该参数。
+- README、核心 flow、flowchart、测试规范和 v4.88 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.88 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；提交前只运行 `git diff --check` / `git diff --cached --check` 轻量检查并通过。
+- 实现提交：`3f026ffbb5d125b11dea558b1cae6e8f882cb161`，commit subject 为 `v4.88: 细化悍马模型与沙地扬尘`。
+- GitHub Actions run：`29220792975`，attempt `1`，conclusion `success`，总耗时 6 分 54 秒。
+- artifact：`desert-frontline-ci-v4.88-main-3f026ffbb5d1-run29220792975-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29220792975/`，未加密且约 11.5 MB。
+- manifest 记录 `branch=main`、`commitSha=3f026ffbb5d125b11dea558b1cae6e8f882cb161`、`runId=29220792975`、`version=v4.88`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`。
+- 九次 simulator launch PID `6372`、`8017`、`8685`、`9237`、`10262`、`10551`、`10853`、`11165`、`11572` 均在截图后存活；九张原始截图均为 1206x2622 PNG。
+- `simulator-land-combat.png` 显示双方 Humvee 四轮 / 风挡 / 枪座、Blue / Red 阵营标识和方向化胎迹 / 尘团，并保留双方 Tank / Artillery、选择态、炮线和中央爆炸；关键战斗证据没有被单排 HUD 或信息面板完全遮挡，画面不是黑屏或白屏。原图 SHA-256 为 `446b3d3a65fd73d15d0dad962b9601ab72d5bb86aa04dab619307a3ee9a25df9`。
+- 源码审阅确认 `configureLandDustNode(...)` 每个实体只在 `configureEntityNode(...)` 调用一次，移动更新只调用一次 `updateLandDust(...)`，`animateIdle(...)` 会隐藏节点，capture-only 强制显示不进入普通启动。
+
+遗留事项：
+
+- 云端冻结截图能证明模型、方向化尘迹、迷雾所有权设计和启动稳定性，但不能覆盖真实连续转向、道路 / 沙地边界切换、密集履带叠加或真机性能，仍需人工玩法检查。
+- 当前没有独立 XCTest target；下一轮可继续按已确认的 Desert Stormfront 单位与任务范围细化 Mechanic、地貌层次、护航目标或海空交战反馈，并保持单一、可云端验收的增量。
