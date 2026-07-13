@@ -870,6 +870,7 @@ private final class GameEntity {
     let constructionNode = SKNode()
     let navalWakeNode = SKNode()
     let airShadowNode = SKNode()
+    let landDustNode = SKNode()
 
     init(id: Int, kind: EntityKind, faction: Faction, position: CGPoint) {
         self.id = id
@@ -1793,6 +1794,7 @@ final class GameScene: SKScene {
 
         configureNavalWakeNode(for: entity)
         configureAirShadowNode(for: entity)
+        configureLandDustNode(for: entity)
 
         entity.selectionNode.fillColor = UIColor.clear
         entity.selectionNode.strokeColor = UIColor(red: 0.2, green: 1.0, blue: 0.35, alpha: 1.0)
@@ -2168,31 +2170,88 @@ final class GameScene: SKScene {
                 base.addChild(wheel)
             }
         case .humvee:
-            let body = SKShapeNode(rectOf: CGSize(width: 36, height: 20), cornerRadius: 5)
+            for xOffset in [-13, 13] {
+                for yOffset in [-10, 10] {
+                    let wheel = SKShapeNode(ellipseOf: CGSize(width: 8, height: 5))
+                    wheel.position = CGPoint(x: CGFloat(xOffset), y: CGFloat(yOffset))
+                    wheel.fillColor = UIColor(white: 0.07, alpha: 1.0)
+                    wheel.strokeColor = UIColor(white: 0.26, alpha: 0.85)
+                    wheel.lineWidth = 0.8
+                    wheel.zPosition = -1
+                    base.addChild(wheel)
+                }
+            }
+
+            let body = SKShapeNode(rectOf: CGSize(width: 38, height: 20), cornerRadius: 4)
             body.fillColor = fill
             body.strokeColor = UIColor(white: 0.18, alpha: 1.0)
             body.lineWidth = 2
             base.addChild(body)
 
-            let cabin = SKShapeNode(rectOf: CGSize(width: 16, height: 13), cornerRadius: 3)
-            cabin.position = CGPoint(x: -2, y: 6)
-            cabin.fillColor = fill.darker(by: 0.1)
-            cabin.strokeColor = .clear
+            let rearArmor = SKShapeNode(rectOf: CGSize(width: 10, height: 16), cornerRadius: 2)
+            rearArmor.position = CGPoint(x: -13, y: 0)
+            rearArmor.fillColor = fill.darker(by: 0.13)
+            rearArmor.strokeColor = UIColor(white: 0.12, alpha: 0.7)
+            rearArmor.lineWidth = 0.8
+            base.addChild(rearArmor)
+
+            let hood = SKShapeNode(rectOf: CGSize(width: 10, height: 16), cornerRadius: 2)
+            hood.position = CGPoint(x: 13, y: 0)
+            hood.fillColor = fill.darker(by: -0.08)
+            hood.strokeColor = UIColor.white.withAlphaComponent(0.16)
+            hood.lineWidth = 0.8
+            base.addChild(hood)
+
+            let cabin = SKShapeNode(rectOf: CGSize(width: 16, height: 16), cornerRadius: 3)
+            cabin.position = CGPoint(x: -1, y: 0)
+            cabin.fillColor = fill.darker(by: 0.10)
+            cabin.strokeColor = UIColor(white: 0.12, alpha: 0.9)
+            cabin.lineWidth = 1
             base.addChild(cabin)
 
-            let gun = SKShapeNode(rectOf: CGSize(width: 22, height: 4), cornerRadius: 2)
-            gun.position = CGPoint(x: 16, y: 9)
+            let windshield = SKShapeNode(rectOf: CGSize(width: 5, height: 12), cornerRadius: 1)
+            windshield.position = CGPoint(x: 5, y: 0)
+            windshield.fillColor = entity.faction == .enemy
+                ? UIColor(red: 1.0, green: 0.45, blue: 0.23, alpha: 0.80)
+                : UIColor(red: 0.28, green: 0.82, blue: 0.94, alpha: 0.82)
+            windshield.strokeColor = UIColor.white.withAlphaComponent(0.45)
+            windshield.lineWidth = 0.7
+            base.addChild(windshield)
+
+            let turretRing = SKShapeNode(circleOfRadius: 5)
+            turretRing.position = CGPoint(x: -3, y: 3)
+            turretRing.fillColor = fill.darker(by: 0.20)
+            turretRing.strokeColor = UIColor(white: 0.10, alpha: 1.0)
+            turretRing.lineWidth = 1
+            base.addChild(turretRing)
+
+            let gun = SKShapeNode(rectOf: CGSize(width: 20, height: 3.5), cornerRadius: 1.5)
+            gun.position = CGPoint(x: 9, y: 4)
             gun.fillColor = UIColor(white: 0.12, alpha: 1.0)
-            gun.strokeColor = .clear
+            gun.strokeColor = UIColor(white: 0.34, alpha: 0.75)
+            gun.lineWidth = 0.7
             base.addChild(gun)
 
-            for x in [-13, 13] {
-                let wheel = SKShapeNode(ellipseOf: CGSize(width: 9, height: 5))
-                wheel.position = CGPoint(x: CGFloat(x), y: -11)
-                wheel.fillColor = UIColor(white: 0.08, alpha: 1.0)
-                wheel.strokeColor = .clear
-                base.addChild(wheel)
+            for yOffset in [-6, 6] {
+                let headlamp = SKShapeNode(circleOfRadius: 1.7)
+                headlamp.position = CGPoint(x: 18, y: CGFloat(yOffset))
+                headlamp.fillColor = UIColor(red: 1.0, green: 0.90, blue: 0.52, alpha: 0.96)
+                headlamp.strokeColor = .clear
+                base.addChild(headlamp)
             }
+
+            let frontBumper = SKShapeNode(rectOf: CGSize(width: 3, height: 18), cornerRadius: 1)
+            frontBumper.position = CGPoint(x: 20, y: 0)
+            frontBumper.fillColor = UIColor(white: 0.12, alpha: 1.0)
+            frontBumper.strokeColor = .clear
+            base.addChild(frontBumper)
+
+            let antenna = SKShapeNode(rectOf: CGSize(width: 2, height: 15), cornerRadius: 1)
+            antenna.position = CGPoint(x: -14, y: 10)
+            antenna.fillColor = UIColor(white: 0.12, alpha: 0.9)
+            antenna.strokeColor = .clear
+            antenna.zRotation = -0.28
+            base.addChild(antenna)
         case .tank:
             for yOffset in [-11, 11] {
                 let track = SKShapeNode(rectOf: CGSize(width: 42, height: 7), cornerRadius: 3)
@@ -2576,6 +2635,49 @@ final class GameScene: SKScene {
         entity.airShadowNode.position = CGPoint(x: -10, y: -12)
         entity.airShadowNode.zPosition = -3
         entity.node.addChild(entity.airShadowNode)
+    }
+
+    private func configureLandDustNode(for entity: GameEntity) {
+        guard entity.kind.domain == .land else { return }
+
+        let trailLength = max(34, entity.kind.footprint * 0.92)
+        let trackPath = CGMutablePath()
+        trackPath.move(to: CGPoint(x: entity.kind.footprint * 0.22, y: -6))
+        trackPath.addLine(to: CGPoint(x: trailLength, y: -8))
+        trackPath.move(to: CGPoint(x: entity.kind.footprint * 0.22, y: 6))
+        trackPath.addLine(to: CGPoint(x: trailLength, y: 8))
+
+        let tracks = SKShapeNode(path: trackPath)
+        tracks.strokeColor = UIColor(red: 0.40, green: 0.31, blue: 0.20, alpha: 0.38)
+        tracks.lineWidth = entity.kind == .tank || entity.kind == .artillery ? 3.2 : 2.2
+        tracks.lineCap = .round
+        entity.landDustNode.addChild(tracks)
+
+        for index in 0..<3 {
+            let puff = SKShapeNode(
+                ellipseOf: CGSize(
+                    width: 14 + CGFloat(index) * 6,
+                    height: 7 + CGFloat(index) * 3
+                )
+            )
+            puff.position = CGPoint(
+                x: entity.kind.footprint * 0.26 + 12 + CGFloat(index) * 12,
+                y: CGFloat(index - 1) * 5
+            )
+            puff.fillColor = UIColor(
+                red: 0.78,
+                green: 0.66,
+                blue: 0.43,
+                alpha: 0.30 - CGFloat(index) * 0.05
+            )
+            puff.strokeColor = UIColor(red: 0.92, green: 0.79, blue: 0.52, alpha: 0.20)
+            puff.lineWidth = 1
+            entity.landDustNode.addChild(puff)
+        }
+
+        entity.landDustNode.zPosition = -3
+        entity.landDustNode.isHidden = true
+        entity.node.addChild(entity.landDustNode)
     }
 
     private func addNavalUnitBody(for entity: GameEntity, to base: SKNode) {
@@ -6373,6 +6475,7 @@ final class GameScene: SKScene {
             }
             updateNavalWake(for: entity, direction: direction)
             updateAirShadow(for: entity, direction: direction)
+            updateLandDust(for: entity, direction: direction)
         }
     }
 
@@ -6424,6 +6527,34 @@ final class GameScene: SKScene {
         entity.airShadowNode.alpha = 0.88 + sin(CGFloat(lastUpdateTime) * 4 + CGFloat(entity.id)) * 0.08
     }
 
+    private func updateLandDust(
+        for entity: GameEntity,
+        direction: CGPoint,
+        forceVisible: Bool = false
+    ) {
+        guard entity.kind.domain == .land else { return }
+        if !forceVisible {
+            guard let tile = tile(at: entity.node.position) else {
+                entity.landDustNode.isHidden = true
+                return
+            }
+            switch terrain(at: tile) {
+            case .sand, .oil:
+                break
+            case .road, .water, .ridge:
+                entity.landDustNode.isHidden = true
+                return
+            }
+        }
+
+        let horizontalScale = entity.node.xScale == 0 ? 1 : entity.node.xScale
+        let localTrailDirection = CGPoint(x: -direction.x / horizontalScale, y: -direction.y)
+        entity.landDustNode.zRotation = atan2(localTrailDirection.y, localTrailDirection.x)
+        let baseAlpha: CGFloat = entity.kind == .tank || entity.kind == .artillery ? 0.88 : 0.72
+        entity.landDustNode.alpha = baseAlpha + sin(CGFloat(lastUpdateTime) * 6 + CGFloat(entity.id)) * 0.08
+        entity.landDustNode.isHidden = false
+    }
+
     private func movementSpeed(for entity: GameEntity) -> CGFloat {
         var speed = entity.kind.speed
         guard let tile = tile(at: entity.node.position) else { return speed }
@@ -6447,6 +6578,7 @@ final class GameScene: SKScene {
 
     private func animateIdle(_ entity: GameEntity, dt: TimeInterval) {
         entity.navalWakeNode.isHidden = true
+        entity.landDustNode.isHidden = true
         if entity.kind.domain == .air {
             let bob = sin(CGFloat(lastUpdateTime) * 3.4 + CGFloat(entity.id)) * 2.2
             entity.node.position.y += bob * CGFloat(dt)
@@ -6518,6 +6650,22 @@ final class GameScene: SKScene {
                 faction: .enemy,
                 at: tileCenter(TileCoord(row: 16, col: 16))
             )
+        let playerHumvee = entities.values
+            .filter { $0.faction == .player && $0.kind == .humvee && $0.isAlive }
+            .sorted { $0.id < $1.id }
+            .first ?? addEntity(
+                kind: .humvee,
+                faction: .player,
+                at: tileCenter(TileCoord(row: 15, col: 10))
+            )
+        let enemyHumvee = entities.values
+            .filter { $0.faction == .enemy && $0.kind == .humvee && $0.isAlive }
+            .sorted { $0.id < $1.id }
+            .first ?? addEntity(
+                kind: .humvee,
+                faction: .enemy,
+                at: tileCenter(TileCoord(row: 15, col: 16))
+            )
         let extraEnemyTank = addEntity(
             kind: .tank,
             faction: .enemy,
@@ -6551,7 +6699,20 @@ final class GameScene: SKScene {
         enemyArtillery.node.zPosition = entityZPosition(enemyArtillery)
         enemyArtillery.destination = blueAnchor
 
-        selectedIDs = Set(playerTanks.prefix(2).map(\.id) + [playerArtillery.id])
+        let playerHumveeDirection = CGPoint(x: 0.96, y: 0.28).normalized
+        let enemyHumveeDirection = CGPoint(x: -0.96, y: -0.28).normalized
+        playerHumvee.node.position = blueAnchor + CGPoint(x: -84, y: -18)
+        playerHumvee.node.xScale = 1
+        playerHumvee.node.zPosition = entityZPosition(playerHumvee)
+        playerHumvee.destination = playerHumvee.node.position + playerHumveeDirection * 180
+        updateLandDust(for: playerHumvee, direction: playerHumveeDirection, forceVisible: true)
+        enemyHumvee.node.position = redAnchor + CGPoint(x: 84, y: 18)
+        enemyHumvee.node.xScale = -1
+        enemyHumvee.node.zPosition = entityZPosition(enemyHumvee)
+        enemyHumvee.destination = enemyHumvee.node.position + enemyHumveeDirection * 180
+        updateLandDust(for: enemyHumvee, direction: enemyHumveeDirection, forceVisible: true)
+
+        selectedIDs = Set(playerTanks.prefix(2).map(\.id) + [playerArtillery.id, playerHumvee.id])
         updateFog(force: true)
         refreshSelection()
         showArtilleryMuzzleBlast(
