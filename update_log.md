@@ -4702,3 +4702,37 @@
 
 - 云端冻结截图能证明模型、方向化尘迹、迷雾所有权设计和启动稳定性，但不能覆盖真实连续转向、道路 / 沙地边界切换、密集履带叠加或真机性能，仍需人工玩法检查。
 - 当前没有独立 XCTest target；下一轮可继续按已确认的 Desert Stormfront 单位与任务范围细化 Mechanic、地貌层次、护航目标或海空交战反馈，并保持单一、可云端验收的增量。
+
+### v4.89 / 工程车模型与维修链路
+
+日期：2026-07-13
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 所述 Noble Master Games《沙漠风暴 Desert Stormfront》。本轮另核对 Noble Master 官方 press kit `https://www.noblemaster.com/press/sheet.php?p=desert_stormfront`：官方单位表明确包含 Mechanics，页面提供官方 trailer `https://www.youtube.com/watch?v=7oZC6DpIUhQ` 和原始截图；只借鉴其清晰俯视轮廓、阵营标识、低遮挡反馈与紧凑触屏信息层级，不复制原素材或 UI 布局。
+- Mechanic 在原 gameplay footprint 内增加四轮、工程底盘、后部工具舱 / 槽位、驾驶舱、Blue / Red 阵营化风挡、警示灯、折叠吊臂 / 吊钩和高对比工具色标；HP、速度、价格、建造时间、占点速率、碰撞和 AI 均未改变。
+- 每个 Mechanic 预创建 `mechanicRepairEffectNode`、阵营化外层束、白色核心束和十字目标脉冲。`updateRepair(dt:)` 仍按原规则寻找最近同阵营受损友军、使用 95 范围和每秒 22 HP 维修量，只在实际维修时更新现有 path / position / alpha / scale；无合法目标时隐藏，不按帧创建 SpriteKit 节点。
+- 维修束把世界目标转换为考虑 Mechanic `xScale` 的局部坐标并截短到目标 footprint 边缘，双方镜像后仍指向正确目标；玩家链路正常显示，敌方链路要求 Mechanic 和目标都为玩家已知，不能泄露未知目标位置。
+- 自动维修链路原有随机单点 spark 被确定性双层束 / 目标十字替代；construction 和 Field Repair 支援的既有 spark 调用保持不变。
+- CI land capture 加入 Blue / Red Mechanic、双方受损 Tank、双向维修链路和玩家 Mechanic 既有 95 范围圈，同时保留 Humvee / Tank / Artillery、沙地扬尘、炮口、炮线和中央爆炸证据；普通开局不进入这些临时状态。
+- README、核心 flow、flowchart、测试规范和 v4.89 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.89 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；提交前只运行 `git diff --check` / `git diff --cached --check` 轻量检查并通过。
+- 实现提交：`833e95e42ef10a5cf6bd38a308804f52c816148d`，commit subject 为 `v4.89: 细化工程车与维修链路`。
+- 首轮 GitHub Actions run `29226384323` 的静态检查、project lint、device build、simulator build、九次启动和 artifact 上传全部 success；但 Agent C 目视发现蓝方 Mechanic 被顶部任务面板遮挡，红方模型 / 链路清晰，因此该 run 没有计为本轮最终验收通过。
+- capture-only 修复提交：`6c789cb9d44f0c3092426444fb2085749ca8318d`，commit subject 为 `v4.89: 修复蓝方工程车探针位置`，只把蓝方 Mechanic 移到受损坦克下侧约 65pt，仍处于真实 95pt 维修范围且避开其他单位与任务面板。
+- 最终 GitHub Actions run：`29227065894`，attempt `1`，conclusion `success`，总耗时 10 分 44 秒。
+- artifact：`desert-frontline-ci-v4.89-main-6c789cb9d44f-run29227065894-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29227065894/`，未加密且约 11.6 MB。
+- manifest 记录 `branch=main`、`commitSha=6c789cb9d44f0c3092426444fb2085749ca8318d`、`runId=29227065894`、`version=v4.89`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`。
+- 九次 simulator launch PID `11486`、`12613`、`13284`、`14200`、`14779`、`15050`、`15072`、`15733`、`15974` 均在截图后存活；九张原始截图均为 1206x2622 PNG，App 日志未命中启动崩溃、未捕获异常、SIGABRT、watchdog 或异常终止关键字。
+- 最终 `simulator-land-combat.png` 显示完整 Blue / Red Mechanic 工程车、阵营风挡 / 工具轮廓、双方受损 Tank、青白 / 红白双层维修束、目标十字和玩家 95 范围圈；Humvee、Tank、Artillery、扬尘、炮线、爆炸与单排 HUD 仍可辨，关键证据未被面板完全遮挡。原图 SHA-256 为 `d5cb78dd566b70b1e31e3417c32c97978b1c6b549a464fc46e791ec3e9ee9c73`。
+- 源码审阅确认 `configureMechanicRepairEffectNode(...)` 每个实体只调用一次；普通维修只在原共享 `updateRepair(dt:)` 中刷新一次；land capture 两次额外调用只用于冻结双方维修证据；敌方显示过滤和节点所有权符合现有迷雾边界。
+
+遗留事项：
+
+- 云端冻结截图能证明模型、维修来源 / 目标关系、镜像方向、HUD 层级和启动稳定性，但不能覆盖真实连续目标切换、多台 Mechanic 争抢同一目标、单位快速移动、迷雾边界切换或真机性能，仍需人工玩法检查。
+- 当前没有独立 XCTest target；下一轮可继续细化沙漠地貌层次、护航 / 车队任务表达、AA Truck 模型或海空交战反馈，并保持单一、可云端验收的增量。
