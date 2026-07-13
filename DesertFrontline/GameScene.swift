@@ -1065,6 +1065,9 @@ final class GameScene: SKScene {
         if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "air" {
             return tileCenter(TileCoord(row: 15, col: 16))
         }
+        if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "land" {
+            return tileCenter(TileCoord(row: 15, col: 13))
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "coast" {
             return tileCenter(TileCoord(row: 17, col: 21))
         }
@@ -2191,23 +2194,87 @@ final class GameScene: SKScene {
                 base.addChild(wheel)
             }
         case .tank:
+            for yOffset in [-11, 11] {
+                let track = SKShapeNode(rectOf: CGSize(width: 42, height: 7), cornerRadius: 3)
+                track.position = CGPoint(x: -1, y: CGFloat(yOffset))
+                track.fillColor = UIColor(white: 0.09, alpha: 1.0)
+                track.strokeColor = UIColor(white: 0.22, alpha: 1.0)
+                track.lineWidth = 1
+                track.zPosition = -1
+                base.addChild(track)
+
+                for xOffset in [-13, 0, 13] {
+                    let wheel = SKShapeNode(circleOfRadius: 2.4)
+                    wheel.position = CGPoint(x: CGFloat(xOffset), y: CGFloat(yOffset))
+                    wheel.fillColor = UIColor(white: 0.28, alpha: 1.0)
+                    wheel.strokeColor = UIColor(white: 0.06, alpha: 1.0)
+                    wheel.lineWidth = 0.8
+                    wheel.zPosition = -0.5
+                    base.addChild(wheel)
+                }
+            }
+
             let hull = SKShapeNode(rectOf: CGSize(width: 42, height: 25), cornerRadius: 5)
             hull.fillColor = fill
             hull.strokeColor = UIColor(white: 0.18, alpha: 1.0)
             hull.lineWidth = 2
             base.addChild(hull)
 
+            let glacis = SKShapeNode(rectOf: CGSize(width: 10, height: 21), cornerRadius: 2)
+            glacis.position = CGPoint(x: 16, y: 0)
+            glacis.fillColor = fill.lighter(by: 0.08)
+            glacis.strokeColor = UIColor.white.withAlphaComponent(0.16)
+            glacis.lineWidth = 1
+            base.addChild(glacis)
+
+            let turretRing = SKShapeNode(ellipseOf: CGSize(width: 27, height: 18))
+            turretRing.position = CGPoint(x: -1, y: 2)
+            turretRing.fillColor = fill.darker(by: 0.18)
+            turretRing.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            turretRing.lineWidth = 1.2
+            base.addChild(turretRing)
+
             let turret = SKShapeNode(rectOf: CGSize(width: 22, height: 14), cornerRadius: 4)
             turret.fillColor = fill.darker(by: 0.12)
-            turret.strokeColor = .clear
-            turret.position = CGPoint(x: 0, y: 3)
+            turret.strokeColor = UIColor(white: 0.10, alpha: 0.9)
+            turret.lineWidth = 1
+            turret.position = CGPoint(x: 1, y: 3)
             base.addChild(turret)
+
+            let mantlet = SKShapeNode(rectOf: CGSize(width: 7, height: 11), cornerRadius: 2)
+            mantlet.position = CGPoint(x: 12, y: 4)
+            mantlet.fillColor = fill.darker(by: 0.24)
+            mantlet.strokeColor = .clear
+            base.addChild(mantlet)
 
             let barrel = SKShapeNode(rectOf: CGSize(width: 28, height: 5), cornerRadius: 2)
             barrel.fillColor = UIColor(white: 0.18, alpha: 1.0)
             barrel.strokeColor = .clear
             barrel.position = CGPoint(x: 22, y: 4)
             base.addChild(barrel)
+
+            let muzzleBrake = SKShapeNode(rectOf: CGSize(width: 7, height: 8), cornerRadius: 2)
+            muzzleBrake.position = CGPoint(x: 37, y: 4)
+            muzzleBrake.fillColor = UIColor(white: 0.12, alpha: 1.0)
+            muzzleBrake.strokeColor = UIColor(white: 0.32, alpha: 1.0)
+            muzzleBrake.lineWidth = 0.8
+            base.addChild(muzzleBrake)
+
+            let hatch = SKShapeNode(ellipseOf: CGSize(width: 8, height: 6))
+            hatch.position = CGPoint(x: -4, y: 5)
+            hatch.fillColor = fill.lighter(by: 0.12)
+            hatch.strokeColor = UIColor(white: 0.10, alpha: 1.0)
+            hatch.lineWidth = 0.8
+            base.addChild(hatch)
+
+            let optic = SKShapeNode(rectOf: CGSize(width: 5, height: 3), cornerRadius: 1)
+            optic.position = CGPoint(x: 5, y: 7)
+            optic.fillColor = entity.faction == .enemy
+                ? UIColor(red: 1.0, green: 0.46, blue: 0.22, alpha: 0.95)
+                : UIColor(red: 0.30, green: 0.90, blue: 1.0, alpha: 0.95)
+            optic.strokeColor = UIColor.white.withAlphaComponent(0.55)
+            optic.lineWidth = 0.6
+            base.addChild(optic)
         case .artillery:
             let hull = SKShapeNode(rectOf: CGSize(width: 40, height: 22), cornerRadius: 4)
             hull.fillColor = fill
@@ -6314,6 +6381,10 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "land" {
+            prepareCILandCaptureScene()
+            return
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "air" {
             prepareCIAirCaptureScene()
             return
@@ -6348,6 +6419,43 @@ final class GameScene: SKScene {
                 persistent: true
             )
         }
+    }
+
+    private func prepareCILandCaptureScene() {
+        let playerTanks = entities.values
+            .filter { $0.faction == .player && $0.kind == .tank && $0.isAlive }
+            .sorted { $0.id < $1.id }
+        let enemyTanks = entities.values
+            .filter { $0.faction == .enemy && $0.kind == .tank && $0.isAlive }
+            .sorted { $0.id < $1.id }
+        let extraEnemyTank = addEntity(
+            kind: .tank,
+            faction: .enemy,
+            at: tileCenter(TileCoord(row: 15, col: 16))
+        )
+        let blueAnchor = tileCenter(TileCoord(row: 15, col: 11))
+        let redAnchor = tileCenter(TileCoord(row: 15, col: 15))
+        let blueOffsets = [CGPoint(x: 0, y: 0), CGPoint(x: -46, y: -62)]
+        let redOffsets = [CGPoint(x: 0, y: 0), CGPoint(x: 46, y: 62)]
+
+        for (index, tank) in playerTanks.prefix(2).enumerated() {
+            tank.node.position = blueAnchor + blueOffsets[index]
+            tank.node.xScale = 1
+            tank.node.zPosition = entityZPosition(tank)
+            tank.destination = redAnchor
+        }
+        let captureEnemyTanks = Array(enemyTanks.prefix(1)) + [extraEnemyTank]
+        for (index, tank) in captureEnemyTanks.enumerated() {
+            tank.node.position = redAnchor + redOffsets[index]
+            tank.node.xScale = -1
+            tank.node.zPosition = entityZPosition(tank)
+            tank.destination = blueAnchor
+        }
+
+        selectedIDs = Set(playerTanks.prefix(2).map(\.id))
+        updateFog(force: true)
+        refreshSelection()
+        explode(at: tileCenter(TileCoord(row: 15, col: 13)), scale: 0.72, persistent: true)
     }
 
     private func prepareCIAirCaptureScene() {

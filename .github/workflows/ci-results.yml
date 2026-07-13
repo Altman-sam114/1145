@@ -83,7 +83,7 @@ jobs:
           set -o pipefail
           {
             set -euo pipefail
-            rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-hud-build.png ci-results/simulator-hud-air.png ci-results/simulator-hud-naval.png ci-results/simulator-hud-support.png ci-results/simulator-command-move.png ci-results/simulator-command-attack-move.png ci-results/simulator-command-attack-target.png ci-results/simulator-app.log
+            rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-hud-build.png ci-results/simulator-hud-air.png ci-results/simulator-hud-naval.png ci-results/simulator-hud-support.png ci-results/simulator-command-move.png ci-results/simulator-command-attack-move.png ci-results/simulator-command-attack-target.png ci-results/simulator-land-combat.png ci-results/simulator-app.log
 
             /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
               -project DesertFrontline.xcodeproj \
@@ -113,11 +113,12 @@ jobs:
               local screenshot_path="$2"
               local wait_seconds="$3"
               local command_marker="${4:-none}"
+              local camera_focus="${5:-air}"
               local launch_output
               local app_pid
 
-              echo "Launching ${bundle_id} with HUD page ${page} and command marker ${command_marker}"
-              launch_output="$(SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=air SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE=1 SIMCTL_CHILD_DESERT_CI_HUD_PAGE="${page}" SIMCTL_CHILD_DESERT_CI_COMMAND_MARKER="${command_marker}" xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}")"
+              echo "Launching ${bundle_id} with HUD page ${page}, command marker ${command_marker}, and camera focus ${camera_focus}"
+              launch_output="$(SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS="${camera_focus}" SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE=1 SIMCTL_CHILD_DESERT_CI_HUD_PAGE="${page}" SIMCTL_CHILD_DESERT_CI_COMMAND_MARKER="${command_marker}" xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}")"
               echo "${launch_output}"
               app_pid="${launch_output##*: }"
               if [[ ! "${app_pid}" =~ ^[0-9]+$ ]]; then
@@ -141,6 +142,7 @@ jobs:
             launch_hud_page tactical ci-results/simulator-command-move.png 4 move
             launch_hud_page tactical ci-results/simulator-command-attack-move.png 4 attack-move
             launch_hud_page tactical ci-results/simulator-command-attack-target.png 4 attack-target
+            launch_hud_page tactical ci-results/simulator-land-combat.png 4 none land
             xcrun simctl spawn "${sim_udid}" log show --last 2m --predicate 'process == "DesertFrontline"' > ci-results/simulator-app.log || true
             xcrun simctl shutdown "${sim_udid}" || true
           } 2>&1 | tee ci-results/simulator-launch.log
@@ -287,6 +289,7 @@ jobs:
                   "ci-results/simulator-command-move.png",
                   "ci-results/simulator-command-attack-move.png",
                   "ci-results/simulator-command-attack-target.png",
+                  "ci-results/simulator-land-combat.png",
               ],
           }
           (results_dir / "ci-artifact-manifest.json").write_text(
