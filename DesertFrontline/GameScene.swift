@@ -6883,7 +6883,7 @@ final class GameScene: SKScene {
         enemyHumvee.destination = enemyHumvee.node.position + enemyHumveeDirection * 180
         updateLandDust(for: enemyHumvee, direction: enemyHumveeDirection, forceVisible: true)
 
-        playerMechanic.node.position = blueAnchor + CGPoint(x: 34, y: 56)
+        playerMechanic.node.position = blueAnchor + CGPoint(x: 34, y: -56)
         playerMechanic.node.xScale = 1
         playerMechanic.node.zPosition = entityZPosition(playerMechanic)
         playerMechanic.destination = nil
