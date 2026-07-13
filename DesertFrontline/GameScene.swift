@@ -871,6 +871,10 @@ private final class GameEntity {
     let navalWakeNode = SKNode()
     let airShadowNode = SKNode()
     let landDustNode = SKNode()
+    let mechanicRepairEffectNode = SKNode()
+    let mechanicRepairBeamNode = SKShapeNode()
+    let mechanicRepairCoreNode = SKShapeNode()
+    let mechanicRepairTargetNode = SKShapeNode(circleOfRadius: 8)
 
     init(id: Int, kind: EntityKind, faction: Faction, position: CGPoint) {
         self.id = id
@@ -1795,6 +1799,7 @@ final class GameScene: SKScene {
         configureNavalWakeNode(for: entity)
         configureAirShadowNode(for: entity)
         configureLandDustNode(for: entity)
+        configureMechanicRepairEffectNode(for: entity)
 
         entity.selectionNode.fillColor = UIColor.clear
         entity.selectionNode.strokeColor = UIColor(red: 0.2, green: 1.0, blue: 0.35, alpha: 1.0)
@@ -2422,17 +2427,85 @@ final class GameScene: SKScene {
             optic.lineWidth = 0.6
             base.addChild(optic)
         case .mechanic:
-            let body = SKShapeNode(rectOf: CGSize(width: 30, height: 20), cornerRadius: 5)
-            body.fillColor = UIColor(red: 0.80, green: 0.76, blue: 0.58, alpha: 1.0)
-            body.strokeColor = UIColor(white: 0.18, alpha: 1.0)
-            body.lineWidth = 2
-            base.addChild(body)
+            for xOffset in [-11, 11] {
+                for yOffset in [-10, 10] {
+                    let wheel = SKShapeNode(ellipseOf: CGSize(width: 8, height: 5))
+                    wheel.position = CGPoint(x: CGFloat(xOffset), y: CGFloat(yOffset))
+                    wheel.fillColor = UIColor(white: 0.07, alpha: 1.0)
+                    wheel.strokeColor = UIColor(white: 0.28, alpha: 0.82)
+                    wheel.lineWidth = 0.8
+                    wheel.zPosition = -1
+                    base.addChild(wheel)
+                }
+            }
 
-            let wrench = SKShapeNode(rectOf: CGSize(width: 24, height: 4), cornerRadius: 2)
-            wrench.fillColor = UIColor(red: 0.18, green: 0.78, blue: 0.88, alpha: 1.0)
-            wrench.strokeColor = .clear
-            wrench.zRotation = 0.65
-            base.addChild(wrench)
+            let chassis = SKShapeNode(rectOf: CGSize(width: 34, height: 20), cornerRadius: 4)
+            chassis.fillColor = fill
+            chassis.strokeColor = UIColor(white: 0.16, alpha: 1.0)
+            chassis.lineWidth = 2
+            base.addChild(chassis)
+
+            let toolBay = SKShapeNode(rectOf: CGSize(width: 14, height: 16), cornerRadius: 2)
+            toolBay.position = CGPoint(x: -9, y: 0)
+            toolBay.fillColor = fill.darker(by: 0.18)
+            toolBay.strokeColor = UIColor(white: 0.12, alpha: 0.9)
+            toolBay.lineWidth = 0.8
+            base.addChild(toolBay)
+
+            for yOffset in [-5, 0, 5] {
+                let toolSlot = SKShapeNode(rectOf: CGSize(width: 8, height: 1.3), cornerRadius: 0.6)
+                toolSlot.position = CGPoint(x: -10, y: CGFloat(yOffset))
+                toolSlot.fillColor = UIColor(white: 0.38, alpha: 0.70)
+                toolSlot.strokeColor = .clear
+                base.addChild(toolSlot)
+            }
+
+            let cabin = SKShapeNode(rectOf: CGSize(width: 13, height: 16), cornerRadius: 3)
+            cabin.position = CGPoint(x: 8, y: 0)
+            cabin.fillColor = fill.darker(by: 0.08)
+            cabin.strokeColor = UIColor(white: 0.14, alpha: 0.9)
+            cabin.lineWidth = 0.9
+            base.addChild(cabin)
+
+            let windshield = SKShapeNode(rectOf: CGSize(width: 4.5, height: 11), cornerRadius: 1)
+            windshield.position = CGPoint(x: 14, y: 0)
+            windshield.fillColor = entity.faction == .enemy
+                ? UIColor(red: 1.0, green: 0.47, blue: 0.24, alpha: 0.88)
+                : UIColor(red: 0.28, green: 0.88, blue: 0.96, alpha: 0.88)
+            windshield.strokeColor = UIColor.white.withAlphaComponent(0.45)
+            windshield.lineWidth = 0.7
+            base.addChild(windshield)
+
+            let boom = SKShapeNode(rectOf: CGSize(width: 23, height: 3), cornerRadius: 1.5)
+            boom.position = CGPoint(x: -2, y: 8)
+            boom.fillColor = UIColor(red: 0.22, green: 0.26, blue: 0.25, alpha: 1.0)
+            boom.strokeColor = UIColor(white: 0.48, alpha: 0.7)
+            boom.lineWidth = 0.7
+            boom.zRotation = 0.28
+            base.addChild(boom)
+
+            let hook = SKShapeNode(circleOfRadius: 2.5)
+            hook.position = CGPoint(x: 10, y: 12)
+            hook.fillColor = UIColor.clear
+            hook.strokeColor = UIColor(red: 0.38, green: 0.96, blue: 0.76, alpha: 0.95)
+            hook.lineWidth = 1.4
+            base.addChild(hook)
+
+            let beacon = SKShapeNode(circleOfRadius: 2.2)
+            beacon.position = CGPoint(x: 6, y: 9)
+            beacon.fillColor = UIColor(red: 1.0, green: 0.78, blue: 0.20, alpha: 1.0)
+            beacon.strokeColor = UIColor.white.withAlphaComponent(0.65)
+            beacon.lineWidth = 0.6
+            base.addChild(beacon)
+
+            let toolMark = SKShapeNode(rectOf: CGSize(width: 12, height: 2.6), cornerRadius: 1.3)
+            toolMark.position = CGPoint(x: -7, y: 0)
+            toolMark.fillColor = entity.faction == .enemy
+                ? UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 0.95)
+                : UIColor(red: 0.22, green: 0.92, blue: 0.78, alpha: 0.95)
+            toolMark.strokeColor = .clear
+            toolMark.zRotation = 0.72
+            base.addChild(toolMark)
         default:
             break
         }
@@ -2678,6 +2751,46 @@ final class GameScene: SKScene {
         entity.landDustNode.zPosition = -3
         entity.landDustNode.isHidden = true
         entity.node.addChild(entity.landDustNode)
+    }
+
+    private func configureMechanicRepairEffectNode(for entity: GameEntity) {
+        guard entity.kind == .mechanic else { return }
+
+        let color = entity.faction == .enemy
+            ? UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0)
+            : UIColor(red: 0.22, green: 1.0, blue: 0.72, alpha: 1.0)
+
+        entity.mechanicRepairBeamNode.strokeColor = color.withAlphaComponent(0.34)
+        entity.mechanicRepairBeamNode.lineWidth = 7
+        entity.mechanicRepairBeamNode.lineCap = .round
+        entity.mechanicRepairBeamNode.glowWidth = 4
+        entity.mechanicRepairEffectNode.addChild(entity.mechanicRepairBeamNode)
+
+        entity.mechanicRepairCoreNode.strokeColor = UIColor.white.withAlphaComponent(0.92)
+        entity.mechanicRepairCoreNode.lineWidth = 2
+        entity.mechanicRepairCoreNode.lineCap = .round
+        entity.mechanicRepairCoreNode.glowWidth = 1.2
+        entity.mechanicRepairEffectNode.addChild(entity.mechanicRepairCoreNode)
+
+        entity.mechanicRepairTargetNode.fillColor = color.withAlphaComponent(0.12)
+        entity.mechanicRepairTargetNode.strokeColor = color.withAlphaComponent(0.92)
+        entity.mechanicRepairTargetNode.lineWidth = 2
+        entity.mechanicRepairTargetNode.glowWidth = 1.5
+
+        let plusHorizontal = SKShapeNode(rectOf: CGSize(width: 10, height: 2.5), cornerRadius: 1)
+        plusHorizontal.fillColor = UIColor.white.withAlphaComponent(0.94)
+        plusHorizontal.strokeColor = .clear
+        entity.mechanicRepairTargetNode.addChild(plusHorizontal)
+
+        let plusVertical = SKShapeNode(rectOf: CGSize(width: 2.5, height: 10), cornerRadius: 1)
+        plusVertical.fillColor = UIColor.white.withAlphaComponent(0.94)
+        plusVertical.strokeColor = .clear
+        entity.mechanicRepairTargetNode.addChild(plusVertical)
+        entity.mechanicRepairEffectNode.addChild(entity.mechanicRepairTargetNode)
+
+        entity.mechanicRepairEffectNode.zPosition = 8
+        entity.mechanicRepairEffectNode.isHidden = true
+        entity.node.addChild(entity.mechanicRepairEffectNode)
     }
 
     private func addNavalUnitBody(for entity: GameEntity, to base: SKNode) {
@@ -6391,6 +6504,10 @@ final class GameScene: SKScene {
     private func updateRepair(dt: TimeInterval) {
         let mechanics = entities.values.filter { $0.kind == .mechanic && $0.isAlive }
         for mechanic in mechanics {
+            mechanic.mechanicRepairEffectNode.isHidden = true
+        }
+
+        for mechanic in mechanics {
             guard let target = entities.values
                 .filter({ $0.faction == mechanic.faction && $0.isAlive && $0.id != mechanic.id && $0.hp < $0.kind.maxHP })
                 .min(by: { $0.node.position.distance(to: mechanic.node.position) < $1.node.position.distance(to: mechanic.node.position) }),
@@ -6399,10 +6516,48 @@ final class GameScene: SKScene {
 
             target.hp = min(target.kind.maxHP, target.hp + CGFloat(dt) * mechanicRepairPerSecond)
             updateHealthBar(target)
-            if Int.random(in: 0...20) == 0 {
-                showRepairSpark(at: target.node.position)
-            }
+            updateMechanicRepairEffect(for: mechanic, target: target)
         }
+    }
+
+    private func updateMechanicRepairEffect(for mechanic: GameEntity, target: GameEntity) {
+        guard mechanic.kind == .mechanic,
+              mechanic.faction == .player || (
+                isKnownToFaction(mechanic, observer: .player) &&
+                isKnownToFaction(target, observer: .player)
+              )
+        else {
+            mechanic.mechanicRepairEffectNode.isHidden = true
+            return
+        }
+
+        let horizontalScale = abs(mechanic.node.xScale) < 0.01 ? 1 : mechanic.node.xScale
+        let targetOffset = target.node.position - mechanic.node.position
+        let localTarget = CGPoint(x: targetOffset.x / horizontalScale, y: targetOffset.y)
+        let start = CGPoint(x: -2, y: 7)
+        let delta = localTarget - start
+        guard delta.length > 1 else {
+            mechanic.mechanicRepairEffectNode.isHidden = true
+            return
+        }
+
+        let direction = delta.normalized
+        let targetInset = min(
+            max(10, target.kind.footprint * 0.28),
+            max(0, delta.length - 6)
+        )
+        let end = localTarget - direction * targetInset
+        let path = CGMutablePath()
+        path.move(to: start)
+        path.addLine(to: end)
+        mechanic.mechanicRepairBeamNode.path = path
+        mechanic.mechanicRepairCoreNode.path = path
+        mechanic.mechanicRepairTargetNode.position = end
+
+        let phase = CGFloat(lastUpdateTime) * 7 + CGFloat(mechanic.id)
+        mechanic.mechanicRepairEffectNode.alpha = 0.84 + sin(phase) * 0.12
+        mechanic.mechanicRepairTargetNode.setScale(0.92 + sin(phase * 1.15) * 0.10)
+        mechanic.mechanicRepairEffectNode.isHidden = false
     }
 
     private func updateMovement(dt: TimeInterval) {
@@ -6666,6 +6821,22 @@ final class GameScene: SKScene {
                 faction: .enemy,
                 at: tileCenter(TileCoord(row: 15, col: 16))
             )
+        let playerMechanic = entities.values
+            .filter { $0.faction == .player && $0.kind == .mechanic && $0.isAlive }
+            .sorted { $0.id < $1.id }
+            .first ?? addEntity(
+                kind: .mechanic,
+                faction: .player,
+                at: tileCenter(TileCoord(row: 15, col: 10))
+            )
+        let enemyMechanic = entities.values
+            .filter { $0.faction == .enemy && $0.kind == .mechanic && $0.isAlive }
+            .sorted { $0.id < $1.id }
+            .first ?? addEntity(
+                kind: .mechanic,
+                faction: .enemy,
+                at: tileCenter(TileCoord(row: 15, col: 16))
+            )
         let extraEnemyTank = addEntity(
             kind: .tank,
             faction: .enemy,
@@ -6712,9 +6883,35 @@ final class GameScene: SKScene {
         enemyHumvee.destination = enemyHumvee.node.position + enemyHumveeDirection * 180
         updateLandDust(for: enemyHumvee, direction: enemyHumveeDirection, forceVisible: true)
 
-        selectedIDs = Set(playerTanks.prefix(2).map(\.id) + [playerArtillery.id, playerHumvee.id])
+        playerMechanic.node.position = blueAnchor + CGPoint(x: 34, y: 56)
+        playerMechanic.node.xScale = 1
+        playerMechanic.node.zPosition = entityZPosition(playerMechanic)
+        playerMechanic.destination = nil
+        playerMechanic.path.removeAll()
+        enemyMechanic.node.position = redAnchor + CGPoint(x: -34, y: -56)
+        enemyMechanic.node.xScale = -1
+        enemyMechanic.node.zPosition = entityZPosition(enemyMechanic)
+        enemyMechanic.destination = nil
+        enemyMechanic.path.removeAll()
+
+        if let playerRepairTarget = playerTanks.first {
+            playerRepairTarget.hp = playerRepairTarget.kind.maxHP * 0.62
+            updateHealthBar(playerRepairTarget)
+        }
+        if let enemyRepairTarget = captureEnemyTanks.first {
+            enemyRepairTarget.hp = enemyRepairTarget.kind.maxHP * 0.62
+            updateHealthBar(enemyRepairTarget)
+        }
+
+        selectedIDs = Set(playerTanks.prefix(2).map(\.id) + [playerArtillery.id, playerHumvee.id, playerMechanic.id])
         updateFog(force: true)
         refreshSelection()
+        if let playerRepairTarget = playerTanks.first {
+            updateMechanicRepairEffect(for: playerMechanic, target: playerRepairTarget)
+        }
+        if let enemyRepairTarget = captureEnemyTanks.first {
+            updateMechanicRepairEffect(for: enemyMechanic, target: enemyRepairTarget)
+        }
         showArtilleryMuzzleBlast(
             from: playerArtillery.node.position,
             toward: enemyArtillery.node.position,
