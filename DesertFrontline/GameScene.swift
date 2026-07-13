@@ -2276,18 +2276,92 @@ final class GameScene: SKScene {
             optic.lineWidth = 0.6
             base.addChild(optic)
         case .artillery:
+            for yOffset in [-10, 10] {
+                let track = SKShapeNode(rectOf: CGSize(width: 40, height: 7), cornerRadius: 3)
+                track.position = CGPoint(x: -2, y: CGFloat(yOffset))
+                track.fillColor = UIColor(white: 0.08, alpha: 1.0)
+                track.strokeColor = UIColor(white: 0.22, alpha: 1.0)
+                track.lineWidth = 1
+                track.zPosition = -1
+                base.addChild(track)
+
+                for xOffset in [-13, 0, 13] {
+                    let wheel = SKShapeNode(circleOfRadius: 2.2)
+                    wheel.position = CGPoint(x: CGFloat(xOffset) - 2, y: CGFloat(yOffset))
+                    wheel.fillColor = UIColor(white: 0.28, alpha: 1.0)
+                    wheel.strokeColor = UIColor(white: 0.06, alpha: 1.0)
+                    wheel.lineWidth = 0.8
+                    wheel.zPosition = -0.5
+                    base.addChild(wheel)
+                }
+
+                let spade = SKShapeNode(rectOf: CGSize(width: 8, height: 6), cornerRadius: 1)
+                spade.position = CGPoint(x: -23, y: CGFloat(yOffset))
+                spade.fillColor = UIColor(white: 0.16, alpha: 1.0)
+                spade.strokeColor = UIColor(white: 0.30, alpha: 0.8)
+                spade.lineWidth = 0.8
+                base.addChild(spade)
+            }
+
             let hull = SKShapeNode(rectOf: CGSize(width: 40, height: 22), cornerRadius: 4)
             hull.fillColor = fill
             hull.strokeColor = UIColor(white: 0.18, alpha: 1.0)
             hull.lineWidth = 2
             base.addChild(hull)
 
-            let cannon = SKShapeNode(rectOf: CGSize(width: 46, height: 5), cornerRadius: 2)
+            let compartment = SKShapeNode(rectOf: CGSize(width: 23, height: 16), cornerRadius: 3)
+            compartment.position = CGPoint(x: -5, y: 3)
+            compartment.fillColor = fill.darker(by: 0.10)
+            compartment.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            compartment.lineWidth = 1
+            base.addChild(compartment)
+
+            let gunMount = SKShapeNode(ellipseOf: CGSize(width: 18, height: 13))
+            gunMount.position = CGPoint(x: 4, y: 5)
+            gunMount.fillColor = fill.darker(by: 0.20)
+            gunMount.strokeColor = UIColor(white: 0.10, alpha: 1.0)
+            gunMount.lineWidth = 1
+            base.addChild(gunMount)
+
+            let shield = SKShapeNode(rectOf: CGSize(width: 6, height: 14), cornerRadius: 2)
+            shield.position = CGPoint(x: 12, y: 7)
+            shield.fillColor = fill.darker(by: 0.16)
+            shield.strokeColor = UIColor(white: 0.26, alpha: 0.65)
+            shield.lineWidth = 0.8
+            shield.zRotation = 0.15
+            base.addChild(shield)
+
+            let cannon = SKShapeNode(rectOf: CGSize(width: 42, height: 4.5), cornerRadius: 2)
             cannon.fillColor = UIColor(white: 0.13, alpha: 1.0)
-            cannon.strokeColor = .clear
-            cannon.position = CGPoint(x: 18, y: 8)
+            cannon.strokeColor = UIColor(white: 0.32, alpha: 0.7)
+            cannon.lineWidth = 0.8
+            cannon.position = CGPoint(x: 28, y: 10)
             cannon.zRotation = 0.15
             base.addChild(cannon)
+
+            let muzzleBrake = SKShapeNode(rectOf: CGSize(width: 8, height: 8), cornerRadius: 2)
+            muzzleBrake.position = CGPoint(x: 49, y: 13)
+            muzzleBrake.fillColor = UIColor(white: 0.10, alpha: 1.0)
+            muzzleBrake.strokeColor = UIColor(white: 0.34, alpha: 1.0)
+            muzzleBrake.lineWidth = 0.8
+            muzzleBrake.zRotation = 0.15
+            base.addChild(muzzleBrake)
+
+            let hatch = SKShapeNode(ellipseOf: CGSize(width: 8, height: 6))
+            hatch.position = CGPoint(x: -9, y: 5)
+            hatch.fillColor = fill.darker(by: -0.10)
+            hatch.strokeColor = UIColor(white: 0.10, alpha: 1.0)
+            hatch.lineWidth = 0.8
+            base.addChild(hatch)
+
+            let optic = SKShapeNode(rectOf: CGSize(width: 5, height: 3), cornerRadius: 1)
+            optic.position = CGPoint(x: 2, y: 8)
+            optic.fillColor = entity.faction == .enemy
+                ? UIColor(red: 1.0, green: 0.46, blue: 0.22, alpha: 0.95)
+                : UIColor(red: 0.30, green: 0.90, blue: 1.0, alpha: 0.95)
+            optic.strokeColor = UIColor.white.withAlphaComponent(0.55)
+            optic.lineWidth = 0.6
+            base.addChild(optic)
         case .mechanic:
             let body = SKShapeNode(rectOf: CGSize(width: 30, height: 20), cornerRadius: 5)
             body.fillColor = UIColor(red: 0.80, green: 0.76, blue: 0.58, alpha: 1.0)
@@ -6428,6 +6502,22 @@ final class GameScene: SKScene {
         let enemyTanks = entities.values
             .filter { $0.faction == .enemy && $0.kind == .tank && $0.isAlive }
             .sorted { $0.id < $1.id }
+        let playerArtillery = entities.values
+            .filter { $0.faction == .player && $0.kind == .artillery && $0.isAlive }
+            .sorted { $0.id < $1.id }
+            .first ?? addEntity(
+                kind: .artillery,
+                faction: .player,
+                at: tileCenter(TileCoord(row: 14, col: 10))
+            )
+        let enemyArtillery = entities.values
+            .filter { $0.faction == .enemy && $0.kind == .artillery && $0.isAlive }
+            .sorted { $0.id < $1.id }
+            .first ?? addEntity(
+                kind: .artillery,
+                faction: .enemy,
+                at: tileCenter(TileCoord(row: 16, col: 16))
+            )
         let extraEnemyTank = addEntity(
             kind: .tank,
             faction: .enemy,
@@ -6452,9 +6542,30 @@ final class GameScene: SKScene {
             tank.destination = blueAnchor
         }
 
-        selectedIDs = Set(playerTanks.prefix(2).map(\.id))
+        playerArtillery.node.position = blueAnchor + CGPoint(x: -58, y: 78)
+        playerArtillery.node.xScale = 1
+        playerArtillery.node.zPosition = entityZPosition(playerArtillery)
+        playerArtillery.destination = redAnchor
+        enemyArtillery.node.position = redAnchor + CGPoint(x: 58, y: -78)
+        enemyArtillery.node.xScale = -1
+        enemyArtillery.node.zPosition = entityZPosition(enemyArtillery)
+        enemyArtillery.destination = blueAnchor
+
+        selectedIDs = Set(playerTanks.prefix(2).map(\.id) + [playerArtillery.id])
         updateFog(force: true)
         refreshSelection()
+        showArtilleryMuzzleBlast(
+            from: playerArtillery.node.position,
+            toward: enemyArtillery.node.position,
+            faction: .player,
+            persistent: true
+        )
+        showProjectile(
+            from: playerArtillery.node.position,
+            to: enemyArtillery.node.position,
+            kind: .artillery,
+            persistent: true
+        )
         explode(at: tileCenter(TileCoord(row: 15, col: 13)), scale: 0.72, persistent: true)
     }
 
@@ -6673,6 +6784,14 @@ final class GameScene: SKScene {
         if attacker.kind == .carrier {
             launchCarrierWing(from: attacker.node.position, to: target.node.position, faction: attacker.faction)
         } else {
+            if attacker.kind == .artillery,
+               attacker.faction == .player || isKnownToFaction(attacker, observer: .player) {
+                showArtilleryMuzzleBlast(
+                    from: attacker.node.position,
+                    toward: target.node.position,
+                    faction: attacker.faction
+                )
+            }
             showProjectile(from: attacker.node.position, to: target.node.position, kind: attacker.kind)
         }
 
@@ -9194,9 +9313,14 @@ final class GameScene: SKScene {
         label.run(.sequence([.group([.moveBy(x: 0, y: 18, duration: 0.55), .fadeOut(withDuration: 0.55)]), .removeFromParent()]))
     }
 
-    private func showProjectile(from start: CGPoint, to end: CGPoint, kind: EntityKind) {
+    private func showProjectile(
+        from start: CGPoint,
+        to end: CGPoint,
+        kind: EntityKind,
+        persistent: Bool = false
+    ) {
         if kind == .fighter || kind == .samSite || kind == .aaTruck {
-            showGuidedMissileTrail(from: start, to: end, kind: kind)
+            showGuidedMissileTrail(from: start, to: end, kind: kind, persistent: persistent)
             return
         }
 
@@ -9209,7 +9333,72 @@ final class GameScene: SKScene {
         tracer.glowWidth = 2
         tracer.zPosition = 250
         effectsLayer.addChild(tracer)
+        guard !persistent else { return }
         tracer.run(.sequence([.fadeOut(withDuration: 0.16), .removeFromParent()]))
+    }
+
+    private func showArtilleryMuzzleBlast(
+        from start: CGPoint,
+        toward end: CGPoint,
+        faction: Faction,
+        persistent: Bool = false
+    ) {
+        let direction = (end - start).normalized
+        let angle = atan2(direction.y, direction.x)
+        let root = SKNode()
+        root.position = start + direction * 46
+        root.zRotation = angle
+        root.zPosition = 288
+        effectsLayer.addChild(root)
+
+        let flashPath = CGMutablePath()
+        flashPath.move(to: CGPoint(x: -5, y: 0))
+        flashPath.addLine(to: CGPoint(x: 18, y: 10))
+        flashPath.addLine(to: CGPoint(x: 28, y: 0))
+        flashPath.addLine(to: CGPoint(x: 18, y: -10))
+        flashPath.closeSubpath()
+        let flash = SKShapeNode(path: flashPath)
+        flash.fillColor = faction == .enemy
+            ? UIColor(red: 1.0, green: 0.42, blue: 0.18, alpha: 0.92)
+            : UIColor(red: 1.0, green: 0.78, blue: 0.22, alpha: 0.96)
+        flash.strokeColor = UIColor.white.withAlphaComponent(0.88)
+        flash.lineWidth = 1.2
+        flash.glowWidth = 5
+        root.addChild(flash)
+
+        let core = SKShapeNode(circleOfRadius: 5)
+        core.fillColor = UIColor(white: 1.0, alpha: 0.96)
+        core.strokeColor = .clear
+        core.position = CGPoint(x: 3, y: 0)
+        core.zPosition = 2
+        root.addChild(core)
+
+        for index in 0..<3 {
+            let smoke = SKShapeNode(circleOfRadius: CGFloat(5 + index * 2))
+            smoke.position = CGPoint(x: CGFloat(22 + index * 8), y: CGFloat(index - 1) * 5)
+            smoke.fillColor = UIColor(white: CGFloat(0.60 + Double(index) * 0.08), alpha: 0.42)
+            smoke.strokeColor = .clear
+            smoke.zPosition = -1
+            root.addChild(smoke)
+        }
+
+        let dust = SKShapeNode(ellipseOf: CGSize(width: 58, height: 20))
+        dust.position = start + CGPoint(x: 0, y: -10)
+        dust.fillColor = UIColor(red: 0.72, green: 0.58, blue: 0.34, alpha: 0.18)
+        dust.strokeColor = UIColor(red: 0.90, green: 0.72, blue: 0.38, alpha: 0.62)
+        dust.lineWidth = 2
+        dust.zPosition = 247
+        effectsLayer.addChild(dust)
+
+        guard !persistent else { return }
+        root.run(.sequence([
+            .group([.scale(to: 1.35, duration: 0.24), .fadeOut(withDuration: 0.24)]),
+            .removeFromParent()
+        ]))
+        dust.run(.sequence([
+            .group([.scale(to: 1.55, duration: 0.34), .fadeOut(withDuration: 0.34)]),
+            .removeFromParent()
+        ]))
     }
 
     private func showGuidedMissileTrail(
