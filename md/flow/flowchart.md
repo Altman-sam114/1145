@@ -11,7 +11,7 @@ flowchart TD
   App["DesertFrontlineApp\n创建窗口入口"] --> View["GameView\nGeometryReader + 全屏 SpriteView\n黑色背景兜底并同步视口尺寸"]
   View --> Holder["SceneHolder\n创建非零初始 GameScene\nresizeFill 并跟随窗口尺寸"]
   Holder --> Scene["GameScene.didMove\n初始化世界节点、地图、实体、HUD、相机"]
-  Scene --> Init["初始化链路\n地形 -> 地图 -> 控制点 -> 初始部队 -> HUD -> 迷雾"]
+  Scene --> Init["初始化链路\n地形 -> 确定性沙纹/连通道路/岩脊/油田/海岸地图 -> 控制点 -> 初始部队 -> HUD -> 迷雾"]
   Init --> Loop["GameScene.update 每帧循环\n统一推进游戏状态"]
   Loop --> Build["施工 / 生产\n建筑进度、RAD/SON/GT/SAM/CB、AA Truck、旗点覆盖、BuildOrder、出兵、航母甲板起飞反馈、集结点与面板状态"]
   Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖、旗点奖金与占领进度"]
@@ -20,7 +20,7 @@ flowchart TD
   Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、已知潜艇压力补 ASW、合法认知 SCAN 巡扫、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、海岸目标权重、跳过不可生产兵种、支援、混编主攻波次、低血单位撤退回修、受损老兵保护、空闲Carrier警戒翼队、高价值海军护航门槛、attack-move 波次"]
   Loop --> Fog["战争迷雾\n单位/已完工建筑/RAD/脆弱专职 SON/GT/SAM/CB 视野、侦察、潜艇检测、支援命中暴露"]
   Loop --> Mission["任务 / 胜负\n占油、夺旗、海岸资产分项摘要、混编/破生产奖励、已知HQ情报与AMOV面板摘要、HQ 摧毁判定"]
-  Build --> Render["SpriteKit 渲染\n浅滩/岸线浪花、Humvee四轮/风挡/枪座、Tank与Artillery履带/炮塔/炮座/光学件、Mechanic四轮/工具舱/吊臂、HEL/JET细化模型与投影、实体节点、特效、进度条"]
+  Build --> Render["SpriteKit 渲染\n沙地色差/风蚀纹、连通道路肩/路床/标线、岩脊落影/亮面/碎石、油污环/裂纹、浅滩/岸线浪花、Humvee四轮/风挡/枪座、Tank与Artillery履带/炮塔/炮座/光学件、Mechanic四轮/工具舱/吊臂、HEL/JET细化模型与投影、实体节点、特效、进度条"]
   Economy --> Render
   Commands --> Render
   Combat --> Render
@@ -111,3 +111,5 @@ flowchart TD
 - v4.88：Humvee 四轮装甲侦察车模型；机动陆军预创建沙地 / 油地方向胎迹与尘团，land probe 冻结双方 Humvee 扬尘。
 
 - v4.89：Mechanic 四轮工程车模型；预创建自动维修双层束与目标十字，land probe 冻结双方已知维修链路。
+
+- v4.90：确定性沙地色差 / 风蚀纹、按正交邻格连通的分层道路、山脊落影 / 亮暗面 / 碎石和油田污环 / 裂纹；CI 新增第十次 coast focus 地图截图探针。

@@ -69,7 +69,7 @@ GitHub Actions 负责运行：
 - `git diff --check`，检查最新提交的空白和补丁残留。
 - `plutil -lint DesertFrontline.xcodeproj/project.pbxproj`。
 - generic iOS device build。
-- iOS Simulator launch probe：额外构建 simulator app、安装到可用 iPhone simulator，并用 `DESERT_CI_HUD_PAGE=tactical/build/air/naval/support` 依次重启 App；五页截图分别为 `simulator-screenshot.png`、`simulator-hud-build.png`、`simulator-hud-air.png`、`simulator-hud-naval.png`、`simulator-hud-support.png`。随后以 tactical 页和 `DESERT_CI_COMMAND_MARKER=move/attack-move/attack-target` 再启动三次，生成 `simulator-command-move.png`、`simulator-command-attack-move.png`、`simulator-command-attack-target.png`；前八次均使用 `DESERT_CI_CAMERA_FOCUS=air`。第九次使用 tactical 页与 `DESERT_CI_CAMERA_FOCUS=land`，生成 `simulator-land-combat.png`，验证 Blue / Red Mechanic / Humvee / Tank / Artillery；Mechanic 四轮 / 工具舱 / 驾驶舱 / 阵营风挡 / 吊臂轮廓、双方受损 Tank、阵营化双层维修束 / 目标十字和玩家 Mechanic 维修范围圈；Humvee 四轮 / 风挡 / 枪座与方向化双轨 / 尘团；Tank / Artillery 履带、炮塔 / 炮座、长炮管；选择态、persistent Artillery 炮口焰 / 烟尘 / 炮线和地面爆炸样本。九次启动都在等待后截图并用宿主机 `kill -0` 确认该次 PID 仍存活，最后统一抓取 App 日志；用于捕捉启动闪退 / 白屏黑屏、页签或动作丢失、单排溢出、HUD 遮挡、既有空战 / 命令 / 战斗证据缺失，以及工程模型 / 维修链路 / 地面模型 / 行进扬尘 / 炮击反馈探针缺失。任一截图或 PID 检查失败都会令 simulator launch probe 失败。所有 launch 都通过 `DESERT_CI_CAPTURE_MODE=1` 暂停经济、AI、战斗和胜负推进；air capture scene 保留既有空战证据，land capture scene 只在 CI 中编排 Mechanic / Humvee / Tank / Artillery 和持久视觉样本。普通 App 启动不设置这些变量，默认 `TACT`，三类 marker 使用短动画，初始单位、镜头和实时玩法不变。
+- iOS Simulator launch probe：额外构建 simulator app、安装到可用 iPhone simulator，并用 `DESERT_CI_HUD_PAGE=tactical/build/air/naval/support` 依次重启 App；五页截图分别为 `simulator-screenshot.png`、`simulator-hud-build.png`、`simulator-hud-air.png`、`simulator-hud-naval.png`、`simulator-hud-support.png`。随后以 tactical 页和 `DESERT_CI_COMMAND_MARKER=move/attack-move/attack-target` 再启动三次，生成 `simulator-command-move.png`、`simulator-command-attack-move.png`、`simulator-command-attack-target.png`；前八次均使用 `DESERT_CI_CAMERA_FOCUS=air`。第九次使用 tactical 页与 `DESERT_CI_CAMERA_FOCUS=land`，生成 `simulator-land-combat.png`，验证 Blue / Red Mechanic / Humvee / Tank / Artillery、双方维修链路、方向化扬尘、炮口 / 炮线和爆炸样本。第十次使用 tactical 页与 `DESERT_CI_CAMERA_FOCUS=coast`，生成 `simulator-map-terrain.png`，验证确定性沙地色差与低密度沙丘等高线 / 风纹、按正交邻格连续的道路肩 / 路床 / 标记、ridge 落影 / 亮暗面 / 碎石、oil 污环 / 裂纹、海岸浅水 / 泡沫、开阔水面、玩家海军航迹与水面命中样本。十次启动都在等待后截图并用宿主机 `kill -0` 确认该次 PID 仍存活，最后统一抓取 App 日志；用于捕捉启动闪退 / 白屏黑屏、页签或动作丢失、单排溢出、HUD 遮挡、既有空战 / 命令 / 战斗证据缺失，以及工程模型 / 维修链路 / 地面模型 / 地貌层次 / 海岸与海军反馈探针缺失。任一截图或 PID 检查失败都会令 simulator launch probe 失败。所有 launch 都通过 `DESERT_CI_CAPTURE_MODE=1` 暂停经济、AI、战斗和胜负推进；air capture scene 保留既有空战证据，land capture scene 只在 CI 中编排地面单位和持久视觉样本，coast/default capture scene 复用既有玩家海军方向航迹与水面命中样本。普通 App 启动不设置这些变量，默认 `TACT`，三类 marker 使用短动画，初始单位、镜头和实时玩法不变。
 - 结果包生成和上传。
 
 云端 Xcode build 命令：
@@ -112,6 +112,7 @@ GitHub Actions 负责运行：
 - `simulator-command-attack-move.png`
 - `simulator-command-attack-target.png`
 - `simulator-land-combat.png`
+- `simulator-map-terrain.png`
 - `DesertFrontline.xcresult`
 
 artifact 命名规则：
