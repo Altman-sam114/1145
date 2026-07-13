@@ -2222,7 +2222,7 @@ final class GameScene: SKScene {
 
             let glacis = SKShapeNode(rectOf: CGSize(width: 10, height: 21), cornerRadius: 2)
             glacis.position = CGPoint(x: 16, y: 0)
-            glacis.fillColor = fill.lighter(by: 0.08)
+            glacis.fillColor = fill.darker(by: -0.08)
             glacis.strokeColor = UIColor.white.withAlphaComponent(0.16)
             glacis.lineWidth = 1
             base.addChild(glacis)
@@ -2262,7 +2262,7 @@ final class GameScene: SKScene {
 
             let hatch = SKShapeNode(ellipseOf: CGSize(width: 8, height: 6))
             hatch.position = CGPoint(x: -4, y: 5)
-            hatch.fillColor = fill.lighter(by: 0.12)
+            hatch.fillColor = fill.darker(by: -0.12)
             hatch.strokeColor = UIColor(white: 0.10, alpha: 1.0)
             hatch.lineWidth = 0.8
             base.addChild(hatch)
