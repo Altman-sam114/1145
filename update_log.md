@@ -4736,3 +4736,36 @@
 
 - 云端冻结截图能证明模型、维修来源 / 目标关系、镜像方向、HUD 层级和启动稳定性，但不能覆盖真实连续目标切换、多台 Mechanic 争抢同一目标、单位快速移动、迷雾边界切换或真机性能，仍需人工玩法检查。
 - 当前没有独立 XCTest target；下一轮可继续细化沙漠地貌层次、护航 / 车队任务表达、AA Truck 模型或海空交战反馈，并保持单一、可云端验收的增量。
+
+### v4.90 / 沙漠地貌层次与地图探针
+
+日期：2026-07-13
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，不是其他同名 Desert Storm 游戏。本轮核对 Noble Master 官方 press kit `https://www.noblemaster.com/press/sheet.php?p=desert_stormfront`、官方 trailer `https://www.youtube.com/watch?v=7oZC6DpIUhQ` 和官方 land / coast 原始截图；只借鉴其等距沙漠层次、连续道路、岩柱明暗面、浅水海岸和紧凑触屏战场可读性，不复制原素材或 UI。
+- `drawMap()` 的 sand 基础色改为由 tile row / col / `skirmishSeed` 纯整数散列选择的五档小幅暖色变化，并在低密度 tile 上一次性增加半透明沙丘等高线或短风纹；同一 skirmish 每次一致，不使用随机数或按帧动画。
+- road 渲染只读四个合法正交邻格，将真实 road 连接映射到等距菱形边中点，叠加深色道路肩、浅色内层路床、转角 / 交叉口中心和方向一致的短标记；未修改道路坐标、路径代价或 1.28 移动倍率。
+- ridge 使用确定性尺寸 / 偏移的不规则岩体、落影、暖色亮面和四组碎石替代三块平面三角形；oil 保留中心污渍并增加两层油污环和表面裂纹。所有细节节点只在地图绘制 / 重开时创建，zPosition 低于实体、建筑、雾层与主要反馈。
+- `Terrain` case、`buildTerrain()`、skirmish 坐标、移动速度、寻路、建造合法性、基地覆盖、海战路径、小地图、战争迷雾、经济、战斗、AI、任务和胜负均未改变。
+- GitHub Actions simulator launch probe 从九次扩展为十次；新增 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 的 `simulator-map-terrain.png`，沿用独立 PID 解析、等待、截图和存活检查，并写入 artifact manifest。coast/default capture scene 复用既有玩家海军方向航迹与水面命中样本，普通启动不进入 capture mode。
+- README、核心 flow、flowchart、测试规范和 v4.90 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` `DEVELOPMENT_TEAM` 人工改动保持未暂存，未进入 v4.90 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；提交前只运行 `git diff --check`、`git diff --cached --check` 和 workflow YAML 解析，均通过。
+- 实现提交：`97dff38c13110397802b945a4f764fab2d68ce24`，commit subject 为 `v4.90: 细化沙漠地貌与地图探针`。
+- GitHub Actions run：`29231225809`，attempt `1`，conclusion `success`，总耗时 6 分 17 秒。
+- artifact：`desert-frontline-ci-v4.90-main-97dff38c1311-run29231225809-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29231225809/`，未加密且约 14 MB。
+- manifest 记录 `branch=main`、`commitSha=97dff38c13110397802b945a4f764fab2d68ce24`、`runId=29231225809`、`runAttempt=1`、`version=v4.90`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十次 simulator launch PID `5941`、`6950`、`7532`、`8116`、`9066`、`9155`、`9442`、`9749`、`10226`、`10390` 均在截图后存活；十张原始截图均为 1206x2622 PNG，App 日志未命中启动崩溃、未捕获异常、SIGABRT、watchdog 或异常终止关键字。
+- `simulator-map-terrain.png` 显示可辨但不过度嘈杂的沙地色差 / 弧形风蚀纹，直路、转角和交叉口连续的道路肩 / 路床 / 短标记，oil 污环，已探索边缘 ridge 轮廓，浅水 / 泡沫 / 开阔水面、Shipyard、Carrier / 舰船航迹与水面命中柱；单排 HUD 和信息面板没有完全遮挡主要地图证据，画面不是黑屏或白屏。原图 SHA-256 为 `389f88e26fb2ed571d3b9f792185bbd4f903853fd74c605f0d38a39f2c955623`。
+- `simulator-land-combat.png` 仍保留 v4.89 的双方 Mechanic / Humvee / Tank / Artillery、维修链路、扬尘、炮线和爆炸证据，原图 SHA-256 为 `f2138400f25f23a49ba919800299372293c47052ee919f3252330edfc3b90203`，未发现本轮地图渲染导致的可见回归。
+- 源码审阅确认 `terrainDetailHash(...)`、`roadConnectionPoints(...)`、`ridgeRockPath(...)` 和 `ridgeFacetPath(...)` 只由 `drawMap()` / `addTerrainDetail(...)` 链路使用；道路 helper 先检查 `isValid` 再读取 terrain，不回写 terrain 或绕过现有规则。
+
+遗留事项：
+
+- 云端冻结截图能证明确定性构图、HUD 层级、海岸 / 地貌证据和启动稳定性，但不能覆盖玩家连续缩放 / 拖动下的细节密度、重开多个 skirmish variant、低端真机节点成本或完整战争迷雾变化，仍需后续人工玩法与性能检查。
+- 当前没有独立 XCTest target。下一轮可继续选择一个单一增量，例如细化 AA Truck 防空车辆轮廓与开火反馈、加强海空交战命中反馈，或推进 Desert Stormfront 风格车队 / 护航任务表达，并继续使用最新 `origin/main` artifact 闭环。
