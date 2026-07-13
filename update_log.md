@@ -4641,3 +4641,33 @@
 
 - 云端冻结截图能证明模型轮廓、阵营差异、截图产物和启动稳定性，但不能覆盖真实行进镜像、炮塔独立旋转、密集坦克交战、缩放或真机性能，仍需人工玩法检查。
 - 当前没有独立 XCTest target；下一轮可继续细化 Artillery / Humvee 地面模型、地貌层次或海空交战效果，但仍应保持单一、可云端验收的增量。
+
+### v4.87 / 火炮模型与炮口反馈
+
+日期：2026-07-13
+
+核心变更：
+
+- 本项目参考对象经人工再次确认固定为百度百科词条 `沙漠风暴Desert Stormfront`（lemma id `4042982`）所述 Noble Master Games 现代中东沙漠 RTS；官方 Noble Master trailer 与 TouchGameplay 15 分钟实机视频对应同一游戏，不与其他同名“Desert Storm”作品混用。
+- Artillery 在原 gameplay footprint 与朝向语义内增加履带、负重轮、后部稳定铲、装甲战斗室、炮座、炮盾、舱盖、Blue / Red 阵营化光学件、分段长炮管和制退器。
+- Artillery 通过原 `fire(...)` 合法开火时，玩家炮位或玩家已知敌方炮位显示短促炮口焰、亮芯、烟团和贴地尘环；玩家未知敌方炮位不创建该效果，不泄露迷雾位置。
+- `showProjectile(...)` 增加默认关闭的 `persistent` 参数，普通弹丸生命周期不变；CI land capture 才冻结 Artillery 炮线、炮口焰和烟尘样本。
+- `DESERT_CI_CAMERA_FOCUS=land` 样例扩展为 Blue / Red Tank 与 Artillery 对峙，继续生成同一 `simulator-land-combat.png`，九次启动总数、普通开局、AI、数值和战斗结算均未改变。
+- README、核心 flow、flowchart、测试规范和 v4.87 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` 团队号改动保持未暂存，未进入 v4.87 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；提交前只运行 `git diff --check` 轻量检查并通过。
+- 实现提交：`1b305c7c7d9c7fe3240ac84f8bd3c25dff78a9f6`，commit subject 为 `v4.87: 细化火炮模型与炮口反馈`。
+- GitHub Actions run：`29219647569`，attempt `1`，conclusion `success`，总耗时约 6 分 9 秒。
+- artifact：`desert-frontline-ci-v4.87-main-1b305c7c7d9c-run29219647569-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29219647569/`，目录约 11 MB。
+- manifest 记录 `branch=main`、`commitSha=1b305c7c7d9c7fe3240ac84f8bd3c25dff78a9f6`、`runId=29219647569`、`version=v4.87`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 和 simulator build 均包含 `** BUILD SUCCEEDED **`，九次 simulator launch PID 均在截图后存活。
+- 九张截图均为 1206x2622 PNG。`simulator-land-combat.png` 显示双方 Tank / Artillery、Artillery 履带底盘 / 战斗室 / 长炮管、persistent 炮口亮焰 / 烟团 / 炮线和中央爆炸，画面不是黑屏或白屏；SHA-256 为 `28ac552b3ab522d8349559a6e7946b1538f4c4b555a1e3b19388c6721e6570d3`。
+- 源码审阅确认普通 `showProjectile(...)` 调用继续使用 `persistent=false`，炮口反馈仅对玩家单位或玩家已知敌方 Artillery 生效，未改伤害、射程、结构倍率、目标过滤或 AI。
+
+遗留事项：
+
+- 云端冻结截图能证明模型、炮口反馈、炮线和启动稳定性，但不能覆盖真实连续齐射、敌方炮位进出迷雾、快速镜像、密集烟尘或真机性能，仍需人工玩法检查。
+- 当前没有独立 XCTest target；下一轮可继续按已确认的 Desert Stormfront 单位与任务范围细化 Humvee / Mechanic、地图随机化表现、护航任务或海空交战，但应保持单一可验收增量。
