@@ -3306,14 +3306,15 @@ final class GameScene: SKScene {
         hudNode.addChild(selectionInfoTitleLabel)
 
         let rowCount = compact ? 4 : 5
-        let rowGap: CGFloat = compact ? 18 : 20
+        let rowTopInset: CGFloat = compact ? 34 : 36
+        let rowGap: CGFloat = compact ? 16 : 20
         for index in 0..<rowCount {
             let row = SKLabelNode(fontNamed: "Menlo")
             row.fontSize = compact ? 9 : 10
             row.fontColor = UIColor(white: 0.90, alpha: 1.0)
             row.horizontalAlignmentMode = .left
             row.verticalAlignmentMode = .center
-            row.position = CGPoint(x: frame.minX + 10, y: frame.maxY - 36 - CGFloat(index) * rowGap)
+            row.position = CGPoint(x: frame.minX + 10, y: frame.maxY - rowTopInset - CGFloat(index) * rowGap)
             hudNode.addChild(row)
             selectionInfoRowLabels.append(row)
         }
