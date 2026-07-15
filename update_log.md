@@ -4769,3 +4769,34 @@
 
 - 云端冻结截图能证明确定性构图、HUD 层级、海岸 / 地貌证据和启动稳定性，但不能覆盖玩家连续缩放 / 拖动下的细节密度、重开多个 skirmish variant、低端真机节点成本或完整战争迷雾变化，仍需后续人工玩法与性能检查。
 - 当前没有独立 XCTest target。下一轮可继续选择一个单一增量，例如细化 AA Truck 防空车辆轮廓与开火反馈、加强海空交战命中反馈，或推进 Desert Stormfront 风格车队 / 护航任务表达，并继续使用最新 `origin/main` artifact 闭环。
+
+### v4.91 / 战斗态势与主目标 UI
+
+日期：2026-07-15
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，并核对 Noble Master 官方 press kit 与 trailer；本轮只借鉴其紧凑触屏信息层级，不复制原素材或 UI 布局。
+- 单选作战单位的既有选择面板在存在玩家已知合法目标时显示目标短码、HP / 百分比、距离和武器 ready / reload；多选编队集中显示 Combat、Engaged、Ready、Wounded、Critical、主目标攻击者数、目标 HP / 百分比和最近距离。
+- 选择面板底部新增左对齐、按绿 / 黄 / 红分级的主目标生命条；共享集火世界标记升级为 `FOCUS n <code> <hp>%` 和八段耐久条。所有 UI 只读既有 `attackTarget`、`attackTimer`、HP 和 `isKnownToFaction(...)`，不改变伤害、冷却、AI、目标选择、迷雾或操作。
+- 新增 capture-only `combat-ui` 陆战场景，冻结四个玩家作战单位攻击 43% HP Tank、其中一单位装填中的状态；GitHub Actions 从十次扩展为十一次独立启动并新增 `simulator-combat-ui.png`。
+- 首轮云端截图发现 compact 选择面板最后一行与目标血条相碰；追加修复只把 compact 四行首行上移 2pt、行距从 18pt 调为 16pt，字号、面板宽高、触控区域和非 compact 布局不变。
+- README、核心 flow、flowchart、测试规范和 v4.91 提示词已同步；工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` `DEVELOPMENT_TEAM` 人工改动保持未暂存，未进入提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地游戏探针；本机只运行 `git diff --check`、`git diff --cached --check` 和 workflow YAML 解析等轻量检查并通过。
+- 实现提交：`06130b6ee48367b06dbdcce0df6545d8347a2b48`，commit subject 为 `v4.91: 强化战斗态势与主目标UI`。对应 run `29397694655` 的构建、十一次启动和 artifact 均 success，但 Agent C 目视发现空军编队第四行被血条部分覆盖，因此未计为最终验收通过。
+- 排版修复提交：`7feae4a242930125ee84a86a24d061e9e52a08e8`，commit subject 为 `v4.91: 修复战斗面板信息遮挡`。
+- 最终 GitHub Actions run：`29398662256`，attempt `1`，conclusion `success`，job 总耗时 7 分 49 秒；Node 20 action 被 GitHub runner 强制改用 Node 24 的注记不影响项目结果。
+- 最终 artifact：`desert-frontline-ci-v4.91-main-7feae4a24293-run29398662256-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29398662256/`，未加密且约 16 MB。
+- manifest 记录 `branch=main`、`commitSha=7feae4a242930125ee84a86a24d061e9e52a08e8`、`runId=29398662256`、`runAttempt=1`、`version=v4.91`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十一次 simulator launch PID `6661`、`7405`、`7650`、`8216`、`8389`、`9011`、`9189`、`9630`、`10392`、`11095`、`11757` 均在截图后存活；十一张原始 PNG 均为 1206x2622，App 日志未命中启动崩溃、未捕获异常、SIGABRT、watchdog 或异常终止关键字。
+- 最终 `simulator-combat-ui.png` 显示 `5 UNITS | ENG 4`、Combat / HP / Wounded / Critical、`PRIMARY TNK x4 HP 111/260 43%`、`Eng 4/4 Ready 3 D192`、约 43% 橙色目标条，以及世界 `FOCUS 4 TNK 43%` / 八段耐久；Mechanic 维修链路、炮线、爆炸、模型和命令条仍可辨。原图 SHA-256 为 `17cd3a59d57fd4b275f906914b8e4003190957b6cd6a962752f2230bae9eff36`。
+- 最终 `simulator-screenshot.png` 的空军交战面板完整显示 `Eng 2/4 Ready 4 D252`，第四行与绿色目标条之间已有清晰间隔，无文字、边框或血条重叠；原图 SHA-256 为 `ec1fe838340903a7468523976f9066894f2b2c92233cd979c2942d76b7a492a6`。`simulator-land-combat.png` 的无主目标四行面板也未出现布局回归。
+
+遗留事项：
+
+- 云端冻结截图能证明交战摘要、主目标条、集火标记、compact 排版和启动稳定性，但不能覆盖目标快速死亡 / 切换、编队频繁增减、战争迷雾边界变化、连续触控或真机性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮继续优先选择一个战斗或 UI 细节增量，可加强命中反馈、选中 / 指令可读性或海空交战信息，但应保持单一、可由最新 `origin/main` artifact 验收的范围。
