@@ -982,6 +982,9 @@ final class GameScene: SKScene {
     private var aiStatusLabel = SKLabelNode(fontNamed: "Menlo")
     private var selectionInfoTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     private var selectionInfoRowLabels: [SKLabelNode] = []
+    private var selectionTargetHealthBack = SKShapeNode()
+    private var selectionTargetHealthFill = SKShapeNode()
+    private var selectionTargetHealthBarFrame = CGRect.zero
     private var hudButtonFrames: [HudAction: CGRect] = [:]
     private var hudButtonSubtitleLabels: [HudAction: SKLabelNode] = [:]
     private var hudButtonShapes: [HudAction: SKShapeNode] = [:]
@@ -3314,6 +3317,35 @@ final class GameScene: SKScene {
             hudNode.addChild(row)
             selectionInfoRowLabels.append(row)
         }
+
+        selectionTargetHealthBarFrame = CGRect(
+            x: frame.minX + 10,
+            y: frame.minY + 7,
+            width: frame.width - 20,
+            height: 7
+        )
+        selectionTargetHealthBack = SKShapeNode(
+            rectOf: selectionTargetHealthBarFrame.size,
+            cornerRadius: 2
+        )
+        selectionTargetHealthBack.position = CGPoint(
+            x: selectionTargetHealthBarFrame.midX,
+            y: selectionTargetHealthBarFrame.midY
+        )
+        selectionTargetHealthBack.fillColor = UIColor.black.withAlphaComponent(0.72)
+        selectionTargetHealthBack.strokeColor = UIColor(red: 0.96, green: 0.34, blue: 0.22, alpha: 0.70)
+        selectionTargetHealthBack.lineWidth = 1.2
+        selectionTargetHealthBack.isHidden = true
+        hudNode.addChild(selectionTargetHealthBack)
+
+        selectionTargetHealthFill = SKShapeNode(
+            rectOf: selectionTargetHealthBarFrame.size,
+            cornerRadius: 1.5
+        )
+        selectionTargetHealthFill.fillColor = UIColor(red: 0.34, green: 0.92, blue: 0.30, alpha: 1.0)
+        selectionTargetHealthFill.strokeColor = .clear
+        selectionTargetHealthFill.isHidden = true
+        hudNode.addChild(selectionTargetHealthFill)
     }
 
     private func minimapTerrainColor(_ terrain: Terrain) -> UIColor {
@@ -3647,6 +3679,15 @@ final class GameScene: SKScene {
         if let threatSummary = airDefenseThreatSummaryLine(for: selected) {
             selectedLabel.text = "\(selectedLabel.text ?? "")  |  \(threatSummary)"
         }
+        if pendingConstructionKind == nil,
+           pendingSupportPower == nil,
+           !isSettingRallyPoint,
+           !isSettingAttackMove,
+           let primary = primaryCombatTarget(for: selected) {
+            let targetPercent = Int((primary.target.hp / max(primary.target.kind.maxHP, 1)) * 100)
+            let label = primary.count > 1 ? "FOCUS \(primary.count)" : "ATK"
+            selectedLabel.text = "\(selectedLabel.text ?? "")  |  \(label) \(primary.target.kind.shortCode) \(targetPercent)%"
+        }
 
         let playerQueue = buildOrders.filter { $0.faction == .player }
         if playerQueue.isEmpty {
@@ -3801,6 +3842,31 @@ final class GameScene: SKScene {
         for (index, label) in selectionInfoRowLabels.enumerated() {
             label.text = index < content.rows.count ? content.rows[index] : ""
         }
+        updateSelectionTargetHealthBar(selected: selected)
+    }
+
+    private func updateSelectionTargetHealthBar(selected: [GameEntity]) {
+        guard let primary = primaryCombatTarget(for: selected) else {
+            selectionTargetHealthBack.isHidden = true
+            selectionTargetHealthFill.isHidden = true
+            return
+        }
+
+        let ratio = min(1, max(0, primary.target.hp / max(primary.target.kind.maxHP, 1)))
+        selectionTargetHealthBack.isHidden = false
+        selectionTargetHealthFill.isHidden = false
+        selectionTargetHealthFill.xScale = max(0.001, ratio)
+        selectionTargetHealthFill.position = CGPoint(
+            x: selectionTargetHealthBarFrame.minX + selectionTargetHealthBarFrame.width * ratio * 0.5,
+            y: selectionTargetHealthBarFrame.midY
+        )
+        if ratio > 0.55 {
+            selectionTargetHealthFill.fillColor = UIColor(red: 0.30, green: 0.92, blue: 0.30, alpha: 1.0)
+        } else if ratio > 0.25 {
+            selectionTargetHealthFill.fillColor = UIColor(red: 1.0, green: 0.72, blue: 0.20, alpha: 1.0)
+        } else {
+            selectionTargetHealthFill.fillColor = UIColor(red: 1.0, green: 0.28, blue: 0.18, alpha: 1.0)
+        }
     }
 
     private func selectionInfoContent(for selected: [GameEntity]) -> (title: String, rows: [String]) {
@@ -3943,8 +4009,21 @@ final class GameScene: SKScene {
         if let capabilityInfo = selectionCapabilityInfoLine(for: entity) {
             rows[1] = "\(rows[1])  \(capabilityInfo)"
         }
+        if let primary = primaryCombatTarget(for: [entity]) {
+            let target = primary.target
+            let targetPercent = Int((target.hp / max(target.kind.maxHP, 1)) * 100)
+            let distance = entity.node.position.distance(to: target.node.position)
+            rows[2] = "Tgt \(target.kind.shortCode) HP \(Int(target.hp))/\(Int(target.kind.maxHP)) \(targetPercent)% D\(Int(distance))"
+            rows[3] = weaponReadinessLine(for: entity)
+        }
 
         return ("\(entity.kind.displayName) \(entity.kind.shortCode)", rows)
+    }
+
+    private func weaponReadinessLine(for entity: GameEntity) -> String {
+        guard entity.attackTimer > 0.05 else { return "Weapon ready" }
+        let tenths = Int(ceil(entity.attackTimer * 10))
+        return "Reload \(tenths / 10).\(tenths % 10)s"
     }
 
     private func applyCoastalAssetInfo(for entity: GameEntity, rows: inout [String]) {
@@ -4281,6 +4360,18 @@ final class GameScene: SKScene {
         let land = selected.filter { $0.kind.domain == .land }.count
         let air = selected.filter { $0.kind.domain == .air }.count
         let naval = selected.filter { $0.kind.domain == .naval }.count
+        let combatUnits = selected.filter {
+            $0.faction == .player && $0.isAlive && !$0.kind.isStructure && $0.kind.damage > 0
+        }
+        let engagedCount = combatUnits.filter { unit in
+            guard let target = unit.attackTarget else { return false }
+            return target.isAlive && isKnownToFaction(target, observer: .player)
+        }.count
+        let readyCount = combatUnits.filter { $0.attackTimer <= 0.05 }.count
+        let woundedCount = selected.filter { $0.hp < $0.kind.maxHP - 0.5 }.count
+        let criticalCount = selected.filter {
+            $0.hp / max($0.kind.maxHP, 1) <= 0.35
+        }.count
         let totalHP = selected.reduce(CGFloat.zero) { $0 + $1.hp }
         let totalMaxHP = selected.reduce(CGFloat.zero) { $0 + $1.kind.maxHP }
         let totalDamage = selected.reduce(CGFloat.zero) { $0 + effectiveDamage(for: $1) }
@@ -4295,20 +4386,38 @@ final class GameScene: SKScene {
             "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))  \($0)"
         } ?? "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))"
 
+        if let primary = primaryCombatTarget(for: selected) {
+            let target = primary.target
+            let targetPercent = Int((target.hp / max(target.kind.maxHP, 1)) * 100)
+            let nearestDistance = combatUnits
+                .filter { $0.attackTarget?.id == target.id }
+                .map { $0.node.position.distance(to: target.node.position) }
+                .min()
+            let distanceSuffix = nearestDistance.map { " D\(Int($0))" } ?? ""
+            return (
+                "\(selected.count) UNITS | ENG \(engagedCount)",
+                [
+                    "L\(land) A\(air) N\(naval)  Combat \(combatUnits.count)",
+                    "HP \(Int(totalHP))/\(Int(totalMaxHP))  Wnd \(woundedCount) Crit \(criticalCount)",
+                    "PRIMARY \(target.kind.shortCode) x\(primary.count) HP \(Int(target.hp))/\(Int(target.kind.maxHP)) \(targetPercent)%",
+                    "Eng \(engagedCount)/\(combatUnits.count) Ready \(readyCount)\(distanceSuffix)"
+                ]
+            )
+        }
+
         return (
-            "\(selected.count) UNITS SELECTED",
+            "\(selected.count) UNITS | ENG \(engagedCount)",
             [
-                "Land \(land)  Air \(air)  Sea \(naval)",
-                "HP \(Int(totalHP))/\(Int(totalMaxHP))",
+                "L\(land) A\(air) N\(naval)  Combat \(combatUnits.count)",
+                "HP \(Int(totalHP))/\(Int(totalMaxHP))  Wnd \(woundedCount) Crit \(criticalCount)",
                 combatSummary,
                 holdingCount > 0
                     ? "Holding \(holdingCount)  \(carrierGuardWingSummary ?? selectedCarrierGuardWingSummary ?? "Guard \(Int(holdEngagementRadius))")"
                     : attackMoveCount > 0
                         ? "Attack move \(attackMoveCount)  Seek \(Int(attackMoveEngagementRadius))"
-                        : focusFireSummaryLine(for: selected)
-                            ?? airDefenseThreatSummary
+                        : airDefenseThreatSummary
                             ?? highValueEscortSummary
-                            ?? groupVeterancyLine(for: selected)
+                            ?? "Eng \(engagedCount)/\(combatUnits.count) Ready \(readyCount)"
             ]
         )
     }
@@ -7100,6 +7209,22 @@ final class GameScene: SKScene {
         }
 
         selectedIDs = Set(playerTanks.prefix(2).map(\.id) + [playerArtillery.id, playerHumvee.id, playerMechanic.id])
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "combat-ui",
+           let primaryTarget = captureEnemyTanks.first {
+            primaryTarget.hp = primaryTarget.kind.maxHP * 0.43
+            updateHealthBar(primaryTarget)
+            let captureAttackers = selectedIDs
+                .compactMap { entities[$0] }
+                .filter { $0.kind.damage > 0 && $0.kind.canAttack(primaryTarget.kind) }
+                .sorted { $0.id < $1.id }
+            for (index, attacker) in captureAttackers.enumerated() {
+                attacker.attackTarget = primaryTarget
+                attacker.destination = nil
+                attacker.attackMoveDestination = nil
+                attacker.path.removeAll()
+                attacker.attackTimer = index == 0 ? 0.7 : 0
+            }
+        }
         updateFog(force: true)
         refreshSelection()
         if let playerRepairTarget = playerTanks.first {
@@ -9057,11 +9182,12 @@ final class GameScene: SKScene {
         }
     }
 
-    private func sharedFocusFireTarget(for selected: [GameEntity]) -> (target: GameEntity, count: Int)? {
+    private func primaryCombatTarget(for selected: [GameEntity]) -> (target: GameEntity, count: Int)? {
         let attackers = selected.filter {
             $0.faction == .player &&
             $0.isAlive &&
-            !$0.kind.isStructure
+            !$0.kind.isStructure &&
+            $0.kind.damage > 0
         }
         var counts: [Int: (target: GameEntity, count: Int)] = [:]
         for unit in attackers {
@@ -9076,20 +9202,23 @@ final class GameScene: SKScene {
                 counts[target.id] = (target, 1)
             }
         }
-        guard let focus = counts.values.max(by: { left, right in
+        return counts.values.max(by: { left, right in
             if left.count == right.count {
                 return left.target.id > right.target.id
             }
             return left.count < right.count
-        }), focus.count >= 2 else {
-            return nil
-        }
+        })
+    }
+
+    private func sharedFocusFireTarget(for selected: [GameEntity]) -> (target: GameEntity, count: Int)? {
+        guard let focus = primaryCombatTarget(for: selected), focus.count >= 2 else { return nil }
         return focus
     }
 
     private func focusFireSummaryLine(for selected: [GameEntity]) -> String? {
         guard let focus = sharedFocusFireTarget(for: selected) else { return nil }
-        return "FOCUS \(focus.count) Tgt \(focus.target.kind.shortCode)"
+        let percent = Int((focus.target.hp / max(focus.target.kind.maxHP, 1)) * 100)
+        return "FOCUS \(focus.count) \(focus.target.kind.shortCode) \(percent)%"
     }
 
     private func refreshFocusFireMarker(for selected: [GameEntity]) {
@@ -9132,14 +9261,47 @@ final class GameScene: SKScene {
         crossNode.lineCap = .round
         focusFireMarkerNode.addChild(crossNode)
 
+        let targetRatio = min(1, max(0, target.hp / max(target.kind.maxHP, 1)))
+        let targetPercent = Int(targetRatio * 100)
         let label = SKLabelNode(fontNamed: "Menlo-Bold")
-        label.text = "FOCUS \(focus.count)"
+        label.text = "FOCUS \(focus.count) \(target.kind.shortCode) \(targetPercent)%"
         label.fontSize = 11
         label.fontColor = color
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
         label.position = CGPoint(x: 0, y: footprint * 0.72 + 12)
         focusFireMarkerNode.addChild(label)
+
+        let segmentCount = 8
+        let barWidth = max(58, footprint * 1.55)
+        let gap: CGFloat = 2
+        let segmentWidth = (barWidth - CGFloat(segmentCount - 1) * gap) / CGFloat(segmentCount)
+        let filledSegments = Int(ceil(targetRatio * CGFloat(segmentCount)))
+        let segmentColor: UIColor
+        if targetRatio > 0.55 {
+            segmentColor = UIColor(red: 0.34, green: 0.94, blue: 0.30, alpha: 1.0)
+        } else if targetRatio > 0.25 {
+            segmentColor = UIColor(red: 1.0, green: 0.72, blue: 0.20, alpha: 1.0)
+        } else {
+            segmentColor = color
+        }
+        let barY = -footprint * 0.62 - 12
+        for index in 0..<segmentCount {
+            let segment = SKShapeNode(
+                rectOf: CGSize(width: segmentWidth, height: 6),
+                cornerRadius: 1
+            )
+            segment.position = CGPoint(
+                x: -barWidth * 0.5 + segmentWidth * 0.5 + CGFloat(index) * (segmentWidth + gap),
+                y: barY
+            )
+            segment.fillColor = index < filledSegments
+                ? segmentColor
+                : UIColor.black.withAlphaComponent(0.62)
+            segment.strokeColor = color.withAlphaComponent(0.42)
+            segment.lineWidth = 0.8
+            focusFireMarkerNode.addChild(segment)
+        }
 
         focusFireMarkerNode.isHidden = false
     }
