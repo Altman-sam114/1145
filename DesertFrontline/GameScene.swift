@@ -859,6 +859,9 @@ private final class GameEntity {
     let carrierGuardAnchorCoverageNode = SKShapeNode()
     let airDefenseThreatCoverageNode = SKShapeNode()
     let airDefenseThreatMarkerNode = SKNode()
+    let incomingThreatMarkerNode = SKNode()
+    let incomingThreatDirectionNode = SKNode()
+    let incomingThreatCountLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     let healthFill: SKShapeNode
     let teamFlag: SKShapeNode
     let label: SKLabelNode
@@ -932,6 +935,7 @@ final class GameScene: SKScene {
     private var entities: [Int: GameEntity] = [:]
     private var controlPoints: [BattlefieldControlPoint] = []
     private var selectedIDs = Set<Int>()
+    private var incomingThreatsByTargetID: [Int: [GameEntity]] = [:]
     private var controlGroups: [Int: Set<Int>] = [1: [], 2: []]
     private var pendingControlGroupRecallTokens: [Int: Int] = [:]
     private var nextControlGroupRecallToken = 0
@@ -2020,6 +2024,8 @@ final class GameScene: SKScene {
         configureAirDefenseThreatNodes(for: entity)
         entity.node.addChild(entity.airDefenseThreatCoverageNode)
         entity.node.addChild(entity.airDefenseThreatMarkerNode)
+        configureIncomingThreatMarkerNode(for: entity)
+        entity.node.addChild(entity.incomingThreatMarkerNode)
 
         let healthBack = SKShapeNode(rectOf: CGSize(width: entity.kind.footprint, height: 5), cornerRadius: 1)
         healthBack.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 16)
@@ -3654,6 +3660,7 @@ final class GameScene: SKScene {
 
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
         refreshAirDefenseThreatVisuals(for: selected)
+        refreshIncomingThreatVisuals(for: selected)
         refreshCommandIntentVisuals(for: selected)
         refreshFocusFireMarker(for: selected)
         if let pendingConstructionKind {
@@ -3840,6 +3847,9 @@ final class GameScene: SKScene {
     private func updateSelectionInfoPanel(selected: [GameEntity]) {
         let content = selectionInfoContent(for: selected)
         selectionInfoTitleLabel.text = content.title
+        selectionInfoTitleLabel.fontColor = incomingThreatSummary(for: selected) == nil
+            ? UIColor(red: 0.74, green: 0.95, blue: 1.0, alpha: 1.0)
+            : UIColor(red: 1.0, green: 0.48, blue: 0.24, alpha: 1.0)
         for (index, label) in selectionInfoRowLabels.enumerated() {
             label.text = index < content.rows.count ? content.rows[index] : ""
         }
@@ -4016,6 +4026,14 @@ final class GameScene: SKScene {
             let distance = entity.node.position.distance(to: target.node.position)
             rows[2] = "Tgt \(target.kind.shortCode) HP \(Int(target.hp))/\(Int(target.kind.maxHP)) \(targetPercent)% D\(Int(distance))"
             rows[3] = weaponReadinessLine(for: entity)
+        }
+        if let incoming = incomingThreatSummary(for: [entity]) {
+            let incomingLine = "IN\(incoming.attackerCount) \(incoming.nearestAttacker.kind.shortCode) D\(Int(incoming.nearestDistance))"
+            if primaryCombatTarget(for: [entity]) != nil {
+                rows[3] = "\(rows[3])  \(incomingLine)"
+            } else {
+                rows[3] = "INCOMING \(incoming.attackerCount) \(incoming.nearestAttacker.kind.shortCode) D\(Int(incoming.nearestDistance))"
+            }
         }
 
         return ("\(entity.kind.displayName) \(entity.kind.shortCode)", rows)
@@ -4383,6 +4401,9 @@ final class GameScene: SKScene {
         let carrierGuardWingSummary = groupCarrierGuardWingSummary(for: selected)
         let selectedCarrierGuardWingSummary = groupSelectedCarrierGuardWingSummary(for: selected)
         let airDefenseThreatSummary = airDefenseThreatSummaryLine(for: selected)
+        let incoming = incomingThreatSummary(for: selected)
+        let incomingTitleSuffix = incoming.map { " | IN \($0.attackerCount)" } ?? ""
+        let incomingRowSuffix = incoming.map { " In \($0.attackerCount)/\($0.targetCount)" } ?? ""
         let combatSummary = groupAntiSubmarineSummary(for: selected).map {
             "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))  \($0)"
         } ?? "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))"
@@ -4396,29 +4417,31 @@ final class GameScene: SKScene {
                 .min()
             let distanceSuffix = nearestDistance.map { " D\(Int($0))" } ?? ""
             return (
-                "\(selected.count) UNITS | ENG \(engagedCount)",
+                "\(selected.count) UNITS | ENG \(engagedCount)\(incomingTitleSuffix)",
                 [
                     "L\(land) A\(air) N\(naval)  Combat \(combatUnits.count)",
                     "HP \(Int(totalHP))/\(Int(totalMaxHP))  Wnd \(woundedCount) Crit \(criticalCount)",
                     "PRIMARY \(target.kind.shortCode) x\(primary.count) HP \(Int(target.hp))/\(Int(target.kind.maxHP)) \(targetPercent)%",
-                    "Eng \(engagedCount)/\(combatUnits.count) Ready \(readyCount)\(distanceSuffix)"
+                    "Eng \(engagedCount)/\(combatUnits.count) Rdy \(readyCount)\(incomingRowSuffix)\(distanceSuffix)"
                 ]
             )
         }
 
+        let baseStatusLine = holdingCount > 0
+            ? "Holding \(holdingCount)  \(carrierGuardWingSummary ?? selectedCarrierGuardWingSummary ?? "Guard \(Int(holdEngagementRadius))")"
+            : attackMoveCount > 0
+                ? "Attack move \(attackMoveCount)  Seek \(Int(attackMoveEngagementRadius))"
+                : airDefenseThreatSummary
+                    ?? highValueEscortSummary
+                    ?? "Eng \(engagedCount)/\(combatUnits.count) Ready \(readyCount)"
+
         return (
-            "\(selected.count) UNITS | ENG \(engagedCount)",
+            "\(selected.count) UNITS | ENG \(engagedCount)\(incomingTitleSuffix)",
             [
                 "L\(land) A\(air) N\(naval)  Combat \(combatUnits.count)",
                 "HP \(Int(totalHP))/\(Int(totalMaxHP))  Wnd \(woundedCount) Crit \(criticalCount)",
                 combatSummary,
-                holdingCount > 0
-                    ? "Holding \(holdingCount)  \(carrierGuardWingSummary ?? selectedCarrierGuardWingSummary ?? "Guard \(Int(holdEngagementRadius))")"
-                    : attackMoveCount > 0
-                        ? "Attack move \(attackMoveCount)  Seek \(Int(attackMoveEngagementRadius))"
-                        : airDefenseThreatSummary
-                            ?? highValueEscortSummary
-                            ?? "Eng \(engagedCount)/\(combatUnits.count) Ready \(readyCount)"
+                "\(baseStatusLine)\(incomingRowSuffix)"
             ]
         )
     }
@@ -4882,6 +4905,16 @@ final class GameScene: SKScene {
             selectionRing.glowWidth = 0.7
             selectionRing.zPosition = -1
             node.addChild(selectionRing)
+
+            if incomingThreatsByTargetID[entity.id]?.isEmpty == false {
+                let warningRing = SKShapeNode(circleOfRadius: selectionRadius + 2.6)
+                warningRing.fillColor = UIColor(red: 1.0, green: 0.20, blue: 0.08, alpha: 0.10)
+                warningRing.strokeColor = UIColor(red: 1.0, green: 0.34, blue: 0.12, alpha: 1.0)
+                warningRing.lineWidth = 1.5
+                warningRing.glowWidth = 0.8
+                warningRing.zPosition = -2
+                node.addChild(warningRing)
+            }
         }
 
         return node
@@ -5981,6 +6014,7 @@ final class GameScene: SKScene {
         nextControlGroupRecallToken = 0
         entities.removeAll()
         selectedIDs.removeAll()
+        incomingThreatsByTargetID.removeAll()
         controlGroups = [1: [], 2: []]
         buildOrders.removeAll()
         enemyCaptureReservations.removeAll()
@@ -7210,8 +7244,8 @@ final class GameScene: SKScene {
         }
 
         selectedIDs = Set(playerTanks.prefix(2).map(\.id) + [playerArtillery.id, playerHumvee.id, playerMechanic.id])
-        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "combat-ui",
-           let primaryTarget = captureEnemyTanks.first {
+        let commandMarker = ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"]
+        if commandMarker == "combat-ui", let primaryTarget = captureEnemyTanks.first {
             primaryTarget.hp = primaryTarget.kind.maxHP * 0.43
             updateHealthBar(primaryTarget)
             let captureAttackers = selectedIDs
@@ -7225,6 +7259,27 @@ final class GameScene: SKScene {
                 attacker.path.removeAll()
                 attacker.attackTimer = index == 0 ? 0.7 : 0
             }
+        } else if commandMarker == "incoming-ui",
+                  let threatenedTank = playerTanks.first {
+            threatenedTank.hp = threatenedTank.kind.maxHP * 0.31
+            updateHealthBar(threatenedTank)
+            for selectedUnit in selectedIDs.compactMap({ entities[$0] }) {
+                selectedUnit.attackTarget = nil
+                selectedUnit.attackTimer = 0
+            }
+            let tankThreats = captureEnemyTanks.prefix(2).map { ($0, threatenedTank) }
+            let incomingAssignments = tankThreats + [
+                (enemyArtillery, threatenedTank),
+                (enemyHumvee, playerArtillery)
+            ]
+            for (index, assignment) in incomingAssignments.enumerated() {
+                let attacker = assignment.0
+                attacker.attackTarget = assignment.1
+                attacker.destination = nil
+                attacker.attackMoveDestination = nil
+                attacker.path.removeAll()
+                attacker.attackTimer = index == 0 ? 0.6 : 0
+            }
         }
         updateFog(force: true)
         refreshSelection()
@@ -7234,18 +7289,33 @@ final class GameScene: SKScene {
         if let enemyRepairTarget = captureEnemyTanks.first {
             updateMechanicRepairEffect(for: enemyMechanic, target: enemyRepairTarget)
         }
-        showArtilleryMuzzleBlast(
-            from: playerArtillery.node.position,
-            toward: enemyArtillery.node.position,
-            faction: .player,
-            persistent: true
-        )
-        showProjectile(
-            from: playerArtillery.node.position,
-            to: enemyArtillery.node.position,
-            kind: .artillery,
-            persistent: true
-        )
+        if commandMarker == "incoming-ui", let threatenedTank = playerTanks.first {
+            showArtilleryMuzzleBlast(
+                from: enemyArtillery.node.position,
+                toward: threatenedTank.node.position,
+                faction: .enemy,
+                persistent: true
+            )
+            showProjectile(
+                from: enemyArtillery.node.position,
+                to: threatenedTank.node.position,
+                kind: .artillery,
+                persistent: true
+            )
+        } else {
+            showArtilleryMuzzleBlast(
+                from: playerArtillery.node.position,
+                toward: enemyArtillery.node.position,
+                faction: .player,
+                persistent: true
+            )
+            showProjectile(
+                from: playerArtillery.node.position,
+                to: enemyArtillery.node.position,
+                kind: .artillery,
+                persistent: true
+            )
+        }
         explode(at: tileCenter(TileCoord(row: 15, col: 13)), scale: 0.72, persistent: true)
     }
 
@@ -9134,6 +9204,74 @@ final class GameScene: SKScene {
         }
     }
 
+    private func refreshIncomingThreatVisuals(for selected: [GameEntity]) {
+        let selectedTargets = Dictionary(uniqueKeysWithValues: selected
+            .filter { $0.faction == .player && $0.isAlive }
+            .map { ($0.id, $0) })
+        incomingThreatsByTargetID.removeAll(keepingCapacity: true)
+
+        for attacker in entities.values {
+            guard attacker.faction == .enemy,
+                  attacker.isAlive,
+                  attacker.isOperational,
+                  attacker.kind.damage > 0,
+                  isKnownToFaction(attacker, observer: .player),
+                  let target = attacker.attackTarget,
+                  let selectedTarget = selectedTargets[target.id],
+                  target === selectedTarget,
+                  attacker.kind.canAttack(target.kind)
+            else { continue }
+            incomingThreatsByTargetID[target.id, default: []].append(attacker)
+        }
+
+        for target in selectedTargets.values {
+            guard let threats = incomingThreatsByTargetID[target.id] else { continue }
+            incomingThreatsByTargetID[target.id] = threats.sorted { left, right in
+                let leftDistance = left.node.position.distance(to: target.node.position)
+                let rightDistance = right.node.position.distance(to: target.node.position)
+                if abs(leftDistance - rightDistance) < 0.5 {
+                    return left.id < right.id
+                }
+                return leftDistance < rightDistance
+            }
+        }
+
+        for entity in entities.values {
+            guard let threats = incomingThreatsByTargetID[entity.id],
+                  let nearestThreat = threats.first
+            else {
+                entity.incomingThreatMarkerNode.isHidden = true
+                continue
+            }
+            let direction = nearestThreat.node.position - entity.node.position
+            entity.incomingThreatMarkerNode.xScale = entity.node.xScale < 0 ? -1 : 1
+            entity.incomingThreatDirectionNode.zRotation = atan2(direction.y, direction.x)
+            entity.incomingThreatCountLabel.text = "IN \(threats.count)"
+            entity.incomingThreatMarkerNode.isHidden = false
+        }
+    }
+
+    private func incomingThreatSummary(
+        for selected: [GameEntity]
+    ) -> (attackerCount: Int, targetCount: Int, nearestAttacker: GameEntity, nearestDistance: CGFloat)? {
+        var entries: [(attacker: GameEntity, distance: CGFloat)] = []
+        var targetCount = 0
+        for target in selected where target.faction == .player && target.isAlive {
+            guard let threats = incomingThreatsByTargetID[target.id], !threats.isEmpty else { continue }
+            targetCount += 1
+            entries.append(contentsOf: threats.map { threat in
+                (threat, threat.node.position.distance(to: target.node.position))
+            })
+        }
+        guard let nearest = entries.min(by: { left, right in
+            if abs(left.distance - right.distance) < 0.5 {
+                return left.attacker.id < right.attacker.id
+            }
+            return left.distance < right.distance
+        }) else { return nil }
+        return (entries.count, targetCount, nearest.attacker, nearest.distance)
+    }
+
     private func shouldShowSonarCoverage(for entity: GameEntity) -> Bool {
         selectedIDs.contains(entity.id) &&
             entity.faction == .player &&
@@ -9559,6 +9697,46 @@ final class GameScene: SKScene {
         entity.airDefenseThreatMarkerNode.addChild(core)
         entity.airDefenseThreatMarkerNode.zPosition = 32
         entity.airDefenseThreatMarkerNode.isHidden = true
+    }
+
+    private func configureIncomingThreatMarkerNode(for entity: GameEntity) {
+        let warningColor = UIColor(red: 1.0, green: 0.30, blue: 0.14, alpha: 1.0)
+        let arrowRadius = entity.kind.footprint * 0.78 + 10
+        for index in 0..<2 {
+            let inset = CGFloat(index) * 9
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: arrowRadius + inset - 9, y: -7))
+            path.addLine(to: CGPoint(x: arrowRadius + inset, y: 0))
+            path.addLine(to: CGPoint(x: arrowRadius + inset - 9, y: 7))
+            let chevron = SKShapeNode(path: path)
+            chevron.strokeColor = index == 0 ? UIColor.white.withAlphaComponent(0.94) : warningColor
+            chevron.lineWidth = index == 0 ? 2.2 : 3.2
+            chevron.lineCap = .round
+            chevron.lineJoin = .round
+            chevron.glowWidth = index == 0 ? 0.6 : 1.4
+            entity.incomingThreatDirectionNode.addChild(chevron)
+        }
+        entity.incomingThreatMarkerNode.addChild(entity.incomingThreatDirectionNode)
+
+        let labelY = -entity.kind.footprint * 0.48 - 16
+        let labelBack = SKShapeNode(rectOf: CGSize(width: 36, height: 15), cornerRadius: 3)
+        labelBack.position = CGPoint(x: 0, y: labelY)
+        labelBack.fillColor = UIColor(red: 0.22, green: 0.04, blue: 0.02, alpha: 0.88)
+        labelBack.strokeColor = warningColor
+        labelBack.lineWidth = 1.5
+        labelBack.glowWidth = 0.8
+        entity.incomingThreatMarkerNode.addChild(labelBack)
+
+        entity.incomingThreatCountLabel.text = "IN 1"
+        entity.incomingThreatCountLabel.fontSize = 8
+        entity.incomingThreatCountLabel.fontColor = UIColor(white: 1.0, alpha: 1.0)
+        entity.incomingThreatCountLabel.horizontalAlignmentMode = .center
+        entity.incomingThreatCountLabel.verticalAlignmentMode = .center
+        entity.incomingThreatCountLabel.position = CGPoint(x: 0, y: labelY)
+        entity.incomingThreatMarkerNode.addChild(entity.incomingThreatCountLabel)
+
+        entity.incomingThreatMarkerNode.zPosition = 36
+        entity.incomingThreatMarkerNode.isHidden = true
     }
 
     private func showMessage(_ text: String, color: UIColor) {
