@@ -4800,3 +4800,36 @@
 
 - 云端冻结截图能证明交战摘要、主目标条、集火标记、compact 排版和启动稳定性，但不能覆盖目标快速死亡 / 切换、编队频繁增减、战争迷雾边界变化、连续触控或真机性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮继续优先选择一个战斗或 UI 细节增量，可加强命中反馈、选中 / 指令可读性或海空交战信息，但应保持单一、可由最新 `origin/main` artifact 验收的范围。
+
+### v4.92 / 来袭威胁态势 UI
+
+日期：2026-07-18
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》。本轮重新核对 Noble Master 官方 press kit、官方 trailer、`screen_dsf_v02_10.png` 海战图和 `screen_dsf_v02_ios_c02_1024x768.png` 移动端图；只借鉴其以战场为主、紧贴单位的高对比生命信息和直接弹道表达，不复制原素材或 UI 布局。
+- `refreshIncomingThreatVisuals(for:)` 每次 HUD 刷新只扫描一次 Red 实体，只接受存活、operational、有伤害、玩家已知、真实目标指向当前选中 Blue 实体且可合法攻击的单位，按目标建立 `incomingThreatsByTargetID` 只读快照并按距离 / id 确定性排序。
+- 单选单位显示 `INCOMING n <code> Dn`，同时攻击时在 ready / reload 行追加紧凑 `IN` 摘要；多选标题显示来袭攻击者数，第四行用 `In attackerCount/targetCount` 表达攻击者 / 受压目标数量，标题在存在来袭时使用红橙色。
+- 每个实体创建时预配置双重红橙方向箭头、白色亮边和 `IN n` 标签；只对当前选中且存在玩家已知来袭者的 Blue 实体显示，指向最近合法攻击者，并用 counter-scale 抵消 `xScale=-1`，不按帧创建 SpriteKit 子节点。
+- 小地图对选中且存在同一来袭快照的 Blue 实体增加红橙告警外圈；未知、死亡、未完工、友方或非法攻击者不会进入面板、世界标记或小地图。
+- 新增 capture-only `incoming-ui` 陆战场景：两个 Red Tank、Artillery 和 Humvee 共四个已知攻击者锁定 Blue Tank 与 Humvee，Tank 冻结在约 31% Critical HP，并显示敌方炮口 / 炮线；GitHub Actions 从十一次扩展为十二次独立启动并新增 `simulator-incoming-ui.png`。
+- README、核心 flow、flowchart、测试规范和 v4.92 提示词已同步；工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` `DEVELOPMENT_TEAM` 人工改动保持未暂存，未进入提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地游戏探针；本机只运行 `git diff --check`、`git diff --cached --check` 和 workflow YAML 解析等轻量检查并通过。
+- 实现提交：`6ab1272eb666f8b245b5bd87cda1dd690e412134`，commit subject 为 `v4.92: 增加来袭威胁态势UI`。对应 run `29401711658` 的构建、十二次启动和 artifact 均 success，但 Agent C 目视发现第二个 `IN 1` 目标位于顶部任务面板附近、标签被部分遮挡，因此未计为最终验收通过。
+- capture 可见性修复提交：`602e46e5d0a41a54742c69c3b0c9fba2e902383f`，commit subject 为 `v4.92: 修正来袭探针可见性`；只把第四个来袭目标从顶部 Artillery 改为画面左侧 Humvee，并缩短多选标题分隔符，不改变普通玩法、统计或攻击逻辑。
+- 最终 GitHub Actions run：`29585132374`，attempt `1`，conclusion `success`，job 总耗时 11 分 26 秒。
+- 最终 artifact：`desert-frontline-ci-v4.92-main-602e46e5d0a4-run29585132374-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29585132374/`，未加密且约 17 MB。
+- manifest 记录 `branch=main`、`commitSha=602e46e5d0a41a54742c69c3b0c9fba2e902383f`、`runId=29585132374`、`runAttempt=1`、`version=v4.92`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十二次 simulator launch PID `9886`、`10937`、`11530`、`11837`、`12759`、`13319`、`13456`、`13891`、`13967`、`14434`、`15666`、`15761` 均在截图后存活；十二张原始 PNG 均为 1206x2622，App / launch 日志未命中启动崩溃、未捕获异常、SIGABRT、watchdog 或异常终止关键字。
+- 最终 `simulator-incoming-ui.png` 完整显示 `5 UNITS | ENG 0 IN 4`、`HP 830/1010 Wnd 1 Crit 1`、`Eng 0/4 Ready 4 In 4/2`，Blue Tank 的 `IN 3` 与 Blue Humvee 的 `IN 1` 标签、朝向右侧已知 Red 威胁的双重箭头、敌方炮线和小地图告警态势均可辨；主要模型、维修链路、任务面板和单排命令条未被反馈完全遮挡。原图 SHA-256 为 `abeba9a65d2fc0677bce68a6b3a29de1e8d57149cba0f5a881ee50e6c0fe8161`。
+- `simulator-combat-ui.png` 继续完整显示 v4.91 PRIMARY / FOCUS / 43% 目标条，原图 SHA-256 为 `56b612fefbf7ec87998cbd298f2dcdc663d05d9ae2241f74b6aeffaa3372b279`；`simulator-screenshot.png` 空军面板仍无文字 / 血条重叠，原图 SHA-256 为 `d14d4aa42bc510a767c4a1072adc72f4a2dd49e4b3d8959b8498f733b55a8d56`。
+- 源码审阅确认普通 UI helper 只读 `attackTarget` / 已知边界并复用单次快照；唯一新增目标、HP 和 reload 写入受 `DESERT_CI_CAPTURE_MODE=1` 与 `DESERT_CI_COMMAND_MARKER=incoming-ui` 双重限制；重开 skirmish 会清空快照。
+
+遗留事项：
+
+- 云端冻结截图能证明已知攻击者过滤、双目标计数、方向箭头、镜像可读性、compact 面板和启动稳定性，但不能覆盖敌军快速换目标、攻击者进出迷雾、多方向围攻、选中切换或真机性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮可继续选择一个战斗细节增量，例如区分陆地 / 空中 / 海上命中反馈，或继续优化高密度交战中的目标与指令层级；总目标仍未完成。
