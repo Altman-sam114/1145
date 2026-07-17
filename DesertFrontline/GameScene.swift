@@ -4402,7 +4402,7 @@ final class GameScene: SKScene {
         let selectedCarrierGuardWingSummary = groupSelectedCarrierGuardWingSummary(for: selected)
         let airDefenseThreatSummary = airDefenseThreatSummaryLine(for: selected)
         let incoming = incomingThreatSummary(for: selected)
-        let incomingTitleSuffix = incoming.map { " | IN \($0.attackerCount)" } ?? ""
+        let incomingTitleSuffix = incoming.map { " IN \($0.attackerCount)" } ?? ""
         let incomingRowSuffix = incoming.map { " In \($0.attackerCount)/\($0.targetCount)" } ?? ""
         let combatSummary = groupAntiSubmarineSummary(for: selected).map {
             "Dmg \(Int(totalDamage))  Max rng \(Int(maxRange))  \($0)"
@@ -7270,7 +7270,7 @@ final class GameScene: SKScene {
             let tankThreats = captureEnemyTanks.prefix(2).map { ($0, threatenedTank) }
             let incomingAssignments = tankThreats + [
                 (enemyArtillery, threatenedTank),
-                (enemyHumvee, playerArtillery)
+                (enemyHumvee, playerHumvee)
             ]
             for (index, assignment) in incomingAssignments.enumerated() {
                 let attacker = assignment.0
