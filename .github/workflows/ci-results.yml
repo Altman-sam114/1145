@@ -83,7 +83,7 @@ jobs:
           set -o pipefail
           {
             set -euo pipefail
-            rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-hud-build.png ci-results/simulator-hud-air.png ci-results/simulator-hud-naval.png ci-results/simulator-hud-support.png ci-results/simulator-command-move.png ci-results/simulator-command-attack-move.png ci-results/simulator-command-attack-target.png ci-results/simulator-land-combat.png ci-results/simulator-map-terrain.png ci-results/simulator-combat-ui.png ci-results/simulator-incoming-ui.png ci-results/simulator-app.log
+            rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-hud-build.png ci-results/simulator-hud-air.png ci-results/simulator-hud-naval.png ci-results/simulator-hud-support.png ci-results/simulator-command-move.png ci-results/simulator-command-attack-move.png ci-results/simulator-command-attack-target.png ci-results/simulator-land-combat.png ci-results/simulator-map-terrain.png ci-results/simulator-combat-ui.png ci-results/simulator-incoming-ui.png ci-results/simulator-naval-salvo.png ci-results/simulator-app.log
 
             /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
               -project DesertFrontline.xcodeproj \
@@ -146,6 +146,7 @@ jobs:
             launch_hud_page tactical ci-results/simulator-map-terrain.png 4 none coast
             launch_hud_page tactical ci-results/simulator-combat-ui.png 4 combat-ui land
             launch_hud_page tactical ci-results/simulator-incoming-ui.png 4 incoming-ui land
+            launch_hud_page tactical ci-results/simulator-naval-salvo.png 4 naval-salvo coast
             xcrun simctl spawn "${sim_udid}" log show --last 2m --predicate 'process == "DesertFrontline"' > ci-results/simulator-app.log || true
             xcrun simctl shutdown "${sim_udid}" || true
           } 2>&1 | tee ci-results/simulator-launch.log
@@ -296,6 +297,7 @@ jobs:
                   "ci-results/simulator-map-terrain.png",
                   "ci-results/simulator-combat-ui.png",
                   "ci-results/simulator-incoming-ui.png",
+                  "ci-results/simulator-naval-salvo.png",
               ],
           }
           (results_dir / "ci-artifact-manifest.json").write_text(
