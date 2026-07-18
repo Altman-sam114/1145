@@ -4833,3 +4833,33 @@
 
 - 云端冻结截图能证明已知攻击者过滤、双目标计数、方向箭头、镜像可读性、compact 面板和启动稳定性，但不能覆盖敌军快速换目标、攻击者进出迷雾、多方向围攻、选中切换或真机性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮可继续选择一个战斗细节增量，例如区分陆地 / 空中 / 海上命中反馈，或继续优化高密度交战中的目标与指令层级；总目标仍未完成。
+
+### v4.93 / 战列舰模型与舰炮齐射
+
+日期：2026-07-18
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，并核对 Noble Master 官方 press kit、官方 trailer 与官方海战截图 `screen_dsf_v02_10.png`；本轮只借鉴清晰舰种轮廓和直接弹道反馈，不复制原素材或 UI。
+- Battleship 在原实体树和 gameplay footprint 内增加分层装甲带 / 甲板 / 首尾装甲、两座带座圈 / 炮盾 / 双炮管的主炮、舰桥与阵营舷窗、桅杆 / 雷达、二级炮和救生艇；碰撞、选择、血条、镜像、迷雾和数值不变。
+- `fire(attacker:target:)` 对玩家 Battleship / operational Coastal Battery 或玩家已知 Red 炮位调用纯视觉双发舰炮 helper，显示两条紧凑平行炮迹、暖白亮芯、两枚弹体、炮口闪光和烟团；未知 Red 炮位不创建来源反馈。
+- Battleship / Coastal Battery 命中玩家或玩家已知水面舰艇时显示主 / 副水柱和舰体闪光 / 火花；Artillery 保留原单水柱，Submarine 保留既有 ASW 反馈。所有普通节点约 0.6 秒内移除，双发视觉不增加第二次伤害，`target.hp` 仍只在原 `fire(...)` 位置写一次。
+- 新增 capture-only `naval-salvo` coast 场景：单选 Blue Battleship 锁定约 47% HP Red Battleship，冻结双方航迹、双发齐射、主 / 副水柱和舰体命中，并保留背景 Carrier、射程圈、目标 HP / 距离 / reload 和单排命令条；GitHub Actions 从十二次扩展为十三次独立启动并新增 `simulator-naval-salvo.png`。
+- README、核心 flow、flowchart、测试规范和 v4.93 提示词已同步；工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` `DEVELOPMENT_TEAM` 人工改动保持未暂存，未进入提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地游戏探针；本机只运行 `git diff --check`、`git diff --cached --check` 和 workflow YAML 解析等轻量检查并通过。
+- 实现提交：`f538aa87922c3e0a61466d08655fe2669eebd280`，commit subject 为 `v4.93: 细化战列舰与舰炮齐射`。
+- GitHub Actions run：`29634723959`，attempt `1`，conclusion `success`；artifact 为 `desert-frontline-ci-v4.93-main-f538aa87922c-run29634723959-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-29634723959/`，未加密且约 18 MB。
+- manifest 记录 `branch=main`、`commitSha=f538aa87922c3e0a61466d08655fe2669eebd280`、`runId=29634723959`、`runAttempt=1`、`version=v4.93`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十三次 simulator launch PID `16945`、`17288`、`18388`、`19165`、`19883`、`20227`、`20590`、`20609`、`21500`、`21733`、`22120`、`22436`、`22496` 均在截图后存活；十三张原始 PNG 均为 1206x2622，App / launch 日志未命中启动崩溃、未捕获异常、SIGABRT、watchdog 或异常终止关键字。
+- `simulator-naval-salvo.png` 清楚显示 Blue / Red Battleship 分层舰体、双联装主炮、舰桥 / 舷窗 / 桅杆 / 雷达 / 二级炮 / 救生艇，Blue 双炮迹 / 弹体 / 炮口亮焰、Red 舰体命中与主 / 副水柱，以及 `Tgt BB HP 366/780 47%`、reload、射程圈、双方航迹和单排命令条；原图 SHA-256 为 `8518c962452b69239b6c315249d469e176a84dabafa9d79716e740c963e2dccc`。
+- `simulator-map-terrain.png` 保留海岸地貌、舰体、航迹和水柱，SHA-256 为 `d9c0bb228645d5889af3107b158a434e755622cc38b1f58f20368bd0a902fe56`；`simulator-combat-ui.png` 保留 PRIMARY / FOCUS / 43% 战斗面板，SHA-256 为 `a80dd991fdad9022d0369bd04a2f29849944ab31aee780022aa2d701cd8c63f6`；`simulator-screenshot.png` 的空军模型、威胁圈、导弹与 HUD 无回归，SHA-256 为 `5ba3525b711a077666a3555f8f58581b9d51aed4b0a6fbcfd975f21fca13ed3c`。
+- 源码审阅确认双发 helper 只创建视觉节点，普通节点均定时清理；`persistent` 只由 capture-only 分支使用；真实伤害写入仍只有一次，新来源反馈继续经过玩家阵营或 `isKnownToFaction(..., observer: .player)` 门槛。
+
+遗留事项：
+
+- 云端冻结截图能证明模型层次、双发炮迹、复合命中、HUD 兼容和启动稳定性，但不能覆盖连续多舰齐射、快速转向、战争迷雾边缘开火、长时间节点压力或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮可继续选择一个单一战斗细节增量，例如细化 Coastal Battery 炮座模型、补强舰载机对舰命中或改善高密度海战目标层级；总目标仍未完成。
