@@ -73,6 +73,7 @@ GitHub Actions 负责运行：
 - 第十一次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=combat-ui` 生成 `simulator-combat-ui.png`：四个玩家作战单位共享攻击约 43% HP 的敌方 Tank，其中一个处于 reload，用于核对右侧 `Combat / Engaged / Ready / Wounded / Critical / PRIMARY` 四行摘要、面板底部左对齐目标生命条、世界 `FOCUS n TNK 43%` 和八段耐久，同时保留 Mechanic 维修链路、炮线、爆炸与单排命令条。只有 combat-ui capture 会临时写共享目标、目标 HP 和 reload，普通 App 与原 land / coast / air capture 状态不变。
 - 第十二次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=incoming-ui` 生成 `simulator-incoming-ui.png`：两个 Red Tank、Artillery 和 Humvee 共四个玩家已知攻击者分别锁定两个选中 Blue 目标，一个 Blue Tank 冻结在约 31% Critical HP，并冻结敌方炮线，用于核对标题与第四行 `IN` 数量、至少两个目标的红橙方向箭头 / `IN n` 标签、小地图告警外圈、Wounded / Critical 计数和镜像方向。workflow 总计十二次独立启动 / PID 存活检查；只有 incoming-ui capture 会临时写这些敌方目标、Blue Tank HP 和 reload，普通 App 与其他 capture 状态不变。
 - 第十三次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=naval-salvo` 生成 `simulator-naval-salvo.png`：单选 Blue Battleship 锁定约 47% HP Red Battleship 并冻结一个 reload，画面同时保留背景 Carrier、双方航迹、舰炮射程圈、两条分离炮迹 / 弹体 / 炮口闪光、Red 舰体闪光 / 火花和主 / 副水柱，用于核对分层舰体、两座双联装主炮、舰桥 / 舷窗 / 桅杆 / 雷达 / 二级火炮 / 救生艇、单选目标 HP / 距离 / reload 和单排命令条。workflow 总计十三次独立启动 / PID 存活检查；只有 naval-salvo capture 会临时写双方位置 / 目标、Red Battleship HP 和 reload，普通 App 与其他 capture 状态不变。
+- 第十四次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=coastal-battery` 生成 `simulator-coastal-battery.png`：单选 operational Blue Coastal Battery 锁定约 54% HP Red Battleship 并冻结一个 reload，画面同时保留海岸地貌、背景海军、舰炮射程圈、两条分离炮迹 / 弹体 / 炮口闪光、双炮后坐轨迹、炮床冲击环、岸边尘浪、Red 舰体闪光 / 火花和主 / 副水柱，用于核对分层炮床 / 护坡 / 沙袋、炮盾 / 双炮管 / 后膛 / 测距仪 / 阵营光学件、掩体 / 弹药箱、单选目标 HP / 距离 / reload 和单排命令条。workflow 总计十四次独立启动 / PID 存活检查；只有 coastal-battery capture 会临时写双方位置 / 目标、Red Battleship HP 和 reload，普通 App 与其他 capture 状态不变。
 - 结果包生成和上传。
 
 云端 Xcode build 命令：
@@ -119,6 +120,7 @@ GitHub Actions 负责运行：
 - `simulator-combat-ui.png`
 - `simulator-incoming-ui.png`
 - `simulator-naval-salvo.png`
+- `simulator-coastal-battery.png`
 - `DesertFrontline.xcresult`
 
 artifact 命名规则：

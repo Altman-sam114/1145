@@ -2300,37 +2300,146 @@ final class GameScene: SKScene {
             stripe.strokeColor = .clear
             base.addChild(stripe)
         case .coastalBattery:
-            let pad = SKShapeNode(rectOf: CGSize(width: 58, height: 32), cornerRadius: 4)
-            pad.fillColor = UIColor(red: 0.40, green: 0.39, blue: 0.34, alpha: 1.0)
-            pad.strokeColor = UIColor(white: 0.15, alpha: 1.0)
-            pad.lineWidth = 2
-            base.addChild(pad)
+            let foundation = SKShapeNode(rectOf: CGSize(width: 66, height: 38), cornerRadius: 5)
+            foundation.fillColor = UIColor(red: 0.32, green: 0.31, blue: 0.27, alpha: 1.0)
+            foundation.strokeColor = UIColor(white: 0.11, alpha: 1.0)
+            foundation.lineWidth = 2.2
+            base.addChild(foundation)
 
-            let revetment = SKShapeNode(ellipseOf: CGSize(width: 54, height: 24))
-            revetment.position = CGPoint(x: -2, y: 10)
-            revetment.fillColor = UIColor(red: 0.28, green: 0.28, blue: 0.25, alpha: 1.0)
-            revetment.strokeColor = UIColor(white: 0.12, alpha: 1.0)
-            revetment.lineWidth = 1.5
+            let apron = SKShapeNode(rectOf: CGSize(width: 59, height: 31), cornerRadius: 4)
+            apron.fillColor = UIColor(red: 0.48, green: 0.46, blue: 0.39, alpha: 1.0)
+            apron.strokeColor = UIColor(white: 0.72, alpha: 0.28)
+            apron.lineWidth = 1.2
+            apron.zPosition = 1
+            base.addChild(apron)
+
+            let revetment = SKShapeNode(ellipseOf: CGSize(width: 56, height: 27))
+            revetment.position = CGPoint(x: -1, y: 9)
+            revetment.fillColor = UIColor(red: 0.27, green: 0.28, blue: 0.25, alpha: 1.0)
+            revetment.strokeColor = UIColor(white: 0.10, alpha: 1.0)
+            revetment.lineWidth = 1.8
+            revetment.zPosition = 2
             base.addChild(revetment)
 
-            let turret = SKShapeNode(ellipseOf: CGSize(width: 32, height: 20))
-            turret.position = CGPoint(x: -1, y: 18)
-            turret.fillColor = UIColor(red: 0.48, green: 0.50, blue: 0.45, alpha: 1.0)
-            turret.strokeColor = UIColor(white: 0.12, alpha: 1.0)
-            turret.lineWidth = 1.5
-            base.addChild(turret)
+            let sandbagPositions = [
+                CGPoint(x: -24, y: 19), CGPoint(x: -13, y: 23),
+                CGPoint(x: -1, y: 25), CGPoint(x: 11, y: 23),
+                CGPoint(x: 22, y: 19)
+            ]
+            for (index, position) in sandbagPositions.enumerated() {
+                let sandbag = SKShapeNode(rectOf: CGSize(width: 12, height: 6), cornerRadius: 3)
+                sandbag.position = position
+                sandbag.fillColor = UIColor(red: 0.64, green: 0.54, blue: 0.36, alpha: 1.0)
+                sandbag.strokeColor = UIColor(red: 0.28, green: 0.24, blue: 0.18, alpha: 0.90)
+                sandbag.lineWidth = 0.9
+                sandbag.zRotation = CGFloat(index - 2) * -0.08
+                sandbag.zPosition = 3
+                base.addChild(sandbag)
+            }
 
-            let barrel = SKShapeNode(rectOf: CGSize(width: 42, height: 6), cornerRadius: 2)
-            barrel.position = CGPoint(x: 29, y: 21)
-            barrel.fillColor = UIColor(white: 0.10, alpha: 1.0)
-            barrel.strokeColor = .clear
-            base.addChild(barrel)
+            let commandBunker = SKShapeNode(rectOf: CGSize(width: 20, height: 14), cornerRadius: 3)
+            commandBunker.position = CGPoint(x: -21, y: -5)
+            commandBunker.fillColor = UIColor(red: 0.38, green: 0.39, blue: 0.34, alpha: 1.0)
+            commandBunker.strokeColor = UIColor(white: 0.13, alpha: 1.0)
+            commandBunker.lineWidth = 1.3
+            commandBunker.zPosition = 3
+            base.addChild(commandBunker)
 
-            let rangeMark = SKShapeNode(rectOf: CGSize(width: 28, height: 5), cornerRadius: 1.5)
-            rangeMark.position = CGPoint(x: -3, y: 2)
-            rangeMark.fillColor = entity.faction.color
-            rangeMark.strokeColor = .clear
-            base.addChild(rangeMark)
+            let bunkerStripe = SKShapeNode(rectOf: CGSize(width: 13, height: 3), cornerRadius: 1)
+            bunkerStripe.position = CGPoint(x: -21, y: -2)
+            bunkerStripe.fillColor = entity.faction.color
+            bunkerStripe.strokeColor = .clear
+            bunkerStripe.zPosition = 4
+            base.addChild(bunkerStripe)
+
+            for (index, x) in [14.0, 25.0].enumerated() {
+                let ammoCrate = SKShapeNode(rectOf: CGSize(width: 10, height: 9), cornerRadius: 1.5)
+                ammoCrate.position = CGPoint(x: CGFloat(x), y: -7 + CGFloat(index))
+                ammoCrate.fillColor = UIColor(red: 0.36, green: 0.38, blue: 0.29, alpha: 1.0)
+                ammoCrate.strokeColor = UIColor(red: 0.16, green: 0.17, blue: 0.13, alpha: 1.0)
+                ammoCrate.lineWidth = 1
+                ammoCrate.zPosition = 3
+                base.addChild(ammoCrate)
+
+                let crateBand = SKShapeNode(rectOf: CGSize(width: 2, height: 8), cornerRadius: 0.5)
+                crateBand.position = ammoCrate.position
+                crateBand.fillColor = UIColor(red: 0.72, green: 0.63, blue: 0.36, alpha: 0.72)
+                crateBand.strokeColor = .clear
+                crateBand.zPosition = 4
+                base.addChild(crateBand)
+            }
+
+            let turretRing = SKShapeNode(ellipseOf: CGSize(width: 39, height: 25))
+            turretRing.position = CGPoint(x: -1, y: 10)
+            turretRing.fillColor = UIColor(red: 0.34, green: 0.36, blue: 0.32, alpha: 1.0)
+            turretRing.strokeColor = UIColor(white: 0.08, alpha: 1.0)
+            turretRing.lineWidth = 1.8
+            turretRing.zPosition = 5
+            base.addChild(turretRing)
+
+            let gunShield = SKShapeNode(rectOf: CGSize(width: 25, height: 18), cornerRadius: 4)
+            gunShield.position = CGPoint(x: 1, y: 13)
+            gunShield.fillColor = UIColor(red: 0.52, green: 0.54, blue: 0.48, alpha: 1.0)
+            gunShield.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            gunShield.lineWidth = 1.5
+            gunShield.zPosition = 6
+            base.addChild(gunShield)
+
+            let barrelOffsets: [CGFloat] = [9, 17]
+            for y in barrelOffsets {
+                let breech = SKShapeNode(rectOf: CGSize(width: 13, height: 6), cornerRadius: 2)
+                breech.position = CGPoint(x: 7, y: y)
+                breech.fillColor = UIColor(white: 0.28, alpha: 1.0)
+                breech.strokeColor = UIColor(white: 0.08, alpha: 1.0)
+                breech.lineWidth = 1
+                breech.zPosition = 7
+                base.addChild(breech)
+
+                let barrel = SKShapeNode(rectOf: CGSize(width: 43, height: 3.8), cornerRadius: 1.5)
+                barrel.position = CGPoint(x: 30, y: y)
+                barrel.fillColor = UIColor(white: 0.11, alpha: 1.0)
+                barrel.strokeColor = UIColor(white: 0.58, alpha: 0.42)
+                barrel.lineWidth = 0.8
+                barrel.zPosition = 7
+                base.addChild(barrel)
+
+                let muzzleBand = SKShapeNode(rectOf: CGSize(width: 5, height: 5), cornerRadius: 1)
+                muzzleBand.position = CGPoint(x: 51, y: y)
+                muzzleBand.fillColor = UIColor(white: 0.07, alpha: 1.0)
+                muzzleBand.strokeColor = .clear
+                muzzleBand.zPosition = 8
+                base.addChild(muzzleBand)
+            }
+
+            let rangefinder = SKShapeNode(rectOf: CGSize(width: 21, height: 4), cornerRadius: 1.5)
+            rangefinder.position = CGPoint(x: -2, y: 25)
+            rangefinder.fillColor = UIColor(white: 0.25, alpha: 1.0)
+            rangefinder.strokeColor = UIColor(white: 0.78, alpha: 0.36)
+            rangefinder.lineWidth = 0.8
+            rangefinder.zPosition = 8
+            base.addChild(rangefinder)
+
+            let opticOffsets: [CGFloat] = [-8, 4]
+            for x in opticOffsets {
+                let optic = SKShapeNode(circleOfRadius: 2.3)
+                optic.position = CGPoint(x: x, y: 25)
+                optic.fillColor = entity.faction == .enemy
+                    ? UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 0.96)
+                    : UIColor(red: 0.28, green: 0.94, blue: 1.0, alpha: 0.96)
+                optic.strokeColor = UIColor.white.withAlphaComponent(0.72)
+                optic.lineWidth = 0.7
+                optic.glowWidth = 1
+                optic.zPosition = 9
+                base.addChild(optic)
+            }
+
+            let vent = SKShapeNode(ellipseOf: CGSize(width: 9, height: 5))
+            vent.position = CGPoint(x: -5, y: -7)
+            vent.fillColor = UIColor(white: 0.20, alpha: 1.0)
+            vent.strokeColor = UIColor.white.withAlphaComponent(0.20)
+            vent.lineWidth = 0.8
+            vent.zPosition = 3
+            base.addChild(vent)
         default:
             break
         }
@@ -4183,7 +4292,7 @@ final class GameScene: SKScene {
         case .sonarBuoy:
             return "Coastal sonar  No SCAN"
         case .coastalBattery:
-            return "Coastal anti-ship  No sonar"
+            return "Twin naval guns  No sonar"
         default:
             return nil
         }
@@ -4783,7 +4892,7 @@ final class GameScene: SKScene {
                 return "Anti-air defense"
             }
             if entity.kind == .coastalBattery {
-                return "Naval defense  No sonar"
+                return "Twin naval defense  No sonar"
             }
             return "Build coverage"
         }
@@ -7208,6 +7317,11 @@ final class GameScene: SKScene {
             return
         }
 
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "coastal-battery" {
+            prepareCICoastalBatteryCaptureScene()
+            return
+        }
+
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "naval-salvo" {
             prepareCINavalSalvoCaptureScene()
             return
@@ -7242,6 +7356,71 @@ final class GameScene: SKScene {
                 persistent: true
             )
         }
+    }
+
+    private func prepareCICoastalBatteryCaptureScene() {
+        let focus = tileCenter(TileCoord(row: 18, col: 23))
+        cameraRig.position = focus
+
+        if let shipyard = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .shipyard && $0.isAlive
+        }) {
+            shipyard.node.position = tileCenter(TileCoord(row: 19, col: 21))
+            shipyard.node.zPosition = entityZPosition(shipyard)
+        }
+
+        let battery = addEntity(
+            kind: .coastalBattery,
+            faction: .player,
+            at: tileCenter(TileCoord(row: 17, col: 21))
+        )
+        battery.node.xScale = 1
+        battery.node.zPosition = entityZPosition(battery)
+
+        guard let enemyBattleship = entities.values.first(where: {
+            $0.faction == .enemy && $0.kind == .battleship && $0.isAlive
+        }) else { return }
+        enemyBattleship.node.position = tileCenter(TileCoord(row: 18, col: 25))
+        enemyBattleship.node.xScale = -1
+        enemyBattleship.node.zPosition = entityZPosition(enemyBattleship)
+        enemyBattleship.hp = enemyBattleship.kind.maxHP * 0.54
+        enemyBattleship.attackTarget = nil
+        enemyBattleship.attackTimer = 0
+        enemyBattleship.destination = nil
+        enemyBattleship.path.removeAll()
+        updateHealthBar(enemyBattleship)
+        updateNavalWake(for: enemyBattleship, direction: CGPoint(x: 0.96, y: 0.18).normalized)
+
+        if let playerBattleship = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .battleship && $0.isAlive
+        }) {
+            playerBattleship.node.position = tileCenter(TileCoord(row: 20, col: 26))
+            playerBattleship.node.zPosition = entityZPosition(playerBattleship)
+        }
+        if let carrier = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .carrier && $0.isAlive
+        }) {
+            carrier.node.position = tileCenter(TileCoord(row: 21, col: 23))
+            carrier.node.zPosition = entityZPosition(carrier)
+        }
+
+        battery.attackTarget = enemyBattleship
+        battery.attackTimer = 0.68
+        selectedIDs = [battery.id]
+        updateFog(force: true)
+        refreshSelection()
+        showNavalGunSalvo(
+            from: battery.node.position,
+            to: enemyBattleship.node.position,
+            kind: .coastalBattery,
+            faction: .player,
+            persistent: true
+        )
+        showNavalSalvoImpact(
+            target: enemyBattleship,
+            faction: .player,
+            persistent: true
+        )
     }
 
     private func prepareCINavalSalvoCaptureScene() {
@@ -10432,10 +10611,19 @@ final class GameScene: SKScene {
         let direction = (end - start).normalized
         guard direction.length > 0.01 else { return }
         let normal = CGPoint(x: -direction.y, y: direction.x)
-        let muzzleDistance: CGFloat = kind == .battleship ? 34 : 28
+        let muzzleDistance: CGFloat = kind == .battleship ? 34 : 49
         let color = faction == .enemy
             ? UIColor(red: 1.0, green: 0.43, blue: 0.24, alpha: 1.0)
             : UIColor(red: 0.30, green: 0.92, blue: 1.0, alpha: 1.0)
+
+        if kind == .coastalBattery {
+            showCoastalBatteryRecoil(
+                at: start,
+                toward: end,
+                faction: faction,
+                persistent: persistent
+            )
+        }
 
         for side in [-1.0, 1.0] {
             let laneOffset = normal * (CGFloat(side) * 5.2)
@@ -10504,6 +10692,113 @@ final class GameScene: SKScene {
                 .removeFromParent()
             ]))
         }
+    }
+
+    private func showCoastalBatteryRecoil(
+        at start: CGPoint,
+        toward end: CGPoint,
+        faction: Faction,
+        persistent: Bool = false
+    ) {
+        guard faction == .player || isVisible(point: start) else { return }
+        let direction = (end - start).normalized
+        guard direction.length > 0.01 else { return }
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+        let angle = atan2(direction.y, direction.x)
+        let root = SKNode()
+        root.position = start
+        root.zPosition = 280
+
+        let accent = faction == .enemy
+            ? UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0)
+            : UIColor(red: 0.30, green: 0.92, blue: 1.0, alpha: 1.0)
+        let laneOffsets: [CGFloat] = [-5.2, 5.2]
+        for laneOffset in laneOffsets {
+            let offset = normal * laneOffset
+            let railPath = CGMutablePath()
+            railPath.move(to: direction * 4 + offset)
+            railPath.addLine(to: direction * -18 + offset)
+            let rail = SKShapeNode(path: railPath)
+            rail.strokeColor = accent.withAlphaComponent(0.72)
+            rail.lineWidth = 3
+            rail.lineCap = .round
+            rail.glowWidth = 2
+            rail.zPosition = 2
+            root.addChild(rail)
+
+            let recoilingBarrel = SKShapeNode(rectOf: CGSize(width: 28, height: 3.4), cornerRadius: 1.3)
+            recoilingBarrel.position = direction * 27 + offset
+            recoilingBarrel.zRotation = angle
+            recoilingBarrel.fillColor = UIColor(white: 0.18, alpha: 0.92)
+            recoilingBarrel.strokeColor = UIColor.white.withAlphaComponent(0.48)
+            recoilingBarrel.lineWidth = 0.8
+            recoilingBarrel.zPosition = 3
+            root.addChild(recoilingBarrel)
+
+            if !persistent {
+                rail.run(.sequence([.fadeOut(withDuration: 0.30), .removeFromParent()]))
+                recoilingBarrel.run(.sequence([
+                    .group([
+                        .move(by: CGVector(dx: -direction.x * 11, dy: -direction.y * 11), duration: 0.18),
+                        .fadeOut(withDuration: 0.28)
+                    ]),
+                    .removeFromParent()
+                ]))
+            }
+        }
+
+        let shockRing = SKShapeNode(ellipseOf: CGSize(width: 58, height: 28))
+        shockRing.position = direction * -4
+        shockRing.zRotation = angle
+        shockRing.fillColor = accent.withAlphaComponent(0.08)
+        shockRing.strokeColor = accent.withAlphaComponent(0.82)
+        shockRing.lineWidth = 2
+        shockRing.zPosition = 1
+        root.addChild(shockRing)
+
+        let dust = SKShapeNode(ellipseOf: CGSize(width: 66, height: 25))
+        dust.position = direction * -22
+        dust.zRotation = angle
+        dust.fillColor = UIColor(red: 0.72, green: 0.58, blue: 0.34, alpha: 0.24)
+        dust.strokeColor = UIColor(red: 0.92, green: 0.76, blue: 0.46, alpha: 0.54)
+        dust.lineWidth = 1.5
+        dust.zPosition = -1
+        root.addChild(dust)
+
+        for index in 0..<4 {
+            let side: CGFloat = index.isMultiple(of: 2) ? -1 : 1
+            let distance = CGFloat(13 + index * 7)
+            let speck = SKShapeNode(circleOfRadius: index.isMultiple(of: 2) ? 2.4 : 3.4)
+            speck.position = direction * -distance + normal * (side * CGFloat(5 + index * 2))
+            speck.fillColor = index.isMultiple(of: 2)
+                ? UIColor(red: 0.78, green: 0.64, blue: 0.39, alpha: 0.78)
+                : UIColor(white: 0.84, alpha: 0.62)
+            speck.strokeColor = .clear
+            speck.zPosition = 1
+            root.addChild(speck)
+            if !persistent {
+                speck.run(.sequence([
+                    .group([
+                        .move(by: CGVector(
+                            dx: -direction.x * 18 + normal.x * side * 8,
+                            dy: -direction.y * 18 + normal.y * side * 8
+                        ), duration: 0.42),
+                        .fadeOut(withDuration: 0.42)
+                    ]),
+                    .removeFromParent()
+                ]))
+            }
+        }
+
+        effectsLayer.addChild(root)
+        guard !persistent else { return }
+        shockRing.run(.group([.scale(to: 1.55, duration: 0.36), .fadeOut(withDuration: 0.36)]))
+        dust.run(.group([
+            .move(by: CGVector(dx: -direction.x * 16, dy: -direction.y * 16), duration: 0.50),
+            .scale(to: 1.42, duration: 0.50),
+            .fadeOut(withDuration: 0.50)
+        ]))
+        root.run(.sequence([.wait(forDuration: 0.55), .removeFromParent()]))
     }
 
     private func showArtilleryMuzzleBlast(
