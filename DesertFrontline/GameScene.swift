@@ -7322,6 +7322,11 @@ final class GameScene: SKScene {
             return
         }
 
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "carrier-strike" {
+            prepareCICarrierStrikeCaptureScene()
+            return
+        }
+
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "naval-salvo" {
             prepareCINavalSalvoCaptureScene()
             return
@@ -7418,6 +7423,67 @@ final class GameScene: SKScene {
         )
         showNavalSalvoImpact(
             target: enemyBattleship,
+            faction: .player,
+            persistent: true
+        )
+    }
+
+    private func prepareCICarrierStrikeCaptureScene() {
+        guard let carrier = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .carrier && $0.isAlive
+        }), let enemyBattleship = entities.values.first(where: {
+            $0.faction == .enemy && $0.kind == .battleship && $0.isAlive
+        }) else { return }
+
+        cameraRig.position = tileCenter(TileCoord(row: 19, col: 24))
+        carrier.node.position = tileCenter(TileCoord(row: 20, col: 22))
+        carrier.node.xScale = 1
+        carrier.node.zPosition = entityZPosition(carrier)
+        carrier.destination = nil
+        carrier.attackMoveDestination = nil
+        carrier.path.removeAll()
+        updateNavalWake(for: carrier, direction: CGPoint(x: -0.96, y: -0.16).normalized)
+
+        enemyBattleship.node.position = tileCenter(TileCoord(row: 18, col: 26))
+        enemyBattleship.node.xScale = -1
+        enemyBattleship.node.zPosition = entityZPosition(enemyBattleship)
+        enemyBattleship.hp = enemyBattleship.kind.maxHP * 0.42
+        enemyBattleship.attackTarget = nil
+        enemyBattleship.attackTimer = 0
+        enemyBattleship.destination = nil
+        enemyBattleship.path.removeAll()
+        updateHealthBar(enemyBattleship)
+        updateNavalWake(for: enemyBattleship, direction: CGPoint(x: 0.94, y: 0.22).normalized)
+
+        if let playerBattleship = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .battleship && $0.isAlive
+        }) {
+            playerBattleship.node.position = tileCenter(TileCoord(row: 21, col: 25))
+            playerBattleship.node.zPosition = entityZPosition(playerBattleship)
+            updateNavalWake(for: playerBattleship, direction: CGPoint(x: -0.92, y: 0.20).normalized)
+        }
+
+        carrier.attackTarget = enemyBattleship
+        carrier.attackTimer = 0.74
+        selectedIDs = [carrier.id]
+        updateFog(force: true)
+        refreshSelection()
+        launchCarrierWing(
+            from: carrier.node.position,
+            to: enemyBattleship.node.position,
+            targetKind: enemyBattleship.kind,
+            faction: .player,
+            persistent: true
+        )
+        showNavalWaterImpact(
+            at: enemyBattleship.node.position + CGPoint(x: 24, y: -8),
+            faction: .player,
+            scale: 0.82,
+            persistent: true
+        )
+        showDamageFloater(
+            at: enemyBattleship.node.position + CGPoint(x: -20, y: 24),
+            amount: carrier.kind.damage,
             faction: .player,
             persistent: true
         )
@@ -7891,7 +7957,27 @@ final class GameScene: SKScene {
 
         let attackerKnownToPlayer = attacker.faction == .player || isKnownToFaction(attacker, observer: .player)
         if attacker.kind == .carrier {
-            launchCarrierWing(from: attacker.node.position, to: target.node.position, faction: attacker.faction)
+            if attackerKnownToPlayer {
+                if target.kind.domain == .naval {
+                    launchCarrierWing(
+                        from: attacker.node.position,
+                        to: target.node.position,
+                        targetKind: target.kind,
+                        faction: attacker.faction
+                    )
+                } else {
+                    showCarrierDeckPulse(at: attacker.node.position, faction: attacker.faction, label: "CV STRIKE")
+                    showCarrierCraftFlight(
+                        kind: .fighter,
+                        from: attacker.node.position + CGPoint(x: 0, y: 20),
+                        to: target.node.position + CGPoint(x: 0, y: 18),
+                        faction: attacker.faction,
+                        duration: 0.34,
+                        scale: 0.62
+                    )
+                    showProjectile(from: attacker.node.position, to: target.node.position, kind: .carrier)
+                }
+            }
         } else if attacker.kind == .battleship || attacker.kind == .coastalBattery {
             if attackerKnownToPlayer {
                 showNavalGunSalvo(
@@ -11015,10 +11101,242 @@ final class GameScene: SKScene {
         }
     }
 
-    private func launchCarrierWing(from start: CGPoint, to end: CGPoint, faction: Faction) {
-        showCarrierDeckPulse(at: start, faction: faction, label: "CV STRIKE")
-        showCarrierCraftFlight(kind: .fighter, from: start + CGPoint(x: 0, y: 20), to: end + CGPoint(x: 0, y: 18), faction: faction, duration: 0.34, scale: 0.62)
-        showProjectile(from: start, to: end, kind: .carrier)
+    private func launchCarrierWing(
+        from start: CGPoint,
+        to end: CGPoint,
+        targetKind: EntityKind,
+        faction: Faction,
+        persistent: Bool = false
+    ) {
+        guard faction == .player || (isVisible(point: start) && isVisible(point: end)) else { return }
+        let direction = (end - start).normalized
+        guard direction.length > 0.001 else { return }
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+        let color = carrierLaunchColor(for: faction)
+        let laneOffsets: [CGFloat] = [-1, 0, 1]
+        let flightDuration: TimeInterval = 0.68
+
+        showCarrierDeckPulse(at: start, faction: faction, label: "CV STRIKE x3")
+
+        for (index, lane) in laneOffsets.enumerated() {
+            let laneStart = start + direction * 34 + normal * lane * 18
+            let laneEnd = end - direction * 38 + normal * lane * 11
+            let control = (laneStart + laneEnd) * 0.5
+                + direction * 20
+                + normal * lane * 34
+            let path = CGMutablePath()
+            path.move(to: laneStart)
+            path.addQuadCurve(to: laneEnd, control: control)
+
+            let smoke = SKShapeNode(path: path)
+            smoke.strokeColor = UIColor(white: 0.86, alpha: 0.24)
+            smoke.lineWidth = 7
+            smoke.lineCap = .round
+            smoke.zPosition = 274
+            effectsLayer.addChild(smoke)
+
+            let flightLine = SKShapeNode(path: path)
+            flightLine.strokeColor = color.withAlphaComponent(0.68)
+            flightLine.lineWidth = 2.2
+            flightLine.glowWidth = 2
+            flightLine.zPosition = 275
+            effectsLayer.addChild(flightLine)
+
+            let craft = carrierLaunchCraft(for: .fighter, faction: faction)
+            craft.setScale(index == 1 ? 0.58 : 0.52)
+            craft.zPosition = 279 + CGFloat(index)
+            effectsLayer.addChild(craft)
+
+            let engineGlow = SKShapeNode(ellipseOf: CGSize(width: 14, height: 5))
+            engineGlow.position = CGPoint(x: -27, y: 0)
+            engineGlow.fillColor = UIColor(red: 1.0, green: 0.72, blue: 0.22, alpha: 0.92)
+            engineGlow.strokeColor = color.withAlphaComponent(0.84)
+            engineGlow.glowWidth = 3
+            engineGlow.zPosition = -1
+            craft.addChild(engineGlow)
+
+            let delay = TimeInterval(index) * 0.055
+            if persistent {
+                let t: CGFloat = index == 1 ? 0.68 : 0.58
+                craft.position = quadraticPoint(from: laneStart, control: control, to: laneEnd, t: t)
+                let tangent = quadraticTangent(from: laneStart, control: control, to: laneEnd, t: t)
+                craft.zRotation = atan2(tangent.y, tangent.x)
+            } else {
+                craft.position = laneStart
+                craft.alpha = 0.12
+                let follow = SKAction.follow(
+                    path,
+                    asOffset: false,
+                    orientToPath: true,
+                    duration: flightDuration
+                )
+                craft.run(.sequence([
+                    .wait(forDuration: delay),
+                    .group([
+                        follow,
+                        .sequence([
+                            .fadeAlpha(to: 1.0, duration: 0.08),
+                            .wait(forDuration: flightDuration - 0.18),
+                            .fadeOut(withDuration: 0.10)
+                        ])
+                    ]),
+                    .removeFromParent()
+                ]))
+                smoke.run(.sequence([
+                    .wait(forDuration: delay + 0.20),
+                    .fadeOut(withDuration: 0.68),
+                    .removeFromParent()
+                ]))
+                flightLine.run(.sequence([
+                    .wait(forDuration: delay + 0.18),
+                    .fadeOut(withDuration: 0.58),
+                    .removeFromParent()
+                ]))
+            }
+        }
+
+        let releasePoint = start + (end - start) * 0.66 + normal * 4
+        for index in 0..<2 {
+            let side: CGFloat = index == 0 ? -1 : 1
+            showCarrierStrikeMissile(
+                from: releasePoint + normal * side * 12,
+                to: end + normal * side * 9,
+                faction: faction,
+                delay: 0.40 + TimeInterval(index) * 0.06,
+                persistent: persistent
+            )
+        }
+
+        if persistent {
+            showCarrierStrikeImpact(
+                at: end,
+                faction: faction,
+                surfaceTarget: targetKind != .submarine,
+                persistent: true
+            )
+        } else {
+            let impactTrigger = SKNode()
+            effectsLayer.addChild(impactTrigger)
+            impactTrigger.run(.sequence([
+                .wait(forDuration: 0.72),
+                .run { [weak self] in
+                    self?.showCarrierStrikeImpact(
+                        at: end,
+                        faction: faction,
+                        surfaceTarget: targetKind != .submarine
+                    )
+                },
+                .removeFromParent()
+            ]))
+        }
+    }
+
+    private func quadraticPoint(
+        from start: CGPoint,
+        control: CGPoint,
+        to end: CGPoint,
+        t: CGFloat
+    ) -> CGPoint {
+        let inverse = 1 - t
+        return start * (inverse * inverse)
+            + control * (2 * inverse * t)
+            + end * (t * t)
+    }
+
+    private func quadraticTangent(
+        from start: CGPoint,
+        control: CGPoint,
+        to end: CGPoint,
+        t: CGFloat
+    ) -> CGPoint {
+        (control - start) * (2 * (1 - t)) + (end - control) * (2 * t)
+    }
+
+    private func showCarrierStrikeMissile(
+        from start: CGPoint,
+        to end: CGPoint,
+        faction: Faction,
+        delay: TimeInterval,
+        persistent: Bool
+    ) {
+        let color = carrierLaunchColor(for: faction)
+        let path = CGMutablePath()
+        path.move(to: start)
+        path.addLine(to: end)
+
+        let smoke = SKShapeNode(path: path)
+        smoke.strokeColor = UIColor(white: 0.90, alpha: 0.36)
+        smoke.lineWidth = 6
+        smoke.lineCap = .round
+        smoke.zPosition = 281
+        effectsLayer.addChild(smoke)
+
+        let trail = SKShapeNode(path: path)
+        trail.strokeColor = UIColor(red: 1.0, green: 0.67, blue: 0.20, alpha: 0.92)
+        trail.lineWidth = 2.5
+        trail.glowWidth = 3
+        trail.zPosition = 282
+        effectsLayer.addChild(trail)
+
+        let missile = SKShapeNode(rectOf: CGSize(width: 22, height: 6), cornerRadius: 2)
+        missile.fillColor = UIColor(white: 0.94, alpha: 1.0)
+        missile.strokeColor = color
+        missile.lineWidth = 1.4
+        missile.glowWidth = 2
+        missile.zRotation = atan2(end.y - start.y, end.x - start.x)
+        missile.zPosition = 284
+        effectsLayer.addChild(missile)
+
+        let flame = SKShapeNode(ellipseOf: CGSize(width: 13, height: 4))
+        flame.position = CGPoint(x: -16, y: 0)
+        flame.fillColor = UIColor(red: 1.0, green: 0.53, blue: 0.14, alpha: 0.96)
+        flame.strokeColor = UIColor.white.withAlphaComponent(0.70)
+        flame.glowWidth = 3
+        flame.zPosition = -1
+        missile.addChild(flame)
+
+        if persistent {
+            missile.position = start + (end - start) * 0.55
+            return
+        }
+
+        missile.position = start
+        missile.alpha = 0
+        missile.run(.sequence([
+            .wait(forDuration: delay),
+            .fadeIn(withDuration: 0.04),
+            .group([
+                .move(to: end, duration: 0.27),
+                .sequence([.wait(forDuration: 0.20), .fadeOut(withDuration: 0.07)])
+            ]),
+            .removeFromParent()
+        ]))
+        smoke.run(.sequence([
+            .wait(forDuration: delay + 0.08),
+            .fadeOut(withDuration: 0.48),
+            .removeFromParent()
+        ]))
+        trail.run(.sequence([
+            .wait(forDuration: delay + 0.06),
+            .fadeOut(withDuration: 0.38),
+            .removeFromParent()
+        ]))
+    }
+
+    private func showCarrierStrikeImpact(
+        at point: CGPoint,
+        faction: Faction,
+        surfaceTarget: Bool,
+        persistent: Bool = false
+    ) {
+        if surfaceTarget {
+            showNavalHullStrike(at: point, faction: faction, persistent: persistent)
+        }
+        showAirMissileImpact(
+            at: point + CGPoint(x: 10, y: 5),
+            faction: faction,
+            persistent: persistent
+        )
     }
 
     private func showCarrierLaunch(from start: CGPoint, to end: CGPoint, faction: Faction, kind: EntityKind) {
