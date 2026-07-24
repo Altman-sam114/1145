@@ -4863,3 +4863,36 @@
 
 - 云端冻结截图能证明模型层次、双发炮迹、复合命中、HUD 兼容和启动稳定性，但不能覆盖连续多舰齐射、快速转向、战争迷雾边缘开火、长时间节点压力或真机触控 / 性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮可继续选择一个单一战斗细节增量，例如细化 Coastal Battery 炮座模型、补强舰载机对舰命中或改善高密度海战目标层级；总目标仍未完成。
+
+### v4.94 / 岸防炮模型与海岸交战
+
+日期：2026-07-24
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，并核对 Noble Master 官方 press kit、官方 trailer 与官方海战图 `screen_dsf_v02_10.png` / `screen_dsf_v02_11.png`；本轮只借鉴清晰单位轮廓、紧贴单位的战斗信息和短促直线弹道，不复制原素材或 UI。
+- Coastal Battery 在原实体树与 gameplay footprint 内升级为分层混凝土基座 / 炮床、护坡与沙袋、炮塔座圈、炮盾、双长炮管 / 后膛、测距仪与阵营光学件、指挥掩体、弹药箱和通风细节；碰撞、施工、选择、血条、数值、建造和 AI 不变。
+- Coastal Battery 继续复用 `showNavalGunSalvo(...)` 双发舰炮链路，炮口距离与新长炮管对齐；新增纯视觉双炮后坐轨迹、炮床冲击环、方向化岸边尘浪和碎屑，普通节点约 0.55 秒后清理。未知 Red 炮位仍由玩家已知 / 可见边界过滤，不通过新反馈泄露位置。
+- operational 玩家武器平台现在共享既有 `primaryCombatTarget(...)` 目标信息链路，使单选 Coastal Battery 在真实攻击时显示顶部 `ATK` 摘要、目标生命条、目标 HP / 百分比 / 距离和 ready / reload；未完工结构仍被 `isOperational` 排除，多选、FOCUS、伤害和目标规则不变。
+- 新增 capture-only `coastal-battery` coast 场景：单选 Blue Coastal Battery 锁定约 54% HP Red Battleship，冻结双发齐射、双炮后坐、炮床冲击 / 尘浪、舰体命中与主 / 副水柱，并保留射程圈、海岸地貌、背景海军、小地图和单排命令条。
+- GitHub Actions simulator launch probe 从十三次扩展为十四次，新增 `simulator-coastal-battery.png` 并写入清理列表与 artifact manifest。README、核心 flow、flowchart、测试规范和 v4.94 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` `DEVELOPMENT_TEAM` 人工改动保持未暂存，未进入 v4.94 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地游戏探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 等轻量检查并通过。
+- 实现提交：`babb3d1a075b664886f22b86ed8a54e3c9f3af8c`，commit subject 为 `v4.94: 细化岸防炮与海岸交战`。对应 run `30065491170` 的静态检查、两类 build、十四次启动和 artifact 均 success，但 Agent C 目视发现岸防炮单选面板仍只显示自身信息，没有提示词要求的目标 HP / 距离 / reload，因此未计为最终验收通过。
+- 目标态势修复提交：`803c20ab19e390458e04b882fa212a6c29b72acc`，commit subject 为 `v4.94: 补齐岸防目标态势`；只把 `primaryCombatTarget(...)` 的玩家攻击者边界从非结构改为 operational，使已完工武器结构进入既有只读目标 UI。
+- 最终 GitHub Actions run：`30066291758`，attempt `1`，conclusion `success`，job 总耗时 6 分 50 秒。
+- 最终 artifact：`desert-frontline-ci-v4.94-main-803c20ab19e3-run30066291758-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-30066291758/`，未加密且约 19.8 MB。
+- manifest 记录 `branch=main`、`commitSha=803c20ab19e390458e04b882fa212a6c29b72acc`、`runId=30066291758`、`runAttempt=1`、`version=v4.94`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十四次 simulator launch PID `7208`、`8055`、`8590`、`9395`、`9734`、`10042`、`10310`、`10632`、`10913`、`11297`、`11592`、`12273`、`12536`、`12858` 均在截图后存活；十四张原始 PNG 均为 1206x2622，App / launch 日志未命中 SIGABRT、watchdog、未捕获异常、fatal error 或崩溃关键字。
+- 最终 `simulator-coastal-battery.png` 清楚显示 Blue Coastal Battery 分层炮床、沙袋、掩体 / 弹药细节、双炮管 / 后膛 / 炮盾 / 测距仪，双炮迹 / 弹体 / 炮口亮焰、后坐轨迹 / 尘浪、Red Battleship 舰体命中与主 / 副水柱，以及 `ATK BB 54%`、`Tgt BB HP 421/780 54% D167`、`Reload 0.7s`、目标生命条、射程圈、小地图和单排命令条；原图 SHA-256 为 `086f7fb1c0b1357b8739a731b0d9701e59707525c5c2c458dd9bcf10c222938b`。
+- `simulator-naval-salvo.png` 保留 Battleship 模型、双发齐射、复合水面命中与目标面板，SHA-256 为 `a7a0ba4a8e3897b4c18828704e38313a8ec77e55de035cbb62481ad3cf830af3`；截图上方出现 runner 的 Apple Intelligence 系统通知，但未遮挡舰船、齐射、目标面板或命令区，不属于 App 内 UI。`simulator-map-terrain.png`、`simulator-combat-ui.png` 和 `simulator-screenshot.png` 分别为 `2da429ee6ef22dee4aa5225a05026fd533e48375d2e8507eeb3ef8a7e8f8a5b0`、`d4f5a6ea0c0f7ed899da2f510a42c0f83b8c7eafe08c5e7f49dc1c6d67df342a`、`cdde9ccc7daf1f082274468f0fd68fdbe7429a88386a4dd2ec10f22e634b25d6`，地貌、战斗态势与空战证据无明显回归。
+- 源码审阅确认后坐 helper 只创建视觉节点且普通节点有定时清理，`persistent` 只由 capture-only 分支使用；真实 `target.hp` 仍只在原 `fire(...)` 位置扣减一次，伤害、射程、冷却、AI、建造、迷雾、声呐和潜艇隐身均未改变。
+
+遗留事项：
+
+- 云端冻结截图能证明岸防模型、后坐 / 尘浪、双发齐射、目标态势 UI、复合水面命中和启动稳定性，但不能覆盖真实连续齐射、不同来袭方向下的炮塔朝向、敌方炮位进出迷雾、密集海战节点压力或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮可继续选择一个单一战斗细节增量，例如细化舰载机对舰投弹 / 命中、AA Truck 模型与防空开火，或改善高密度海空战目标层级；总目标仍未完成。
