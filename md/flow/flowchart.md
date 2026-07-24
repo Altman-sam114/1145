@@ -124,3 +124,4 @@ flowchart TD
 
 - v4.95：Carrier 三机错列俯冲、双反舰弹与舰体命中；CI 新增第十五次 carrier-strike 截图探针。
 - v4.96：AA Truck 六轮雷达发射车模型、双弹错发与雷达跟踪反馈；CI 新增第十六次 mobile-aa 截图探针。
+- v4.97：Fighter 对水面舰艇 / 建筑使用双曲线翼下导弹、专用紧凑命中；CI 新增第十七次 fighter-strike 截图探针。

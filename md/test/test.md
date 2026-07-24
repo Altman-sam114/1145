@@ -76,6 +76,7 @@ GitHub Actions 负责运行：
 - 第十四次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=coastal-battery` 生成 `simulator-coastal-battery.png`：单选 operational Blue Coastal Battery 锁定约 54% HP Red Battleship 并冻结一个 reload，画面同时保留海岸地貌、背景海军、舰炮射程圈、两条分离炮迹 / 弹体 / 炮口闪光、双炮后坐轨迹、炮床冲击环、岸边尘浪、Red 舰体闪光 / 火花和主 / 副水柱，用于核对分层炮床 / 护坡 / 沙袋、炮盾 / 双炮管 / 后膛 / 测距仪 / 阵营光学件、掩体 / 弹药箱、单选目标 HP / 距离 / reload 和单排命令条。workflow 总计十四次独立启动 / PID 存活检查；只有 coastal-battery capture 会临时写双方位置 / 目标、Red Battleship HP 和 reload，普通 App 与其他 capture 状态不变。
 - 第十五次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=carrier-strike` 生成 `simulator-carrier-strike.png`：单选 Blue Carrier 锁定约 42% HP Red Battleship 并冻结一个 reload，画面同时保留双方航迹、Carrier 护航圈、三条错列二次曲线进场线、三架有朝向 / 尾焰的舰载机、两枚反舰弹体及尾焰 / 烟迹、Red 舰体闪光 / 火花、水面命中、伤害飘字、目标 HP / 距离 / reload、小地图和单排命令条。workflow 总计十五次独立启动 / PID 存活检查；只有 carrier-strike capture 会临时写双方位置 / 目标、Red Battleship HP 和 reload，普通 App 与其他 capture 状态不变。
 - 第十六次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=mobile-aa` 生成 `simulator-mobile-aa.png`：单选 Blue AA Truck 锁定约 46% HP Red Fighter 并冻结一个 reload，画面同时保留六轮装甲底盘、阵营风挡、设备舱、雷达盘、双轨四弹发射架、两枚错列拦截弹与烟迹 / 发射闪光、雷达跟踪 cue、Red Fighter 投影、命中环、伤害飘字、目标 HP / 距离 / reload、小地图和单排命令条。workflow 总计十六次独立启动 / PID 存活检查；只有 mobile-aa capture 会临时写双方位置 / 目标、Red Fighter HP 和 reload，普通 App 与其他 capture 状态不变。
+- 第十七次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=fighter-strike` 生成 `simulator-fighter-strike.png`：单选 Blue Fighter 锁定约 48% HP Red Coastal Battery 并冻结一个 reload，画面同时保留 Fighter 模型 / 投影、两个翼下发射点、两条分离二次曲线、两枚错发弹体 / 尾焰、短白烟迹、双发射闪光、紧凑结构命中、伤害飘字、目标 HP / 距离 / reload、小地图和单排命令条。workflow 总计十七次独立启动 / PID 存活检查；只有 fighter-strike capture 会临时写双方位置 / 目标、Red Coastal Battery HP 和 reload，普通 App 与其他 capture 状态不变。
 - 结果包生成和上传。
 
 云端 Xcode build 命令：
@@ -125,6 +126,7 @@ GitHub Actions 负责运行：
 - `simulator-coastal-battery.png`
 - `simulator-carrier-strike.png`
 - `simulator-mobile-aa.png`
+- `simulator-fighter-strike.png`
 - `DesertFrontline.xcresult`
 
 artifact 命名规则：
