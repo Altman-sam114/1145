@@ -123,3 +123,4 @@ flowchart TD
 - v4.94：Coastal Battery 分层炮床、双联岸炮与后坐 / 尘浪反馈；CI 新增第十四次 coastal-battery 截图探针。
 
 - v4.95：Carrier 三机错列俯冲、双反舰弹与舰体命中；CI 新增第十五次 carrier-strike 截图探针。
+- v4.96：AA Truck 六轮雷达发射车模型、双弹错发与雷达跟踪反馈；CI 新增第十六次 mobile-aa 截图探针。

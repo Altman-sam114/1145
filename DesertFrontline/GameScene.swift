@@ -2452,42 +2452,146 @@ final class GameScene: SKScene {
 
         switch entity.kind {
         case .aaTruck:
-            let body = SKShapeNode(rectOf: CGSize(width: 38, height: 21), cornerRadius: 5)
-            body.fillColor = fill
-            body.strokeColor = UIColor(white: 0.18, alpha: 1.0)
-            body.lineWidth = 2
-            base.addChild(body)
+            for x in [-14, 0, 14] {
+                for y in [-11, 11] {
+                    let wheel = SKShapeNode(ellipseOf: CGSize(width: 9, height: 5.5))
+                    wheel.position = CGPoint(x: CGFloat(x), y: CGFloat(y))
+                    wheel.fillColor = UIColor(white: 0.06, alpha: 1.0)
+                    wheel.strokeColor = UIColor(white: 0.27, alpha: 0.82)
+                    wheel.lineWidth = 0.8
+                    wheel.zPosition = -2
+                    base.addChild(wheel)
+                }
+            }
 
-            let cabin = SKShapeNode(rectOf: CGSize(width: 14, height: 12), cornerRadius: 3)
-            cabin.position = CGPoint(x: -10, y: 6)
-            cabin.fillColor = fill.darker(by: 0.12)
-            cabin.strokeColor = .clear
+            let chassis = SKShapeNode(rectOf: CGSize(width: 42, height: 20), cornerRadius: 4)
+            chassis.fillColor = fill.darker(by: 0.18)
+            chassis.strokeColor = UIColor(white: 0.12, alpha: 1.0)
+            chassis.lineWidth = 2
+            chassis.zPosition = -1
+            base.addChild(chassis)
+
+            let armoredDeck = SKShapeNode(rectOf: CGSize(width: 36, height: 16), cornerRadius: 3)
+            armoredDeck.fillColor = fill
+            armoredDeck.strokeColor = UIColor(white: 0.82, alpha: 0.28)
+            armoredDeck.lineWidth = 1
+            base.addChild(armoredDeck)
+
+            let cabin = SKShapeNode(rectOf: CGSize(width: 14, height: 16), cornerRadius: 3)
+            cabin.position = CGPoint(x: -12, y: 0)
+            cabin.fillColor = fill.darker(by: 0.10)
+            cabin.strokeColor = UIColor(white: 0.13, alpha: 0.95)
+            cabin.lineWidth = 1
+            cabin.zPosition = 2
             base.addChild(cabin)
 
-            let launcher = SKShapeNode(rectOf: CGSize(width: 26, height: 7), cornerRadius: 2)
-            launcher.position = CGPoint(x: 9, y: 11)
-            launcher.fillColor = UIColor(red: 0.45, green: 0.48, blue: 0.43, alpha: 1.0)
-            launcher.strokeColor = UIColor(white: 0.12, alpha: 1.0)
-            launcher.lineWidth = 1
-            launcher.zRotation = 0.24
-            base.addChild(launcher)
+            let windshield = SKShapeNode(rectOf: CGSize(width: 4.5, height: 10), cornerRadius: 1.5)
+            windshield.position = CGPoint(x: -18.2, y: 0)
+            windshield.fillColor = entity.faction == .enemy
+                ? UIColor(red: 0.94, green: 0.35, blue: 0.20, alpha: 0.95)
+                : UIColor(red: 0.24, green: 0.86, blue: 1.0, alpha: 0.95)
+            windshield.strokeColor = UIColor.white.withAlphaComponent(0.55)
+            windshield.lineWidth = 0.8
+            windshield.glowWidth = 1
+            windshield.zPosition = 3
+            base.addChild(windshield)
 
-            for offset in [-4, 4] {
-                let missile = SKShapeNode(rectOf: CGSize(width: 22, height: 3), cornerRadius: 1)
-                missile.position = CGPoint(x: 13, y: 13 + CGFloat(offset) * 0.45)
-                missile.fillColor = UIColor(red: 0.90, green: 0.90, blue: 0.82, alpha: 1.0)
-                missile.strokeColor = .clear
-                missile.zRotation = 0.24
-                base.addChild(missile)
+            let equipmentBay = SKShapeNode(rectOf: CGSize(width: 11, height: 13), cornerRadius: 2)
+            equipmentBay.position = CGPoint(x: 1, y: 0)
+            equipmentBay.fillColor = fill.darker(by: 0.20)
+            equipmentBay.strokeColor = UIColor.white.withAlphaComponent(0.22)
+            equipmentBay.lineWidth = 0.8
+            equipmentBay.zPosition = 2
+            base.addChild(equipmentBay)
+
+            for y in [-4.0, 0.0, 4.0] {
+                let vent = SKShapeNode(rectOf: CGSize(width: 6, height: 1), cornerRadius: 0.5)
+                vent.position = CGPoint(x: 1, y: CGFloat(y))
+                vent.fillColor = UIColor(white: 0.12, alpha: 0.85)
+                vent.strokeColor = .clear
+                vent.zPosition = 3
+                base.addChild(vent)
             }
 
-            for x in [-13, 13] {
-                let wheel = SKShapeNode(ellipseOf: CGSize(width: 9, height: 5))
-                wheel.position = CGPoint(x: CGFloat(x), y: -11)
-                wheel.fillColor = UIColor(white: 0.08, alpha: 1.0)
-                wheel.strokeColor = .clear
-                base.addChild(wheel)
+            let radarMast = SKShapeNode(rectOf: CGSize(width: 3, height: 15), cornerRadius: 1)
+            radarMast.position = CGPoint(x: 5, y: 9)
+            radarMast.fillColor = UIColor(white: 0.24, alpha: 1.0)
+            radarMast.strokeColor = UIColor.white.withAlphaComponent(0.30)
+            radarMast.lineWidth = 0.7
+            radarMast.zRotation = 0.18
+            radarMast.zPosition = 4
+            base.addChild(radarMast)
+
+            let radarDish = SKShapeNode(ellipseOf: CGSize(width: 14, height: 7))
+            radarDish.position = CGPoint(x: 6.5, y: 16)
+            radarDish.fillColor = UIColor(red: 0.36, green: 0.42, blue: 0.38, alpha: 1.0)
+            radarDish.strokeColor = entity.faction == .enemy
+                ? UIColor(red: 1.0, green: 0.45, blue: 0.25, alpha: 0.90)
+                : UIColor(red: 0.30, green: 0.92, blue: 1.0, alpha: 0.90)
+            radarDish.lineWidth = 1.4
+            radarDish.zRotation = 0.18
+            radarDish.zPosition = 5
+            base.addChild(radarDish)
+
+            let launcherCradle = SKShapeNode(rectOf: CGSize(width: 25, height: 8), cornerRadius: 2)
+            launcherCradle.position = CGPoint(x: 12, y: 10)
+            launcherCradle.fillColor = UIColor(red: 0.35, green: 0.39, blue: 0.35, alpha: 1.0)
+            launcherCradle.strokeColor = UIColor(white: 0.10, alpha: 1.0)
+            launcherCradle.lineWidth = 1.2
+            launcherCradle.zRotation = 0.24
+            launcherCradle.zPosition = 6
+            base.addChild(launcherCradle)
+
+            for lane in [-3.0, 3.0] {
+                let rail = SKShapeNode(rectOf: CGSize(width: 27, height: 2), cornerRadius: 0.8)
+                rail.position = CGPoint(x: 13, y: 10 + CGFloat(lane))
+                rail.fillColor = UIColor(white: 0.20, alpha: 1.0)
+                rail.strokeColor = UIColor.white.withAlphaComponent(0.22)
+                rail.lineWidth = 0.6
+                rail.zRotation = 0.24
+                rail.zPosition = 7
+                base.addChild(rail)
+
+                for station in [-5.5, 5.5] {
+                    let missile = SKShapeNode(rectOf: CGSize(width: 12, height: 3), cornerRadius: 1.2)
+                    missile.position = CGPoint(
+                        x: 13 + CGFloat(station) * cos(0.24),
+                        y: 10 + CGFloat(lane) + CGFloat(station) * sin(0.24)
+                    )
+                    missile.fillColor = UIColor(red: 0.90, green: 0.90, blue: 0.80, alpha: 1.0)
+                    missile.strokeColor = UIColor(white: 0.18, alpha: 0.95)
+                    missile.lineWidth = 0.6
+                    missile.zRotation = 0.24
+                    missile.zPosition = 8
+                    base.addChild(missile)
+                }
             }
+
+            for y in [-6.0, 6.0] {
+                let lamp = SKShapeNode(circleOfRadius: 1.7)
+                lamp.position = CGPoint(x: -21, y: CGFloat(y))
+                lamp.fillColor = UIColor(red: 1.0, green: 0.84, blue: 0.42, alpha: 0.95)
+                lamp.strokeColor = UIColor.white.withAlphaComponent(0.62)
+                lamp.lineWidth = 0.6
+                lamp.zPosition = 3
+                base.addChild(lamp)
+            }
+
+            let bumper = SKShapeNode(rectOf: CGSize(width: 3, height: 17), cornerRadius: 1)
+            bumper.position = CGPoint(x: -22, y: 0)
+            bumper.fillColor = UIColor(white: 0.16, alpha: 1.0)
+            bumper.strokeColor = UIColor.white.withAlphaComponent(0.22)
+            bumper.lineWidth = 0.7
+            bumper.zPosition = 1
+            base.addChild(bumper)
+
+            let antenna = SKShapeNode(rectOf: CGSize(width: 1, height: 13), cornerRadius: 0.5)
+            antenna.position = CGPoint(x: -6, y: 13)
+            antenna.fillColor = UIColor(white: 0.14, alpha: 1.0)
+            antenna.strokeColor = .clear
+            antenna.zRotation = -0.12
+            antenna.zPosition = 4
+            base.addChild(antenna)
         case .humvee:
             for xOffset in [-13, 13] {
                 for yOffset in [-10, 10] {
@@ -7308,6 +7412,10 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "mobile-aa" {
+            prepareCIMobileAACaptureScene()
+            return
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "land" {
             prepareCILandCaptureScene()
             return
@@ -7361,6 +7469,62 @@ final class GameScene: SKScene {
                 persistent: true
             )
         }
+    }
+
+    private func prepareCIMobileAACaptureScene() {
+        let aaTruck = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .aaTruck && $0.isAlive
+        }) ?? addEntity(
+            kind: .aaTruck,
+            faction: .player,
+            at: tileCenter(TileCoord(row: 15, col: 13))
+        )
+        let enemyFighter = addEntity(
+            kind: .fighter,
+            faction: .enemy,
+            at: tileCenter(TileCoord(row: 15, col: 17))
+        )
+
+        cameraRig.position = tileCenter(TileCoord(row: 15, col: 15))
+        aaTruck.node.position = tileCenter(TileCoord(row: 15, col: 13)) + CGPoint(x: -12, y: -34)
+        aaTruck.node.xScale = 1
+        aaTruck.node.zPosition = entityZPosition(aaTruck)
+        aaTruck.destination = nil
+        aaTruck.attackMoveDestination = nil
+        aaTruck.path.removeAll()
+
+        enemyFighter.node.position = tileCenter(TileCoord(row: 15, col: 17)) + CGPoint(x: 18, y: 50)
+        enemyFighter.node.xScale = -1
+        enemyFighter.node.zPosition = entityZPosition(enemyFighter)
+        enemyFighter.hp = enemyFighter.kind.maxHP * 0.46
+        enemyFighter.destination = enemyFighter.node.position + CGPoint(x: -180, y: -24)
+        enemyFighter.attackMoveDestination = nil
+        enemyFighter.path.removeAll()
+        updateHealthBar(enemyFighter)
+        updateAirShadow(for: enemyFighter, direction: CGPoint(x: -0.98, y: -0.16).normalized)
+
+        aaTruck.attackTarget = enemyFighter
+        aaTruck.attackTimer = 0.64
+        selectedIDs = [aaTruck.id]
+        updateFog(force: true)
+        refreshSelection()
+        showMobileAASalvo(
+            from: aaTruck.node.position,
+            to: enemyFighter.node.position,
+            faction: .player,
+            persistent: true
+        )
+        showAirMissileImpact(
+            at: enemyFighter.node.position + CGPoint(x: -8, y: 3),
+            faction: .player,
+            persistent: true
+        )
+        showDamageFloater(
+            at: enemyFighter.node.position + CGPoint(x: 16, y: 22),
+            amount: aaTruck.kind.damage,
+            faction: .player,
+            persistent: true
+        )
     }
 
     private func prepareCICoastalBatteryCaptureScene() {
@@ -7996,7 +8160,14 @@ final class GameScene: SKScene {
                     faction: attacker.faction
                 )
             }
-            showProjectile(from: attacker.node.position, to: target.node.position, kind: attacker.kind)
+            if attacker.kind != .aaTruck || attackerKnownToPlayer {
+                showProjectile(
+                    from: attacker.node.position,
+                    to: target.node.position,
+                    kind: attacker.kind,
+                    faction: attacker.faction
+                )
+            }
         }
 
         let armorMultiplier: CGFloat
@@ -10666,9 +10837,19 @@ final class GameScene: SKScene {
         from start: CGPoint,
         to end: CGPoint,
         kind: EntityKind,
+        faction: Faction? = nil,
         persistent: Bool = false
     ) {
-        if kind == .fighter || kind == .samSite || kind == .aaTruck {
+        if kind == .aaTruck {
+            showMobileAASalvo(
+                from: start,
+                to: end,
+                faction: faction ?? .player,
+                persistent: persistent
+            )
+            return
+        }
+        if kind == .fighter || kind == .samSite {
             showGuidedMissileTrail(from: start, to: end, kind: kind, persistent: persistent)
             return
         }
@@ -10684,6 +10865,88 @@ final class GameScene: SKScene {
         effectsLayer.addChild(tracer)
         guard !persistent else { return }
         tracer.run(.sequence([.fadeOut(withDuration: 0.16), .removeFromParent()]))
+    }
+
+    private func showMobileAASalvo(
+        from start: CGPoint,
+        to end: CGPoint,
+        faction: Faction,
+        persistent: Bool = false
+    ) {
+        let direction = (end - start).normalized
+        guard direction.length > 0.01 else { return }
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+        let color = faction == .enemy
+            ? UIColor(red: 1.0, green: 0.43, blue: 0.24, alpha: 1.0)
+            : UIColor(red: 0.28, green: 0.92, blue: 1.0, alpha: 1.0)
+
+        let radarNode = SKNode()
+        radarNode.position = start + direction * 5
+        radarNode.zPosition = 281
+        let radarRing = SKShapeNode(circleOfRadius: 27)
+        radarRing.fillColor = color.withAlphaComponent(0.05)
+        radarRing.strokeColor = color.withAlphaComponent(0.72)
+        radarRing.lineWidth = 1.5
+        radarRing.glowWidth = 1
+        radarNode.addChild(radarRing)
+        let sweepPath = CGMutablePath()
+        sweepPath.move(to: .zero)
+        sweepPath.addLine(to: direction * 35)
+        let radarSweep = SKShapeNode(path: sweepPath)
+        radarSweep.strokeColor = color.withAlphaComponent(0.84)
+        radarSweep.lineWidth = 2
+        radarSweep.glowWidth = 2
+        radarNode.addChild(radarSweep)
+        effectsLayer.addChild(radarNode)
+
+        for (index, side) in [-1.0, 1.0].enumerated() {
+            let delay = TimeInterval(index) * 0.055
+            let laneOffset = normal * (CGFloat(side) * 5.5)
+            let launchPoint = start + direction * 22 + laneOffset
+            let impactPoint = end - direction * 7 + laneOffset * 0.45
+            showGuidedMissileTrail(
+                from: launchPoint,
+                to: impactPoint,
+                kind: .aaTruck,
+                persistent: persistent,
+                delay: delay,
+                color: color
+            )
+
+            let flash = SKNode()
+            flash.position = launchPoint
+            flash.zPosition = 285
+            let core = SKShapeNode(circleOfRadius: 4.5)
+            core.fillColor = UIColor.white
+            core.strokeColor = color
+            core.lineWidth = 1.5
+            core.glowWidth = 3
+            flash.addChild(core)
+            for sparkIndex in 0..<4 {
+                let angle = CGFloat(sparkIndex) * .pi / 2
+                let spark = SKShapeNode(rectOf: CGSize(width: 11, height: 1.8), cornerRadius: 0.8)
+                spark.position = CGPoint(x: cos(angle) * 6, y: sin(angle) * 6)
+                spark.zRotation = angle
+                spark.fillColor = sparkIndex.isMultiple(of: 2) ? UIColor.white : color
+                spark.strokeColor = .clear
+                flash.addChild(spark)
+            }
+            effectsLayer.addChild(flash)
+            guard !persistent else { continue }
+            flash.alpha = 0
+            flash.run(.sequence([
+                .wait(forDuration: delay),
+                .fadeIn(withDuration: 0.02),
+                .group([.scale(to: 1.45, duration: 0.16), .fadeOut(withDuration: 0.16)]),
+                .removeFromParent()
+            ]))
+        }
+
+        guard !persistent else { return }
+        radarNode.run(.sequence([
+            .group([.scale(to: 1.28, duration: 0.28), .fadeOut(withDuration: 0.32)]),
+            .removeFromParent()
+        ]))
     }
 
     private func showNavalGunSalvo(
@@ -10955,8 +11218,11 @@ final class GameScene: SKScene {
         from start: CGPoint,
         to end: CGPoint,
         kind: EntityKind,
-        persistent: Bool = false
+        persistent: Bool = false,
+        delay: TimeInterval = 0,
+        color: UIColor? = nil
     ) {
+        let missileColor = color ?? projectileColor(for: kind)
         let path = CGMutablePath()
         path.move(to: start)
         path.addLine(to: end)
@@ -10969,7 +11235,7 @@ final class GameScene: SKScene {
         effectsLayer.addChild(smoke)
 
         let trail = SKShapeNode(path: path)
-        trail.strokeColor = projectileColor(for: kind).withAlphaComponent(0.92)
+        trail.strokeColor = missileColor.withAlphaComponent(0.92)
         trail.lineWidth = kind == .samSite ? 3.5 : 2.5
         trail.glowWidth = 3
         trail.zPosition = 283
@@ -10981,16 +11247,33 @@ final class GameScene: SKScene {
             : start
         missile.zRotation = atan2(end.y - start.y, end.x - start.x)
         missile.fillColor = UIColor.white
-        missile.strokeColor = projectileColor(for: kind)
+        missile.strokeColor = missileColor
         missile.lineWidth = 1.5
         missile.glowWidth = 2
         missile.zPosition = 284
         effectsLayer.addChild(missile)
 
         guard !persistent else { return }
-        smoke.run(.sequence([.fadeOut(withDuration: 0.38), .removeFromParent()]))
-        trail.run(.sequence([.fadeOut(withDuration: 0.30), .removeFromParent()]))
+        if delay > 0 {
+            smoke.alpha = 0
+            trail.alpha = 0
+            missile.alpha = 0
+        }
+        smoke.run(.sequence([
+            .wait(forDuration: delay),
+            .fadeIn(withDuration: 0.02),
+            .fadeOut(withDuration: 0.38),
+            .removeFromParent()
+        ]))
+        trail.run(.sequence([
+            .wait(forDuration: delay),
+            .fadeIn(withDuration: 0.02),
+            .fadeOut(withDuration: 0.30),
+            .removeFromParent()
+        ]))
         missile.run(.sequence([
+            .wait(forDuration: delay),
+            .fadeIn(withDuration: 0.02),
             .group([.move(to: end, duration: 0.26), .fadeOut(withDuration: 0.26)]),
             .removeFromParent()
         ]))
