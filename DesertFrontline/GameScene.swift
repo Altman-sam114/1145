@@ -7412,6 +7412,10 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "helicopter-salvo" {
+            prepareCIHelicopterSalvoCaptureScene()
+            return
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "fighter-strike" {
             prepareCIFighterStrikeCaptureScene()
             return
@@ -7473,6 +7477,60 @@ final class GameScene: SKScene {
                 persistent: true
             )
         }
+    }
+
+    private func prepareCIHelicopterSalvoCaptureScene() {
+        let helicopter = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .helicopter && $0.isAlive
+        }) ?? addEntity(
+            kind: .helicopter,
+            faction: .player,
+            at: tileCenter(TileCoord(row: 15, col: 14))
+        )
+        let enemyTank = addEntity(
+            kind: .tank,
+            faction: .enemy,
+            at: tileCenter(TileCoord(row: 15, col: 16))
+        )
+
+        cameraRig.position = tileCenter(TileCoord(row: 15, col: 15))
+        helicopter.node.position = tileCenter(TileCoord(row: 15, col: 14)) + CGPoint(x: -10, y: 54)
+        helicopter.node.xScale = 1
+        helicopter.node.zPosition = entityZPosition(helicopter)
+        helicopter.destination = helicopter.node.position + CGPoint(x: 180, y: -30)
+        helicopter.attackMoveDestination = nil
+        helicopter.path.removeAll()
+        updateAirShadow(for: helicopter, direction: CGPoint(x: 0.98, y: -0.16).normalized)
+
+        enemyTank.node.position = tileCenter(TileCoord(row: 15, col: 16)) + CGPoint(x: 12, y: -28)
+        enemyTank.node.xScale = -1
+        enemyTank.node.zPosition = entityZPosition(enemyTank)
+        enemyTank.hp = enemyTank.kind.maxHP * 0.455
+        enemyTank.attackTarget = nil
+        enemyTank.attackTimer = 0
+        enemyTank.destination = nil
+        enemyTank.attackMoveDestination = nil
+        enemyTank.path.removeAll()
+        updateHealthBar(enemyTank)
+
+        helicopter.attackTarget = enemyTank
+        helicopter.attackTimer = 0.52
+        selectedIDs = [helicopter.id]
+        updateFog(force: true)
+        refreshSelection()
+        showHelicopterRocketSalvo(
+            from: helicopter.node.position,
+            to: enemyTank.node.position,
+            targetKind: enemyTank.kind,
+            faction: .player,
+            persistent: true
+        )
+        showDamageFloater(
+            at: enemyTank.node.position + CGPoint(x: 20, y: 24),
+            amount: helicopter.kind.damage,
+            faction: .player,
+            persistent: true
+        )
     }
 
     private func prepareCIFighterStrikeCaptureScene() {
@@ -8217,9 +8275,19 @@ final class GameScene: SKScene {
             }
             let fighterSurfaceStrike = attacker.kind == .fighter &&
                 ((target.kind.domain == .naval && target.kind != .submarine) || target.kind.isStructure)
+            let helicopterRocketTarget = attacker.kind == .helicopter && target.kind != .submarine
             if fighterSurfaceStrike {
                 if attackerKnownToPlayer {
                     showFighterSurfaceStrike(
+                        from: attacker.node.position,
+                        to: target.node.position,
+                        targetKind: target.kind,
+                        faction: attacker.faction
+                    )
+                }
+            } else if helicopterRocketTarget {
+                if attackerKnownToPlayer {
+                    showHelicopterRocketSalvo(
                         from: attacker.node.position,
                         to: target.node.position,
                         targetKind: target.kind,
@@ -11144,6 +11212,202 @@ final class GameScene: SKScene {
                 .wait(forDuration: 0.36), .run(showImpact), .removeFromParent()
             ]))
         }
+    }
+
+    private func showHelicopterRocketSalvo(
+        from start: CGPoint,
+        to end: CGPoint,
+        targetKind: EntityKind,
+        faction: Faction,
+        persistent: Bool = false
+    ) {
+        let direction = (end - start).normalized
+        guard direction.length > 0.01 else { return }
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+        let color = faction == .enemy
+            ? UIColor(red: 1.0, green: 0.43, blue: 0.24, alpha: 1.0)
+            : UIColor(red: 0.28, green: 0.92, blue: 1.0, alpha: 1.0)
+        let laneSides: [CGFloat] = [-1, 1, -1, 1]
+
+        for (index, laneSide) in laneSides.enumerated() {
+            let delay = TimeInterval(index) * 0.045
+            let pairOffset = CGFloat(index / 2) * 3.5
+            let launch = start + direction * (21 + pairOffset) + normal * laneSide * 11
+            let impactSpread = normal * laneSide * (7 + pairOffset) + direction * CGFloat(index - 1) * 3
+            let impact = end - direction * 5 + impactSpread
+            let control = launch + (impact - launch) * 0.48 + normal * laneSide * (13 + pairOffset)
+            let path = CGMutablePath()
+            path.move(to: launch)
+            path.addQuadCurve(to: impact, control: control)
+
+            let glowTrail = SKShapeNode(path: path)
+            glowTrail.strokeColor = color.withAlphaComponent(0.38)
+            glowTrail.lineWidth = 1.5
+            glowTrail.lineCap = .round
+            glowTrail.glowWidth = 1.5
+            glowTrail.zPosition = 282
+            effectsLayer.addChild(glowTrail)
+
+            for smokeIndex in 0..<4 {
+                let t = CGFloat(smokeIndex + 1) * 0.14 + CGFloat(index) * 0.025
+                let puff = SKShapeNode(circleOfRadius: smokeIndex.isMultiple(of: 2) ? 3.2 : 2.5)
+                puff.position = quadraticPoint(from: launch, control: control, to: impact, t: min(t, 0.76))
+                puff.fillColor = UIColor(white: 0.94, alpha: 0.54)
+                puff.strokeColor = UIColor.white.withAlphaComponent(0.32)
+                puff.lineWidth = 0.8
+                puff.zPosition = 283
+                effectsLayer.addChild(puff)
+                guard !persistent else { continue }
+                puff.alpha = 0
+                puff.run(.sequence([
+                    .wait(forDuration: delay + TimeInterval(smokeIndex) * 0.026),
+                    .fadeIn(withDuration: 0.025),
+                    .group([
+                        .scale(to: 1.45, duration: 0.34),
+                        .fadeOut(withDuration: 0.34)
+                    ]),
+                    .removeFromParent()
+                ]))
+            }
+
+            let rocket = SKShapeNode(rectOf: CGSize(width: 15, height: 4), cornerRadius: 1.8)
+            rocket.fillColor = UIColor(white: 0.98, alpha: 1.0)
+            rocket.strokeColor = color
+            rocket.lineWidth = 1.2
+            rocket.glowWidth = 2
+            rocket.zPosition = 285
+            let flame = SKShapeNode(ellipseOf: CGSize(width: 9, height: 3.4))
+            flame.position = CGPoint(x: -11, y: 0)
+            flame.fillColor = UIColor(red: 1.0, green: 0.58, blue: 0.16, alpha: 0.96)
+            flame.strokeColor = UIColor.white.withAlphaComponent(0.68)
+            flame.glowWidth = 2
+            flame.zPosition = -1
+            rocket.addChild(flame)
+            effectsLayer.addChild(rocket)
+
+            if index < 2 {
+                let flash = SKShapeNode(circleOfRadius: 5.5)
+                flash.position = launch
+                flash.fillColor = UIColor.white.withAlphaComponent(0.96)
+                flash.strokeColor = color
+                flash.lineWidth = 1.4
+                flash.glowWidth = 4
+                flash.zPosition = 286
+                effectsLayer.addChild(flash)
+                if !persistent {
+                    flash.alpha = 0
+                    flash.run(.sequence([
+                        .wait(forDuration: delay), .fadeIn(withDuration: 0.02),
+                        .group([.scale(to: 1.55, duration: 0.15), .fadeOut(withDuration: 0.15)]),
+                        .removeFromParent()
+                    ]))
+                }
+            }
+
+            if persistent {
+                let t = 0.38 + CGFloat(index) * 0.12
+                rocket.position = quadraticPoint(from: launch, control: control, to: impact, t: t)
+                let tangent = quadraticTangent(from: launch, control: control, to: impact, t: t)
+                rocket.zRotation = atan2(tangent.y, tangent.x)
+                continue
+            }
+
+            glowTrail.alpha = 0
+            rocket.alpha = 0
+            glowTrail.run(.sequence([
+                .wait(forDuration: delay), .fadeIn(withDuration: 0.025),
+                .wait(forDuration: 0.20), .fadeOut(withDuration: 0.30), .removeFromParent()
+            ]))
+            rocket.run(.sequence([
+                .wait(forDuration: delay), .fadeIn(withDuration: 0.02),
+                .group([
+                    .follow(path, asOffset: false, orientToPath: true, duration: 0.30),
+                    .sequence([.wait(forDuration: 0.24), .fadeOut(withDuration: 0.06)])
+                ]),
+                .removeFromParent()
+            ]))
+        }
+
+        let showImpact = { [weak self] in
+            guard let self else { return }
+            if targetKind.domain == .naval {
+                self.showNavalHullStrike(at: end, faction: faction)
+                self.showNavalWaterImpact(
+                    at: end + normal * 16 - direction * 5,
+                    faction: faction,
+                    scale: 0.38
+                )
+            } else {
+                self.showHelicopterRocketImpact(at: end, faction: faction)
+            }
+        }
+        if persistent {
+            if targetKind.domain == .naval {
+                showNavalHullStrike(at: end, faction: faction, persistent: true)
+                showNavalWaterImpact(
+                    at: end + normal * 16 - direction * 5,
+                    faction: faction,
+                    scale: 0.38,
+                    persistent: true
+                )
+            } else {
+                showHelicopterRocketImpact(at: end, faction: faction, persistent: true)
+            }
+        } else {
+            let impactTrigger = SKNode()
+            effectsLayer.addChild(impactTrigger)
+            impactTrigger.run(.sequence([
+                .wait(forDuration: 0.44), .run(showImpact), .removeFromParent()
+            ]))
+        }
+    }
+
+    private func showHelicopterRocketImpact(
+        at point: CGPoint,
+        faction: Faction,
+        persistent: Bool = false
+    ) {
+        guard faction == .player || isVisible(point: point) else { return }
+        let root = SKNode()
+        root.position = point
+        root.zPosition = 288
+        let color = faction == .enemy
+            ? UIColor(red: 1.0, green: 0.42, blue: 0.22, alpha: 1.0)
+            : UIColor(red: 1.0, green: 0.74, blue: 0.24, alpha: 1.0)
+
+        let dust = SKShapeNode(ellipseOf: CGSize(width: 54, height: 22))
+        dust.fillColor = UIColor(red: 0.58, green: 0.43, blue: 0.24, alpha: 0.20)
+        dust.strokeColor = UIColor(red: 0.92, green: 0.72, blue: 0.40, alpha: 0.72)
+        dust.lineWidth = 2
+        root.addChild(dust)
+
+        let impactOffsets = [CGPoint(x: -14, y: 3), CGPoint(x: 0, y: -3), CGPoint(x: 14, y: 4)]
+        for (index, offset) in impactOffsets.enumerated() {
+            let flash = SKShapeNode(circleOfRadius: index == 1 ? 6.5 : 5)
+            flash.position = offset
+            flash.fillColor = UIColor.white.withAlphaComponent(0.96)
+            flash.strokeColor = color
+            flash.lineWidth = 1.6
+            flash.glowWidth = 3
+            flash.zPosition = 2
+            root.addChild(flash)
+        }
+        for index in 0..<6 {
+            let angle = CGFloat(index) * .pi / 3 + 0.18
+            let fragment = SKShapeNode(rectOf: CGSize(width: 13, height: 2), cornerRadius: 1)
+            fragment.position = CGPoint(x: cos(angle) * 19, y: sin(angle) * 10)
+            fragment.zRotation = angle
+            fragment.fillColor = index.isMultiple(of: 2) ? UIColor.white : color
+            fragment.strokeColor = .clear
+            fragment.zPosition = 3
+            root.addChild(fragment)
+        }
+        effectsLayer.addChild(root)
+        guard !persistent else { return }
+        for child in root.children {
+            child.run(.group([.scale(to: 1.48, duration: 0.34), .fadeOut(withDuration: 0.34)]))
+        }
+        root.run(.sequence([.wait(forDuration: 0.42), .removeFromParent()]))
     }
 
     private func showFighterGroundImpact(
