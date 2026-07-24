@@ -4994,3 +4994,35 @@
 
 - 云端冻结截图能证明 Fighter 双弹构图、目标态势、命中层级、HUD 兼容和启动稳定性，但不能覆盖连续多机齐射、不同来袭方向、移动目标、敌机进出迷雾、密集海空战节点压力或真机触控 / 性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮可继续选择一个单一 UI / 战斗细节增量，例如细化 Helicopter 火箭齐射、优化高密度战斗目标层级，或增强海空单位受击状态；总目标仍未完成。
+
+### v4.98 / 直升机双侧火箭齐射
+
+日期：2026-07-24
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，并核对 Noble Master 官方 press kit、官方 trailer 与 `screen_dsf_v02_13.png`；本轮借鉴 Helicopter 向地面战线发射分离弹药和短白烟点的俯视战斗表达，不复制原素材或 UI。
+- Helicopter 对陆地单位、建筑与非 Submarine 水面舰艇合法开火时，使用纯视觉四枚双侧 pod 火箭齐射：四条轻微分离的二次曲线、约 0.045 秒错发、可见弹体 / 尾焰、离散白烟点和双 pod 发射闪光。
+- 陆地单位与建筑目标使用三点闪光、尘环和碎屑；水面舰艇使用紧凑舰体火花与近舷水冲击。Submarine 保持既有 tracer 与 ASW 链路，不绕过声呐和潜艇隐身边界。
+- 新 helper 只创建视觉节点，不调用 `fire`、不写 HP、不创建碰撞或 splash；真实 `target.hp` 每个 attack cycle 仍只在统一位置扣减一次。普通新增节点约 0.8 秒内清理，`persistent` 只供 capture-only 场景使用。
+- 新增 capture-only `helicopter-salvo` land 场景：单选 Blue Helicopter 锁定约 45% HP Red Tank，冻结四枚不同进度火箭、双发射闪光、地面多点命中和伤害飘字，并保留模型投影、武器挂架、目标 HP / 距离 / reload、小地图和单排命令条。
+- GitHub Actions simulator launch probe 从十七次扩展为十八次，新增 `simulator-helicopter-salvo.png` 并写入清理列表与 artifact manifest。README、核心 flow、flowchart、测试规范和 v4.98 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` `DEVELOPMENT_TEAM` 人工改动保持未暂存，未进入 v4.98 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地游戏探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 等轻量检查并通过。
+- 实现提交：`2c8c45ca8f93aea8e898a74c36d91a4c35a3508a`，commit subject 为 `v4.98: 细化直升机双侧火箭齐射`。对应 run `30073857798` 的静态检查、两类 build、十八次启动和 artifact 均 success，但 Agent C 目视发现 Helicopter 本体和双 pod 被顶部任务面板遮挡，因此未计为最终验收通过。
+- 构图修复提交：`ba0048f2b3064fa19c3e53cfd99c579b2f1353b2`，commit subject 为 `v4.98: 调整直升机齐射构图`；只下移 capture-only Helicopter，不改变普通玩法或战斗逻辑。
+- 最终 GitHub Actions run：`30074744347`，attempt `1`，conclusion `success`，job 总耗时 17 分 50 秒；Node 20 action 被 GitHub runner 强制改用 Node 24 的注记不影响项目结果。
+- 最终 artifact：`desert-frontline-ci-v4.98-main-ba0048f2b306-run30074744347-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-30074744347/`，未加密且约 24.3 MB。
+- manifest 记录 `branch=main`、`commitSha=ba0048f2b3064fa19c3e53cfd99c579b2f1353b2`、`runId=30074744347`、`runAttempt=1`、`version=v4.98`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 failures、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十八次 simulator launch PID 全部在截图后存活；十八张原始 PNG 均为 1206x2622，App / launch 日志未命中 SIGABRT、watchdog、未捕获异常、fatal error 或崩溃关键字。
+- `simulator-helicopter-salvo.png` 清楚显示 Blue Helicopter 本体、旋翼投影、双侧 weapon pods、四枚不同进度火箭、分离曲线 / 白烟点、双 pod 发射闪光、Red Tank 三点命中与 `-28` 飘字，以及 `ATK TNK 45%`、`Tgt TNK HP 118/260 45% D110`、`Reload 0.6s`、小地图与单排命令条；任务面板不再遮挡主体。原图 SHA-256 为 `33a225f905f0dba4fee558c683c1d1efac682adf48017836423513de74716ff8`。
+- `simulator-hud-air.png`、`simulator-fighter-strike.png`、`simulator-mobile-aa.png`、`simulator-carrier-strike.png`、`simulator-map-terrain.png` 和 `simulator-screenshot.png` 分别为 `60dd48ecf131cf536f568b2ffcb46fa68de813e673cfa89937f3dc928ad45b70`、`143cfc082a2cc735166884b54672a35714400d400da0f9d2515412b021c3921f`、`2212322a1351f8d7494fa1f45213c2dabffa3e6ba7662b143d6df12f9c8ec123`、`dadf2b5761abadf69a1edfa36f0970eb446638ec9e4635faae8533efe868e78c`、`1b260678bd500a32a9857475db996fcd11bcf24e605987b4ac9a71f28049e426`、`dbfe58cd1f7bc703108ee17b4dd01a619eb1c7caeea8a2a6e04970595e719f1e`，既有空战、防空、航母、地图和总览证据无明显回归。
+
+遗留事项：
+
+- 云端冻结截图能证明四枚火箭的构图、双 pod 发射、目标态势、命中层级、HUD 兼容和启动稳定性，但不能覆盖连续多机齐射、不同方向接敌、移动目标、敌机进出迷雾、密集战斗节点压力或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮可继续选择一个单一 UI / 战斗细节增量，例如增强海空单位受击状态、优化高密度交战目标层级，或细化其他核心单位模型；总目标仍未完成。
