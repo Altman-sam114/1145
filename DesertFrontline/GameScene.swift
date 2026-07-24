@@ -7494,7 +7494,7 @@ final class GameScene: SKScene {
         )
 
         cameraRig.position = tileCenter(TileCoord(row: 15, col: 15))
-        helicopter.node.position = tileCenter(TileCoord(row: 15, col: 14)) + CGPoint(x: -10, y: 54)
+        helicopter.node.position = tileCenter(TileCoord(row: 15, col: 14)) + CGPoint(x: -10, y: -46)
         helicopter.node.xScale = 1
         helicopter.node.zPosition = entityZPosition(helicopter)
         helicopter.destination = helicopter.node.position + CGPoint(x: 180, y: -30)
