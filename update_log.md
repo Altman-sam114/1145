@@ -4962,3 +4962,35 @@
 
 - 云端冻结截图能证明 AA Truck 模型层次、双弹 / 雷达反馈、目标态势、HUD 兼容和启动稳定性，但不能覆盖持续机动时发射点朝向、连续多车齐射、敌方 AA 进出迷雾、密集空战节点压力或真机触控 / 性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮可继续选择一个单一 UI / 战斗细节增量，例如细化 Fighter 对舰攻击、增强直升机火箭齐射，或改善高密度海空战目标层级；总目标仍未完成。
+
+### v4.97 / 战斗机双弹对地对海打击
+
+日期：2026-07-24
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，并核对官方 press kit、trailer 与 `screen_dsf_v02_04.png`；本轮借鉴飞机双弹、可见弹体、短烟迹和不遮满海岸目标的俯视反馈原则，不复制原素材或 UI。
+- Fighter 对玩家可见非 Submarine 水面舰艇或建筑合法开火时，由纯视觉 `showFighterSurfaceStrike(...)` 从两个翼下法线错位发射点派发两枚约 0.055 秒错发的导弹；两条轻微分离二次曲线包含短白烟迹、阵营色亮芯、可见弹体 / 尾焰和双发射闪光。
+- 水面目标使用紧凑舰体火花与小型近舷水面冲击，建筑目标使用小型闪光、尘环和碎屑；空战继续使用既有 guided missile，Submarine 继续走既有 ASW 链路。
+- 新 helper 不调用 `fire`、不写 HP、不创建碰撞或 splash；真实 `target.hp` 每个 attack cycle 仍只在统一位置扣减一次。未知 Red Fighter 不派发新来源视觉，普通新增节点约 0.7 秒内清理，`persistent` 只供 capture-only 场景使用。
+- 新增 capture-only `fighter-strike` coast 场景：单选 Blue Fighter 锁定约 48% HP Red Coastal Battery，冻结双曲线、双弹体 / 尾焰、双发射闪光、结构命中和伤害飘字，并保留 Fighter 投影、目标 HP / 距离 / reload、小地图和单排命令条。
+- GitHub Actions simulator launch probe 从十六次扩展为十七次，新增 `simulator-fighter-strike.png` 并写入清理列表与 artifact manifest。README、核心 flow、flowchart、测试规范和 v4.97 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` `DEVELOPMENT_TEAM` 人工改动保持未暂存，未进入 v4.97 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地游戏探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 等轻量检查并通过。
+- 实现提交：`5582bf79256eaeb5b36edb4baa229f0e0da7dae5`，commit subject 为 `v4.97: 细化战斗机双弹对地对海打击`。
+- GitHub Actions run：`30071454089`，attempt `1`，conclusion `success`，job 总耗时 17 分 10 秒；Node 20 action 被 GitHub runner 强制改用 Node 24 的注记不影响项目结果。
+- artifact：`desert-frontline-ci-v4.97-main-5582bf79256e-run30071454089-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-30071454089/`，未加密且约 23.0 MB。
+- manifest 记录 `branch=main`、`commitSha=5582bf79256eaeb5b36edb4baa229f0e0da7dae5`、`runId=30071454089`、`runAttempt=1`、`version=v4.97`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 failures、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十七次 simulator launch PID 全部在截图后存活；十七张原始 PNG 均为 1206x2622，App / launch 日志未命中 SIGABRT、watchdog、未捕获异常、fatal error 或崩溃关键字。
+- `simulator-fighter-strike.png` 清楚显示 Blue Fighter 模型 / 投影、两个翼下发射点、两条分离青色曲线烟迹、两枚不同进度的弹体 / 尾焰、双发射闪光、Red Coastal Battery 紧凑结构命中和 `-42` 飘字，以及 `ATK CB 48%`、`Tgt CB HP 374/780 48% D241`、`Reload 0.6s`、小地图与单排命令条；原图 SHA-256 为 `6c3b446974890eb5beafa1dae2a8c890e4895061e56c407a167d6e7ca833b9f3`。
+- `simulator-hud-air.png`、`simulator-mobile-aa.png`、`simulator-carrier-strike.png`、`simulator-map-terrain.png` 和 `simulator-screenshot.png` 分别为 `93e9fa20e24189ac536ce2e45d8871452eff7edd174a9d8cff2d32435364cec9`、`a7b2c20ac7aa2d8e34bb0697ee56db2794dae47f7f7343f248623a6ddbb610c2`、`c91628496ee823817620976882fc72f0cbde0de6b52c20193b2fb3f02d446b14`、`cf6d87ede5956f252b05511ce0792969e801eea5eb85ac022bdb13ebc28dad7c`、`e96cf6a67e409cb882d8301ff3dea20e3ab51c8e1f5f59527466300ac918ddac`，既有空战、防空、航母、地貌和总览证据无明显回归。
+- 源码审阅确认普通导弹 / 轨迹 / 发射闪光 / 命中节点均有定时清理，capture-only 位置、HP、目标和 reload 写入不会进入普通 App，伤害、射程、冷却、AI、目标合法性、迷雾、声呐、经济、任务和胜负均未改变。
+
+遗留事项：
+
+- 云端冻结截图能证明 Fighter 双弹构图、目标态势、命中层级、HUD 兼容和启动稳定性，但不能覆盖连续多机齐射、不同来袭方向、移动目标、敌机进出迷雾、密集海空战节点压力或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮可继续选择一个单一 UI / 战斗细节增量，例如细化 Helicopter 火箭齐射、优化高密度战斗目标层级，或增强海空单位受击状态；总目标仍未完成。
