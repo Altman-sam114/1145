@@ -4896,3 +4896,37 @@
 
 - 云端冻结截图能证明岸防模型、后坐 / 尘浪、双发齐射、目标态势 UI、复合水面命中和启动稳定性，但不能覆盖真实连续齐射、不同来袭方向下的炮塔朝向、敌方炮位进出迷雾、密集海战节点压力或真机触控 / 性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮可继续选择一个单一战斗细节增量，例如细化舰载机对舰投弹 / 命中、AA Truck 模型与防空开火，或改善高密度海空战目标层级；总目标仍未完成。
+
+### v4.95 / 舰载机对舰攻击
+
+日期：2026-07-24
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，并重新核对 Noble Master 官方 press kit、官方 trailer 和官方截图目录；本轮借鉴俯视战场、清晰单位轮廓、短促攻击反馈与紧凑触控信息原则，不复制原素材或 UI。
+- Carrier 对 surface naval 目标的既有 wing strike 升级为三机错列攻击：三条二次曲线提供可读进场 / 俯冲航线，三架 Fighter 按轻微时间差沿路径朝向飞行，并叠加阵营色航线、低透明烟迹和机尾亮焰。
+- 编队前缘释放两枚带弹体、阵营描边、尾焰、亮色弹道和烟迹的反舰弹；surface ship 目标端组合紧凑舰体闪光并继续复用原水面命中，Submarine 只使用水下 / 导弹命中反馈。非海军目标保留原单机普通 strike，不扩大本轮玩法范围。
+- Carrier strike 来源继续经过 `attackerKnownToPlayer`，视觉 helper 再检查玩家阵营或起终点可见性；未知 Red Carrier 不通过甲板、航线、编队或弹体泄露位置。所有普通新增节点约 1 秒内清理，`persistent` 只由 capture-only 场景使用。
+- `fire(attacker:target:)` 的伤害、射程、冷却、AI、目标、迷雾、声呐和潜艇隐身未改；三机与双弹全部是视觉，`target.hp` 每个 attack cycle 仍只在统一位置扣减一次。
+- 新增 capture-only `carrier-strike` coast 场景：单选 Blue Carrier 锁定 42% HP Red Battleship，冻结三机 / 三航线、双反舰弹、舰体闪光、水面命中与伤害飘字，并保留 Carrier 护航圈、目标 HP / 距离 / reload、小地图和单排命令条。
+- GitHub Actions simulator launch probe 从十四次扩展为十五次，新增 `simulator-carrier-strike.png` 并写入清理列表与 artifact manifest。README、核心 flow、flowchart、测试规范和 v4.95 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` `DEVELOPMENT_TEAM` 人工改动保持未暂存，未进入 v4.95 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地游戏探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 等轻量检查并通过。
+- 实现提交：`4d18a8eac9a1bee851bdb724aa84c77ac3163e7e`，commit subject 为 `v4.95: 细化舰载机对舰攻击`。对应 run `30067591767` 的静态检查、两类 build、十五次启动和 artifact 均 success，但 Agent C 目视发现目标浮点截断显示为 41%，且导弹命中环与舰体闪光叠加后遮挡过多目标模型，因此未计为最终验收通过。
+- 可读性修复提交：`9ef6beae30d961bd1bf1ef9c6edc7a747a8538db`，commit subject 为 `v4.95: 调整舰载攻击可读性`；只把 capture 目标冻结值调整为稳定显示 42%，并让 surface ship 使用偏离中心的紧凑舰体闪光，Submarine 保留导弹命中环。
+- 最终 GitHub Actions run：`30067968465`，attempt `1`，conclusion `success`，job 总耗时 9 分 33 秒。
+- 最终 artifact：`desert-frontline-ci-v4.95-main-9ef6beae30d9-run30067968465-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-30067968465/`，未加密且约 20 MB。
+- manifest 记录 `branch=main`、`commitSha=9ef6beae30d961bd1bf1ef9c6edc7a747a8538db`、`runId=30067968465`、`runAttempt=1`、`version=v4.95`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十五次 simulator launch PID `12682`、`13912`、`14633`、`15119`、`15256`、`16012`、`16390`、`16834`、`17108`、`17596`、`18265`、`18525`、`18904`、`18991`、`19291` 均在截图后存活；十五张原始 PNG 均为 1206x2622，App / launch 日志未命中 SIGABRT、watchdog、未捕获异常、fatal error 或崩溃关键字。
+- 最终 `simulator-carrier-strike.png` 清楚显示 Blue Carrier、三条分离弧形航线、三机错列编队、两枚反舰弹体与尾焰 / 烟迹、Red Battleship 舰体闪光和水面反馈，以及 `ATK BB 42%`、`Tgt BB HP 331/780 42% D261`、`Reload 0.8s`、目标生命条、Carrier 护航圈、小地图和单排命令条；舰体轮廓在命中层下仍可辨，原图 SHA-256 为 `db461a8abcc7e9a6ae8e82950c2555c87d9043b830d12b56b9d2f19c3d2a17a7`。
+- `simulator-naval-salvo.png`、`simulator-coastal-battery.png`、`simulator-hud-air.png` 和 `simulator-map-terrain.png` 分别为 `9f55d99f3690e19dd1d4c36efe72c5f1611e0708e085a39ab54e817c2a0a562e`、`7998303065437eaffb74e752a4a5bd0f227e9951e0865bc57bf0217aeadd8425`、`f3bebb667c587d782955730ddd6ab39b5e8f9f735d1ae8f19aa4671766df3d96`、`ea3f90a749d5c9af8f0fb0df33d3a25f0ce46314bf62c763960e622994729b52`，既有舰炮、岸防、空战 HUD 和地貌证据无明显回归。
+- 源码审阅确认三条 flight path、三架 craft、两条 missile trail 和两枚 missile 都是短生命周期视觉节点；`persistent` 只由 `prepareCICarrierStrikeCaptureScene()` 使用；非海军 Carrier attack 保留旧分支，真实 `target.hp` 写入仍只有一次。
+
+遗留事项：
+
+- 云端冻结截图能证明三机 / 双弹构图、目标态势、命中层级、HUD 兼容和启动稳定性，但不能覆盖连续多 Carrier 齐射、不同方向进场、战争迷雾边缘开火、密集海空战节点压力或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮可继续选择一个单一战斗细节增量，例如细化 AA Truck 模型与防空开火、改善高密度海空战目标层级，或补强 Fighter 对舰攻击反馈；总目标仍未完成。
