@@ -9693,7 +9693,7 @@ final class GameScene: SKScene {
         let attackers = selected.filter {
             $0.faction == .player &&
             $0.isAlive &&
-            !$0.kind.isStructure &&
+            $0.isOperational &&
             $0.kind.damage > 0
         }
         var counts: [Int: (target: GameEntity, count: Int)] = [:]
