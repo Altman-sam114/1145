@@ -7447,7 +7447,7 @@ final class GameScene: SKScene {
         enemyBattleship.node.position = tileCenter(TileCoord(row: 18, col: 26))
         enemyBattleship.node.xScale = -1
         enemyBattleship.node.zPosition = entityZPosition(enemyBattleship)
-        enemyBattleship.hp = enemyBattleship.kind.maxHP * 0.42
+        enemyBattleship.hp = enemyBattleship.kind.maxHP * 0.425
         enemyBattleship.attackTarget = nil
         enemyBattleship.attackTimer = 0
         enemyBattleship.destination = nil
@@ -11330,13 +11330,18 @@ final class GameScene: SKScene {
         persistent: Bool = false
     ) {
         if surfaceTarget {
-            showNavalHullStrike(at: point, faction: faction, persistent: persistent)
+            showNavalHullStrike(
+                at: point + CGPoint(x: 8, y: 3),
+                faction: faction,
+                persistent: persistent
+            )
+        } else {
+            showAirMissileImpact(
+                at: point,
+                faction: faction,
+                persistent: persistent
+            )
         }
-        showAirMissileImpact(
-            at: point + CGPoint(x: 10, y: 5),
-            faction: faction,
-            persistent: persistent
-        )
     }
 
     private func showCarrierLaunch(from start: CGPoint, to end: CGPoint, faction: Faction, kind: EntityKind) {
