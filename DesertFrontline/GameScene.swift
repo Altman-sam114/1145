@@ -874,6 +874,10 @@ private final class GameEntity {
     let navalWakeNode = SKNode()
     let airShadowNode = SKNode()
     let landDustNode = SKNode()
+    let damageStateNode = SKNode()
+    var damageSmokeNodes: [SKShapeNode] = []
+    let damageFireNode = SKNode()
+    let damageScorchNode = SKShapeNode()
     let mechanicRepairEffectNode = SKNode()
     let mechanicRepairBeamNode = SKShapeNode()
     let mechanicRepairCoreNode = SKShapeNode()
@@ -2002,6 +2006,7 @@ final class GameScene: SKScene {
         configureNavalWakeNode(for: entity)
         configureAirShadowNode(for: entity)
         configureLandDustNode(for: entity)
+        configureDamageStateNode(for: entity)
         configureMechanicRepairEffectNode(for: entity)
 
         entity.selectionNode.fillColor = UIColor.clear
@@ -3171,6 +3176,64 @@ final class GameScene: SKScene {
         entity.node.addChild(entity.landDustNode)
     }
 
+    private func configureDamageStateNode(for entity: GameEntity) {
+        guard !entity.kind.isStructure, entity.kind != .submarine else { return }
+
+        switch entity.kind.domain {
+        case .air:
+            entity.damageStateNode.position = CGPoint(x: -entity.kind.footprint * 0.30, y: 1)
+        case .naval:
+            entity.damageStateNode.position = CGPoint(x: -entity.kind.footprint * 0.10, y: 7)
+        case .land:
+            entity.damageStateNode.position = CGPoint(x: -entity.kind.footprint * 0.18, y: 8)
+        case .structure:
+            return
+        }
+
+        entity.damageScorchNode.path = CGPath(
+            ellipseIn: CGRect(x: -10, y: -5, width: 20, height: 10),
+            transform: nil
+        )
+        entity.damageScorchNode.fillColor = UIColor(white: 0.05, alpha: 0.48)
+        entity.damageScorchNode.strokeColor = UIColor(red: 0.88, green: 0.28, blue: 0.10, alpha: 0.34)
+        entity.damageScorchNode.lineWidth = 1
+        entity.damageStateNode.addChild(entity.damageScorchNode)
+
+        let domainScale: CGFloat = entity.kind.domain == .naval ? 1.18 : (entity.kind.domain == .air ? 0.86 : 1.0)
+        for index in 0..<3 {
+            let radius = (CGFloat(5 + index * 2)) * domainScale
+            let smoke = SKShapeNode(ellipseOf: CGSize(width: radius * 1.45, height: radius))
+            smoke.position = CGPoint(x: CGFloat(index) * -5, y: CGFloat(8 + index * 8))
+            smoke.fillColor = UIColor(white: 0.10 + CGFloat(index) * 0.04, alpha: 0.58)
+            smoke.strokeColor = UIColor(white: 0.54, alpha: 0.22)
+            smoke.lineWidth = 0.8
+            smoke.zPosition = CGFloat(index + 1)
+            entity.damageSmokeNodes.append(smoke)
+            entity.damageStateNode.addChild(smoke)
+        }
+
+        let fireGlow = SKShapeNode(ellipseOf: CGSize(width: 15 * domainScale, height: 9 * domainScale))
+        fireGlow.fillColor = UIColor(red: 1.0, green: 0.28, blue: 0.06, alpha: 0.76)
+        fireGlow.strokeColor = UIColor(red: 1.0, green: 0.76, blue: 0.20, alpha: 0.88)
+        fireGlow.lineWidth = 1.2
+        fireGlow.glowWidth = 2.5
+        entity.damageFireNode.addChild(fireGlow)
+
+        let fireCore = SKShapeNode(circleOfRadius: 3.2 * domainScale)
+        fireCore.position = CGPoint(x: 1, y: 1)
+        fireCore.fillColor = UIColor(white: 1.0, alpha: 0.96)
+        fireCore.strokeColor = .clear
+        fireCore.zPosition = 1
+        entity.damageFireNode.addChild(fireCore)
+        entity.damageFireNode.position = CGPoint(x: 0, y: 2)
+        entity.damageFireNode.zPosition = 5
+        entity.damageStateNode.addChild(entity.damageFireNode)
+
+        entity.damageStateNode.zPosition = 17
+        entity.damageStateNode.isHidden = true
+        entity.node.addChild(entity.damageStateNode)
+    }
+
     private func configureMechanicRepairEffectNode(for entity: GameEntity) {
         guard entity.kind == .mechanic else { return }
 
@@ -4314,8 +4377,9 @@ final class GameScene: SKScene {
 
     private func singleSelectionInfo(for entity: GameEntity) -> (title: String, rows: [String]) {
         let hpPercent = Int((entity.hp / max(entity.kind.maxHP, 1)) * 100)
+        let damageState = damageStateShortLabel(for: entity).map { "  \($0)" } ?? ""
         var rows = [
-            "HP \(Int(entity.hp))/\(Int(entity.kind.maxHP))  \(hpPercent)%",
+            "HP \(Int(entity.hp))/\(Int(entity.kind.maxHP))  \(hpPercent)%\(damageState)",
             "Atk \(Int(effectiveDamage(for: entity)))  Rng \(Int(entity.kind.attackRange))  Vis \(effectiveVisionTiles(for: entity))",
             "Move \(Int(entity.kind.speed))  \(domainLabel(for: entity.kind.domain))",
             "$\(entity.kind.cost)  Value \(Int(strategicValue(of: entity.kind)))"
@@ -4367,6 +4431,13 @@ final class GameScene: SKScene {
         }
 
         return ("\(entity.kind.displayName) \(entity.kind.shortCode)", rows)
+    }
+
+    private func damageStateShortLabel(for entity: GameEntity) -> String? {
+        let ratio = entity.hp / max(entity.kind.maxHP, 1)
+        if ratio <= 0.35 { return "CRIT" }
+        if ratio <= 0.62 { return "DMG" }
+        return nil
     }
 
     private func weaponReadinessLine(for entity: GameEntity) -> String {
@@ -7412,6 +7483,10 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "damage-state" {
+            prepareCIDamageStateCaptureScene()
+            return
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "helicopter-salvo" {
             prepareCIHelicopterSalvoCaptureScene()
             return
@@ -7477,6 +7552,69 @@ final class GameScene: SKScene {
                 persistent: true
             )
         }
+    }
+
+    private func prepareCIDamageStateCaptureScene() {
+        let tank = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .tank && $0.isAlive
+        }) ?? addEntity(
+            kind: .tank,
+            faction: .player,
+            at: tileCenter(TileCoord(row: 16, col: 21))
+        )
+        let fighter = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .fighter && $0.isAlive
+        }) ?? addEntity(
+            kind: .fighter,
+            faction: .player,
+            at: tileCenter(TileCoord(row: 17, col: 23))
+        )
+        let battleship = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .battleship && $0.isAlive
+        }) ?? addEntity(
+            kind: .battleship,
+            faction: .player,
+            at: tileCenter(TileCoord(row: 19, col: 25))
+        )
+
+        cameraRig.position = tileCenter(TileCoord(row: 18, col: 23))
+
+        tank.node.position = tileCenter(TileCoord(row: 16, col: 21)) + CGPoint(x: 12, y: -20)
+        tank.node.xScale = 1
+        tank.node.zPosition = entityZPosition(tank)
+        tank.hp = tank.kind.maxHP * 0.29
+        tank.destination = nil
+        tank.attackTarget = nil
+        tank.attackMoveDestination = nil
+        tank.path.removeAll()
+        tank.landDustNode.isHidden = true
+        updateHealthBar(tank)
+
+        fighter.node.position = tileCenter(TileCoord(row: 17, col: 23)) + CGPoint(x: -8, y: 36)
+        fighter.node.xScale = 1
+        fighter.node.zPosition = entityZPosition(fighter)
+        fighter.hp = fighter.kind.maxHP * 0.32
+        fighter.destination = fighter.node.position + CGPoint(x: 170, y: -18)
+        fighter.attackTarget = nil
+        fighter.attackMoveDestination = nil
+        fighter.path.removeAll()
+        updateAirShadow(for: fighter, direction: CGPoint(x: 0.99, y: -0.10).normalized)
+        updateHealthBar(fighter)
+
+        battleship.node.position = tileCenter(TileCoord(row: 19, col: 25)) + CGPoint(x: 12, y: -8)
+        battleship.node.xScale = -1
+        battleship.node.zPosition = entityZPosition(battleship)
+        battleship.hp = battleship.kind.maxHP * 0.56
+        battleship.destination = battleship.node.position + CGPoint(x: -160, y: -16)
+        battleship.attackTarget = nil
+        battleship.attackMoveDestination = nil
+        battleship.path.removeAll()
+        updateNavalWake(for: battleship, direction: CGPoint(x: -0.99, y: -0.10).normalized)
+        updateHealthBar(battleship)
+
+        selectedIDs = [tank.id, fighter.id, battleship.id]
+        updateFog(force: true)
+        refreshSelection()
     }
 
     private func prepareCIHelicopterSalvoCaptureScene() {
@@ -8523,6 +8661,31 @@ final class GameScene: SKScene {
         entity.healthFill.fillColor = ratio > 0.45
             ? UIColor(red: 0.28, green: 0.92, blue: 0.24, alpha: 1.0)
             : UIColor(red: 1.0, green: 0.35, blue: 0.20, alpha: 1.0)
+        updateDamageStateVisual(for: entity, healthRatio: ratio)
+    }
+
+    private func updateDamageStateVisual(for entity: GameEntity, healthRatio: CGFloat) {
+        guard !entity.kind.isStructure,
+              entity.kind != .submarine,
+              entity.isAlive,
+              healthRatio <= 0.62
+        else {
+            entity.damageStateNode.isHidden = true
+            return
+        }
+
+        let isCritical = healthRatio <= 0.35
+        entity.damageStateNode.isHidden = false
+        entity.damageStateNode.alpha = isCritical ? 1.0 : 0.76
+        entity.damageScorchNode.alpha = isCritical ? 0.82 : 0.48
+        entity.damageFireNode.isHidden = !isCritical
+
+        for (index, smoke) in entity.damageSmokeNodes.enumerated() {
+            smoke.isHidden = !isCritical && index == entity.damageSmokeNodes.count - 1
+            smoke.alpha = isCritical
+                ? max(0.30, 0.62 - CGFloat(index) * 0.09)
+                : max(0.20, 0.42 - CGFloat(index) * 0.08)
+        }
     }
 
     private func cullDestroyedEntities() {

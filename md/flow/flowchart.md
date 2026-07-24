@@ -126,3 +126,4 @@ flowchart TD
 - v4.96：AA Truck 六轮雷达发射车模型、双弹错发与雷达跟踪反馈；CI 新增第十六次 mobile-aa 截图探针。
 - v4.97：Fighter 对水面舰艇 / 建筑使用双曲线翼下导弹、专用紧凑命中；CI 新增第十七次 fighter-strike 截图探针。
 - v4.98：Helicopter 双侧 pod 四枚短火箭、离散烟点与专用紧凑命中；CI 新增第十八次 helicopter-salvo 截图探针。
+- v4.99：机动地面 / 空中 / 水面单位预创建两档持续受损状态，单选 HP 行追加 `DMG/CRIT`；CI 新增第十九次 damage-state 截图探针。

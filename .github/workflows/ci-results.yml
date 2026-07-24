@@ -83,7 +83,7 @@ jobs:
           set -o pipefail
           {
             set -euo pipefail
-            rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-hud-build.png ci-results/simulator-hud-air.png ci-results/simulator-hud-naval.png ci-results/simulator-hud-support.png ci-results/simulator-command-move.png ci-results/simulator-command-attack-move.png ci-results/simulator-command-attack-target.png ci-results/simulator-land-combat.png ci-results/simulator-map-terrain.png ci-results/simulator-combat-ui.png ci-results/simulator-incoming-ui.png ci-results/simulator-naval-salvo.png ci-results/simulator-coastal-battery.png ci-results/simulator-carrier-strike.png ci-results/simulator-mobile-aa.png ci-results/simulator-fighter-strike.png ci-results/simulator-helicopter-salvo.png ci-results/simulator-app.log
+            rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-hud-build.png ci-results/simulator-hud-air.png ci-results/simulator-hud-naval.png ci-results/simulator-hud-support.png ci-results/simulator-command-move.png ci-results/simulator-command-attack-move.png ci-results/simulator-command-attack-target.png ci-results/simulator-land-combat.png ci-results/simulator-map-terrain.png ci-results/simulator-combat-ui.png ci-results/simulator-incoming-ui.png ci-results/simulator-naval-salvo.png ci-results/simulator-coastal-battery.png ci-results/simulator-carrier-strike.png ci-results/simulator-mobile-aa.png ci-results/simulator-fighter-strike.png ci-results/simulator-helicopter-salvo.png ci-results/simulator-damage-state.png ci-results/simulator-app.log
 
             /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
               -project DesertFrontline.xcodeproj \
@@ -152,6 +152,7 @@ jobs:
             launch_hud_page tactical ci-results/simulator-mobile-aa.png 4 mobile-aa land
             launch_hud_page tactical ci-results/simulator-fighter-strike.png 4 fighter-strike coast
             launch_hud_page tactical ci-results/simulator-helicopter-salvo.png 4 helicopter-salvo land
+            launch_hud_page tactical ci-results/simulator-damage-state.png 4 damage-state coast
             xcrun simctl spawn "${sim_udid}" log show --last 2m --predicate 'process == "DesertFrontline"' > ci-results/simulator-app.log || true
             xcrun simctl shutdown "${sim_udid}" || true
           } 2>&1 | tee ci-results/simulator-launch.log
@@ -308,6 +309,7 @@ jobs:
                   "ci-results/simulator-mobile-aa.png",
                   "ci-results/simulator-fighter-strike.png",
                   "ci-results/simulator-helicopter-salvo.png",
+                  "ci-results/simulator-damage-state.png",
               ],
           }
           (results_dir / "ci-artifact-manifest.json").write_text(
