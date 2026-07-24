@@ -4930,3 +4930,35 @@
 
 - 云端冻结截图能证明三机 / 双弹构图、目标态势、命中层级、HUD 兼容和启动稳定性，但不能覆盖连续多 Carrier 齐射、不同方向进场、战争迷雾边缘开火、密集海空战节点压力或真机触控 / 性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮可继续选择一个单一战斗细节增量，例如细化 AA Truck 模型与防空开火、改善高密度海空战目标层级，或补强 Fighter 对舰攻击反馈；总目标仍未完成。
+
+### v4.96 / 机动防空模型与双弹拦截
+
+日期：2026-07-24
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，并核对 Noble Master 官方 press kit、官方 trailer 与官方截图；本轮只借鉴其小尺寸高对比轮式军车、雷达 / 发射设备、可读弹体、烟迹和短促爆点，不复制原素材或 UI。
+- AA Truck 在原 entity footprint、碰撞、选择和血条链路内升级为六轮装甲底盘、分层驾驶舱与阵营风挡、设备舱 / 通风口、雷达桅杆与阵营描边雷达盘、双轨四弹发射架、灯具、保险杠和天线；HP、速度、射程、费用、生产和 AI 均未改变。
+- `showProjectile(...)` 对 AA Truck 分流到纯视觉 `showMobileAASalvo(...)`：使用两个法线错位发射点、约 0.055 秒错发的双 guided trail、两枚发光弹体、双发射闪光和短促雷达环 / 扫描线。普通节点约 0.46 秒内清理，`persistent` 只由 capture-only 场景使用。
+- 双弹 helper 不调用 `fire`、不写 HP、不创建碰撞或 splash；真实 `target.hp` 仍只在统一 `fire(attacker:target:)` 位置扣减一次。未知 Red AA Truck 由 `attackerKnownToPlayer` 门槛阻止来源视觉，不通过雷达、闪光、烟迹或弹体泄露位置。
+- 新增 capture-only `mobile-aa` land 场景：单选 Blue AA Truck 锁定约 46% HP Red Fighter，冻结双弹、雷达跟踪、命中环和伤害飘字，并保留空军投影、目标 HP / 距离 / reload、小地图和单排命令条。
+- GitHub Actions simulator launch probe 从十五次扩展为十六次，新增 `simulator-mobile-aa.png` 并写入清理列表与 artifact manifest。README、核心 flow、flowchart、测试规范和 v4.96 提示词已同步。
+- 工作区中的 `DesertFrontline.xcodeproj/project.pbxproj` `DEVELOPMENT_TEAM` 人工改动保持未暂存，未进入 v4.96 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地游戏探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 等轻量检查并通过。
+- 实现提交：`6021a90c06ceec9c033f15adcaece8a2c0cb0076`，commit subject 为 `v4.96: 细化机动防空与双弹拦截`。
+- GitHub Actions run：`30069453684`，attempt `1`，conclusion `success`，job 总耗时 9 分 33 秒；Node 20 action 被 GitHub runner 强制改用 Node 24 的注记不影响项目结果。
+- artifact：`desert-frontline-ci-v4.96-main-6021a90c06ce-run30069453684-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-30069453684/`，未加密且约 21.9 MB。
+- manifest 记录 `branch=main`、`commitSha=6021a90c06ceec9c033f15adcaece8a2c0cb0076`、`runId=30069453684`、`runAttempt=1`、`version=v4.96`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 失败、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十六次 simulator launch PID 全部在截图后存活；十六张原始 PNG 均为 1206x2622，App / launch 日志未命中 SIGABRT、watchdog、未捕获异常、fatal error 或崩溃关键字。
+- `simulator-mobile-aa.png` 清楚显示 Blue AA Truck 六轮装甲车身、阵营风挡、雷达盘、双轨发射架、两条分离青色烟迹 / 弹道、两枚导弹与发射亮光、Red Fighter 投影 / 命中环 / `-24` 飘字，以及 `ATK JET 46%`、`Tgt JET HP 96/210 46% D202`、`Reload 0.7s`、小地图和单排命令条；原图 SHA-256 为 `0d571cfa87e2eb0b432e8ac6878074c85b540c8e06e822ddbbab0a4d9f1e7983`。
+- `simulator-hud-air.png`、`simulator-land-combat.png`、`simulator-carrier-strike.png`、`simulator-map-terrain.png` 和 `simulator-screenshot.png` 分别为 `5a57e37745ce9d6a571d421da79ecd3e7796be84d04c8492ab0320afa04e5679`、`ced88a0c2d3ecc98992e0c7c462cc2a803467b3eec2e2cc2061dc3fbe301e260`、`2e6503f82384d53e68674fc5c95e4ad44895fe50f1de11896a3088e3d73e42d5`、`fd6d68df655d6021dbfdf59832e88a428c15adba88c8c7eb46c6b74ee8997486`、`4515ce0cae5808e7026c560e6bb401f281c14617a5ea3dcf1d20e87607cc7134`，既有空战、陆战、航母、地貌和总览证据无明显回归。
+- 源码审阅确认 `showMobileAASalvo(...)` 只创建短生命周期 SpriteKit 视觉节点；`showGuidedMissileTrail(...)` 的新增 delay / color 参数保持默认兼容；capture-only 位置、HP、目标和 reload 写入不会进入普通 App。
+
+遗留事项：
+
+- 云端冻结截图能证明 AA Truck 模型层次、双弹 / 雷达反馈、目标态势、HUD 兼容和启动稳定性，但不能覆盖持续机动时发射点朝向、连续多车齐射、敌方 AA 进出迷雾、密集空战节点压力或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮可继续选择一个单一 UI / 战斗细节增量，例如细化 Fighter 对舰攻击、增强直升机火箭齐射，或改善高密度海空战目标层级；总目标仍未完成。
