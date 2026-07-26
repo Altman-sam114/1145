@@ -5089,3 +5089,31 @@
 
 - 云端冻结截图能证明 STOP 真实 helper 已执行后的跨域选择保持、命令意图清理、按钮状态、Carrier guard release 与布局兼容，但不能覆盖用户连续快速点按、停止后即时重新下令、不同选择规模、真实移动中减速表现或真机触控 / 性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮继续选择一个范围有限的 UI 或战斗细节增量，并维持最新 `origin/main` artifact 验收闭环；总目标仍未完成。
+
+### v5.1 / 视野内目标循环与集火
+
+日期：2026-07-26
+
+核心变更：
+
+- 继续参考 Noble Master Games《沙漠风暴 Desert Stormfront》面向 touch-screen players 的集中、高对比上下文命令原则；TACT 在 STOP 与 AMOV 之间新增红色 `TGT`，五页单排现共 26 个动作，TACT 最多 9 个动作。
+- `TGT` 只收集当前相机视野内、存活、玩家已知且至少能被一个选中 operational 作战单位 `canAttack(...)` 的敌军，按到选中编队中心的距离及 entity id 稳定排序；迷雾敌军和未侦测 Submarine 不进入 subtitle、排序、marker 或攻击。
+- selection-scoped cursor 支持连续循环，选择变化或直接攻击、MOVE、HOLD、STOP、AMOV、SKRM 后失效。TGT 与地图直接攻击共享攻击执行 helper，只改写能攻击新目标的单位并清理其互斥命令；混编中不兼容的单位保留旧命令。
+- TGT subtitle 显示 `select`、`none` 或 `CODE i/n`，可用时提高红色边框 / glow；成功切换显示 `Target i/n` 消息、`ATK i/n CODE` marker、既有 FOCUS / 目标 HP 和命令意图线。
+- 新增 capture-only `target-cycle` 场景与 `simulator-target-cycle.png`，GitHub Actions 从二十次扩展为二十一次独立启动。README、核心 flow、flowchart、测试规范和 v5.1 提示词已同步；人工 `project.pbxproj` Team ID 与未跟踪 Unity 报告保持未暂存。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 并通过。
+- 实现提交：`3b3f65b25679947d2591bc7cd599a7fa99626df4`，commit subject 为 `v5.1: 加入视野目标循环集火`。对应 run `30192907061` 的静态检查、两类 build、二十一次启动和 artifact 均 success，但 Agent C 目视发现 capture HP 浮点截断为 56%，未满足冻结截图预期，未计为最终验收通过。
+- 探针修复提交：`528c2f88757466fc575bc7950d8e825d926a9100`，commit subject 为 `v5.1: 校准目标循环探针血量`；只调整 capture-only Artillery HP 常量，不改变普通战斗数值。
+- 最终 GitHub Actions run：`30193490212`，attempt `1`，conclusion `success`，job 总耗时 8 分 1 秒；Node 20 action 被 runner 强制使用 Node 24 的注记不影响项目结果。
+- 最终 artifact：`desert-frontline-ci-v5.1-main-528c2f887574-run30193490212-attempt1`，artifact ID `8629430584`，缓存于 `/private/tmp/desert-frontline-c-review-30193490212/`，未加密且约 27 MB。
+- manifest 记录 `branch=main`、`commitSha=528c2f88757466fc575bc7950d8e825d926a9100`、`runId=30193490212`、`runAttempt=1`、`version=v5.1`，build、static checks、project lint、simulator launch 均为 success。JUnit 记录 4 项 CI 检查、0 failures、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device 与 simulator build 日志均包含 `** BUILD SUCCEEDED **`；二十一次 simulator launch 均在截图后存活，二十一张 PNG 均存在且非空，App / launch 日志的 fatal error、SIGABRT、watchdog、crash、未捕获异常命中为 0。
+- 最终 `simulator-target-cycle.png` 为 1206x2622，清楚显示 `TGT ART 2/3`、`ATK 2/3 ART`、`FOCUS 4 ART 57%`、四条红色攻击意图线、目标生命条、四选战斗摘要、小地图与完整九动作 TACT 单排，无按钮文字溢出或 HUD 互相遮挡；原图 SHA-256 为 `d10a7318852de9012d49a4e4c76ac4a8ad38426583b051d47d8f7752fd149521`。
+
+遗留事项：
+
+- 云端冻结截图能证明一次真实 TGT 切换、候选位置反馈、共享攻击 helper、混编 UI 与九动作布局，但不能覆盖连续快速循环、目标动态进出视野 / 迷雾、潜艇侦测边缘、不同混编武器组合或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮继续选择一个范围有限的 UI 或战斗细节增量，并维持最新 `origin/main` artifact 验收闭环；总目标仍未完成。
