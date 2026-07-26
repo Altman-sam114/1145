@@ -53,6 +53,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Tap `TACT`, `BUILD`, `AIR`, `SEA`, or `SUP` to switch the single-row command bar: tactical orders and HQ focus; land production and structure placement; aircraft production; naval production; or support powers plus AI difficulty and skirmish restart.
 - Tap a player unit to select it.
 - Double-tap a player mobile unit to select visible units of the same type in the current camera view.
+- Player selection uses a 26pt screen-scale minimum touch radius. Repeated taps in the same crowded friendly cluster cycle its living units in stable distance order and show `SEL i/n CODE`; a precise enemy tap still takes priority for attack, while double-tap keeps the existing visible same-type selection.
 - Drag on the battlefield to box-select mobile player units.
 - Tap `G1` or `G2` to recall a saved control group of live player mobile units.
 - Double-tap `G1` or `G2` to save the current player mobile-unit selection to that group; empty or structure-only selections do not overwrite an existing group.

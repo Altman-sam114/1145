@@ -100,6 +100,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - 世界点击优先处理 pending 支援、pending 建筑、pending 集结点、pending attack-move，然后才处理选中、攻击或移动。
 - pending 建筑、支援、集结点、attack-move 和普通攻击 / 空地命令的无效世界目标会通过 `showDeniedMarker(at:reason:)` 在点击位置显示短暂红橙拒绝标记；该反馈只补充 `showMessage(...)`，不改变合法性、pending 清理、迷雾边界或执行优先级。
 - 普通世界点击中，双击玩家己方机动单位会选择当前摄像机视野内同 `kind` 的己方存活机动单位；建筑、敌方、中立和屏幕外同类不纳入该选择。
+- 玩家单击选择在原精确 `entity(at:)` 之外使用 `playerSelectionCandidates(at:)` 的 26pt 屏幕尺度最小半径，只收集存活己方实体并按距离、entity id 稳定排序；同一点击邻域、同一候选顺序且当前仍为上次单选时，`selectPlayerEntity(...)` 前进到下一候选并显示 `SEL i/n CODE`，到末尾循环。精确敌军命中仍先进入直接攻击，双击己方机动单位仍走视野内同型全选；框选、ARMY、控制组召回和 SKRM 清理 cursor，其余 selection 变化通过当前单选 ID 条件自然失效。该状态不持久化、不供 AI 使用，不改变敌军命中、空地移动、迷雾或潜艇边界。
 
 ### 经济与生产
 
@@ -202,7 +203,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - Agent X 遇到连续阻塞、连续无有效 diff、同因 CI 连续失败、权限/账号/密钥/付费服务需求、冲突归属不明或用户要求停止时，必须暂停或结束循环并说明原因。
 - Agent A 只写版本化实现提示词，提示词必须包含 `main` 同步、commit、push、GitHub Actions、artifact 和 Agent C 下载核对要求。
 - Agent B 每轮从最新 `origin/main` 开始，在 `main` 上小步实现，先跑本地轻量检查，再 commit 并 `git push origin main`。
-- GitHub Actions 在 `main` push 或手动触发时运行 `ci-results.yml`，生成 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md` 和 `.xcresult`；前二十次 simulator launch 保持既有五页 HUD、三种命令、地图、战斗 UI、武器反馈、受损状态与 STOP 探针，第二十一次使用 land focus 与 `target-cycle` 生成 `simulator-target-cycle.png`。target-cycle 只在 CI 中编排四个 Blue 作战单位和按距离稳定排序的三个已知 Red 目标，先共享攻击 Tank，再调用真实 TGT helper 切换到 Artillery，用于核对 `TGT ART 2/3`、`ATK 2/3 ART`、`FOCUS 4 ART 57%`、攻击意图线和九动作 TACT 单排；普通 App 不进入 capture-only 写入分支。二十一次启动全部使用 `DESERT_CI_CAPTURE_MODE=1` 暂停经济、AI、战斗和胜负推进并独立解析 PID / 检查存活。
+- GitHub Actions 在 `main` push 或手动触发时运行 `ci-results.yml`；前二十一次保持既有 HUD、命令、地图、战斗、受损、STOP 与 target-cycle 探针，第二十二次使用 land focus 与 capture-only `selection-cycle` 生成 `simulator-selection-cycle.png`。该场景编排紧邻的 Blue Humvee / Tank / Artillery，真实调用友军选择 helper 两次，用于核对 `SEL 2/3 TNK`、唯一 Tank 选择圈、Tank 单选面板、三个模型和完整 HUD；普通 App 不进入 capture-only 写入。二十二次启动均独立解析 PID、截图并检查存活。
 - Agent C 必须用 `gh auth login` 后下载最新 run 的未加密结果包，默认放在 `/private/tmp/desert-frontline-c-review-<run_id>/`。
 - Agent C 只验收 `origin/main` 最新 commit 对应的 run id、run attempt 和 artifact；不能验收旧 run 或只看文字说明。
 - 验收失败时不默认回滚，退回 Agent B 在 `main` 上追加修复 commit，再 push 触发新 run。

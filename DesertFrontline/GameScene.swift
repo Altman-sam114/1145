@@ -949,6 +949,9 @@ final class GameScene: SKScene {
     private var nextControlGroupRecallToken = 0
     private var lastTargetCycleTargetID: Int?
     private var lastTargetCycleSelectionIDs = Set<Int>()
+    private var lastSelectionCyclePoint: CGPoint?
+    private var lastSelectionCycleCandidateIDs: [Int] = []
+    private var lastSelectionCycleEntityID: Int?
     private var nextEntityID = 1
 
     private var playerMoney = 5200
@@ -5582,6 +5585,7 @@ final class GameScene: SKScene {
     }
 
     private func selectUnits(in rect: CGRect) {
+        resetSelectionCycleCursor()
         let expandedRect = rect.insetBy(dx: -18, dy: -18)
         let selected = entities.values.filter { entity in
             entity.faction == .player &&
@@ -5610,6 +5614,7 @@ final class GameScene: SKScene {
     }
 
     private func selectVisiblePlayerUnits(matching tapped: GameEntity) {
+        resetSelectionCycleCursor()
         let viewRect = visibleWorldRect()
         let matches = entities.values.filter { entity in
             entity.faction == .player &&
@@ -5663,6 +5668,7 @@ final class GameScene: SKScene {
         switch action {
         case .selectArmy:
             clearPendingCommandModes()
+            resetSelectionCycleCursor()
             selectedIDs = Set(entities.values.filter { $0.faction == .player && !$0.kind.isStructure && $0.isAlive }.map(\.id))
             refreshSelection()
             layoutHUD()
@@ -5820,6 +5826,7 @@ final class GameScene: SKScene {
 
     private func recallControlGroup(_ group: Int) {
         clearPendingCommandModes()
+        resetSelectionCycleCursor()
         let liveIDs = liveControlGroupIDs(for: group)
         controlGroups[group] = liveIDs
 
@@ -5893,15 +5900,14 @@ final class GameScene: SKScene {
             return
         }
 
-        if let tapped = entity(at: point) {
+        let tapped = entity(at: point)
+        if let tapped {
             if tapped.faction == .player {
                 if !tapped.kind.isStructure && tapCount >= 2 {
                     selectVisiblePlayerUnits(matching: tapped)
                     return
                 }
-                selectedIDs = [tapped.id]
-                refreshSelection()
-                showMessage("Selected \(tapped.kind.displayName).", color: .white)
+                selectPlayerEntity(at: point)
                 return
             }
 
@@ -5910,6 +5916,11 @@ final class GameScene: SKScene {
                 issueDirectAttackOrder(on: tapped, units: selected)
                 return
             }
+        }
+
+        if tapped == nil, !playerSelectionCandidates(at: point).isEmpty {
+            selectPlayerEntity(at: point)
+            return
         }
 
         let selected = selectedMobilePlayerUnits()
@@ -6462,6 +6473,7 @@ final class GameScene: SKScene {
         incomingThreatsByTargetID.removeAll()
         controlGroups = [1: [], 2: []]
         resetTargetCycleCursor()
+        resetSelectionCycleCursor()
         buildOrders.removeAll()
         enemyCaptureReservations.removeAll()
         enemyRetreatingUnitIDs.removeAll()
@@ -7105,7 +7117,85 @@ final class GameScene: SKScene {
             if entity.faction == .enemy && !isKnownToFaction(entity, observer: .player) { return false }
             return entity.node.position.distance(to: point) <= entity.kind.footprint * 0.95
         }
-        return candidates.min { $0.node.position.distance(to: point) < $1.node.position.distance(to: point) }
+        return candidates.min { left, right in
+            let leftDistance = left.node.position.distance(to: point)
+            let rightDistance = right.node.position.distance(to: point)
+            if abs(leftDistance - rightDistance) < 0.5 {
+                return left.id < right.id
+            }
+            return leftDistance < rightDistance
+        }
+    }
+
+    private func resetSelectionCycleCursor() {
+        lastSelectionCyclePoint = nil
+        lastSelectionCycleCandidateIDs.removeAll()
+        lastSelectionCycleEntityID = nil
+    }
+
+    private func playerSelectionCandidates(at point: CGPoint) -> [GameEntity] {
+        entities.values
+            .filter { entity in
+                guard entity.faction == .player && entity.isAlive else { return false }
+                let selectionRadius = max(entity.kind.footprint * 0.95, 26 * cameraRig.xScale)
+                return entity.node.position.distance(to: point) <= selectionRadius
+            }
+            .sorted { left, right in
+                let leftDistance = left.node.position.distance(to: point)
+                let rightDistance = right.node.position.distance(to: point)
+                if abs(leftDistance - rightDistance) < 0.5 {
+                    return left.id < right.id
+                }
+                return leftDistance < rightDistance
+            }
+    }
+
+    private func selectPlayerEntity(
+        at point: CGPoint,
+        showFeedback: Bool = true,
+        persistentMarker: Bool = false
+    ) {
+        let candidates = playerSelectionCandidates(at: point)
+        guard !candidates.isEmpty else { return }
+        let candidateIDs = candidates.map(\.id)
+        let sameNeighborhood = lastSelectionCyclePoint.map {
+            $0.distance(to: point) <= 18 * cameraRig.xScale
+        } ?? false
+        let nextIndex: Int
+        if sameNeighborhood,
+           candidateIDs == lastSelectionCycleCandidateIDs,
+           let lastSelectionCycleEntityID,
+           selectedIDs == Set([lastSelectionCycleEntityID]),
+           let currentIndex = candidateIDs.firstIndex(of: lastSelectionCycleEntityID) {
+            nextIndex = (currentIndex + 1) % candidates.count
+        } else {
+            nextIndex = 0
+        }
+
+        let selected = candidates[nextIndex]
+        selectedIDs = [selected.id]
+        lastSelectionCyclePoint = point
+        lastSelectionCycleCandidateIDs = candidateIDs
+        lastSelectionCycleEntityID = selected.id
+        resetTargetCycleCursor()
+        refreshSelection()
+        updateHUD()
+        guard showFeedback else { return }
+        if candidates.count > 1 {
+            showSelectionCycleMarker(
+                at: selected.node.position,
+                index: nextIndex + 1,
+                total: candidates.count,
+                code: selected.kind.shortCode,
+                persistent: persistentMarker
+            )
+            showMessage(
+                "Selected \(nextIndex + 1)/\(candidates.count): \(selected.kind.displayName).",
+                color: UIColor(red: 0.55, green: 0.94, blue: 1.0, alpha: 1.0)
+            )
+        } else {
+            showMessage("Selected \(selected.kind.displayName).", color: .white)
+        }
     }
 
     @discardableResult
@@ -7732,6 +7822,10 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "selection-cycle" {
+            prepareCISelectionCycleCaptureScene()
+            return
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "target-cycle" {
             prepareCITargetCycleCaptureScene()
             return
@@ -8003,6 +8097,49 @@ final class GameScene: SKScene {
         updateFog(force: true)
         refreshSelection()
         issueCycleTargetOrder(persistentFeedback: true)
+    }
+
+    private func prepareCISelectionCycleCaptureScene() {
+        let humvee = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .humvee && $0.isAlive
+        }) ?? addEntity(kind: .humvee, faction: .player, at: tileCenter(TileCoord(row: 15, col: 13)))
+        let tank = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .tank && $0.isAlive
+        }) ?? addEntity(kind: .tank, faction: .player, at: tileCenter(TileCoord(row: 15, col: 14)))
+        let artillery = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .artillery && $0.isAlive
+        }) ?? addEntity(kind: .artillery, faction: .player, at: tileCenter(TileCoord(row: 16, col: 13)))
+
+        let candidateIDs = Set([humvee.id, tank.id, artillery.id])
+        let offscreenPoint = CGPoint(x: worldBounds.maxX + 2200, y: worldBounds.maxY + 2200)
+        for entity in entities.values where entity.faction == .player && !candidateIDs.contains(entity.id) {
+            entity.node.position = offscreenPoint + CGPoint(x: CGFloat(entity.id % 7) * 12, y: CGFloat(entity.id % 5) * 12)
+            entity.node.zPosition = entityZPosition(entity)
+        }
+
+        cameraRig.position = tileCenter(TileCoord(row: 15, col: 14))
+        let tapPoint = cameraRig.position + CGPoint(x: -36, y: -10)
+        let placements: [(GameEntity, CGPoint)] = [
+            (humvee, .zero),
+            (tank, CGPoint(x: 18, y: 0)),
+            (artillery, CGPoint(x: -20, y: 15))
+        ]
+        for (entity, offset) in placements {
+            entity.node.position = tapPoint + offset
+            entity.node.xScale = 1
+            entity.node.zPosition = entityZPosition(entity)
+            entity.destination = nil
+            entity.path.removeAll()
+            entity.attackTarget = nil
+            entity.attackMoveDestination = nil
+            entity.holdPosition = entity.node.position
+        }
+
+        selectedIDs.removeAll()
+        resetSelectionCycleCursor()
+        updateFog(force: true)
+        selectPlayerEntity(at: tapPoint, showFeedback: false)
+        selectPlayerEntity(at: tapPoint, persistentMarker: true)
     }
 
     private func prepareCIHelicopterSalvoCaptureScene() {
@@ -11210,6 +11347,41 @@ final class GameScene: SKScene {
 
         node.addChild(commandMarkerLabel(text: "STOP \(count)", color: color, y: 28))
         presentCommandMarker(node, persistent: persistent, exitScale: 1.18)
+    }
+
+    private func showSelectionCycleMarker(
+        at point: CGPoint,
+        index: Int,
+        total: Int,
+        code: String,
+        persistent: Bool = false
+    ) {
+        let color = UIColor(red: 0.34, green: 0.92, blue: 1.0, alpha: 1.0)
+        let node = SKNode()
+        node.position = point
+        node.zPosition = 268
+
+        let ring = SKShapeNode(ellipseOf: CGSize(width: 62, height: 31))
+        ring.fillColor = color.withAlphaComponent(0.10)
+        ring.strokeColor = color
+        ring.lineWidth = 3
+        ring.glowWidth = 1.5
+        node.addChild(ring)
+
+        let pointerPath = CGMutablePath()
+        pointerPath.move(to: CGPoint(x: -15, y: 0))
+        pointerPath.addLine(to: CGPoint(x: -5, y: 0))
+        pointerPath.move(to: CGPoint(x: 5, y: 0))
+        pointerPath.addLine(to: CGPoint(x: 15, y: 0))
+        pointerPath.move(to: CGPoint(x: 0, y: -8))
+        pointerPath.addLine(to: CGPoint(x: 0, y: 8))
+        let pointer = SKShapeNode(path: pointerPath)
+        pointer.strokeColor = color
+        pointer.lineWidth = 2.5
+        pointer.lineCap = .round
+        node.addChild(pointer)
+        node.addChild(commandMarkerLabel(text: "SEL \(index)/\(total) \(code)", color: color, y: 29))
+        presentCommandMarker(node, persistent: persistent, exitScale: 1.16)
     }
 
     private func commandMarkerLabel(text: String, color: UIColor, y: CGFloat) -> SKLabelNode {
