@@ -5230,3 +5230,30 @@
 - attempt 1 出现一次 simulator 全白截图，说明云端截图存在瞬时渲染竞态；后续验收保留逐张亮度扫描步骤，必要时在 workflow 截图前增加短暂等待或重试，但本轮不改 workflow。
 - 真实参考图中旗布带国旗图案与随风飘动感，当前为纯色燕尾旗；可作为后续可选增量（如按阵营加简单图案），不阻塞。
 - 当前没有独立 XCTest target。下一轮候选增量：海岸浅水泡沫层次、岩石群 / 民居地物细化、或参考图中"红色虚线目标环 + 橙色 V 箭头"的攻击目标标识语言；总目标仍未完成。
+
+### v5.6 / 航母甲板与舰岛细化
+
+日期：2026-07-26
+
+核心变更：
+
+- 参考真实《Desert Stormfront》航母造型，重写 `addNavalUnitBody` 的 `.carrier` 分支：深色甲板边缘 + 蓝灰主甲板 + 斜角跑道区（0.18 zRotation），跑道含四段中线虚线与两端门槛线，甲板后段两个白描边停机位圈。
+- 新增右舷舰岛：底座 / 塔楼 / 天线杆分层，塔楼带两个阵营色舷窗（Blue 青色 / Red 橙红，与 Battleship 舷窗语言一致）。
+- 所有新增节点为 `base` 静态子节点（zPosition 1-8），不改 footprint、碰撞、选择圈、血条、旗标、镜像与迷雾行为；不改任何玩法数值。
+- `md/flow/flow.md` 海军实体树描述与 `md/test/test.md` carrier-strike 验收口径已同步；v5.6 提示词入库。人工 `project.pbxproj` Team ID 与未跟踪 Unity 报告保持未暂存。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check` 并通过。
+- 实现提交：`c7441fe4cceee5488ac11dce15a9ad7d7aa7a0d9`，commit subject 为 `v5.6: 航母甲板舰岛细化`。
+- GitHub Actions run：`30208452857`，attempt `1`，conclusion `success`，job 总耗时约 10 分 43 秒。
+- artifact：`desert-frontline-ci-v5.6-main-c7441fe4ccee-run30208452857-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-30208452857/`。
+- manifest 记录 `branch=main`、`commitSha=c7441fe4cceee5488ac11dce15a9ad7d7aa7a0d9`、`runId=30208452857`、`runAttempt=1`、`version=v5.6`，build、static checks、project lint、simulator launch 均 success。JUnit 4 项检查、0 failures、1 skipped（无 XCTest target）。
+- generic iOS device 与 simulator build 日志均含 `** BUILD SUCCEEDED **`；二十三次 launch 均 "still running"，二十三张 PNG 均 1206x2622，逐张亮度扫描无白 / 黑屏，App / launch 日志异常命中为 0。验收账号 `Altman-sam114`。
+- 目视 `simulator-carrier-strike.png`（SHA-256 `1bbf893432b07c6d8b43473ee1778c35ed0b6aea2ba4562f89252bd8d2ebd111`）：Blue Carrier 甲板边缘、斜角跑道与中线虚线 / 门槛线、两个停机位圈、右舷舰岛与青色舷窗均可辨；绿色选择圈、蓝旗标、护航圈、三机进场线、反舰弹与 Red Battleship 命中反馈、`Carrier CV` 详情面板与九动作 TACT 均无回归。
+- 代码审查确认：仅 `.carrier` 视觉分支变化，无玩法行为改动。
+
+遗留事项：
+
+- 舰载机弹射 / 回收动画仍为纯视觉三机曲线，未与新停机位圈联动；可作后续增量。
+- 当前没有独立 XCTest target。下一轮候选增量：海岸浅水泡沫层次（对照参考图亮青海岸线）、Battleship / Submarine 受击细节、或红色虚线目标环攻击标识语言；总目标仍未完成。
