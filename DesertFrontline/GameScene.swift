@@ -490,6 +490,7 @@ private enum HudAction: String, CaseIterable {
     case controlGroup1
     case controlGroup2
     case holdPosition
+    case stop
     case attackMove
     case buildHumvee
     case buildAATruck
@@ -517,6 +518,7 @@ private enum HudAction: String, CaseIterable {
         case .controlGroup1: "G1"
         case .controlGroup2: "G2"
         case .holdPosition: "HOLD"
+        case .stop: "STOP"
         case .attackMove: "AMOV"
         case .buildHumvee: "HMV"
         case .buildAATruck: "AA"
@@ -597,7 +599,7 @@ private enum HudPage: String, CaseIterable {
     var actions: [HudAction] {
         switch self {
         case .tactical:
-            [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .attackMove, .setRally, .focusHQ]
+            [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .stop, .attackMove, .setRally, .focusHQ]
         case .build:
             [.buildHumvee, .buildAATruck, .buildTank, .buildArtillery, .buildMechanic, .buildBase]
         case .air:
@@ -3847,9 +3849,13 @@ final class GameScene: SKScene {
     private func refreshHudButtonStyles() {
         for (action, shape) in hudButtonShapes {
             shape.fillColor = buttonColor(for: action)
-            shape.alpha = 1.0
+            shape.alpha = action == .stop && !isStopOrderAvailable ? 0.66 : 1.0
 
-            if isHudActionArmed(action) {
+            if action == .stop && isStopOrderAvailable {
+                shape.strokeColor = UIColor(red: 1.0, green: 0.64, blue: 0.44, alpha: 1.0)
+                shape.lineWidth = 4.5
+                shape.glowWidth = 1.5
+            } else if isHudActionArmed(action) {
                 shape.strokeColor = UIColor(red: 1.0, green: 0.84, blue: 0.26, alpha: 1.0)
                 shape.lineWidth = 5.5
                 shape.glowWidth = 3
@@ -3899,6 +3905,8 @@ final class GameScene: SKScene {
             UIColor(red: 0.24, green: 0.43, blue: 0.40, alpha: 0.96)
         case .holdPosition:
             UIColor(red: 0.30, green: 0.48, blue: 0.22, alpha: 0.96)
+        case .stop:
+            UIColor(red: 0.62, green: 0.20, blue: 0.14, alpha: 0.96)
         case .attackMove:
             UIColor(red: 0.62, green: 0.34, blue: 0.18, alpha: 0.96)
         case .buildHelicopter, .buildFighter:
@@ -3944,6 +3952,8 @@ final class GameScene: SKScene {
             return controlGroupSubtitle(for: 2)
         case .holdPosition:
             return holdButtonSubtitle()
+        case .stop:
+            return stopButtonSubtitle()
         case .attackMove:
             return attackMoveButtonSubtitle()
         case .buildBase:
@@ -3974,6 +3984,15 @@ final class GameScene: SKScene {
             return "CV rel"
         }
         return "guard"
+    }
+
+    private var isStopOrderAvailable: Bool {
+        selectedMobilePlayerUnits().contains(where: hasCancellableOrder)
+    }
+
+    private func stopButtonSubtitle() -> String {
+        let orderCount = selectedMobilePlayerUnits().filter(hasCancellableOrder).count
+        return orderCount > 0 ? "\(orderCount) cmd" : "idle"
     }
 
     private func attackMoveButtonSubtitle() -> String {
@@ -5616,6 +5635,9 @@ final class GameScene: SKScene {
         case .holdPosition:
             clearPendingCommandModes()
             issueHoldPositionOrder(units: selectedMobilePlayerUnits())
+        case .stop:
+            clearPendingCommandModes()
+            issueStopOrder(units: selectedMobilePlayerUnits())
         case .attackMove:
             clearPendingCommandModes()
             let combatUnits = selectedMobilePlayerUnits().filter { $0.kind.damage > 0 }
@@ -6610,6 +6632,63 @@ final class GameScene: SKScene {
         showMessage("Hold position: \(mobileUnits.count) units guarding.\(guardWingSuffix)\(carrierGuardReleaseSuffix(for: guardReleaseWing))", color: UIColor(red: 0.78, green: 1.0, blue: 0.58, alpha: 1.0))
     }
 
+    private func hasCancellableOrder(_ unit: GameEntity) -> Bool {
+        unit.destination != nil ||
+            !unit.path.isEmpty ||
+            unit.attackTarget != nil ||
+            unit.attackMoveDestination != nil ||
+            unit.holdPosition != nil ||
+            carrierGuardAnchor(for: unit) != nil
+    }
+
+    private func issueStopOrder(units: [GameEntity], persistentFeedback: Bool = false) {
+        let mobileUnits = units.filter {
+            $0.faction == .player && $0.isAlive && !$0.kind.isStructure
+        }
+        guard !mobileUnits.isEmpty else {
+            showMessage("Select mobile units to stop.", color: .orange)
+            updateHUD()
+            return
+        }
+
+        let commandedUnits = mobileUnits.filter(hasCancellableOrder)
+        guard !commandedUnits.isEmpty else {
+            showMessage("Selected units are already idle.", color: .white)
+            updateHUD()
+            return
+        }
+
+        let stoppedCarrierIDs = Set(commandedUnits.filter { $0.kind == .carrier }.map(\.id))
+        var releasedWingByID: [Int: GameEntity] = [:]
+        for wing in entities.values where wing.faction == .player && wing.isAlive {
+            guard let anchor = carrierGuardAnchor(for: wing) else { continue }
+            if commandedUnits.contains(where: { $0.id == wing.id }) || stoppedCarrierIDs.contains(anchor.id) {
+                releasedWingByID[wing.id] = wing
+            }
+        }
+
+        let center = commandedUnits.reduce(CGPoint.zero) { $0 + $1.node.position } / CGFloat(commandedUnits.count)
+        for unit in commandedUnits {
+            unit.destination = nil
+            unit.path.removeAll()
+            unit.attackTarget = nil
+            unit.attackMoveDestination = nil
+            unit.holdPosition = nil
+            clearCarrierGuardAnchor(for: unit)
+        }
+        for wing in releasedWingByID.values {
+            clearCarrierGuardAnchor(for: wing)
+        }
+
+        refreshSelection()
+        showStopMarker(at: center, count: commandedUnits.count, persistent: persistentFeedback)
+        updateHUD()
+        showMessage(
+            "Stopped \(commandedUnits.count) units.\(carrierGuardReleaseSuffix(for: Array(releasedWingByID.values)))",
+            color: UIColor(red: 1.0, green: 0.72, blue: 0.56, alpha: 1.0)
+        )
+    }
+
     private func carrierGuardReleaseWing(for units: [GameEntity]) -> [GameEntity] {
         units.filter { unit in
             unit.faction == .player &&
@@ -7483,6 +7562,10 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "stop-command" {
+            prepareCIStopCommandCaptureScene()
+            return
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "damage-state" {
             prepareCIDamageStateCaptureScene()
             return
@@ -7615,6 +7698,60 @@ final class GameScene: SKScene {
         selectedIDs = [tank.id, fighter.id, battleship.id]
         updateFog(force: true)
         refreshSelection()
+    }
+
+    private func prepareCIStopCommandCaptureScene() {
+        let tank = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .tank && $0.isAlive
+        }) ?? addEntity(kind: .tank, faction: .player, at: tileCenter(TileCoord(row: 17, col: 21)))
+        let fighter = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .fighter && $0.isAlive
+        }) ?? addEntity(kind: .fighter, faction: .player, at: tileCenter(TileCoord(row: 17, col: 23)))
+        let battleship = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .battleship && $0.isAlive
+        }) ?? addEntity(kind: .battleship, faction: .player, at: tileCenter(TileCoord(row: 19, col: 24)))
+        let carrier = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .carrier && $0.isAlive
+        }) ?? addEntity(kind: .carrier, faction: .player, at: tileCenter(TileCoord(row: 19, col: 25)))
+        let guardHelicopter = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .helicopter && $0.isAlive
+        }) ?? addEntity(kind: .helicopter, faction: .player, at: tileCenter(TileCoord(row: 18, col: 24)))
+        let enemyTank = entities.values.first(where: {
+            $0.faction == .enemy && $0.kind == .tank && $0.isAlive
+        }) ?? addEntity(kind: .tank, faction: .enemy, at: tileCenter(TileCoord(row: 17, col: 25)))
+
+        cameraRig.position = tileCenter(TileCoord(row: 18, col: 23))
+        let center = cameraRig.position
+        tank.node.position = center + CGPoint(x: -180, y: 68)
+        fighter.node.position = center + CGPoint(x: -62, y: -36)
+        battleship.node.position = center + CGPoint(x: 72, y: -62)
+        carrier.node.position = center + CGPoint(x: 132, y: 66)
+        guardHelicopter.node.position = center + CGPoint(x: 18, y: 78)
+        enemyTank.node.position = center + CGPoint(x: 210, y: -6)
+        for entity in [tank, fighter, battleship, carrier, guardHelicopter, enemyTank] {
+            entity.node.zPosition = entityZPosition(entity)
+        }
+
+        let movePoint = fighter.node.position + CGPoint(x: 150, y: 34)
+        fighter.destination = movePoint
+        fighter.path = [movePoint]
+        tank.attackTarget = enemyTank
+        tank.destination = nil
+        tank.path.removeAll()
+        let attackMovePoint = battleship.node.position + CGPoint(x: -150, y: -24)
+        battleship.attackMoveDestination = attackMovePoint
+        battleship.destination = attackMovePoint
+        battleship.path = [attackMovePoint]
+        carrier.holdPosition = carrier.node.position
+        guardHelicopter.holdPosition = guardHelicopter.node.position
+        guardHelicopter.guardAnchorCarrierID = carrier.id
+
+        selectedIDs = [tank.id, fighter.id, battleship.id, carrier.id]
+        updateAirShadow(for: fighter, direction: CGPoint(x: 0.98, y: 0.18).normalized)
+        fighter.node.xScale = 1
+        updateFog(force: true)
+        refreshSelection()
+        issueStopOrder(units: [tank, fighter, battleship, carrier], persistentFeedback: true)
     }
 
     private func prepareCIHelicopterSalvoCaptureScene() {
@@ -10788,6 +10925,40 @@ final class GameScene: SKScene {
         let labelNode = commandMarkerLabel(text: "ATK \(label)", color: color, y: halfHeight + 11)
         node.addChild(labelNode)
         presentCommandMarker(node, persistent: persistent, exitScale: 1.16)
+    }
+
+    private func showStopMarker(at point: CGPoint, count: Int, persistent: Bool = false) {
+        let color = UIColor(red: 1.0, green: 0.34, blue: 0.22, alpha: 1.0)
+        let node = SKNode()
+        node.position = point
+        node.zPosition = 270
+
+        let ring = SKShapeNode(ellipseOf: CGSize(width: 70, height: 34))
+        ring.fillColor = color.withAlphaComponent(0.14)
+        ring.strokeColor = color
+        ring.lineWidth = 3.5
+        ring.glowWidth = 2
+        node.addChild(ring)
+
+        let stopBack = SKShapeNode(rectOf: CGSize(width: 22, height: 16), cornerRadius: 2)
+        stopBack.fillColor = color.withAlphaComponent(0.92)
+        stopBack.strokeColor = UIColor.white.withAlphaComponent(0.95)
+        stopBack.lineWidth = 1.5
+        node.addChild(stopBack)
+
+        let stopBars = CGMutablePath()
+        stopBars.move(to: CGPoint(x: -4, y: -5))
+        stopBars.addLine(to: CGPoint(x: -4, y: 5))
+        stopBars.move(to: CGPoint(x: 4, y: -5))
+        stopBars.addLine(to: CGPoint(x: 4, y: 5))
+        let bars = SKShapeNode(path: stopBars)
+        bars.strokeColor = .white
+        bars.lineWidth = 3
+        bars.lineCap = .square
+        node.addChild(bars)
+
+        node.addChild(commandMarkerLabel(text: "STOP \(count)", color: color, y: 28))
+        presentCommandMarker(node, persistent: persistent, exitScale: 1.18)
     }
 
     private func commandMarkerLabel(text: String, color: UIColor, y: CGFloat) -> SKLabelNode {

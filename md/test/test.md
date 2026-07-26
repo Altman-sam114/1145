@@ -79,6 +79,7 @@ GitHub Actions 负责运行：
 - 第十七次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=fighter-strike` 生成 `simulator-fighter-strike.png`：单选 Blue Fighter 锁定约 48% HP Red Coastal Battery 并冻结一个 reload，画面同时保留 Fighter 模型 / 投影、两个翼下发射点、两条分离二次曲线、两枚错发弹体 / 尾焰、短白烟迹、双发射闪光、紧凑结构命中、伤害飘字、目标 HP / 距离 / reload、小地图和单排命令条。workflow 总计十七次独立启动 / PID 存活检查；只有 fighter-strike capture 会临时写双方位置 / 目标、Red Coastal Battery HP 和 reload，普通 App 与其他 capture 状态不变。
 - 第十八次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=helicopter-salvo` 生成 `simulator-helicopter-salvo.png`：单选 Blue Helicopter 锁定约 45% HP Red Tank 并冻结一个 reload，画面同时保留 Helicopter 模型 / 投影 / 双 weapon pods、四条分离短曲线、四枚不同进度弹体 / 尾焰、阵营细亮线、离散白色烟点、双 pod 发射闪光、紧凑三点命中 / 尘环 / 碎屑、伤害飘字、目标 HP / 距离 / reload、小地图和单排命令条。workflow 总计十八次独立启动 / PID 存活检查；只有 helicopter-salvo capture 会临时写双方位置 / 目标、Red Tank HP 和 reload，普通 App 与其他 capture 状态不变。
 - 第十九次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=damage-state` 生成 `simulator-damage-state.png`：同屏选择 29% HP Blue Tank、32% HP Blue Fighter 与 56% HP Blue Battleship，前两者冻结 `CRIT` 级第三段浓烟 / 紧凑火点 / 强焦痕，Battleship 冻结 `DMG` 级短烟 / 轻焦痕，同时保留 land / air / naval 不同挂点、模型 / 投影 / 航迹、生命条、选择圈、多选 `Wounded 3 / Critical 2` 摘要、小地图和单排命令条。workflow 总计十九次独立启动 / PID 存活检查；只有 damage-state capture 会临时写三单位位置与 HP，普通 App 与其他 capture 状态不变。
+- 第二十次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=stop-command` 生成 `simulator-stop-command.png`：先为四个选中 Blue 跨域单位分别冻结 direct attack、move、AMOV 与 Carrier HOLD，并给未选中 Helicopter 写入该 Carrier guard anchor，再调用真实 `issueStopOrder(...)`。截图用于核对四单位选择仍保留、命令意图线全部消失、STOP subtitle 回到 `idle`、持久 `STOP 4` marker、依附 guard anchor 已释放，以及模型、HUD、选择面板和小地图无遮挡。workflow 总计二十次独立启动 / PID 存活检查；只有 stop-command capture 会临时写上述命令、位置和选择，普通 App 与其他 capture 状态不变。
 - 结果包生成和上传。
 
 云端 Xcode build 命令：
@@ -131,6 +132,7 @@ GitHub Actions 负责运行：
 - `simulator-fighter-strike.png`
 - `simulator-helicopter-salvo.png`
 - `simulator-damage-state.png`
+- `simulator-stop-command.png`
 - `DesertFrontline.xcresult`
 
 artifact 命名规则：
@@ -322,7 +324,7 @@ du -sh /private/tmp/desert-frontline-c-review-<run_id>/
 人工检查清单：
 
 - 启动 skirmish 后地图、HUD、小地图、迷雾显示正常。
-- 选择、框选、移动、攻击、`HOLD`、`AMOV` 不互相破坏。
+- 选择、框选、移动、攻击、`HOLD`、`STOP`、`AMOV` 不互相破坏；STOP 后选择保留且当前命令意图线消失。
 - 生产队列、建筑施工、集结点和经济收入仍工作。
 - AI 能生产、占点、进攻并使用相关新能力。
 - 若修改海战，检查潜艇隐身、声呐和海军路径。
