@@ -7120,10 +7120,12 @@ final class GameScene: SKScene {
         return candidates.min { left, right in
             let leftDistance = left.node.position.distance(to: point)
             let rightDistance = right.node.position.distance(to: point)
-            if abs(leftDistance - rightDistance) < 0.5 {
+            let leftDistanceBucket = Int((leftDistance / 0.5).rounded(.down))
+            let rightDistanceBucket = Int((rightDistance / 0.5).rounded(.down))
+            if leftDistanceBucket == rightDistanceBucket {
                 return left.id < right.id
             }
-            return leftDistance < rightDistance
+            return leftDistanceBucket < rightDistanceBucket
         }
     }
 
@@ -7143,10 +7145,12 @@ final class GameScene: SKScene {
             .sorted { left, right in
                 let leftDistance = left.node.position.distance(to: point)
                 let rightDistance = right.node.position.distance(to: point)
-                if abs(leftDistance - rightDistance) < 0.5 {
+                let leftDistanceBucket = Int((leftDistance / 0.5).rounded(.down))
+                let rightDistanceBucket = Int((rightDistance / 0.5).rounded(.down))
+                if leftDistanceBucket == rightDistanceBucket {
                     return left.id < right.id
                 }
-                return leftDistance < rightDistance
+                return leftDistanceBucket < rightDistanceBucket
             }
     }
 

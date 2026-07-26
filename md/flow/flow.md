@@ -100,7 +100,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - 世界点击优先处理 pending 支援、pending 建筑、pending 集结点、pending attack-move，然后才处理选中、攻击或移动。
 - pending 建筑、支援、集结点、attack-move 和普通攻击 / 空地命令的无效世界目标会通过 `showDeniedMarker(at:reason:)` 在点击位置显示短暂红橙拒绝标记；该反馈只补充 `showMessage(...)`，不改变合法性、pending 清理、迷雾边界或执行优先级。
 - 普通世界点击中，双击玩家己方机动单位会选择当前摄像机视野内同 `kind` 的己方存活机动单位；建筑、敌方、中立和屏幕外同类不纳入该选择。
-- 玩家单击选择在原精确 `entity(at:)` 之外使用 `playerSelectionCandidates(at:)` 的 26pt 屏幕尺度最小半径，只收集存活己方实体并按距离、entity id 稳定排序；同一点击邻域、同一候选顺序且当前仍为上次单选时，`selectPlayerEntity(...)` 前进到下一候选并显示 `SEL i/n CODE`，到末尾循环。精确敌军命中仍先进入直接攻击，双击己方机动单位仍走视野内同型全选；框选、ARMY、控制组召回和 SKRM 清理 cursor，其余 selection 变化通过当前单选 ID 条件自然失效。该状态不持久化、不供 AI 使用，不改变敌军命中、空地移动、迷雾或潜艇边界。
+- 玩家单击选择在原精确 `entity(at:)` 之外使用 `playerSelectionCandidates(at:)` 的 26pt 屏幕尺度最小半径，只收集存活己方实体并按 0.5 世界距离桶、entity id 的严格总序稳定排序；同一点击邻域、同一候选顺序且当前仍为上次单选时，`selectPlayerEntity(...)` 前进到下一候选并显示 `SEL i/n CODE`，到末尾循环。精确敌军命中仍先进入直接攻击，双击己方机动单位仍走视野内同型全选；框选、ARMY、控制组召回和 SKRM 清理 cursor，其余 selection 变化通过当前单选 ID 条件自然失效。该状态不持久化、不供 AI 使用，不改变敌军命中、空地移动、迷雾或潜艇边界。
 
 ### 经济与生产
 
