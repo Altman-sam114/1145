@@ -7579,7 +7579,7 @@ final class GameScene: SKScene {
 
         cameraRig.position = tileCenter(TileCoord(row: 18, col: 23))
 
-        tank.node.position = tileCenter(TileCoord(row: 16, col: 21)) + CGPoint(x: 12, y: -20)
+        tank.node.position = cameraRig.position + CGPoint(x: -165, y: 60)
         tank.node.xScale = 1
         tank.node.zPosition = entityZPosition(tank)
         tank.hp = tank.kind.maxHP * 0.29
@@ -7590,7 +7590,7 @@ final class GameScene: SKScene {
         tank.landDustNode.isHidden = true
         updateHealthBar(tank)
 
-        fighter.node.position = tileCenter(TileCoord(row: 17, col: 23)) + CGPoint(x: -8, y: 36)
+        fighter.node.position = cameraRig.position + CGPoint(x: -20, y: -12)
         fighter.node.xScale = 1
         fighter.node.zPosition = entityZPosition(fighter)
         fighter.hp = fighter.kind.maxHP * 0.32
@@ -7601,7 +7601,7 @@ final class GameScene: SKScene {
         updateAirShadow(for: fighter, direction: CGPoint(x: 0.99, y: -0.10).normalized)
         updateHealthBar(fighter)
 
-        battleship.node.position = tileCenter(TileCoord(row: 19, col: 25)) + CGPoint(x: 12, y: -8)
+        battleship.node.position = cameraRig.position + CGPoint(x: 110, y: -62)
         battleship.node.xScale = -1
         battleship.node.zPosition = entityZPosition(battleship)
         battleship.hp = battleship.kind.maxHP * 0.56
