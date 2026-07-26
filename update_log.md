@@ -5202,3 +5202,31 @@
 
 - target-cycle 图中 `FOCUS 4 ART 57%` 与持久 `ATK 2/3 ART` marker 文字纵向间距较近（约一行），极端构图下可能贴边；如后续截图出现叠字再做标注避让，不作为本轮阻塞。
 - 已取得真实《Desert Stormfront》五张 1280x800 官方截图（itch.io）作为风格对照：竖直血条塔 + 国旗标识、白色选择圈、红色虚线目标环 + 橙色 V 箭头、青绿水面 + 亮青海岸泡沫、灰白岩石群与中东民居、金色机械风 HUD 与等距斜放小地图。下一轮从中选取一个范围有限的视觉增量（候选：海岸浅水泡沫层次、岩石群 / 民居地物、单位国旗 / 阵营旗标）继续推进海战 / 地图细节；总目标仍未完成。
+
+### v5.5 / 单位阵营旗杆旗标
+
+日期：2026-07-26
+
+核心变更：
+
+- 参考真实《Desert Stormfront》"单位旁竖直旗杆 + 国旗"的识别语言，把 `GameEntity.teamFlag` 从 15x10 纯色矩形升级为旗杆 + 向右飘燕尾旗布造型：旗布为 13x9 燕尾路径并填充 `faction.color`，白描边细化为 0.9；新增浅灰白竖直旗杆（1.6x15 圆角矩形，带黑色细描边）与杆顶小圆头子节点。
+- 旗杆 / 杆顶为固定色子节点，`setFaction(...)` 换阵营仍只重设旗布 `fillColor`；挂点、zPosition 22 与迷雾父节点隐藏链路不变，所有单位与建筑通用。
+- 不改变血条、label、选择圈、veterancy、capture 布局，不改任何玩法数值、AI、经济、迷雾、胜负；无新增探针，继续复用二十三次 simulator launch。
+- `md/flow/flow.md` 新增 teamFlag 视觉描述，`md/test/test.md` land-combat 验收口径加入旗标检查；v5.5 提示词入库。人工 `project.pbxproj` Team ID 与未跟踪 Unity 报告保持未暂存。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check` 并通过。
+- 实现提交：`7d58c4381638e1bca3405a83ebe339104b39f781`，commit subject 为 `v5.5: 单位阵营旗杆旗标`。
+- GitHub Actions run：`30205617436`。attempt `1` conclusion success，但 Agent C 亮度扫描发现 `simulator-hud-naval.png` 为全白帧（launch log 显示该次进程存活、截图成功，属 simulator 渲染未就绪的瞬时问题，非代码回归），未计为验收通过；随即 `gh run rerun` 触发 attempt `2`，conclusion `success`，job 总耗时约 9 分 30 秒。
+- 最终 artifact：`desert-frontline-ci-v5.5-main-7d58c4381638-run30205617436-attempt2`，artifact ID `8633670728`，缓存于 `/private/tmp/desert-frontline-c-review-30205617436-a2/`，未加密约 29 MB。
+- manifest 记录 `branch=main`、`commitSha=7d58c4381638e1bca3405a83ebe339104b39f781`、`runId=30205617436`、`runAttempt=2`、`version=v5.5`，build、static checks、project lint、simulator launch 均 success。JUnit 4 项检查、0 failures、1 skipped（无 XCTest target）。
+- generic iOS device 与 simulator build 日志均包含 `** BUILD SUCCEEDED **`；attempt 2 二十三次 launch 均 "still running"，二十三张 PNG 均为 1206x2622，逐张亮度扫描无白屏 / 黑屏，App / launch 日志 crash / fatal error / SIGABRT / watchdog / 未捕获异常命中为 0。验收账号 `Altman-sam114`。
+- 目视 `simulator-land-combat.png`（SHA-256 `d42f4935f3d5f2f737a3efb67d3fe552b4cf73352f76fdee60e74dc546aeaa9c`）：Blue HMV / TNK / MECH 与 Red TNK / HMV 均可辨旗杆 + 燕尾旗布，蓝 / 红旗布颜色正确，旗标不遮挡血条 / label / 选择圈；`simulator-hud-naval.png`（SHA-256 `290fa2ae568fa3122b40e415426bcaa99aa0517285f15247f3a0010ab7c973e3`）SEA 页 SHIP / SUB / CV 按钮、战场混战、TACTICAL MAP 与四选面板完整；其余截图无布局回归。
+- 代码审查确认：仅 `teamFlag` 视觉构造与描边变化，`setFaction` 换色链路完好，无玩法行为改动。
+
+遗留事项：
+
+- attempt 1 出现一次 simulator 全白截图，说明云端截图存在瞬时渲染竞态；后续验收保留逐张亮度扫描步骤，必要时在 workflow 截图前增加短暂等待或重试，但本轮不改 workflow。
+- 真实参考图中旗布带国旗图案与随风飘动感，当前为纯色燕尾旗；可作为后续可选增量（如按阵营加简单图案），不阻塞。
+- 当前没有独立 XCTest target。下一轮候选增量：海岸浅水泡沫层次、岩石群 / 民居地物细化、或参考图中"红色虚线目标环 + 橙色 V 箭头"的攻击目标标识语言；总目标仍未完成。
