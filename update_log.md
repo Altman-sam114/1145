@@ -5117,3 +5117,31 @@
 
 - 云端冻结截图能证明一次真实 TGT 切换、候选位置反馈、共享攻击 helper、混编 UI 与九动作布局，但不能覆盖连续快速循环、目标动态进出视野 / 迷雾、潜艇侦测边缘、不同混编武器组合或真机触控 / 性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮继续选择一个范围有限的 UI 或战斗细节增量，并维持最新 `origin/main` artifact 验收闭环；总目标仍未完成。
+
+### v5.2 / 友军触屏命中与重叠选择循环
+
+日期：2026-07-26
+
+核心变更：
+
+- 玩家单击友军新增 26pt 屏幕尺度最小命中半径，缩远镜头下的小型单位不再只依赖模型 footprint；精确敌军点击仍优先进入直接攻击，双击己方机动单位仍选择当前视野内同型单位。
+- 同一拥挤友军邻域使用最近点击点、候选 ID 顺序和当前单选 ID 维护瞬时 cursor；连续单击按 0.5 世界距离桶与 entity ID 的严格总序循环，并显示 `SEL i/n CODE` 世界反馈。
+- 框选、ARMY、控制组召回和 SKRM 会清理 cursor；其余选择变化由 selection-scoped 条件自然失效。该状态不持久化、不供 AI 使用，不改变移动、攻击、迷雾、潜艇侦测、经济或胜负逻辑。
+- 新增 capture-only `selection-cycle`：紧邻编排 Blue Humvee / Tank / Artillery，并真实调用友军选择 helper 两次；GitHub Actions 从二十一次扩展为二十二次独立启动并新增 `simulator-selection-cycle.png`。
+- README、核心 flow、flowchart、测试规范和 v5.2 提示词已同步。人工 `project.pbxproj` Team ID 与未跟踪 Unity 报告保持未暂存。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 等轻量检查并通过。
+- 实现提交：`7c5e0d030685fcc87007c1823ab6eb628e5e9e59`，commit subject 为 `v5.2: 加入友军重叠选择循环`。对应 run `30194715617` 的静态检查、两类 build、二十二次启动和截图均 success，但 Agent C 代码审查发现原近似距离 comparator 不满足严格弱序，因此未计为最终验收通过。
+- 稳定排序修复提交：`bfee039b197204813ae03dd8301a70edcf2d54a0`，commit subject 为 `fix(selection): stabilize candidate ordering`；两处候选排序改为 0.5 世界距离桶与 entity ID 的严格总序，不改变触屏半径、点击优先级或选择循环状态流。
+- 修复验证 GitHub Actions run：`30195541683`，attempt `1`，conclusion `success`，job 总耗时约 12 分 7 秒。
+- 修复 artifact：`desert-frontline-ci-unversioned-main-bfee039b1972-run30195541683-attempt1`，artifact ID `8630096009`，缓存于 `/private/tmp/desert-frontline-c-review-30195541683/`，未加密且约 27.8 MB。`unversioned` 仅源于修复提交采用 Conventional Commit subject；SHA、run 与内容均对应 v5.2，正式记录提交会重新生成 `version=v5.2` 的最新 artifact。
+- manifest 记录 `branch=main`、`commitSha=bfee039b197204813ae03dd8301a70edcf2d54a0`、`runId=30195541683`、`runAttempt=1`，build、static checks、project lint、simulator launch 均为 success。JUnit 记录 4 项 CI 检查、0 failures、1 skipped；skipped 仅表示当前没有 XCTest target。
+- generic iOS device 与 simulator build 日志均包含 `** BUILD SUCCEEDED **`；二十二次 simulator launch 均在截图后存活，二十二张 PNG 均为 1206x2622，App / launch 日志未命中 crash、fatal error、SIGABRT、watchdog 或未捕获异常。
+- 最终 `simulator-selection-cycle.png` 清楚显示 `SEL 2/3 TNK`、唯一 Tank 青色选择圈、`Tank TNK` 单选面板、相邻 HMV / TNK / ART 三个模型、完整九动作 TACT 单排和小地图，无按钮文字溢出或 HUD 互相遮挡；原图 SHA-256 为 `242a5447d916ed312e942a8262e6f3ec918d3382eee72db84ee4c9dc90338ef5`。
+
+遗留事项：
+
+- 云端冻结截图能证明一次确定性重叠选择循环、屏幕尺度命中逻辑、单选反馈和 HUD 兼容，但不能覆盖连续快速点击、动态编队进出候选邻域、不同缩放级别、友敌贴身混战或真机触控手感，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮优先考虑敌军触屏命中辅助，继续改善战斗点击手感，并维持最新 `origin/main` artifact 验收闭环；总目标仍未完成。
