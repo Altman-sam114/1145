@@ -5174,3 +5174,31 @@
 - Agent C 目视发现世界空间 FOCUS 标注层级（effectsLayer 190 + marker 20 ≈ 210）低于空军实体（entityLayer 100 + air offset 170 + 位置项 ≈ 334），`FOCUS 2 JET 64%` 文字中段被 Fighter 机身部分遮挡；HUD 摘要行完整可读，不影响本轮验收，但列为下一轮世界标注层级修复的首选增量。
 - 云端冻结截图能证明一次真实敌军辅助命中、共享攻击 helper、双单位锁定与 HUD 兼容，但不能覆盖敌友贴身混战的辅助优先级实感、连续快速点击、不同缩放级别或真机触控手感，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮优先修复世界标注 z 序遮挡并继续朝海战 / 空战 / 地图细节推进；总目标仍未完成。
+
+### v5.4 / 世界标注层级与空中目标可读性
+
+日期：2026-07-26
+
+核心变更：
+
+- `focusFireMarkerNode` zPosition 从 20 提升到 240（初始化与 `refreshFocusFireMarker` 两处一致），全局有效层级约 430，高于空军实体最高约 398、低于 command marker 454+；FOCUS 集火环、十字线、标注文字与八段目标血条不再被任何陆 / 海 / 空实体遮挡。
+- 空中目标（`kind.domain == .air`）的 FOCUS 标注文字在既有 `footprint * 0.72 + 12` 基础上额外抬高 14pt，避开机身轮廓；陆 / 海目标保持原有偏移。
+- 不改变 FOCUS 候选统计、标注文案、血条配色、攻击 / 选择 / 迷雾行为或任何层级常量；无新增探针，继续复用二十三次 simulator launch。
+- `md/flow/flow.md` 世界标注层级描述与 `md/test/test.md` enemy-touch-assist 验收口径已同步；v5.4 提示词入库。人工 `project.pbxproj` Team ID 与未跟踪 Unity 报告保持未暂存。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check` 并通过。
+- 实现提交：`bbc625fa436cac50f83884ded161e0c9eb09318e`，commit subject 为 `v5.4: 修复世界标注层级遮挡`。
+- GitHub Actions run：`30204805345`，attempt `1`，conclusion `success`，job 总耗时约 11 分 36 秒。
+- artifact：`desert-frontline-ci-v5.4-main-bbc625fa436c-run30204805345-attempt1`，artifact ID `8632840499`，缓存于 `/private/tmp/desert-frontline-c-review-30204805345/`，未加密且约 30 MB。
+- manifest 记录 `branch=main`、`commitSha=bbc625fa436cac50f83884ded161e0c9eb09318e`、`runId=30204805345`、`runAttempt=1`、`version=v5.4`，build、static checks、project lint、simulator launch 均为 success。JUnit 4 项检查、0 failures、1 skipped（无 XCTest target）。
+- generic iOS device 与 simulator build 日志均包含 `** BUILD SUCCEEDED **`；二十三次 simulator launch 均 "still running"，二十三张 PNG 均为 1206x2622，App / launch 日志 crash / fatal error / SIGABRT / watchdog / 未捕获异常命中为 0。验收账号 `Altman-sam114`。
+- 目视 `simulator-enemy-touch-assist.png`：`FOCUS 2 JET 64%` 完整可读、浮于 Red Fighter 机身之上，`ATK TAP JET`、八段目标血条、两条攻击意图线、两台 AA Truck、完整九动作 TACT 与小地图均无回归；原图 SHA-256 为 `266c48fc3418bc84ad89c9034027b6268dd66be7a5db072105cbe90f75f90050`。
+- 目视 `simulator-target-cycle.png`：`FOCUS 4 ART 57%`、`ATK 2/3 ART`、四条攻击意图线、目标生命条与地面目标标注无回归、无新遮挡；原图 SHA-256 为 `0e37c2a425673784bf424b4dd961b1d38c04445500e101d0e486a4e31f051306`。
+- 代码审查确认：两处 zPosition 一致为 240，空中文字偏移只影响 `domain == .air`，无其他行为改动。
+
+遗留事项：
+
+- target-cycle 图中 `FOCUS 4 ART 57%` 与持久 `ATK 2/3 ART` marker 文字纵向间距较近（约一行），极端构图下可能贴边；如后续截图出现叠字再做标注避让，不作为本轮阻塞。
+- 已取得真实《Desert Stormfront》五张 1280x800 官方截图（itch.io）作为风格对照：竖直血条塔 + 国旗标识、白色选择圈、红色虚线目标环 + 橙色 V 箭头、青绿水面 + 亮青海岸泡沫、灰白岩石群与中东民居、金色机械风 HUD 与等距斜放小地图。下一轮从中选取一个范围有限的视觉增量（候选：海岸浅水泡沫层次、岩石群 / 民居地物、单位国旗 / 阵营旗标）继续推进海战 / 地图细节；总目标仍未完成。
