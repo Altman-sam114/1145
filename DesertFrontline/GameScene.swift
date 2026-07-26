@@ -1060,7 +1060,7 @@ final class GameScene: SKScene {
         worldNode.addChild(entityLayer)
         worldNode.addChild(effectsLayer)
         effectsLayer.addChild(focusFireMarkerNode)
-        focusFireMarkerNode.zPosition = 20
+        focusFireMarkerNode.zPosition = 240
         focusFireMarkerNode.isHidden = true
         worldNode.addChild(fogLayer)
 
@@ -10942,7 +10942,7 @@ final class GameScene: SKScene {
         let color = UIColor(red: 1.0, green: 0.28, blue: 0.22, alpha: 1.0)
         let footprint = max(28, target.kind.footprint)
         focusFireMarkerNode.position = target.node.position
-        focusFireMarkerNode.zPosition = 20
+        focusFireMarkerNode.zPosition = 240
 
         let outer = SKShapeNode(ellipseOf: CGSize(width: footprint * 1.9, height: footprint * 1.05))
         outer.strokeColor = color
@@ -10978,7 +10978,8 @@ final class GameScene: SKScene {
         label.fontColor = color
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
-        label.position = CGPoint(x: 0, y: footprint * 0.72 + 12)
+        let airLabelLift: CGFloat = target.kind.domain == .air ? 14 : 0
+        label.position = CGPoint(x: 0, y: footprint * 0.72 + 12 + airLabelLift)
         focusFireMarkerNode.addChild(label)
 
         let segmentCount = 8
