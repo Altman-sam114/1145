@@ -7992,7 +7992,7 @@ final class GameScene: SKScene {
             target.holdPosition = target.node.position
         }
         enemyTank.hp = enemyTank.kind.maxHP * 0.68
-        enemyArtillery.hp = enemyArtillery.kind.maxHP * 0.57
+        enemyArtillery.hp = enemyArtillery.kind.maxHP * 0.575
         enemyHumvee.hp = enemyHumvee.kind.maxHP * 0.82
         for target in targetUnits {
             updateHealthBar(target)
