@@ -74,7 +74,7 @@ Mechanic 实体另持有预创建的 `mechanicRepairEffectNode`，由阵营化�
 
 ### `HudAction`
 
-底部命令条使用 `HudPage` 把全部旧 `HudAction` 分成五个单排页面：`TACT` 为选军、`G1` / `G2`、`HOLD`、`AMOV`、`RLY`、HQ；`BUILD` 为陆军生产和 `BASE`；`AIR` 为 HELI / JET；`SEA` 为 SHIP / SUB / CV；`SUP` 为四种支援、AI 难度和重开 skirmish。切页只重建 HUD，不清理选中单位、队列或 pending 命令；隐藏页面含 armed 动作时页签继续显示 stroke/glow，高亮语义仍来自原 pending 状态。
+底部命令条使用 `HudPage` 把 26 个 `HudAction` 分成五个单排页面：`TACT` 为选军、`G1` / `G2`、`HOLD`、`STOP`、`TGT`、`AMOV`、`RLY`、HQ；`BUILD` 为陆军生产和 `BASE`；`AIR` 为 HELI / JET；`SEA` 为 SHIP / SUB / CV；`SUP` 为四种支援、AI 难度和重开 skirmish。切页只重建 HUD，不清理选中单位、队列或 pending 命令；隐藏页面含 armed 动作时页签继续显示 stroke/glow，高亮语义仍来自原 pending 状态。
 
 ### `AIDifficulty`
 
@@ -95,6 +95,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - 建筑放置、支援技能、集结点和 attack-move 都是 pending 模式；进入新模式时必须清理冲突模式。
 - 底部 HUD 直接暴露 `HOLD` 和 `AMOV` 基础军队命令；`HOLD` 按钮 subtitle 会根据当前玩家移动单位选择只读显示 `guard`、选中 Carrier 时的 `CV GW` 或选中已绑定 Carrier guard HEL/JET 时的 `CV rel`，不改变点击处理；对选中 Carrier 下达 `HOLD` 时，Carrier 本身按普通 HOLD 处理，并把同阵营、存活、operational、非结构、位于 `highValueNavalEscortRadius` 内最近的最多 2 架 Helicopter / Fighter 一次性设为 HOLD guard wing，同时写入该 Carrier id 作为 guard anchor；本次 HOLD 后若某个玩家 Carrier 实际拥有绑定翼队，会在该 Carrier 甲板位置显示短暂 `GW Hn/Jn` 分配 cue，顶部成功消息会按最终绑定状态只读显示聚合 `Guard wing n Hn/Jn`，缺员时追加 `Need n`，即使没有绑定到 wing 也会对 Carrier HOLD 显示 `Guard wing 0 Need n`；该反馈只读复用现有 SpriteKit deck pulse 和消息链路，不写入命令、迷雾或战斗状态；绑定 Carrier 仍 HOLD 时，这些 HEL/JET 会把自身 `holdPosition` 维护到 Carrier 附近稳定站位，并在没有当前目标时优先选择 Carrier 近域内已知、可攻击且仍满足自身 HOLD 站位警戒半径的威胁，然后才回落到普通 HOLD 目标搜索；普通移动、AMOV、直接攻击或普通 HOLD 会清理 HEL/JET 旧 guard anchor，并在玩家成功命令消息中追加 `CV guard released n Hn/Jn.` 短反馈；ordinary HOLD 会在可能的 Carrier 重新绑定后再统计最终脱离 wing 及组成，避免把同次重新绑定的 wing 误报为 released；再次 Carrier HOLD 可改写为新 anchor；`BASE`、`RLY`、`AMOV` 和支援技能按钮的高亮由 `pendingConstructionKind`、`isSettingRallyPoint`、`isSettingAttackMove`、`pendingSupportPower` 直接推导，只提供等待地图目标的视觉反馈，不改变 pending 优先级或命令语义；`RLY` pending 时选择信息面板显示可设置来源数量、land/air/naval 类型、rally set/unset 摘要和 `Tap map to set rally`；终局 `.destroyHQ` 阶段按下 `AMOV` 时，只有玩家已知 Red HQ 才会短暂标出 HQ 并提示可向 HQ 或地图下达 attack-move，armed 选择面板也只在同一已知条件下显示 Red HQ HP 和最近选中作战单位的 approximate 距离。
 - HUD 单击 `G1` / `G2` 会召回对应控制组中仍存活的玩家机动单位，并过滤死亡、移除、结构或非玩家 ID；HUD 双击 `G1` / `G2` 会把当前玩家机动单位选择保存到对应组，空选择不会覆盖旧组。
+- `TGT` 通过 `selectedTargetCycleCombatUnits()` 收集已选 operational 作战单位，再由 `targetCycleCandidates(for:)` 只查询当前 `visibleWorldRect()` 内、存活、玩家已知且至少能被一个选中单位 `canAttack(...)` 的敌军；候选按到编队中心的距离及 entity id 稳定排序。selection-scoped cursor 只记录最近 TGT 目标与选择集合，选择改变或直接攻击、MOVE、HOLD、STOP、AMOV、SKRM 后失效。TGT 与地图直接攻击共享 `issueDirectAttackOrder(...)`，只清理合法攻击者的 HOLD / Carrier guard anchor / AMOV / destination / path，不能攻击新目标的混编单位保留旧命令；subtitle、marker、消息与 FOCUS 均不得绕过迷雾或未侦测潜艇边界。
 - 使用控制组会清理 pending 建筑、支援技能、集结点、attack-move 和 construction preview；召回空组不会清空当前选择；`SKRM` 重开会清空两个控制组。
 - 世界点击优先处理 pending 支援、pending 建筑、pending 集结点、pending attack-move，然后才处理选中、攻击或移动。
 - pending 建筑、支援、集结点、attack-move 和普通攻击 / 空地命令的无效世界目标会通过 `showDeniedMarker(at:reason:)` 在点击位置显示短暂红橙拒绝标记；该反馈只补充 `showMessage(...)`，不改变合法性、pending 清理、迷雾边界或执行优先级。
@@ -167,7 +168,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 ### HUD / 小地图
 
 - HUD 每帧由 `updateHUD()` 汇总金钱、收入、队列、任务、兵力、AI 状态、选择信息和按钮状态。
-- `layoutHUD()` 在横屏使用固定单排命令区，五个 `HudPage` 页签常驻，当前页最多 8 个动作；紧凑尺寸下页签宽 44、动作按可用宽度在 40...76 之间稳定布局，命令区高度由旧双排约 114 降为 54，当前 25 个动作仍且只出现于一个页面。`SKRM` 重开恢复 `TACT`；CI capture 可用 `DESERT_CI_HUD_PAGE` 只覆盖初始显示页，不改变普通启动默认值。
+- `layoutHUD()` 在横屏使用固定单排命令区，五个 `HudPage` 页签常驻，当前页最多 9 个动作；紧凑尺寸下页签宽 44、动作按可用宽度在 40...76 之间稳定布局，命令区高度由旧双排约 114 降为 54，当前 26 个动作仍且只出现于一个页面。`SKRM` 重开恢复 `TACT`；CI capture 可用 `DESERT_CI_HUD_PAGE` 只覆盖初始显示页，不改变普通启动默认值。
 - AI 状态行默认用 `R# F# AI ...` 显示 Red 兵力、旗点和难度；Red routine 主攻波成功下发且至少一个 wave 单位对玩家已知后，难度位置会临时替换为最近可感知 wave 子集的 `Seen n Lx/Ax/Nx` 短构成摘要，用于提示玩家 Red 已暴露推进部队的混编规模和 CV / HEL / JET 参与情况，约 12 秒后恢复难度显示；`Seen n` 只代表玩家已知子集数量，不代表完整主攻波规模。
 - 任务面板在 `Secure Coast` 阶段显示 operational coastal asset 总进度，并用 `SY` / `SON` / `CB` 摘要显示玩家已完工 Shipyard、Sonar Buoy 和 Coastal Battery 数量；该摘要只来自玩家己方已完工存活建筑，不改变任务条件、奖励或 AI。
 - `G1` / `G2` subtitle 显示 `empty` 或当前 live 玩家机动单位数量；控制组只保存实体 ID，不保存单位快照、命令、位置或状态。
@@ -201,7 +202,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - Agent X 遇到连续阻塞、连续无有效 diff、同因 CI 连续失败、权限/账号/密钥/付费服务需求、冲突归属不明或用户要求停止时，必须暂停或结束循环并说明原因。
 - Agent A 只写版本化实现提示词，提示词必须包含 `main` 同步、commit、push、GitHub Actions、artifact 和 Agent C 下载核对要求。
 - Agent B 每轮从最新 `origin/main` 开始，在 `main` 上小步实现，先跑本地轻量检查，再 commit 并 `git push origin main`。
-- GitHub Actions 在 `main` push 或手动触发时运行 `ci-results.yml`，生成 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md` 和 `.xcresult`；前八次 simulator launch 使用 air focus，第九次 land focus 生成 `simulator-land-combat.png`，第十次 coast focus 生成 `simulator-map-terrain.png`，第十一次至第十八次依次生成 combat-ui、incoming-ui、naval-salvo、coastal-battery、carrier-strike、mobile-aa、fighter-strike 与 helicopter-salvo 专用截图，第十九次使用 coast focus 与 `damage-state` 生成 `simulator-damage-state.png`，第二十次使用 coast focus 与 `stop-command` 生成 `simulator-stop-command.png`。stop-command 只在 CI 中先冻结 Tank attack、Fighter move、Battleship AMOV、Carrier HOLD 和依附 guard wing，再调用真实 STOP helper，用于核对跨域选择保持、所有命令意图线消失、STOP idle 状态与持久 `STOP 4` marker；damage-state 和其余专用 capture 继续保持既有编排。普通 App 不进入这些写入分支。二十次启动全部使用 `DESERT_CI_CAPTURE_MODE=1` 暂停经济、AI、战斗和胜负推进并独立解析 PID / 检查存活；air、land、coast 既有冻结证据保持，普通玩家启动的初始单位、镜头和实时循环不变。
+- GitHub Actions 在 `main` push 或手动触发时运行 `ci-results.yml`，生成 `ci-artifact-manifest.json`、`junit.xml`、`xcodebuild.log`、`ci-failure-summary.md` 和 `.xcresult`；前二十次 simulator launch 保持既有五页 HUD、三种命令、地图、战斗 UI、武器反馈、受损状态与 STOP 探针，第二十一次使用 land focus 与 `target-cycle` 生成 `simulator-target-cycle.png`。target-cycle 只在 CI 中编排四个 Blue 作战单位和按距离稳定排序的三个已知 Red 目标，先共享攻击 Tank，再调用真实 TGT helper 切换到 Artillery，用于核对 `TGT ART 2/3`、`ATK 2/3 ART`、`FOCUS 4 ART 57%`、攻击意图线和九动作 TACT 单排；普通 App 不进入 capture-only 写入分支。二十一次启动全部使用 `DESERT_CI_CAPTURE_MODE=1` 暂停经济、AI、战斗和胜负推进并独立解析 PID / 检查存活。
 - Agent C 必须用 `gh auth login` 后下载最新 run 的未加密结果包，默认放在 `/private/tmp/desert-frontline-c-review-<run_id>/`。
 - Agent C 只验收 `origin/main` 最新 commit 对应的 run id、run attempt 和 artifact；不能验收旧 run 或只看文字说明。
 - 验收失败时不默认回滚，退回 Agent B 在 `main` 上追加修复 commit，再 push 触发新 run。

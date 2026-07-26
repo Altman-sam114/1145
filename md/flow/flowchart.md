@@ -15,7 +15,7 @@ flowchart TD
   Init --> Loop["GameScene.update 每帧循环\n统一推进游戏状态"]
   Loop --> Build["施工 / 生产\n建筑进度、RAD/SON/GT/SAM/CB、AA Truck、旗点覆盖、BuildOrder、出兵、航母甲板起飞反馈、集结点与面板状态"]
   Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖、旗点奖金与占领进度"]
-  Loop --> Commands["移动 / 命令\nMOVE青绿落点、AMOV琥珀双环、已知目标ATK红框、STOP一键清理选中单位命令/保持选择/释放Carrier guard anchor、沙地/油地陆军方向胎迹与尘团、海军方向航迹、空军方向投影/84间距/同阵营避让/攻击环站位、HOLD、Carrier guard wing最多2架anchor station/分配组成cue/脱离反馈、已知HQ指引和面板摘要、路径和编队"]
+  Loop --> Commands["移动 / 命令\nMOVE青绿落点、AMOV琥珀双环、已知目标ATK红框、STOP一键清理、TGT循环视野内已知合法目标/混编只改合法攻击者、沙地/油地陆军方向胎迹与尘团、海军方向航迹、空军方向投影/84间距/同阵营避让/攻击环站位、HOLD、Carrier guard wing最多2架anchor station/分配组成cue/脱离反馈、已知HQ指引和面板摘要、路径和编队"]
   Loop --> Combat["战斗 / 维修\n合法主目标/Engaged/Ready/Wounded/Critical只读态势、已知来袭攻击者单次快照/IN方向标、共享FOCUS目标百分比/分段血条、未完工攻击结构禁火、SAM/AA 防空与选中空军已知覆盖威胁圈/顶标/摘要、岸防反舰、目标搜索、Carrier guard wing近域威胁优先、Mechanic自动维修双层束/目标十字/双方已知过滤、有效伤害、Artillery已知炮位炮口焰/烟尘/炮线、空战导弹烟迹/弹体/命中环、已知 Carrier 三机错列俯冲/双反舰弹/舰体命中且单次伤害、已知战列舰/岸防双发齐射、岸防双炮后坐/炮床冲击/岸边尘浪与可见水面主副水柱/舰体命中、已知潜艇 direct-fire ASW HIT、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
   Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、已知潜艇压力补 ASW、合法认知 SCAN 巡扫、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、海岸目标权重、跳过不可生产兵种、支援、混编主攻波次、低血单位撤退回修、受损老兵保护、空闲Carrier警戒翼队、高价值海军护航门槛、attack-move 波次"]
   Loop --> Fog["战争迷雾\n单位/已完工建筑/RAD/脆弱专职 SON/GT/SAM/CB 视野、侦察、潜艇检测、支援命中暴露"]
@@ -26,7 +26,7 @@ flowchart TD
   Combat --> Render
   AI --> Render
   Fog --> Render
-  Mission --> HUD["HUD / 小地图\nTACT/BUILD/AIR/SEA/SUP五页单排命令条、单选目标HP/距离/装填/INCOMING、多选Combat/Engaged/Ready/Wounded/Critical/PRIMARY/IN与面板目标血条、选中受威胁实体方向箭头/小地图告警圈、金钱、队列、生产来源提示、航母甲板/集结/普通翼队组成/GW组成与紧凑绑定站位/接触数类型目标交战状态/多选CV GW组成摘要/HEL-JET CV GUARD组成与距离状态/HOLD Carrier无bound wing也显示anchor范围圈、高价值海军护航状态/缺口类型/半径圈/多选摘要、Mechanic维修反馈/来源提示/范围圈、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、跨页命令高亮、支援按钮缺资产/资金提示、目标面板资产提示、领域化小地图符号/选择外圈/相机框"]
+  Mission --> HUD["HUD / 小地图\nTACT九动作/全局26动作、TACT/BUILD/AIR/SEA/SUP五页单排命令条、TGT select/none/CODE i-n动态状态、单选目标HP/距离/装填/INCOMING、多选Combat/Engaged/Ready/Wounded/Critical/PRIMARY/IN与面板目标血条、选中受威胁实体方向箭头/小地图告警圈、金钱、队列、生产来源提示、航母甲板/集结/普通翼队组成/GW组成与紧凑绑定站位/接触数类型目标交战状态/多选CV GW组成摘要/HEL-JET CV GUARD组成与距离状态/HOLD Carrier无bound wing也显示anchor范围圈、高价值海军护航状态/缺口类型/半径圈/多选摘要、Mechanic维修反馈/来源提示/范围圈、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、跨页命令高亮、支援按钮缺资产/资金提示、目标面板资产提示、领域化小地图符号/选择外圈/相机框"]
   Render --> HUD
 ```
 
@@ -39,7 +39,7 @@ flowchart TD
   Touch["玩家触摸输入\nBegan / Moved / Ended"] --> PageCheck{"是否点到 TACT/BUILD/AIR/SEA/SUP 页签"}
   PageCheck -- "是" --> PageSwitch["handleHudPage\n只切换单排动作页并重建HUD\n保留选择/队列/pending状态"]
   PageCheck -- "否" --> HUDCheck{"是否点到当前页 HUD 按钮"}
-  HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\nHOLD/Carrier guard wing anchor station/分配cue/脱离反馈/近域威胁优先状态、STOP统一撤销、AMOV、生产、支援、AI、重开\n终局AMOV提示已知HQ并刷新面板摘要\npending按钮及所属隐藏页签高亮由状态刷新"]
+  HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\nHOLD、STOP统一撤销、TGT按视野/已知/canAttack稳定循环并复用直接攻击、AMOV、生产、支援、AI、重开\nCarrier guard wing anchor station/分配cue/脱离反馈/近域威胁优先状态\n终局AMOV提示已知HQ并刷新面板摘要\npending按钮及所属隐藏页签高亮由状态刷新"]
   HUDCheck -- "否" --> MiniMap{"是否点到小地图"}
   MiniMap -- "是" --> Camera["移动相机到小地图位置"]
   MiniMap -- "否" --> MultiTouch{"是否双指触摸"}
@@ -128,3 +128,4 @@ flowchart TD
 - v4.98：Helicopter 双侧 pod 四枚短火箭、离散烟点与专用紧凑命中；CI 新增第十八次 helicopter-salvo 截图探针。
 - v4.99：机动地面 / 空中 / 水面单位预创建两档持续受损状态，单选 HP 行追加 `DMG/CRIT`；CI 新增第十九次 damage-state 截图探针。
 - v5.0：TACT 新增动态 `STOP`，统一撤销选中玩家机动单位的 move / path / attack / AMOV / HOLD / Carrier guard anchor，保留选择并显示 `STOP n`；CI 新增第二十次 stop-command 截图探针。
+- v5.1：TACT 新增 `TGT`，按当前视野、玩家已知与 `canAttack` 边界稳定循环目标，并让地图点击与循环集火共享攻击执行；CI 新增第二十一次 target-cycle 截图探针。

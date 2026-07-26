@@ -491,6 +491,7 @@ private enum HudAction: String, CaseIterable {
     case controlGroup2
     case holdPosition
     case stop
+    case cycleTarget
     case attackMove
     case buildHumvee
     case buildAATruck
@@ -519,6 +520,7 @@ private enum HudAction: String, CaseIterable {
         case .controlGroup2: "G2"
         case .holdPosition: "HOLD"
         case .stop: "STOP"
+        case .cycleTarget: "TGT"
         case .attackMove: "AMOV"
         case .buildHumvee: "HMV"
         case .buildAATruck: "AA"
@@ -599,7 +601,7 @@ private enum HudPage: String, CaseIterable {
     var actions: [HudAction] {
         switch self {
         case .tactical:
-            [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .stop, .attackMove, .setRally, .focusHQ]
+            [.selectArmy, .controlGroup1, .controlGroup2, .holdPosition, .stop, .cycleTarget, .attackMove, .setRally, .focusHQ]
         case .build:
             [.buildHumvee, .buildAATruck, .buildTank, .buildArtillery, .buildMechanic, .buildBase]
         case .air:
@@ -945,6 +947,8 @@ final class GameScene: SKScene {
     private var controlGroups: [Int: Set<Int>] = [1: [], 2: []]
     private var pendingControlGroupRecallTokens: [Int: Int] = [:]
     private var nextControlGroupRecallToken = 0
+    private var lastTargetCycleTargetID: Int?
+    private var lastTargetCycleSelectionIDs = Set<Int>()
     private var nextEntityID = 1
 
     private var playerMoney = 5200
@@ -3849,9 +3853,16 @@ final class GameScene: SKScene {
     private func refreshHudButtonStyles() {
         for (action, shape) in hudButtonShapes {
             shape.fillColor = buttonColor(for: action)
-            shape.alpha = action == .stop && !isStopOrderAvailable ? 0.66 : 1.0
+            let unavailableContextAction =
+                (action == .stop && !isStopOrderAvailable) ||
+                (action == .cycleTarget && !isTargetCycleAvailable)
+            shape.alpha = unavailableContextAction ? 0.66 : 1.0
 
-            if action == .stop && isStopOrderAvailable {
+            if action == .cycleTarget && isTargetCycleAvailable {
+                shape.strokeColor = UIColor(red: 1.0, green: 0.48, blue: 0.32, alpha: 1.0)
+                shape.lineWidth = 4.5
+                shape.glowWidth = 1.5
+            } else if action == .stop && isStopOrderAvailable {
                 shape.strokeColor = UIColor(red: 1.0, green: 0.64, blue: 0.44, alpha: 1.0)
                 shape.lineWidth = 4.5
                 shape.glowWidth = 1.5
@@ -3907,6 +3918,8 @@ final class GameScene: SKScene {
             UIColor(red: 0.30, green: 0.48, blue: 0.22, alpha: 0.96)
         case .stop:
             UIColor(red: 0.62, green: 0.20, blue: 0.14, alpha: 0.96)
+        case .cycleTarget:
+            UIColor(red: 0.66, green: 0.24, blue: 0.16, alpha: 0.96)
         case .attackMove:
             UIColor(red: 0.62, green: 0.34, blue: 0.18, alpha: 0.96)
         case .buildHelicopter, .buildFighter:
@@ -3954,6 +3967,8 @@ final class GameScene: SKScene {
             return holdButtonSubtitle()
         case .stop:
             return stopButtonSubtitle()
+        case .cycleTarget:
+            return targetCycleButtonSubtitle()
         case .attackMove:
             return attackMoveButtonSubtitle()
         case .buildBase:
@@ -3993,6 +4008,31 @@ final class GameScene: SKScene {
     private func stopButtonSubtitle() -> String {
         let orderCount = selectedMobilePlayerUnits().filter(hasCancellableOrder).count
         return orderCount > 0 ? "\(orderCount) cmd" : "idle"
+    }
+
+    private var isTargetCycleAvailable: Bool {
+        let combatUnits = selectedTargetCycleCombatUnits()
+        return !combatUnits.isEmpty && !targetCycleCandidates(for: combatUnits).isEmpty
+    }
+
+    private func targetCycleButtonSubtitle() -> String {
+        let combatUnits = selectedTargetCycleCombatUnits()
+        guard !combatUnits.isEmpty else { return "select" }
+        let candidates = targetCycleCandidates(for: combatUnits)
+        guard !candidates.isEmpty else { return "none" }
+
+        let currentID: Int?
+        if lastTargetCycleSelectionIDs == selectedIDs,
+           let lastTargetCycleTargetID,
+           candidates.contains(where: { $0.id == lastTargetCycleTargetID }) {
+            currentID = lastTargetCycleTargetID
+        } else {
+            currentID = primaryCombatTarget(for: combatUnits)?.target.id
+        }
+        if let currentID, let index = candidates.firstIndex(where: { $0.id == currentID }) {
+            return "\(candidates[index].kind.shortCode) \(index + 1)/\(candidates.count)"
+        }
+        return "\(candidates[0].kind.shortCode) 1/\(candidates.count)"
     }
 
     private func attackMoveButtonSubtitle() -> String {
@@ -5638,8 +5678,12 @@ final class GameScene: SKScene {
         case .stop:
             clearPendingCommandModes()
             issueStopOrder(units: selectedMobilePlayerUnits())
+        case .cycleTarget:
+            clearPendingCommandModes()
+            issueCycleTargetOrder()
         case .attackMove:
             clearPendingCommandModes()
+            resetTargetCycleCursor()
             let combatUnits = selectedMobilePlayerUnits().filter { $0.kind.damage > 0 }
             guard !combatUnits.isEmpty else {
                 isSettingAttackMove = false
@@ -5863,29 +5907,7 @@ final class GameScene: SKScene {
 
             let selected = selectedMobilePlayerUnits()
             if !selected.isEmpty && tapped.faction == .enemy {
-                let attackers = selected.filter { $0.kind.canAttack(tapped.kind) }
-                let guardReleaseWing = carrierGuardReleaseWing(for: attackers)
-                var assignedAttackers = 0
-                for unit in attackers {
-                    unit.holdPosition = nil
-                    clearCarrierGuardAnchor(for: unit)
-                    unit.attackMoveDestination = nil
-                    unit.attackTarget = tapped
-                    unit.destination = nil
-                    unit.path.removeAll()
-                    assignedAttackers += 1
-                }
-                if assignedAttackers > 0 {
-                    showAttackTargetMarker(
-                        at: tapped.node.position,
-                        footprint: tapped.kind.footprint,
-                        label: tapped.kind.shortCode
-                    )
-                    showMessage("Attack order: \(tapped.kind.displayName).\(carrierGuardReleaseSuffix(for: guardReleaseWing))", color: UIColor(red: 1.0, green: 0.62, blue: 0.35, alpha: 1.0))
-                } else {
-                    showDeniedMarker(at: tapped.node.position, reason: "NO ATK")
-                    showMessage("Selected units cannot attack that target.", color: .orange)
-                }
+                issueDirectAttackOrder(on: tapped, units: selected)
                 return
             }
         }
@@ -6439,6 +6461,7 @@ final class GameScene: SKScene {
         selectedIDs.removeAll()
         incomingThreatsByTargetID.removeAll()
         controlGroups = [1: [], 2: []]
+        resetTargetCycleCursor()
         buildOrders.removeAll()
         enemyCaptureReservations.removeAll()
         enemyRetreatingUnitIDs.removeAll()
@@ -6576,6 +6599,7 @@ final class GameScene: SKScene {
     }
 
     private func issueHoldPositionOrder(units: [GameEntity]) {
+        resetTargetCycleCursor()
         let mobileUnits = units.filter { $0.isAlive && !$0.kind.isStructure }
         guard !mobileUnits.isEmpty else {
             showMessage("Select mobile units to hold position.", color: .orange)
@@ -6642,6 +6666,7 @@ final class GameScene: SKScene {
     }
 
     private func issueStopOrder(units: [GameEntity], persistentFeedback: Bool = false) {
+        resetTargetCycleCursor()
         let mobileUnits = units.filter {
             $0.faction == .player && $0.isAlive && !$0.kind.isStructure
         }
@@ -6687,6 +6712,150 @@ final class GameScene: SKScene {
             "Stopped \(commandedUnits.count) units.\(carrierGuardReleaseSuffix(for: Array(releasedWingByID.values)))",
             color: UIColor(red: 1.0, green: 0.72, blue: 0.56, alpha: 1.0)
         )
+    }
+
+    private func resetTargetCycleCursor() {
+        lastTargetCycleTargetID = nil
+        lastTargetCycleSelectionIDs.removeAll()
+    }
+
+    private func selectedTargetCycleCombatUnits() -> [GameEntity] {
+        selectedMobilePlayerUnits().filter {
+            $0.isOperational && $0.kind.damage > 0
+        }
+    }
+
+    private func targetCycleCandidates(for combatUnits: [GameEntity]) -> [GameEntity] {
+        guard !combatUnits.isEmpty else { return [] }
+        let center = combatUnits.reduce(CGPoint.zero) { $0 + $1.node.position } / CGFloat(combatUnits.count)
+        let viewRect = visibleWorldRect()
+        return entities.values
+            .filter { target in
+                target.faction == .enemy &&
+                    target.isAlive &&
+                    viewRect.contains(target.node.position) &&
+                    isKnownToFaction(target, observer: .player) &&
+                    combatUnits.contains(where: { $0.kind.canAttack(target.kind) })
+            }
+            .sorted { left, right in
+                let leftDistance = left.node.position.distance(to: center)
+                let rightDistance = right.node.position.distance(to: center)
+                if abs(leftDistance - rightDistance) < 0.5 {
+                    return left.id < right.id
+                }
+                return leftDistance < rightDistance
+            }
+    }
+
+    private func issueCycleTargetOrder(persistentFeedback: Bool = false) {
+        let combatUnits = selectedTargetCycleCombatUnits()
+        guard !combatUnits.isEmpty else {
+            resetTargetCycleCursor()
+            showMessage("Select combat units to cycle targets.", color: .orange)
+            updateHUD()
+            return
+        }
+
+        let candidates = targetCycleCandidates(for: combatUnits)
+        guard !candidates.isEmpty else {
+            resetTargetCycleCursor()
+            showMessage("No known attackable targets in view.", color: .orange)
+            updateHUD()
+            return
+        }
+
+        let currentID: Int?
+        if lastTargetCycleSelectionIDs == selectedIDs,
+           let lastTargetCycleTargetID,
+           candidates.contains(where: { $0.id == lastTargetCycleTargetID }) {
+            currentID = lastTargetCycleTargetID
+        } else {
+            currentID = primaryCombatTarget(for: combatUnits)?.target.id
+        }
+        let nextIndex: Int
+        if let currentID, let currentIndex = candidates.firstIndex(where: { $0.id == currentID }) {
+            nextIndex = (currentIndex + 1) % candidates.count
+        } else {
+            nextIndex = 0
+        }
+
+        let target = candidates[nextIndex]
+        let assigned = issueDirectAttackOrder(
+            on: target,
+            units: combatUnits,
+            cyclePosition: (nextIndex + 1, candidates.count),
+            persistentMarker: persistentFeedback
+        )
+        guard assigned > 0 else {
+            resetTargetCycleCursor()
+            return
+        }
+        lastTargetCycleTargetID = target.id
+        lastTargetCycleSelectionIDs = selectedIDs
+        updateHUD()
+    }
+
+    @discardableResult
+    private func issueDirectAttackOrder(
+        on target: GameEntity,
+        units: [GameEntity],
+        cyclePosition: (index: Int, total: Int)? = nil,
+        persistentMarker: Bool = false
+    ) -> Int {
+        if cyclePosition == nil {
+            resetTargetCycleCursor()
+        }
+        guard target.faction == .enemy,
+              target.isAlive,
+              isKnownToFaction(target, observer: .player)
+        else { return 0 }
+
+        let attackers = units.filter {
+            $0.faction == .player &&
+                $0.isAlive &&
+                !$0.kind.isStructure &&
+                $0.kind.canAttack(target.kind)
+        }
+        guard !attackers.isEmpty else {
+            showDeniedMarker(at: target.node.position, reason: "NO ATK")
+            showMessage("Selected units cannot attack that target.", color: .orange)
+            updateHUD()
+            return 0
+        }
+
+        let guardReleaseWing = carrierGuardReleaseWing(for: attackers)
+        for unit in attackers {
+            unit.holdPosition = nil
+            clearCarrierGuardAnchor(for: unit)
+            unit.attackMoveDestination = nil
+            unit.attackTarget = target
+            unit.destination = nil
+            unit.path.removeAll()
+        }
+
+        let markerLabel = cyclePosition.map {
+            "\($0.index)/\($0.total) \(target.kind.shortCode)"
+        } ?? target.kind.shortCode
+        showAttackTargetMarker(
+            at: target.node.position,
+            footprint: target.kind.footprint,
+            label: markerLabel,
+            persistent: persistentMarker
+        )
+        refreshSelection()
+        updateHUD()
+        if let cyclePosition {
+            showMessage(
+                "Target \(cyclePosition.index)/\(cyclePosition.total): \(target.kind.displayName), \(attackers.count) assigned.\(carrierGuardReleaseSuffix(for: guardReleaseWing))",
+                color: UIColor(red: 1.0, green: 0.58, blue: 0.38, alpha: 1.0)
+            )
+        } else {
+            showMessage(
+                "Attack order: \(target.kind.displayName).\(carrierGuardReleaseSuffix(for: guardReleaseWing))",
+                color: UIColor(red: 1.0, green: 0.62, blue: 0.35, alpha: 1.0)
+            )
+        }
+        return attackers.count
     }
 
     private func carrierGuardReleaseWing(for units: [GameEntity]) -> [GameEntity] {
@@ -6822,6 +6991,7 @@ final class GameScene: SKScene {
     }
 
     private func issueFormationMove(to point: CGPoint, units: [GameEntity], showMarkers: Bool, showFeedback: Bool, attackMove: Bool = false) {
+        resetTargetCycleCursor()
         let mobileUnits = units.filter { $0.isAlive && !$0.kind.isStructure }
         guard !mobileUnits.isEmpty else { return }
 
@@ -7562,6 +7732,10 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "target-cycle" {
+            prepareCITargetCycleCaptureScene()
+            return
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "stop-command" {
             prepareCIStopCommandCaptureScene()
             return
@@ -7752,6 +7926,83 @@ final class GameScene: SKScene {
         updateFog(force: true)
         refreshSelection()
         issueStopOrder(units: [tank, fighter, battleship, carrier], persistentFeedback: true)
+    }
+
+    private func prepareCITargetCycleCaptureScene() {
+        let playerHumvee = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .humvee && $0.isAlive
+        }) ?? addEntity(kind: .humvee, faction: .player, at: tileCenter(TileCoord(row: 15, col: 11)))
+        let playerTank = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .tank && $0.isAlive
+        }) ?? addEntity(kind: .tank, faction: .player, at: tileCenter(TileCoord(row: 15, col: 12)))
+        let playerArtillery = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .artillery && $0.isAlive
+        }) ?? addEntity(kind: .artillery, faction: .player, at: tileCenter(TileCoord(row: 16, col: 12)))
+        let playerHelicopter = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .helicopter && $0.isAlive
+        }) ?? addEntity(kind: .helicopter, faction: .player, at: tileCenter(TileCoord(row: 16, col: 13)))
+        let enemyTank = entities.values.first(where: {
+            $0.faction == .enemy && $0.kind == .tank && $0.isAlive
+        }) ?? addEntity(kind: .tank, faction: .enemy, at: tileCenter(TileCoord(row: 15, col: 15)))
+        let enemyArtillery = entities.values.first(where: {
+            $0.faction == .enemy && $0.kind == .artillery && $0.isAlive
+        }) ?? addEntity(kind: .artillery, faction: .enemy, at: tileCenter(TileCoord(row: 15, col: 16)))
+        let enemyHumvee = entities.values.first(where: {
+            $0.faction == .enemy && $0.kind == .humvee && $0.isAlive
+        }) ?? addEntity(kind: .humvee, faction: .enemy, at: tileCenter(TileCoord(row: 15, col: 17)))
+
+        let targetIDs = Set([enemyTank.id, enemyArtillery.id, enemyHumvee.id])
+        let offscreenPoint = CGPoint(x: worldBounds.maxX + 2200, y: worldBounds.maxY + 2200)
+        for enemy in entities.values where enemy.faction == .enemy && !targetIDs.contains(enemy.id) {
+            enemy.node.position = offscreenPoint + CGPoint(x: CGFloat(enemy.id % 7) * 12, y: CGFloat(enemy.id % 5) * 12)
+            enemy.node.zPosition = entityZPosition(enemy)
+        }
+
+        cameraRig.position = tileCenter(TileCoord(row: 15, col: 13))
+        let center = cameraRig.position
+        let playerUnits = [playerHumvee, playerTank, playerArtillery, playerHelicopter]
+        let playerPositions = [
+            CGPoint(x: -255, y: 68), CGPoint(x: -180, y: -34),
+            CGPoint(x: -108, y: 72), CGPoint(x: -42, y: -42)
+        ]
+        for (unit, offset) in zip(playerUnits, playerPositions) {
+            unit.node.position = center + offset
+            unit.node.xScale = 1
+            unit.node.zPosition = entityZPosition(unit)
+            unit.holdPosition = nil
+            unit.attackMoveDestination = nil
+            unit.destination = nil
+            unit.path.removeAll()
+            unit.attackTarget = enemyTank
+        }
+        updateAirShadow(for: playerHelicopter, direction: CGPoint(x: 0.98, y: 0.16).normalized)
+
+        let targetUnits = [enemyTank, enemyArtillery, enemyHumvee]
+        let targetPositions = [
+            CGPoint(x: 22, y: 28), CGPoint(x: 132, y: -4), CGPoint(x: 242, y: -30)
+        ]
+        for (target, offset) in zip(targetUnits, targetPositions) {
+            target.node.position = center + offset
+            target.node.xScale = -1
+            target.node.zPosition = entityZPosition(target)
+            target.destination = nil
+            target.path.removeAll()
+            target.attackTarget = nil
+            target.attackMoveDestination = nil
+            target.holdPosition = target.node.position
+        }
+        enemyTank.hp = enemyTank.kind.maxHP * 0.68
+        enemyArtillery.hp = enemyArtillery.kind.maxHP * 0.57
+        enemyHumvee.hp = enemyHumvee.kind.maxHP * 0.82
+        for target in targetUnits {
+            updateHealthBar(target)
+        }
+
+        selectedIDs = Set(playerUnits.map(\.id))
+        resetTargetCycleCursor()
+        updateFog(force: true)
+        refreshSelection()
+        issueCycleTargetOrder(persistentFeedback: true)
     }
 
     private func prepareCIHelicopterSalvoCaptureScene() {
