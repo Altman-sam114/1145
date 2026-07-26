@@ -5058,3 +5058,34 @@
 
 - 云端冻结截图能证明三域阈值、挂点、迷雾父子关系、HUD 兼容和启动稳定性，但不能覆盖维修连续越过阈值、快速镜像 / 转向、密集编队烟火叠加、长时间节点压力或真机触控 / 性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮继续选择一个范围有限的 UI 或战斗细节增量，并维持最新 `origin/main` artifact 验收闭环；总目标仍未完成。
+
+### v5.0 / 一键停止与命令撤销反馈
+
+日期：2026-07-26
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，并重新核对 Noble Master 官方 press kit、trailer 与 iOS 官方截图；本轮借鉴其面向 touch-screen players 的集中、高对比上下文命令原则，不复制原素材或 UI。
+- TACT 单排命令条在 HOLD 与 AMOV 之间新增红色 `STOP`；subtitle 复用统一 active intent 口径显示选中单位的 `n cmd` 或 `idle`，有可撤销命令时提高边框 / glow，空闲时降低明度。五个页签和原有 G1 / G2 / RLY / HQ 均保留，HUD 现在覆盖 25 个唯一动作，TACT 最多 8 个动作。
+- `issueStopOrder(...)` 只处理当前选中的存活玩家机动单位，统一清理 `destination`、`path`、`attackTarget`、`attackMoveDestination`、`holdPosition` 与有效 Carrier guard anchor；选择 ID、HP、攻击计时器、经济、AI、迷雾、任务和胜负不变。
+- STOP 选中 Carrier 时会在清理 HOLD 前快照依附 wing，再只解除其 guard anchor；未选中的 wing 保留 ordinary HOLD，不被强行改成移动或攻击。空选择或全 idle 只显示提示，不写玩法状态。
+- 成功 STOP 会立即刷新选择、HUD、战斗摘要和命令意图线，并在编队中心显示短时红色 `STOP n` 环 / 暂停符号；顶部消息显示停止数量并复用 `CV guard released n Hn/Jn` 组成反馈。
+- 新增 capture-only `stop-command` 场景：先冻结 Blue Tank direct attack、Fighter move、Battleship AMOV、Carrier HOLD 与未选中 Helicopter guard anchor，再调用真实 STOP helper；GitHub Actions 从十九次扩展为二十次独立启动并新增 `simulator-stop-command.png`。
+- README、核心 flow、flowchart、测试规范和 v5.0 提示词已同步。人工 `project.pbxproj` 签名团队配置与未跟踪的 `md/unity分析/` 报告均保持未暂存，未进入 v5.0 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 等轻量检查并通过。
+- 实现提交：`e95658f0e6e49e79c5bd3f6d498cd8f131080aba`，commit subject 为 `v5.0: 加入一键停止命令`。
+- GitHub Actions run：`30191455541`，attempt `1`，conclusion `success`，job 总耗时 14 分 1 秒；Node 20 action 被 GitHub runner 强制改用 Node 24 的注记不影响项目结果。
+- artifact：`desert-frontline-ci-v5.0-main-e95658f0e6e4-run30191455541-attempt1`，artifact ID `8628814299`，缓存于 `/private/tmp/desert-frontline-c-review-30191455541/`，未加密且约 26 MB。
+- manifest 记录 `branch=main`、`commitSha=e95658f0e6e49e79c5bd3f6d498cd8f131080aba`、`runId=30191455541`、`runAttempt=1`、`version=v5.0`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 failures、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 二十次 simulator launch PID `12343`、`13624`、`14558`、`15184`、`15212`、`15725`、`15856`、`16280`、`16907`、`16933`、`17227`、`17573`、`17596`、`18001`、`18229`、`18322`、`19021`、`19211`、`19701`、`19942` 均在截图后存活；二十张原始 PNG 均为 1206x2622，App / launch 日志未命中 SIGABRT、watchdog、未捕获异常、fatal error 或崩溃关键字。
+- `simulator-stop-command.png` 清楚显示 TACT 页完整单排的 ARMY / G1 / G2 / HOLD / STOP / AMOV / RLY / HQ、`STOP idle`、四个跨陆空海选中单位、世界 `STOP 4`、四选战斗摘要、小地图与模型；没有残留 move / attack / AMOV / HOLD 命令意图线，主要 HUD 与确认标记无互相遮挡。原图 SHA-256 为 `e2f63aecb5d7e48a163ed9782c8c380846687efadae72dc73fc16a5a0b1d6047`。
+- `simulator-screenshot.png`、`simulator-damage-state.png` 和 `simulator-combat-ui.png` 分别为 `5e9d2c789ec17c3905d3ec36823e4436842d3a92f66049b3c42b878e64d0ee34`、`c044f5f8bc6fc1ba07895a79aa53574585e35c304b7bd3c91e4727ee0f899da6`、`5409c0410ac1779e5ae660b3f7386924f66c09223c8b912c335a093a1a07e54d`，既有空战总览、三域受损状态与战斗态势证据无明显回归。
+
+遗留事项：
+
+- 云端冻结截图能证明 STOP 真实 helper 已执行后的跨域选择保持、命令意图清理、按钮状态、Carrier guard release 与布局兼容，但不能覆盖用户连续快速点按、停止后即时重新下令、不同选择规模、真实移动中减速表现或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮继续选择一个范围有限的 UI 或战斗细节增量，并维持最新 `origin/main` artifact 验收闭环；总目标仍未完成。
