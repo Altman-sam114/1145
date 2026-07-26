@@ -130,6 +130,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - Coastal Battery 共享 `canAttack(_:)`、目标搜索、迷雾合法性和 `fire(attacker:target:)` 链路，只攻击可见水面海军目标，不攻击潜艇，不提供 sonar，也不触发潜艇暴露。
 - AA Truck 共享移动单位 `canAttack(_:)`、目标搜索、迷雾合法性和 `fire(attacker:target:)` 链路，只攻击可见 air 目标，不攻击 land / naval / submarine / structure，也不提供 sonar。其 entity footprint、碰撞、选择和血条不变，`addLandUnitBody(...)` 内使用六轮装甲底盘、分层驾驶舱、阵营风挡、设备舱、雷达盘、双轨四弹发射架、灯具和天线建立俯视辨识度。
 - `fire(attacker:target:)` 对玩家单位或玩家已知目标额外显示短暂伤害飘字 `-\(Int)`，只读进入 `effectsLayer` 后上浮淡出，不改变伤害、目标、AI 或迷雾；
+- 每个实体的 `teamFlag`（zPosition 22）为旗杆 + 向右飘燕尾旗布造型：旗布路径填充 `faction.color`，旗杆 / 杆顶为固定浅灰白子节点；`setFaction(...)` 换阵营只重设旗布 `fillColor`，旗标随实体父节点整体经过迷雾隐藏，不新增泄露渠道。
 - `updateHealthBar(...)` 在直接火力、支援伤害、Mechanic 维修和 Field Repair 等既有 HP 写入后同步刷新实体自有受损状态；两档烟火只表达当前 HP，不造成 DOT、减速、二次伤害或 AI 状态变化。敌方节点继续整体经过 `isKnownToFaction(...)` 的父节点隐藏，未知敌军不会通过烟火泄露位置。
 - `primaryCombatTarget(for:)` 只统计玩家当前选中、存活、非结构、具有伤害且 `attackTarget` 仍存活并对玩家已知的单位，按绑定攻击者数量优先、目标 id 确定性打平；单选攻击态据此显示目标短码、HP / 百分比、近似距离和 `Weapon ready` / `Reload x.xs`，多选显示 Combat / Engaged / Ready / Wounded / Critical、主目标绑定数、HP / 百分比与最近距离，选择面板底部用同一目标显示左对齐绿 / 黄 / 红生命条。所有摘要只读，不写回攻击目标、计时器或 HP。
 - 当至少 2 个玩家选中作战单位共享同一合法主目标时，`effectsLayer` 上的 `focusFireMarkerNode`（zPosition 240，全局约 430，高于空军实体最高约 398、低于 command marker 454+）在目标显示红色双环 / 十字、`FOCUS n <shortCode> <hp>%` 和八段生命条；空中目标的标注文字额外抬高 14pt 避开机身轮廓。无共用目标或目标不再已知时隐藏。只读刷新，不改攻击分配、伤害或迷雾。

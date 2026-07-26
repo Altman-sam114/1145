@@ -894,7 +894,14 @@ private final class GameEntity {
         self.hp = kind.maxHP
         self.selectionNode = SKShapeNode(ellipseOf: CGSize(width: kind.footprint * 1.55, height: kind.footprint * 0.82))
         self.healthFill = SKShapeNode(rectOf: CGSize(width: kind.footprint, height: 5), cornerRadius: 1)
-        self.teamFlag = SKShapeNode(rectOf: CGSize(width: 15, height: 10))
+        let flagCloth = CGMutablePath()
+        flagCloth.move(to: CGPoint(x: 0, y: 4.5))
+        flagCloth.addLine(to: CGPoint(x: 13, y: 3.2))
+        flagCloth.addLine(to: CGPoint(x: 9.4, y: 0))
+        flagCloth.addLine(to: CGPoint(x: 13, y: -3.2))
+        flagCloth.addLine(to: CGPoint(x: 0, y: -4.5))
+        flagCloth.closeSubpath()
+        self.teamFlag = SKShapeNode(path: flagCloth)
         self.label = SKLabelNode(fontNamed: "Menlo-Bold")
         node.position = position
         node.name = "entity:\(id)"
@@ -2055,10 +2062,26 @@ final class GameScene: SKScene {
         entity.node.addChild(entity.healthFill)
 
         entity.teamFlag.fillColor = entity.faction.color
-        entity.teamFlag.strokeColor = UIColor.white.withAlphaComponent(0.75)
-        entity.teamFlag.lineWidth = 1
+        entity.teamFlag.strokeColor = UIColor.white.withAlphaComponent(0.85)
+        entity.teamFlag.lineWidth = 0.9
         entity.teamFlag.position = CGPoint(x: entity.kind.footprint * 0.35, y: entity.kind.footprint * 0.45 + 5)
         entity.teamFlag.zPosition = 22
+
+        let flagPole = SKShapeNode(rectOf: CGSize(width: 1.6, height: 15), cornerRadius: 0.8)
+        flagPole.position = CGPoint(x: -0.6, y: -3)
+        flagPole.fillColor = UIColor(white: 0.86, alpha: 0.95)
+        flagPole.strokeColor = UIColor.black.withAlphaComponent(0.35)
+        flagPole.lineWidth = 0.5
+        flagPole.zPosition = -1
+        entity.teamFlag.addChild(flagPole)
+
+        let poleCap = SKShapeNode(circleOfRadius: 1.2)
+        poleCap.position = CGPoint(x: -0.6, y: 5)
+        poleCap.fillColor = UIColor(white: 0.92, alpha: 1.0)
+        poleCap.strokeColor = .clear
+        poleCap.zPosition = 1
+        entity.teamFlag.addChild(poleCap)
+
         entity.node.addChild(entity.teamFlag)
 
         entity.label.text = entity.kind.shortCode
