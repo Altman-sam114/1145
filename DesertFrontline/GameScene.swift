@@ -1324,6 +1324,16 @@ final class GameScene: SKScene {
                 shallowWater.zPosition = zPosition(for: center) + 0.12
                 mapNode.addChild(shallowWater)
 
+                let innerShallow = SKShapeNode(
+                    path: diamondPath(width: tileWidth - 18, height: tileHeight - 10)
+                )
+                innerShallow.position = center
+                innerShallow.fillColor = UIColor(red: 0.30, green: 0.86, blue: 0.80, alpha: 0.22)
+                innerShallow.strokeColor = .clear
+                innerShallow.zPosition = zPosition(for: center) + 0.14
+                mapNode.addChild(innerShallow)
+
+                let hash = terrainDetailHash(for: tile)
                 for segment in shoreSegments {
                     let start = CGPoint(x: segment.start.x * 0.88, y: segment.start.y * 0.88)
                     let end = CGPoint(x: segment.end.x * 0.88, y: segment.end.y * 0.88)
@@ -1346,15 +1356,46 @@ final class GameScene: SKScene {
                     foam.lineCap = .round
                     foam.zPosition = zPosition(for: center) + 0.26
                     mapNode.addChild(foam)
+
+                    let bubbleCount = 2 + (hash % 2)
+                    for index in 0..<bubbleCount {
+                        let t = CGFloat(index + 1) / CGFloat(bubbleCount + 1)
+                        let along = CGPoint(
+                            x: start.x + (end.x - start.x) * t,
+                            y: start.y + (end.y - start.y) * t
+                        )
+                        let inward = CGPoint(x: -along.x * 0.16, y: -along.y * 0.16)
+                        let bubble = SKShapeNode(circleOfRadius: 1.2 + CGFloat((hash + index * 5) % 5) * 0.25)
+                        bubble.position = center + along + inward
+                        bubble.fillColor = UIColor.white.withAlphaComponent(0.5 + CGFloat((hash + index * 3) % 3) * 0.1)
+                        bubble.strokeColor = .clear
+                        bubble.zPosition = zPosition(for: center) + 0.28
+                        mapNode.addChild(bubble)
+                    }
                 }
             } else if (tile.row + tile.col) % 3 == 0 {
-                let wave = SKShapeNode(rectOf: CGSize(width: 28, height: 2), cornerRadius: 1)
+                let hash = terrainDetailHash(for: tile)
+                let waveLength = CGFloat(22 + hash % 13)
+                let wave = SKShapeNode(rectOf: CGSize(width: waveLength, height: 2), cornerRadius: 1)
                 wave.position = center + CGPoint(x: 2, y: CGFloat((tile.row % 3) - 1) * 5)
                 wave.fillColor = UIColor.white.withAlphaComponent(0.25)
                 wave.strokeColor = .clear
-                wave.zRotation = (tile.row + tile.col) % 2 == 0 ? -0.42 : 0.42
+                wave.zRotation = ((tile.row + tile.col) % 2 == 0 ? -1 : 1) * (0.28 + CGFloat(hash % 12) * 0.02)
                 wave.zPosition = zPosition(for: center) + 0.2
                 mapNode.addChild(wave)
+
+                if hash % 2 == 0 {
+                    let ripple = SKShapeNode(rectOf: CGSize(width: waveLength * 0.55, height: 1.5), cornerRadius: 0.7)
+                    ripple.position = wave.position + CGPoint(
+                        x: CGFloat(hash % 15 - 7),
+                        y: CGFloat((hash / 3) % 9 - 4)
+                    )
+                    ripple.fillColor = UIColor.white.withAlphaComponent(0.18)
+                    ripple.strokeColor = .clear
+                    ripple.zRotation = -wave.zRotation * 0.7
+                    ripple.zPosition = zPosition(for: center) + 0.2
+                    mapNode.addChild(ripple)
+                }
             }
         case .road:
             let connectionPoints = roadConnectionPoints(for: tile)
