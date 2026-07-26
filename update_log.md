@@ -5026,3 +5026,35 @@
 
 - 云端冻结截图能证明四枚火箭的构图、双 pod 发射、目标态势、命中层级、HUD 兼容和启动稳定性，但不能覆盖连续多机齐射、不同方向接敌、移动目标、敌机进出迷雾、密集战斗节点压力或真机触控 / 性能，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮可继续选择一个单一 UI / 战斗细节增量，例如增强海空单位受击状态、优化高密度交战目标层级，或细化其他核心单位模型；总目标仍未完成。
+
+### v4.99 / 三域持续受损状态
+
+日期：2026-07-26
+
+核心变更：
+
+- 参考对象继续固定为百度百科 lemma id `4042982` 对应的 Noble Master Games《沙漠风暴 Desert Stormfront》，并核对 Noble Master 官方 press kit、官方 trailer 与 `screen_dsf_v02_10.png`、`screen_dsf_v02_11.png`、`screen_dsf_v02_13.png`；本轮只借鉴短暗烟、小火点和保持单位轮廓清楚的受损反馈原则，不复制原素材或 UI。
+- 非结构、非 Submarine 机动实体在创建时预配置实体自有 `damageStateNode`、三段烟、火点与焦痕；HP 不高于 62% 显示 `DMG` 短烟与轻焦痕，不高于 35% 升级为 `CRIT` 浓烟、紧凑火点与更强焦痕。
+- Land、Air、Naval 分别使用发动机舱、机尾与舰体偏舷挂点；节点跟随实体移动、镜像、迷雾与销毁。Submarine 继续排除水面烟火，声呐、`revealedUntil` 和隐身链路不变。
+- `updateHealthBar(...)` 统一刷新受损状态，真实攻击、支援伤害与维修恢复共享同一阈值；维修越过阈值会自动降级或隐藏。单选 HP 行追加 `DMG` / `CRIT`，多选继续显示 Wounded / Critical 统计。
+- 新增 capture-only `damage-state` 场景，同屏冻结 29% HP Tank、32% HP Fighter 与 56% HP Battleship；GitHub Actions 从十八次扩展为十九次独立启动并新增 `simulator-damage-state.png`。
+- 首轮截图中 Tank 与 Fighter 被任务面板遮挡；追加修复仅调整 capture-only 三域单位构图，使三种模型、挂点、烟火、投影 / 航迹、生命条与选择圈同时可辨，不改变普通玩法或数值。
+- README、核心 flow、flowchart、测试规范和 v4.99 提示词已同步。人工 `project.pbxproj` 签名团队配置与未跟踪的 `md/unity分析/` 报告均保持未暂存，未进入 v4.99 提交。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 等轻量检查并通过。
+- 实现提交：`eb20ca87fbdd700a256e20708836606b2e41c025`，commit subject 为 `v4.99: 增加三域持续受损状态`。对应 run `30077988753` 的静态检查、两类 build、十九次启动和 artifact 均 success，但 Agent C 目视发现 Tank 与 Fighter 被中央任务面板遮挡，因此未计为最终验收通过。
+- 构图修复提交：`8620e35a121aba089a07abcda5defd9a0420bf4f`，commit subject 为 `v4.99: 调整受损状态探针构图`；仅修改 `prepareCIDamageStateCaptureScene()` 的三处 capture-only 坐标。
+- 最终 GitHub Actions run：`30189565505`，attempt `1`，conclusion `success`，job 总耗时 11 分 15 秒；Node 20 action 被 GitHub runner 强制改用 Node 24 的注记不影响项目结果。
+- 最终 artifact：`desert-frontline-ci-v4.99-main-8620e35a121a-run30189565505-attempt1`，artifact ID `8628186924`，缓存于 `/private/tmp/desert-frontline-c-review-30189565505/`，未加密且约 25.4 MB；zip 完整性检查无错误。
+- manifest 记录 `branch=main`、`commitSha=8620e35a121aba089a07abcda5defd9a0420bf4f`、`runId=30189565505`、`runAttempt=1`、`version=v4.99`，build、static checks、project lint、simulator launch 均为 success。
+- JUnit 记录 4 项 CI 检查、0 failures、1 skipped；skipped 仅表示当前没有 XCTest target。generic iOS device build 与 simulator build 日志都包含 `** BUILD SUCCEEDED **`。
+- 十九次 simulator launch 均在截图后存活；十九张原始 PNG 均为 1206x2622，App / launch 日志未命中 SIGABRT、watchdog、未捕获异常、fatal error 或崩溃关键字。
+- 最终 `simulator-damage-state.png` 清楚显示 Tank 与 Fighter 的 `CRIT` 火点 / 三段烟、Battleship 的 `DMG` 短烟，以及三域模型、投影 / 航迹、生命条、选择圈、`HP 579/1250 Wnd 3 Crit 2` 多选摘要、小地图和单排命令条；原图 SHA-256 为 `4b07dc7978f463dfce21d620f8070ceb7502cc959f6f9377175fc47787a84d40`。
+- `simulator-land-combat.png`、`simulator-hud-air.png`、`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-helicopter-salvo.png` 和 `simulator-screenshot.png` 分别为 `a77e5ceb49877fdbfc2136756ae8732af6935e0d18925548711c7ef6a9092105`、`616c6636b4f869c6160f76d592d1a522a27610561f8c601b545dee201c115378`、`b5079f468363109b540071cf333273f677de319510243465fcc05fc5f7ba7a98`、`5273ed3e09484d5d7e5b167d3c957afdd9b5a936fb50e41554e952be66d42022`、`a0c19607a3075e382bfef9b2a929c84c20f97a51f3f37ae5c8b0b6b12fb35636`、`809abed5068620c5fca3580956de5a3939d2591b69d3b960c1f34cf9711b5f1e`，既有陆战、空战 HUD、海战、航母、直升机与总览证据无明显回归。
+
+遗留事项：
+
+- 云端冻结截图能证明三域阈值、挂点、迷雾父子关系、HUD 兼容和启动稳定性，但不能覆盖维修连续越过阈值、快速镜像 / 转向、密集编队烟火叠加、长时间节点压力或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮继续选择一个范围有限的 UI 或战斗细节增量，并维持最新 `origin/main` artifact 验收闭环；总目标仍未完成。
