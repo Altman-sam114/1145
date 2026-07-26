@@ -82,6 +82,7 @@ GitHub Actions 负责运行：
 - 第二十次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=stop-command` 生成 `simulator-stop-command.png`：先为四个选中 Blue 跨域单位分别冻结 direct attack、move、AMOV 与 Carrier HOLD，并给未选中 Helicopter 写入该 Carrier guard anchor，再调用真实 `issueStopOrder(...)`。截图用于核对四单位选择仍保留、命令意图线全部消失、STOP subtitle 回到 `idle`、持久 `STOP 4` marker、依附 guard anchor 已释放，以及模型、HUD、选择面板和小地图无遮挡。workflow 总计二十次独立启动 / PID 存活检查；只有 stop-command capture 会临时写上述命令、位置和选择，普通 App 与其他 capture 状态不变。
 - 第二十一次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=target-cycle` 生成 `simulator-target-cycle.png`：四个选中 Blue 作战单位先共享攻击最近的 Red Tank，再调用真实 `issueCycleTargetOrder(...)` 切换到第二候选 Red Artillery；第三候选为更远的 Red Humvee，其余 Red 实体移出视野。截图用于核对九动作单排、`TGT ART 2/3`、持久 `ATK 2/3 ART`、`FOCUS 4 ART 57%`、目标生命条、四条攻击意图线、选择摘要和小地图无遮挡。workflow 总计二十一次独立启动 / PID 存活检查；只有 target-cycle capture 会临时写上述位置、目标、HP 和选择，普通 App 与其他 capture 状态不变。
 - 第二十二次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=selection-cycle` 生成 `simulator-selection-cycle.png`：紧邻 Blue Humvee / Tank / Artillery 对同一点真实调用两次友军选择 helper，截图核对 `SEL 2/3 TNK`、唯一 Tank 选择圈、Tank 单选面板、三个模型、九动作 TACT 与小地图无遮挡。workflow 总计二十二次独立启动 / PID 存活检查；普通 App 不进入 capture-only 写入。
+- 第二十三次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=enemy-touch-assist` 生成 `simulator-enemy-touch-assist.png`：镜头缩远到 1.58，两个 Blue AA Truck 选择一个玩家已知 Red Fighter，并用确定性 precondition 证明点击点严格位于 Fighter 精确 footprint 外、26pt 屏幕辅助范围内，再真实调用普通敌军辅助攻击 helper。截图核对两个 AA Truck、Red Fighter / 投影、两条红色攻击意图线、持久 `ATK TAP JET`、目标态势 / HP、完整九动作 TACT、选择摘要和小地图无遮挡。workflow 总计二十三次独立启动 / PID 存活检查；普通 App 不进入 capture-only 写入。
 - 结果包生成和上传。
 
 云端 Xcode build 命令：
@@ -137,6 +138,7 @@ GitHub Actions 负责运行：
 - `simulator-stop-command.png`
 - `simulator-target-cycle.png`
 - `simulator-selection-cycle.png`
+- `simulator-enemy-touch-assist.png`
 - `DesertFrontline.xcresult`
 
 artifact 命名规则：
@@ -330,6 +332,7 @@ du -sh /private/tmp/desert-frontline-c-review-<run_id>/
 - 启动 skirmish 后地图、HUD、小地图、迷雾显示正常。
 - 选择、框选、移动、攻击、`HOLD`、`STOP`、`TGT`、`AMOV` 不互相破坏；STOP 后选择保留且当前命令意图线消失；TGT 只循环当前视野内玩家已知且合法可攻击的目标，混编中不能攻击新目标的单位保持旧命令。
 - 同一拥挤己方邻域的连续单击稳定循环单位；精确敌军点击仍攻击，双击己方机动单位仍选择视野内同型单位，换点击位置、候选集合、框选或控制组后不沿用旧 cursor。
+- 普通世界点击保持 pending > 精确实体 > 合法敌军 26pt 辅助 > 友军 26pt 辅助 > 空地处理；敌军辅助只取玩家已知且至少一个选中 operational 作战单位可攻击的首个严格排序候选，不循环、不泄露迷雾或未侦测潜艇，精确不可攻击敌军不会穿透到附近目标。
 - 生产队列、建筑施工、集结点和经济收入仍工作。
 - AI 能生产、占点、进攻并使用相关新能力。
 - 若修改海战，检查潜艇隐身、声呐和海军路径。

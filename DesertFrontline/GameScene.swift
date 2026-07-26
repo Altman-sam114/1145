@@ -5918,9 +5918,15 @@ final class GameScene: SKScene {
             }
         }
 
-        if tapped == nil, !playerSelectionCandidates(at: point).isEmpty {
-            selectPlayerEntity(at: point)
-            return
+        if tapped == nil {
+            let combatUnits = selectedTargetCycleCombatUnits()
+            if issueEnemyTouchAssistOrder(at: point, units: combatUnits) {
+                return
+            }
+            if !playerSelectionCandidates(at: point).isEmpty {
+                selectPlayerEntity(at: point)
+                return
+            }
         }
 
         let selected = selectedMobilePlayerUnits()
@@ -6759,6 +6765,50 @@ final class GameScene: SKScene {
             }
     }
 
+    private func enemyTouchAssistCandidates(
+        at point: CGPoint,
+        for combatUnits: [GameEntity]
+    ) -> [GameEntity] {
+        guard !combatUnits.isEmpty else { return [] }
+        return entities.values
+            .filter { target in
+                guard target.faction == .enemy,
+                      target.isAlive,
+                      isKnownToFaction(target, observer: .player),
+                      combatUnits.contains(where: { $0.kind.canAttack(target.kind) })
+                else { return false }
+                let touchRadius = max(target.kind.footprint * 0.95, 26 * cameraRig.xScale)
+                return target.node.position.distance(to: point) <= touchRadius
+            }
+            .sorted { left, right in
+                let leftDistance = left.node.position.distance(to: point)
+                let rightDistance = right.node.position.distance(to: point)
+                let leftDistanceBucket = Int((leftDistance / 0.5).rounded(.down))
+                let rightDistanceBucket = Int((rightDistance / 0.5).rounded(.down))
+                if leftDistanceBucket == rightDistanceBucket {
+                    return left.id < right.id
+                }
+                return leftDistanceBucket < rightDistanceBucket
+            }
+    }
+
+    @discardableResult
+    private func issueEnemyTouchAssistOrder(
+        at point: CGPoint,
+        units: [GameEntity],
+        persistentMarker: Bool = false
+    ) -> Bool {
+        guard let target = enemyTouchAssistCandidates(at: point, for: units).first else {
+            return false
+        }
+        return issueDirectAttackOrder(
+            on: target,
+            units: units,
+            markerLabelOverride: "TAP \(target.kind.shortCode)",
+            persistentMarker: persistentMarker
+        ) > 0
+    }
+
     private func issueCycleTargetOrder(persistentFeedback: Bool = false) {
         let combatUnits = selectedTargetCycleCombatUnits()
         guard !combatUnits.isEmpty else {
@@ -6812,6 +6862,7 @@ final class GameScene: SKScene {
         on target: GameEntity,
         units: [GameEntity],
         cyclePosition: (index: Int, total: Int)? = nil,
+        markerLabelOverride: String? = nil,
         persistentMarker: Bool = false
     ) -> Int {
         if cyclePosition == nil {
@@ -6845,7 +6896,7 @@ final class GameScene: SKScene {
             unit.path.removeAll()
         }
 
-        let markerLabel = cyclePosition.map {
+        let markerLabel = markerLabelOverride ?? cyclePosition.map {
             "\($0.index)/\($0.total) \(target.kind.shortCode)"
         } ?? target.kind.shortCode
         showAttackTargetMarker(
@@ -7826,6 +7877,10 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "enemy-touch-assist" {
+            prepareCIEnemyTouchAssistCaptureScene()
+            return
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "selection-cycle" {
             prepareCISelectionCycleCaptureScene()
             return
@@ -8144,6 +8199,70 @@ final class GameScene: SKScene {
         updateFog(force: true)
         selectPlayerEntity(at: tapPoint, showFeedback: false)
         selectPlayerEntity(at: tapPoint, persistentMarker: true)
+    }
+
+    private func prepareCIEnemyTouchAssistCaptureScene() {
+        let firstAA = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .aaTruck && $0.isAlive
+        }) ?? addEntity(kind: .aaTruck, faction: .player, at: tileCenter(TileCoord(row: 15, col: 12)))
+        let secondAA = addEntity(
+            kind: .aaTruck,
+            faction: .player,
+            at: tileCenter(TileCoord(row: 16, col: 12))
+        )
+        let fighter = entities.values.first(where: {
+            $0.faction == .enemy && $0.kind == .fighter && $0.isAlive
+        }) ?? addEntity(kind: .fighter, faction: .enemy, at: tileCenter(TileCoord(row: 15, col: 15)))
+
+        let captureIDs = Set([firstAA.id, secondAA.id, fighter.id])
+        let offscreenPoint = CGPoint(x: worldBounds.maxX + 2200, y: worldBounds.maxY + 2200)
+        for entity in entities.values where !captureIDs.contains(entity.id) {
+            entity.node.position = offscreenPoint + CGPoint(x: CGFloat(entity.id % 7) * 12, y: CGFloat(entity.id % 5) * 12)
+            entity.node.zPosition = entityZPosition(entity)
+        }
+
+        cameraRig.position = tileCenter(TileCoord(row: 15, col: 13))
+        cameraRig.setScale(maxCameraScale)
+        let center = cameraRig.position
+        firstAA.node.position = center + CGPoint(x: -120, y: 56)
+        secondAA.node.position = center + CGPoint(x: -94, y: -64)
+        fighter.node.position = center + CGPoint(x: 92, y: 8)
+        for entity in [firstAA, secondAA, fighter] {
+            entity.node.zPosition = entityZPosition(entity)
+            entity.destination = nil
+            entity.path.removeAll()
+            entity.attackTarget = nil
+            entity.attackMoveDestination = nil
+            entity.holdPosition = entity.node.position
+        }
+        firstAA.node.xScale = 1
+        secondAA.node.xScale = 1
+        fighter.node.xScale = -1
+        updateAirShadow(for: fighter, direction: CGPoint(x: -0.98, y: 0.18).normalized)
+        fighter.hp = fighter.kind.maxHP * 0.64
+        updateHealthBar(fighter)
+
+        selectedIDs = [firstAA.id, secondAA.id]
+        resetSelectionCycleCursor()
+        resetTargetCycleCursor()
+        updateFog(force: true)
+        refreshSelection()
+        updateHUD()
+
+        let tapPoint = fighter.node.position + CGPoint(x: 36, y: 0)
+        let tapDistance = tapPoint.distance(to: fighter.node.position)
+        let exactRadius = fighter.kind.footprint * 0.95
+        let assistRadius = 26 * cameraRig.xScale
+        precondition(tapDistance > exactRadius && tapDistance <= assistRadius)
+        precondition(entity(at: tapPoint) == nil)
+        precondition(
+            issueEnemyTouchAssistOrder(
+                at: tapPoint,
+                units: selectedTargetCycleCombatUnits(),
+                persistentMarker: true
+            )
+        )
+        precondition(firstAA.attackTarget === fighter && secondAA.attackTarget === fighter)
     }
 
     private func prepareCIHelicopterSalvoCaptureScene() {

@@ -53,10 +53,13 @@ flowchart TD
   Support -- "无效目标" --> Denied
   Rally -- "无有效来源" --> Denied
   AttackMove -- "无作战单位" --> Denied
-  Pending -- "无" --> WorldTap{"世界点击目标\n精确敌军优先于己方26pt辅助选择\n同邻域按距离-ID循环SEL i/n"}
+  Pending -- "无" --> WorldTap{"世界点击目标\n精确实体 > 合法敌军26pt辅助\n> 己方26pt辅助 > 空地"}
   WorldTap -- "双击己方机动单位" --> TypeSelect["选择当前视野内同 kind 玩家机动单位"]
   WorldTap -- "单击己方精确/辅助命中" --> Select["稳定循环选中实体 / refreshSelection"]
-  WorldTap -- "可见敌人" --> Attack["至少一个合法攻击者设置attackTarget\n红色footprint-aware ATK框\n必要时提示CV guard released"]
+  WorldTap -- "精确敌军" --> Attack["issueDirectAttackOrder\n不可攻击时NO ATK且不穿透"]
+  WorldTap -- "无精确实体/合法敌军辅助" --> AssistAttack["玩家已知 + selected operational canAttack\n26pt屏幕半径/距离桶-ID首项/不循环\nATK TAP CODE"]
+  AssistAttack --> Attack
+  Attack --> AttackResult["兼容攻击者设置attackTarget\n红色footprint-aware ATK框\n必要时提示CV guard released"]
   WorldTap -- "地面" --> Move["issueFormationMove\n按陆空海分组移动\n青绿色MOVE落点\n必要时提示CV guard released"]
   Attack -- "选中单位都不能攻击" --> Denied
   Move -- "无移动单位或集结来源" --> Denied
@@ -130,3 +133,4 @@ flowchart TD
 - v5.0：TACT 新增动态 `STOP`，统一撤销选中玩家机动单位的 move / path / attack / AMOV / HOLD / Carrier guard anchor，保留选择并显示 `STOP n`；CI 新增第二十次 stop-command 截图探针。
 - v5.1：TACT 新增 `TGT`，按当前视野、玩家已知与 `canAttack` 边界稳定循环目标，并让地图点击与循环集火共享攻击执行；CI 新增第二十一次 target-cycle 截图探针。
 - v5.2：玩家己方选择新增 26pt 屏幕尺度辅助半径与重叠候选稳定循环，精确敌军攻击和双击同型选择保持；CI 新增第二十二次 selection-cycle 截图探针。
+- v5.3：普通点击在精确实体之后、友军辅助之前增加合法敌军 26pt 屏幕尺度辅助攻击，按距离桶 / id 取首项且不循环，继续复用直接攻击 helper；CI 新增第二十三次 enemy-touch-assist 截图探针。
