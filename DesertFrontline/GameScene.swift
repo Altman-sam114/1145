@@ -3462,16 +3462,97 @@ final class GameScene: SKScene {
             hull.lineWidth = 2
             base.addChild(hull)
 
+            let deckEdge = SKShapeNode(rectOf: CGSize(width: 76, height: 22), cornerRadius: 3)
+            deckEdge.fillColor = UIColor(white: 0.17, alpha: 1.0)
+            deckEdge.strokeColor = UIColor(white: 0.05, alpha: 0.9)
+            deckEdge.lineWidth = 1.2
+            deckEdge.zPosition = 1
+            base.addChild(deckEdge)
+
             let deck = SKShapeNode(rectOf: CGSize(width: 72, height: 18), cornerRadius: 2)
-            deck.fillColor = UIColor(white: 0.22, alpha: 1.0)
-            deck.strokeColor = .clear
+            deck.fillColor = UIColor(white: 0.30, alpha: 1.0)
+            deck.strokeColor = UIColor(white: 0.55, alpha: 0.35)
+            deck.lineWidth = 0.8
+            deck.zPosition = 2
             base.addChild(deck)
 
-            let stripe = SKShapeNode(rectOf: CGSize(width: 55, height: 2), cornerRadius: 1)
-            stripe.fillColor = UIColor.white.withAlphaComponent(0.75)
-            stripe.strokeColor = .clear
-            stripe.zRotation = 0.18
-            base.addChild(stripe)
+            let runway = SKShapeNode(rectOf: CGSize(width: 62, height: 8), cornerRadius: 1.5)
+            runway.position = CGPoint(x: -2, y: -2)
+            runway.fillColor = UIColor(white: 0.38, alpha: 1.0)
+            runway.strokeColor = UIColor(white: 0.72, alpha: 0.55)
+            runway.lineWidth = 0.8
+            runway.zRotation = 0.18
+            runway.zPosition = 3
+            base.addChild(runway)
+
+            let dashOffsets: [CGFloat] = [-21, -7, 7, 21]
+            for x in dashOffsets {
+                let dash = SKShapeNode(rectOf: CGSize(width: 7, height: 1.4), cornerRadius: 0.7)
+                dash.position = CGPoint(x: x - 2, y: x * 0.18 - 2)
+                dash.fillColor = UIColor.white.withAlphaComponent(0.85)
+                dash.strokeColor = .clear
+                dash.zRotation = 0.18
+                dash.zPosition = 4
+                base.addChild(dash)
+            }
+
+            let thresholdOffsets: [CGFloat] = [-29, 27]
+            for x in thresholdOffsets {
+                let threshold = SKShapeNode(rectOf: CGSize(width: 1.6, height: 7), cornerRadius: 0.8)
+                threshold.position = CGPoint(x: x - 2, y: x * 0.18 - 2)
+                threshold.fillColor = UIColor.white.withAlphaComponent(0.9)
+                threshold.strokeColor = .clear
+                threshold.zRotation = 0.18
+                threshold.zPosition = 4
+                base.addChild(threshold)
+            }
+
+            for x in [CGFloat(-24), -13] {
+                let pad = SKShapeNode(circleOfRadius: 3.4)
+                pad.position = CGPoint(x: x, y: 5.5)
+                pad.fillColor = .clear
+                pad.strokeColor = UIColor.white.withAlphaComponent(0.62)
+                pad.lineWidth = 0.9
+                pad.zPosition = 4
+                base.addChild(pad)
+            }
+
+            let islandBase = SKShapeNode(rectOf: CGSize(width: 13, height: 8), cornerRadius: 1.5)
+            islandBase.position = CGPoint(x: 15, y: -9)
+            islandBase.fillColor = navalColor.darker(by: 0.10)
+            islandBase.strokeColor = UIColor(white: 0.08, alpha: 0.9)
+            islandBase.lineWidth = 1
+            islandBase.zPosition = 5
+            base.addChild(islandBase)
+
+            let islandTower = SKShapeNode(rectOf: CGSize(width: 8, height: 5.5), cornerRadius: 1)
+            islandTower.position = CGPoint(x: 14, y: -8)
+            islandTower.fillColor = navalColor.darker(by: 0.02)
+            islandTower.strokeColor = UIColor(white: 0.82, alpha: 0.35)
+            islandTower.lineWidth = 0.8
+            islandTower.zPosition = 6
+            base.addChild(islandTower)
+
+            let windowColor = entity.faction == .enemy
+                ? UIColor(red: 1.0, green: 0.44, blue: 0.28, alpha: 0.92)
+                : UIColor(red: 0.30, green: 0.92, blue: 1.0, alpha: 0.92)
+            for x in [CGFloat(12.2), 15.8] {
+                let window = SKShapeNode(rectOf: CGSize(width: 2.2, height: 1.5), cornerRadius: 0.5)
+                window.position = CGPoint(x: x, y: -7.4)
+                window.fillColor = windowColor
+                window.strokeColor = .clear
+                window.glowWidth = 0.8
+                window.zPosition = 7
+                base.addChild(window)
+            }
+
+            let islandMast = SKShapeNode(rectOf: CGSize(width: 1.2, height: 7), cornerRadius: 0.6)
+            islandMast.position = CGPoint(x: 17.5, y: -6)
+            islandMast.fillColor = UIColor(white: 0.24, alpha: 1.0)
+            islandMast.strokeColor = UIColor.white.withAlphaComponent(0.3)
+            islandMast.lineWidth = 0.5
+            islandMast.zPosition = 8
+            base.addChild(islandMast)
         default:
             break
         }
