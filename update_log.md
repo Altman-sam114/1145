@@ -5284,3 +5284,30 @@
 
 - 两级浅水仍使用 tile 菱形叠加，极长直岸会保留轻微等距格轮廓；后续可在不改变 terrain 语义的前提下评估跨 tile 连续浅滩带，但不作为本轮阻塞。
 - 当前没有独立 XCTest target。下一轮候选增量：Battleship / Submarine 受击细节、红色虚线目标环与橙色方向箭头，或岩石群 / 中东民居地物细化；总目标仍未完成。
+
+### v5.8 / 战列舰战损与反潜命中细节
+
+日期：2026-07-28
+
+核心变更：
+
+- Battleship 在既有实体自有 `damageStateNode` 内增加甲板破口 / 撕裂与第二 Critical 热点：HP `<= 62%` 显示轻度破损，HP `<= 35%` 增加第二热点并保留既有浓烟 / 火点；修复越过阈值后仍由 `updateHealthBar(...)` 统一降级或隐藏。
+- `showAntiSubmarineHit(...)` 扩展为双层椭圆压力环、浅青水沫 / 小水柱、四个确定性气泡与 `ASW HIT` 组合；普通玩法约 0.6 秒内移除，只从既有 `shouldShowAntiSubmarineHitFeedback(...)` 合法已知门槛进入，不改变伤害、声呐、迷雾或 `revealedUntil`。
+- 新增 capture-only `naval-damage`：29% HP Blue Battleship 与 46% HP Red Submarine 保持在 Battleship 既有 230pt 声呐范围和玩家可见 tile 内，经真实 `updateFog(force: true)` / `isKnownToFaction(...)` 校验，不直接写 `revealedUntil`；GitHub Actions 扩展为二十四次独立启动并新增 `simulator-naval-damage.png`。
+- workflow 版本提取兼容 `feat(v5.8): ...` 这类 Conventional Commit scope，并继续兼容原 `v5.8: ...` 标题，保证 artifact manifest 版本号稳定。README、核心 flow、flowchart、测试规范和 v5.8 提示词已同步；人工 `project.pbxproj` Team ID 与 Unity 报告保持未暂存。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check`、workflow YAML 解析和 project plist lint 并通过。
+- 实现提交：`64d3d402a9674b6bcab5bd1cd6a077b31ae73c0b`，commit subject 为 `feat(v5.8): 细化战列舰战损与反潜命中`；元数据兼容提交：`1438c67909037c263887f9332b3fbeff703af89a`，commit subject 为 `v5.8: 修正云端版本识别`。
+- 最终 GitHub Actions run：`30322631618`，attempt `1`，conclusion `success`；Node 20 action 被 runner 强制使用 Node 24 的注记不影响项目结果。
+- artifact：`desert-frontline-ci-v5.8-main-1438c6790903-run30322631618-attempt1`，artifact ID `8674692099`，缓存于 `/private/tmp/desert-frontline-c-review-30322631618/`，未加密且约 32 MB。
+- manifest 记录 `branch=main`、`commitSha=1438c67909037c263887f9332b3fbeff703af89a`、`runId=30322631618`、`runAttempt=1`、`version=v5.8`，build、static checks、project lint、simulator launch 均 success。JUnit 4 项检查、0 failures、1 skipped（无 XCTest target）。
+- generic iOS device 与 simulator build 日志均含 `** BUILD SUCCEEDED **`；二十四次 launch 均在截图后存活，二十四张 PNG 均为 1206x2622，逐张灰度统计无白 / 黑帧；App / launch 日志未命中 crash、fatal error、SIGABRT、watchdog 或未捕获异常。验收账号为 `Altman-sam114`。
+- 目视 `simulator-naval-damage.png`（SHA-256 `86eda8b741058da25ff536193191f9888026aa085dffad9dfdb1bb190c5ab134`）：Battleship 甲板破口 / 撕裂、双热点与烟火清楚，Red Submarine 模型 / 血条、双压力环、水沫 / 小水柱、气泡和 `ASW HIT` 完整可辨；目标 HP / 距离 / reload、射程圈、攻击意图、九动作 TACT、小地图和右侧面板无遮挡。
+- 回归目视 `simulator-damage-state.png`（SHA-256 `064aeeaef590766fccfc95036fc21e15aa65fa0bac1858c106c5421838273468`）与 `simulator-naval-salvo.png`（SHA-256 `d6fcb192a053f718427f8f1751bce68b78e2e9f8cf44b46b290e829b0db96216`）：三域战损、双发舰炮、主 / 副水柱、模型、HUD 与小地图无明显回归。
+
+遗留事项：
+
+- 云端冻结截图能证明 Battleship 两档节点、合法声呐可见与 ASW 短时组合，但不能覆盖潜艇在声呐边缘进出、连续交火节点清理、多人混战遮挡或真机触控 / 性能，仍需后续人工玩法检查。
+- 当前没有独立 XCTest target。下一轮候选增量：红色虚线目标环与橙色方向箭头、Submarine 基础模型细化，或岩石群 / 中东民居地物细化；总目标仍未完成。
