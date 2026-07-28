@@ -882,6 +882,8 @@ private final class GameEntity {
     var damageSmokeNodes: [SKShapeNode] = []
     let damageFireNode = SKNode()
     let damageScorchNode = SKShapeNode()
+    let battleshipDamageBreachNode = SKNode()
+    let battleshipCriticalDamageNode = SKNode()
     let mechanicRepairEffectNode = SKNode()
     let mechanicRepairBeamNode = SKShapeNode()
     let mechanicRepairCoreNode = SKShapeNode()
@@ -3301,6 +3303,55 @@ final class GameScene: SKScene {
         entity.damageFireNode.position = CGPoint(x: 0, y: 2)
         entity.damageFireNode.zPosition = 5
         entity.damageStateNode.addChild(entity.damageFireNode)
+
+        if entity.kind == .battleship {
+            let breachPath = CGMutablePath()
+            breachPath.move(to: CGPoint(x: 4, y: -5))
+            breachPath.addLine(to: CGPoint(x: 14, y: -3))
+            breachPath.addLine(to: CGPoint(x: 10, y: 2))
+            breachPath.addLine(to: CGPoint(x: 16, y: 6))
+            breachPath.addLine(to: CGPoint(x: 3, y: 5))
+            breachPath.addLine(to: CGPoint(x: -2, y: 0))
+            breachPath.closeSubpath()
+            let breach = SKShapeNode(path: breachPath)
+            breach.fillColor = UIColor(white: 0.035, alpha: 0.92)
+            breach.strokeColor = UIColor(red: 0.95, green: 0.34, blue: 0.12, alpha: 0.66)
+            breach.lineWidth = 1.2
+            entity.battleshipDamageBreachNode.addChild(breach)
+
+            let tearPath = CGMutablePath()
+            tearPath.move(to: CGPoint(x: -13, y: -5))
+            tearPath.addLine(to: CGPoint(x: -7, y: -1))
+            tearPath.addLine(to: CGPoint(x: -12, y: 4))
+            tearPath.move(to: CGPoint(x: -7, y: -1))
+            tearPath.addLine(to: CGPoint(x: 1, y: 1))
+            let tear = SKShapeNode(path: tearPath)
+            tear.strokeColor = UIColor(white: 0.08, alpha: 0.96)
+            tear.lineWidth = 2.2
+            tear.lineCap = .round
+            entity.battleshipDamageBreachNode.addChild(tear)
+            entity.battleshipDamageBreachNode.position = CGPoint(x: 7, y: -4)
+            entity.battleshipDamageBreachNode.zPosition = 4
+            entity.damageStateNode.addChild(entity.battleshipDamageBreachNode)
+
+            let hotspot = SKShapeNode(ellipseOf: CGSize(width: 18, height: 10))
+            hotspot.fillColor = UIColor(red: 0.94, green: 0.16, blue: 0.04, alpha: 0.78)
+            hotspot.strokeColor = UIColor(red: 1.0, green: 0.72, blue: 0.16, alpha: 0.92)
+            hotspot.lineWidth = 1.2
+            hotspot.glowWidth = 2
+            entity.battleshipCriticalDamageNode.addChild(hotspot)
+
+            let hotCore = SKShapeNode(circleOfRadius: 2.8)
+            hotCore.position = CGPoint(x: 2, y: 1)
+            hotCore.fillColor = UIColor(white: 1.0, alpha: 0.96)
+            hotCore.strokeColor = .clear
+            hotCore.zPosition = 1
+            entity.battleshipCriticalDamageNode.addChild(hotCore)
+            entity.battleshipCriticalDamageNode.position = CGPoint(x: -18, y: -5)
+            entity.battleshipCriticalDamageNode.zPosition = 6
+            entity.battleshipCriticalDamageNode.isHidden = true
+            entity.damageStateNode.addChild(entity.battleshipCriticalDamageNode)
+        }
 
         entity.damageStateNode.zPosition = 17
         entity.damageStateNode.isHidden = true
@@ -8078,6 +8129,11 @@ final class GameScene: SKScene {
             return
         }
 
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "naval-damage" {
+            prepareCINavalDamageCaptureScene()
+            return
+        }
+
         let playerNavy = entities.values
             .filter { $0.faction == .player && $0.kind.domain == .naval && $0.isAlive }
             .sorted { $0.id < $1.id }
@@ -8749,6 +8805,50 @@ final class GameScene: SKScene {
         )
         showNavalSalvoImpact(
             target: enemyBattleship,
+            faction: .player,
+            persistent: true
+        )
+    }
+
+    private func prepareCINavalDamageCaptureScene() {
+        guard let playerBattleship = entities.values.first(where: {
+            $0.faction == .player && $0.kind == .battleship && $0.isAlive
+        }), let enemySubmarine = entities.values.first(where: {
+            $0.faction == .enemy && $0.kind == .submarine && $0.isAlive
+        }) else { return }
+
+        let focus = tileCenter(TileCoord(row: 18, col: 24))
+        cameraRig.position = focus
+        playerBattleship.node.position = focus + CGPoint(x: -86, y: -36)
+        playerBattleship.node.xScale = 1
+        playerBattleship.node.zPosition = entityZPosition(playerBattleship)
+        playerBattleship.hp = playerBattleship.kind.maxHP * 0.29
+        playerBattleship.attackTarget = enemySubmarine
+        playerBattleship.attackTimer = 0.76
+        playerBattleship.destination = nil
+        playerBattleship.attackMoveDestination = nil
+        playerBattleship.path.removeAll()
+        updateHealthBar(playerBattleship)
+
+        enemySubmarine.node.position = focus + CGPoint(x: 72, y: -16)
+        enemySubmarine.node.xScale = -1
+        enemySubmarine.node.zPosition = entityZPosition(enemySubmarine)
+        enemySubmarine.hp = enemySubmarine.kind.maxHP * 0.46
+        enemySubmarine.attackTarget = playerBattleship
+        enemySubmarine.attackTimer = 0.38
+        enemySubmarine.destination = nil
+        enemySubmarine.attackMoveDestination = nil
+        enemySubmarine.path.removeAll()
+        updateHealthBar(enemySubmarine)
+
+        selectedIDs = [playerBattleship.id]
+        updateFog(force: true)
+        guard playerBattleship.node.position.distance(to: enemySubmarine.node.position) <= sonarRange(for: .battleship),
+              isKnownToFaction(enemySubmarine, observer: .player)
+        else { return }
+        refreshSelection()
+        showAntiSubmarineHit(
+            at: enemySubmarine.node.position,
             faction: .player,
             persistent: true
         )
@@ -9472,6 +9572,8 @@ final class GameScene: SKScene {
         entity.damageStateNode.alpha = isCritical ? 1.0 : 0.76
         entity.damageScorchNode.alpha = isCritical ? 0.82 : 0.48
         entity.damageFireNode.isHidden = !isCritical
+        entity.battleshipDamageBreachNode.alpha = isCritical ? 1.0 : 0.72
+        entity.battleshipCriticalDamageNode.isHidden = !isCritical
 
         for (index, smoke) in entity.damageSmokeNodes.enumerated() {
             smoke.isHidden = !isCritical && index == entity.damageSmokeNodes.count - 1
@@ -13373,22 +13475,67 @@ final class GameScene: SKScene {
         ring.run(.sequence([.group([.scale(to: 2.1, duration: 0.45), .fadeOut(withDuration: 0.45)]), .removeFromParent()]))
     }
 
-    private func showAntiSubmarineHit(at point: CGPoint, faction: Faction) {
+    private func showAntiSubmarineHit(
+        at point: CGPoint,
+        faction: Faction,
+        persistent: Bool = false
+    ) {
         let color = faction == .enemy
             ? UIColor(red: 1.0, green: 0.42, blue: 0.28, alpha: 1.0)
             : UIColor(red: 0.28, green: 0.95, blue: 1.0, alpha: 1.0)
 
-        let shockRing = SKShapeNode(ellipseOf: CGSize(width: 56, height: 22))
-        shockRing.position = point
-        shockRing.fillColor = color.withAlphaComponent(0.08)
-        shockRing.strokeColor = color.withAlphaComponent(0.96)
-        shockRing.lineWidth = 2.5
-        shockRing.zPosition = 282
-        effectsLayer.addChild(shockRing)
-        shockRing.run(.sequence([
-            .group([.scale(to: 1.85, duration: 0.42), .fadeOut(withDuration: 0.42)]),
-            .removeFromParent()
-        ]))
+        let root = SKNode()
+        root.position = point
+        root.zPosition = 282
+
+        let outerRing = SKShapeNode(ellipseOf: CGSize(width: 70, height: 28))
+        outerRing.fillColor = color.withAlphaComponent(0.06)
+        outerRing.strokeColor = color.withAlphaComponent(0.78)
+        outerRing.lineWidth = 2
+        root.addChild(outerRing)
+
+        let innerRing = SKShapeNode(ellipseOf: CGSize(width: 44, height: 17))
+        innerRing.fillColor = UIColor.white.withAlphaComponent(0.08)
+        innerRing.strokeColor = color.withAlphaComponent(0.98)
+        innerRing.lineWidth = 2.8
+        innerRing.zPosition = 1
+        root.addChild(innerRing)
+
+        let plumePath = CGMutablePath()
+        plumePath.move(to: CGPoint(x: -7, y: 0))
+        plumePath.addQuadCurve(to: CGPoint(x: -2, y: 25), control: CGPoint(x: -10, y: 13))
+        plumePath.addQuadCurve(to: CGPoint(x: 5, y: 23), control: CGPoint(x: 2, y: 31))
+        plumePath.addQuadCurve(to: CGPoint(x: 8, y: 0), control: CGPoint(x: 11, y: 12))
+        plumePath.closeSubpath()
+        let plume = SKShapeNode(path: plumePath)
+        plume.fillColor = UIColor(red: 0.58, green: 0.94, blue: 1.0, alpha: 0.72)
+        plume.strokeColor = UIColor.white.withAlphaComponent(0.88)
+        plume.lineWidth = 1.4
+        plume.zPosition = 2
+        root.addChild(plume)
+
+        let foam = SKShapeNode(ellipseOf: CGSize(width: 20, height: 7))
+        foam.position = CGPoint(x: 1, y: 24)
+        foam.fillColor = UIColor.white.withAlphaComponent(0.88)
+        foam.strokeColor = color.withAlphaComponent(0.72)
+        foam.lineWidth = 1
+        foam.zPosition = 3
+        root.addChild(foam)
+
+        let bubbleOffsets = [
+            CGPoint(x: -24, y: 8), CGPoint(x: -15, y: 20),
+            CGPoint(x: 17, y: 17), CGPoint(x: 25, y: 7)
+        ]
+        var bubbles: [SKShapeNode] = []
+        for (index, offset) in bubbleOffsets.enumerated() {
+            let bubble = SKShapeNode(circleOfRadius: index.isMultiple(of: 2) ? 2.8 : 2.1)
+            bubble.position = offset
+            bubble.fillColor = index.isMultiple(of: 2) ? color.withAlphaComponent(0.86) : UIColor.white
+            bubble.strokeColor = .clear
+            bubble.zPosition = 3
+            root.addChild(bubble)
+            bubbles.append(bubble)
+        }
 
         let label = SKLabelNode(fontNamed: "Menlo-Bold")
         label.text = "ASW HIT"
@@ -13396,13 +13543,28 @@ final class GameScene: SKScene {
         label.fontColor = color
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
-        label.position = point + CGPoint(x: 0, y: 34)
-        label.zPosition = 283
-        effectsLayer.addChild(label)
+        label.position = CGPoint(x: 0, y: 37)
+        label.zPosition = 4
+        root.addChild(label)
+
+        effectsLayer.addChild(root)
+        guard !persistent else { return }
+
+        outerRing.run(.group([.scale(to: 1.75, duration: 0.52), .fadeOut(withDuration: 0.52)]))
+        innerRing.run(.group([.scale(to: 2.0, duration: 0.46), .fadeOut(withDuration: 0.46)]))
+        plume.run(.group([.scaleY(to: 1.18, duration: 0.20), .fadeOut(withDuration: 0.54)]))
+        foam.run(.group([.moveBy(x: 0, y: 6, duration: 0.46), .fadeOut(withDuration: 0.46)]))
+        for bubble in bubbles {
+            bubble.run(.group([
+                .moveBy(x: bubble.position.x * 0.35, y: 9, duration: 0.48),
+                .fadeOut(withDuration: 0.48)
+            ]))
+        }
         label.run(.sequence([
             .group([.moveBy(x: 0, y: 12, duration: 0.48), .fadeOut(withDuration: 0.48)]),
             .removeFromParent()
         ]))
+        root.run(.sequence([.wait(forDuration: 0.60), .removeFromParent()]))
     }
 
     private func showNavalWaterImpact(

@@ -83,6 +83,7 @@ GitHub Actions 负责运行：
 - 第二十一次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=target-cycle` 生成 `simulator-target-cycle.png`：四个选中 Blue 作战单位先共享攻击最近的 Red Tank，再调用真实 `issueCycleTargetOrder(...)` 切换到第二候选 Red Artillery；第三候选为更远的 Red Humvee，其余 Red 实体移出视野。截图用于核对九动作单排、`TGT ART 2/3`、持久 `ATK 2/3 ART`、`FOCUS 4 ART 57%`、目标生命条、四条攻击意图线、选择摘要和小地图无遮挡。workflow 总计二十一次独立启动 / PID 存活检查；只有 target-cycle capture 会临时写上述位置、目标、HP 和选择，普通 App 与其他 capture 状态不变。
 - 第二十二次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=selection-cycle` 生成 `simulator-selection-cycle.png`：紧邻 Blue Humvee / Tank / Artillery 对同一点真实调用两次友军选择 helper，截图核对 `SEL 2/3 TNK`、唯一 Tank 选择圈、Tank 单选面板、三个模型、九动作 TACT 与小地图无遮挡。workflow 总计二十二次独立启动 / PID 存活检查；普通 App 不进入 capture-only 写入。
 - 第二十三次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=enemy-touch-assist` 生成 `simulator-enemy-touch-assist.png`：镜头缩远到 1.58，两个 Blue AA Truck 选择一个玩家已知 Red Fighter，并用确定性 precondition 证明点击点严格位于 Fighter 精确 footprint 外、26pt 屏幕辅助范围内，再真实调用普通敌军辅助攻击 helper。截图核对两个 AA Truck、Red Fighter / 投影、两条红色攻击意图线、持久 `ATK TAP JET`、完整可读且不被机身遮挡的 `FOCUS 2 JET 64%` 世界标注与八段目标血条、完整九动作 TACT、选择摘要和小地图无遮挡。workflow 总计二十三次独立启动 / PID 存活检查；普通 App 不进入 capture-only 写入。
+- 第二十四次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=naval-damage` 生成 `simulator-naval-damage.png`：约 29% HP Blue Battleship 与约 46% HP Red Submarine 的距离保持在 Battleship 既有 230pt 声呐范围内，并经 `updateFog(force: true)` / `isKnownToFaction(...)` 校验为合法已知目标；截图核对 Battleship 甲板破口 / 撕裂、Critical 第二热点与既有烟火、Submarine 模型 / 血条、持久双层压力环 / 浅青水沫 / 气泡 / `ASW HIT`、舰炮射程圈、攻击意图和目标 HP / 距离 / reload。workflow 总计二十四次独立启动 / PID 存活检查；场景禁止直接写 `revealedUntil`，普通 App 不进入 capture-only 写入。
 - 结果包生成和上传。
 
 云端 Xcode build 命令：
@@ -139,6 +140,7 @@ GitHub Actions 负责运行：
 - `simulator-target-cycle.png`
 - `simulator-selection-cycle.png`
 - `simulator-enemy-touch-assist.png`
+- `simulator-naval-damage.png`
 - `DesertFrontline.xcresult`
 
 artifact 命名规则：
