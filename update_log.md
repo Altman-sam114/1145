@@ -5257,3 +5257,30 @@
 
 - 舰载机弹射 / 回收动画仍为纯视觉三机曲线，未与新停机位圈联动；可作后续增量。
 - 当前没有独立 XCTest target。下一轮候选增量：海岸浅水泡沫层次（对照参考图亮青海岸线）、Battleship / Submarine 受击细节、或红色虚线目标环攻击标识语言；总目标仍未完成。
+
+### v5.7 / 海岸浅水层次与开阔水面细节
+
+日期：2026-07-28
+
+核心变更：
+
+- 参考《Desert Stormfront》官方截图中的亮青浅滩、白色泡沫边与稀疏水面波纹，在贴岸 water tile 的既有浅水层上增加更亮的内缘浅水菱形，形成由岸线向深水过渡的两级层次。
+- 每段岸线沿 wash / foam 线确定性散布 2-3 个白色泡点；开阔水面波纹按 `terrainDetailHash` 改变长度与角度，约半数增加第二条短波纹，减少重复感。
+- 新增节点仅在地图构建或 skirmish 重开时创建为 `mapNode` 静态子节点，不进入逐帧 update，不改变 terrain、水域判定、寻路、移动、建造、迷雾、小地图或战斗数值。
+- `md/flow/flow.md`、`md/test/test.md` 和 v5.7 提示词已同步；现有 `simulator-map-terrain.png` 继续作为 coast 地貌验收图。人工 `project.pbxproj` Team ID 与未跟踪 Unity 报告保持未暂存。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；实现阶段只运行 `git diff --check`、`git diff --cached --check` 等轻量检查并通过。
+- 实现提交：`dc494dd24bdde9cda567eb1362ca12a9e666e0e8`，commit subject 为 `v5.7: 海岸浅水层次细节`。
+- GitHub Actions run：`30209134416`，attempt `1`，conclusion `success`，job 总耗时约 10 分 14 秒。
+- artifact：`desert-frontline-ci-v5.7-main-dc494dd24bdd-run30209134416-attempt1`，artifact ID `8634039318`，缓存于 `/private/tmp/desert-frontline-c-review-30209134416/`，未加密且约 30 MB。
+- manifest 记录 `branch=main`、`commitSha=dc494dd24bdde9cda567eb1362ca12a9e666e0e8`、`runId=30209134416`、`runAttempt=1`、`version=v5.7`，build、static checks、project lint、simulator launch 均 success。JUnit 4 项检查、0 failures、1 skipped（无 XCTest target）。
+- generic iOS device 与 simulator build 日志均含 `** BUILD SUCCEEDED **`；二十三次 launch 均在截图后存活，二十三张 PNG 均为 1206x2622。逐张灰度统计均有正常均值、方差与 0-255 范围，无白 / 黑帧；App / launch 日志未命中 crash、fatal error、SIGABRT、watchdog 或未捕获异常。验收账号为 `Altman-sam114`。
+- 目视 `simulator-map-terrain.png`（SHA-256 `527aece812fa2d2f7b3a58a4b01664acb9b911452a80724608ff73d2e58551d8`）：贴岸亮青内缘、外层浅水、连续泡沫线与白色泡点均可辨，开阔水面波纹具有不同长度 / 角度；道路、油井、海军模型 / 航迹 / 水柱、HUD 与小地图无明显回归。
+- 代码审查确认：玩法源码只改 `addTerrainDetail` 的 `.water` 静态绘制分支，所有变化由既有确定性哈希驱动，无逐帧状态或外部素材。
+
+遗留事项：
+
+- 两级浅水仍使用 tile 菱形叠加，极长直岸会保留轻微等距格轮廓；后续可在不改变 terrain 语义的前提下评估跨 tile 连续浅滩带，但不作为本轮阻塞。
+- 当前没有独立 XCTest target。下一轮候选增量：Battleship / Submarine 受击细节、红色虚线目标环与橙色方向箭头，或岩石群 / 中东民居地物细化；总目标仍未完成。
