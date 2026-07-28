@@ -177,6 +177,9 @@ jobs:
           branch_slug="$(printf '%s' "${GITHUB_REF_NAME}" | tr '/[:upper:]' '-[:lower:]')"
           commit_subject="$(git log -1 --pretty=%s)"
           version="$(printf '%s' "$commit_subject" | sed -E 's/^([^:]+):.*/\1/')"
+          if [[ "$version" =~ \(v([0-9]+(\.[0-9]+)?)\)$ ]]; then
+            version="v${BASH_REMATCH[1]}"
+          fi
           if [[ ! "$version" =~ ^v[0-9]+(\.[0-9]+)?$ ]]; then
             version="unversioned"
           fi
