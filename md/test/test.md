@@ -2,6 +2,8 @@
 
 本文指导 Agent B 和 Agent C 为 `Desert Frontline` 选择验证层级。每次实现前必须先读本文件。
 
+v5.10 目视口径：复用现有 24 张截图检查六格竖直耐久塔的满血初始化、HP ratio 分段颜色和可见空槽；确认塔与旗标、实体短码、选择圈、FOCUS / ATK 标记、伤害烟火及海空反馈不重叠，且迷雾不会泄露未知实体。无新增 launch。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。
@@ -85,6 +87,7 @@ GitHub Actions 负责运行：
 - 第二十三次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=land` 和 capture-only `DESERT_CI_COMMAND_MARKER=enemy-touch-assist` 生成 `simulator-enemy-touch-assist.png`：镜头缩远到 1.58，两个 Blue AA Truck 选择一个玩家已知 Red Fighter，并用确定性 precondition 证明点击点严格位于 Fighter 精确 footprint 外、26pt 屏幕辅助范围内，再真实调用普通敌军辅助攻击 helper。截图核对两个 AA Truck、Red Fighter / 投影、两条红色攻击意图线、持久 `ATK TAP JET`、完整可读且不被机身遮挡的 `FOCUS 2 JET 64%` 世界标注与八段目标血条、完整九动作 TACT、选择摘要和小地图无遮挡。workflow 总计二十三次独立启动 / PID 存活检查；普通 App 不进入 capture-only 写入。
 - 第二十四次使用 tactical 页、`DESERT_CI_CAMERA_FOCUS=coast` 和 capture-only `DESERT_CI_COMMAND_MARKER=naval-damage` 生成 `simulator-naval-damage.png`：约 29% HP Blue Battleship 与约 46% HP Red Submarine 的距离保持在 Battleship 既有 230pt 声呐范围内，并经 `updateFog(force: true)` / `isKnownToFaction(...)` 校验为合法已知目标；截图核对 Battleship 甲板破口 / 撕裂、Critical 第二热点与既有烟火、Submarine 模型 / 血条、持久双层压力环 / 浅青水沫 / 气泡 / `ASW HIT`、舰炮射程圈、攻击意图和目标 HP / 距离 / reload。workflow 总计二十四次独立启动 / PID 存活检查；场景禁止直接写 `revealedUntil`，普通 App 不进入 capture-only 写入。
 - v5.9 复用既有 `simulator-command-attack-target.png`、`simulator-target-cycle.png` 和 `simulator-enemy-touch-assist.png` 做攻击 marker 目视验收：三张图分别核对红色虚线 footprint-aware 目标环、环上缘内侧橙色双 V、环下方 `ATK JET` / `ATK 2/3 ART` / `ATK TAP JET`，并确认 FOCUS、目标血条、攻击意图线、空中 / 地面模型和 HUD 不遮挡；不新增 launch，workflow 总数仍为二十四次。
+- v5.10 复用全部二十四张截图做实体耐久塔目视验收：`land-combat` / `combat-ui` / `target-cycle` / `enemy-touch-assist` 核对小型 HMV / AA / Fighter / Tank 的旗杆、燕尾旗、六格竖塔、短码、FOCUS / ATK 文本不重叠；`naval-salvo` / `carrier-strike` / `fighter-strike` / `helicopter-salvo` / `naval-damage` 核对舰机旗标与竖塔不遮挡模型、航迹、炮击、水柱或 ASW 反馈；`damage-state` 核对约 29% / 32% / 56% HP 的填充格数量、绿 / 红阈值、空槽可见和维修后的刷新。旧水平实体生命条不得与竖塔重复，未知敌军 / 未侦测 Submarine 不得通过塔泄露；不新增 launch，workflow 总数仍为二十四次。
 - 结果包生成和上传。
 
 云端 Xcode build 命令：

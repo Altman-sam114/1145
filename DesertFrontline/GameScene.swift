@@ -867,6 +867,8 @@ private final class GameEntity {
     let incomingThreatDirectionNode = SKNode()
     let incomingThreatCountLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     let healthFill: SKShapeNode
+    let healthTowerNode = SKNode()
+    var healthTowerSegments: [SKShapeNode] = []
     let teamFlag: SKShapeNode
     let label: SKLabelNode
     let productionNode = SKNode()
@@ -2102,7 +2104,43 @@ final class GameScene: SKScene {
         entity.healthFill.fillColor = UIColor(red: 0.28, green: 0.92, blue: 0.24, alpha: 1.0)
         entity.healthFill.strokeColor = .clear
         entity.healthFill.zPosition = 21
+        healthBack.isHidden = true
+        entity.healthFill.isHidden = true
         entity.node.addChild(entity.healthFill)
+
+        let segmentCount = 6
+        let segmentWidth = max(7, min(10, entity.kind.footprint * 0.12))
+        let segmentHeight = max(3.5, min(4.5, segmentWidth * 0.52))
+        let segmentGap: CGFloat = 1.2
+        let towerHeight = CGFloat(segmentCount) * segmentHeight + CGFloat(segmentCount - 1) * segmentGap
+        let flagX = entity.kind.footprint * 0.35
+        let towerOffsetX = max(16, min(18, entity.kind.footprint * 0.06 + 15))
+        entity.healthTowerNode.removeAllChildren()
+        entity.healthTowerSegments.removeAll(keepingCapacity: true)
+        // Keep the tower beside the flag while leaving the upper lane clear for
+        // FOCUS / ATK captions on compact land and air targets.
+        let flagY = entity.kind.footprint * 0.45 + 5
+        entity.healthTowerNode.position = CGPoint(
+            x: flagX + towerOffsetX,
+            y: flagY - towerHeight * 0.5 + 5
+        )
+        entity.healthTowerNode.zPosition = 20
+        for index in 0..<segmentCount {
+            let segment = SKShapeNode(
+                rectOf: CGSize(width: segmentWidth, height: segmentHeight),
+                cornerRadius: min(1.2, segmentHeight * 0.24)
+            )
+            segment.position = CGPoint(
+                x: 0,
+                y: -towerHeight * 0.5 + segmentHeight * 0.5 + CGFloat(index) * (segmentHeight + segmentGap)
+            )
+            segment.fillColor = UIColor.black.withAlphaComponent(0.72)
+            segment.strokeColor = UIColor.white.withAlphaComponent(0.62)
+            segment.lineWidth = 0.7
+            entity.healthTowerSegments.append(segment)
+            entity.healthTowerNode.addChild(segment)
+        }
+        entity.node.addChild(entity.healthTowerNode)
 
         entity.teamFlag.fillColor = entity.faction.color
         entity.teamFlag.strokeColor = UIColor.white.withAlphaComponent(0.85)
@@ -2157,6 +2195,9 @@ final class GameScene: SKScene {
 
         entity.constructionNode.zPosition = 31
         entity.node.addChild(entity.constructionNode)
+
+        // Initialize the shared HP visual so newly spawned full-health entities show all tower segments.
+        updateHealthBar(entity)
     }
 
     private func addStructureBody(for entity: GameEntity, to base: SKNode) {
@@ -9554,6 +9595,19 @@ final class GameScene: SKScene {
         entity.healthFill.fillColor = ratio > 0.45
             ? UIColor(red: 0.28, green: 0.92, blue: 0.24, alpha: 1.0)
             : UIColor(red: 1.0, green: 0.35, blue: 0.20, alpha: 1.0)
+        let filledSegments = Int(ceil(ratio * CGFloat(entity.healthTowerSegments.count)))
+        let towerColor = ratio > 0.45
+            ? UIColor(red: 0.28, green: 0.92, blue: 0.24, alpha: 1.0)
+            : UIColor(red: 1.0, green: 0.35, blue: 0.20, alpha: 1.0)
+        for (index, segment) in entity.healthTowerSegments.enumerated() {
+            let isFilled = index < filledSegments
+            segment.fillColor = isFilled
+                ? towerColor
+                : UIColor.black.withAlphaComponent(0.72)
+            segment.strokeColor = isFilled
+                ? UIColor.white.withAlphaComponent(0.82)
+                : UIColor.white.withAlphaComponent(0.38)
+        }
         updateDamageStateVisual(for: entity, healthRatio: ratio)
     }
 
