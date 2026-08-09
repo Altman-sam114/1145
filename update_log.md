@@ -5366,3 +5366,29 @@
 
 - 云端冻结截图覆盖了六格耐久塔的满血 / 受击静态状态与主要陆海空场景，但不能替代真机触控手感、长时间交火压力或性能评估；后续仍需人工玩法检查。
 - 当前没有独立 XCTest target。下一轮继续从 Submarine 基础模型、岩石群 / 中东民居地物或海空战细节中选择范围有限的增量；总目标仍未完成。
+
+### v5.11 / 选中战斗面板状态颜色层级
+
+日期：2026-08-09
+
+核心变更：
+
+- `updateSelectionInfoPanel(...)` 为既有四行选中信息建立只读状态色板：自身 HP 复用 `damageStateShortLabel(...)` 的正常 / `DMG` / `CRIT` 阈值，PRIMARY 与底部目标生命条复用 55% / 25% 目标 HP 阈值，`Weapon ready` / `Reload` 只读 `attackTimer`，合法 `INCOMING` / `IN` 红橙优先。
+- 每帧先把所有现有行恢复中性浅色，再按单选 / 多选、HP、主目标、武器装填和来袭威胁状态赋色；pending 建造、集结、支援、attack-move、空选择和非战斗摘要不会继承上一选择颜色。没有新增文字、节点、布局、命令或战斗规则。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.11 提示词已同步；人工 `project.pbxproj` Team ID 与未跟踪 Unity 分析目录保持未暂存。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check` 和 `plutil -lint DesertFrontline.xcodeproj/project.pbxproj`。
+- 实现提交：`eb748562f35265676ae48a7cc89cc0a3bcf8ca99`，commit subject 为 `v5.11: 选中战斗面板状态层级`。
+- GitHub Actions run：`31296785116`，attempt `1`，conclusion `success`，job `93203098110`；artifact：`desert-frontline-ci-v5.11-main-eb748562f352-run31296785116-attempt1`，artifact ID `9033370372`，缓存于 `/private/tmp/desert-frontline-c-review-31296785116/`，未加密约 32 MB。
+- manifest 记录 `branch=main`、`commitSha=eb748562f35265676ae48a7cc89cc0a3bcf8ca99`、`runId=31296785116`、`runAttempt=1`、`version=v5.11`；static checks、project lint、generic iOS build、simulator launch 均为 success。JUnit 4 项检查、0 failures、1 skipped（无 XCTest target）。
+- 二十四次 simulator launch 均在截图后存活，二十四张 PNG 均为 `1206x2622`；逐张灰度均值约 78.89-117.64、标准差约 60.90-71.50、均含正常 0-255 动态范围，无黑 / 白 / 近灰空屏。App / launch 日志未命中 crash、fatal error、SIGABRT、watchdog 或未捕获异常。
+- 目视 `simulator-combat-ui.png`、`simulator-incoming-ui.png`、`simulator-target-cycle.png`、`simulator-damage-state.png`、`simulator-naval-damage.png` 与 `simulator-hud-build.png`：多选 HP/Wnd/Crit、PRIMARY、Eng/Rdy、单选目标 / Reload / IN、海空战损与 ASW HIT 的颜色层级清晰，非战斗 HUD 保持中性，未见颜色残留、文字溢出、布局回归或对六格耐久塔 / FOCUS / ATK / 舰炮水柱遮挡。
+- 重点截图 SHA-256：`combat-ui` `1a6d85e063b7d65b356bc16bb78aa464945667a8bd31851781bb57cd0698c343`；`incoming-ui` `d8b767edf449e5c23435cf7cec6f8c0121d93bd4d0e9e960fe4525c052230225`；`target-cycle` `b23fac0b81309f92ad06a1ea5200b59d32dc646eba76cd3a33c8e1aec2ca28bd`；`damage-state` `9ae60f14ae5f62a7359291e3d0fd3760a8c0afd7ae20a313bfead9920b4c58aa`；`naval-damage` `834fe52e3fae85092d0719355d1f53bdac5b11175d94fc8a964639e13fa9dc70`。
+- 验收账号确认为 `Altman-sam114`；Agent C 代码与 artifact 复核确认颜色 helper 只读既有状态，不写 HP、attackTarget、cooldown 或迷雾集合。
+
+遗留事项：
+
+- 云端冻结截图覆盖了小屏 HUD 的颜色层级和主要陆海空战斗状态，但不能替代真机触控手感、长时间交火压力或性能评估；后续仍需人工玩法检查。
+- 当前没有独立 XCTest target。下一轮继续从 Submarine 基础模型、岩石群 / 中东民居地物或海空战细节中选择范围有限的增量；总目标仍未完成。
