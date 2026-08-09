@@ -4,6 +4,8 @@
 
 v5.10 目视口径：复用现有 24 张截图检查六格竖直耐久塔的满血初始化、HP ratio 分段颜色和可见空槽；确认塔与旗标、实体短码、选择圈、FOCUS / ATK 标记、伤害烟火及海空反馈不重叠，且迷雾不会泄露未知实体。无新增 launch。
 
+v5.11 目视口径：复用现有 24 张截图检查选中战斗面板行色层级，不新增 launch。`simulator-combat-ui.png` 核对多选 HP/Wnd/Crit、PRIMARY、Eng/Rdy 的绿 / 琥珀 / 红橙优先级；`simulator-incoming-ui.png` 核对 Critical HP 与 `INCOMING` / `IN` 红橙状态、切换选择后无颜色残留；`simulator-target-cycle.png`、`simulator-enemy-touch-assist.png` 核对目标 HP 与 Weapon ready / Reload 颜色对应真实状态；`simulator-land-combat.png`、`simulator-damage-state.png`、`simulator-naval-salvo.png`、`simulator-coastal-battery.png`、`simulator-carrier-strike.png`、`simulator-mobile-aa.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png`、`simulator-naval-damage.png` 核对颜色不压过单位模型、六格耐久塔、FOCUS / ATK、炮击、水柱、舰载机或 ASW 反馈；BUILD / RALLY / SUPPORT / 空选择等非战斗面板行恢复中性浅色。颜色只读复用既有 HP、primaryCombatTarget、attackTimer、incomingThreatSummary 和迷雾边界，不改变文案、布局或战斗规则。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。

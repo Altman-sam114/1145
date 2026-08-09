@@ -1012,6 +1012,11 @@ final class GameScene: SKScene {
     private var selectionInfoRowLabels: [SKLabelNode] = []
     private var selectionTargetHealthBack = SKShapeNode()
     private var selectionTargetHealthFill = SKShapeNode()
+    private let selectionInfoNeutralColor = UIColor(white: 0.90, alpha: 1.0)
+    private let selectionInfoHealthyColor = UIColor(red: 0.42, green: 0.98, blue: 0.52, alpha: 1.0)
+    private let selectionInfoReadyColor = UIColor(red: 0.48, green: 0.94, blue: 0.94, alpha: 1.0)
+    private let selectionInfoWarningColor = UIColor(red: 1.0, green: 0.72, blue: 0.20, alpha: 1.0)
+    private let selectionInfoCriticalColor = UIColor(red: 1.0, green: 0.38, blue: 0.24, alpha: 1.0)
     private var selectionTargetHealthBarFrame = CGRect.zero
     private var hudButtonFrames: [HudAction: CGRect] = [:]
     private var hudButtonSubtitleLabels: [HudAction: SKLabelNode] = [:]
@@ -4542,10 +4547,95 @@ final class GameScene: SKScene {
         selectionInfoTitleLabel.fontColor = incomingThreatSummary(for: selected) == nil
             ? UIColor(red: 0.74, green: 0.95, blue: 1.0, alpha: 1.0)
             : UIColor(red: 1.0, green: 0.48, blue: 0.24, alpha: 1.0)
+        let rowColors = selectionInfoRowColors(for: selected)
         for (index, label) in selectionInfoRowLabels.enumerated() {
             label.text = index < content.rows.count ? content.rows[index] : ""
+            label.fontColor = rowColors[index]
         }
         updateSelectionTargetHealthBar(selected: selected)
+    }
+
+    private func selectionInfoRowColors(for selected: [GameEntity]) -> [UIColor] {
+        var colors = Array(repeating: selectionInfoNeutralColor, count: selectionInfoRowLabels.count)
+        guard pendingConstructionKind == nil,
+              pendingSupportPower == nil,
+              !isSettingRallyPoint,
+              !isSettingAttackMove,
+              !selected.isEmpty,
+              selected.allSatisfy({ $0.faction == .player })
+        else { return colors }
+
+        if selected.count == 1, let entity = selected.first {
+            colors[0] = selectionInfoHealthColor(for: entity)
+            let primary = primaryCombatTarget(for: [entity])
+            let incoming = incomingThreatSummary(for: [entity])
+            if let primary {
+                colors[2] = selectionTargetHealthColor(for: primary.target)
+                colors[3] = selectionInfoWeaponColor(for: entity)
+            }
+            if incoming != nil {
+                colors[3] = selectionInfoCriticalColor
+            }
+            return colors
+        }
+
+        let combatUnits = selected.filter {
+            !$0.kind.isStructure && $0.isAlive && $0.kind.damage > 0
+        }
+        if !combatUnits.isEmpty {
+            let hasCritical = selected.contains { damageStateShortLabel(for: $0) == "CRIT" }
+            let hasWounded = selected.contains { $0.hp < $0.kind.maxHP - 0.5 }
+            colors[1] = hasCritical
+                ? selectionInfoCriticalColor
+                : hasWounded ? selectionInfoWarningColor : selectionInfoHealthyColor
+        }
+
+        if let primary = primaryCombatTarget(for: selected) {
+            colors[2] = selectionTargetHealthColor(for: primary.target)
+        }
+
+        let incoming = incomingThreatSummary(for: selected)
+        if incoming != nil {
+            colors[3] = selectionInfoCriticalColor
+        } else {
+            let hasHoldingStatus = selected.contains { $0.holdPosition != nil }
+            let hasAttackMoveStatus = selected.contains { $0.attackMoveDestination != nil }
+            let hasAirDefenseStatus = airDefenseThreatSummaryLine(for: selected) != nil
+            let hasEscortStatus = groupHighValueNavalEscortSummary(for: selected) != nil
+            let hasReadinessRow = !hasHoldingStatus && !hasAttackMoveStatus && !hasAirDefenseStatus && !hasEscortStatus
+            if hasReadinessRow, !combatUnits.isEmpty {
+                colors[3] = combatUnits.allSatisfy { $0.attackTimer <= 0.05 }
+                    ? selectionInfoReadyColor
+                    : selectionInfoWarningColor
+            }
+        }
+        return colors
+    }
+
+    private func selectionInfoHealthColor(for entity: GameEntity) -> UIColor {
+        switch damageStateShortLabel(for: entity) {
+        case "CRIT":
+            return selectionInfoCriticalColor
+        case "DMG":
+            return selectionInfoWarningColor
+        default:
+            return selectionInfoHealthyColor
+        }
+    }
+
+    private func selectionInfoWeaponColor(for entity: GameEntity) -> UIColor {
+        entity.attackTimer > 0.05 ? selectionInfoWarningColor : selectionInfoReadyColor
+    }
+
+    private func selectionTargetHealthColor(for target: GameEntity) -> UIColor {
+        let ratio = min(1, max(0, target.hp / max(target.kind.maxHP, 1)))
+        if ratio > 0.55 {
+            return UIColor(red: 0.30, green: 0.92, blue: 0.30, alpha: 1.0)
+        }
+        if ratio > 0.25 {
+            return selectionInfoWarningColor
+        }
+        return UIColor(red: 1.0, green: 0.28, blue: 0.18, alpha: 1.0)
     }
 
     private func updateSelectionTargetHealthBar(selected: [GameEntity]) {
@@ -4563,13 +4653,7 @@ final class GameScene: SKScene {
             x: selectionTargetHealthBarFrame.minX + selectionTargetHealthBarFrame.width * ratio * 0.5,
             y: selectionTargetHealthBarFrame.midY
         )
-        if ratio > 0.55 {
-            selectionTargetHealthFill.fillColor = UIColor(red: 0.30, green: 0.92, blue: 0.30, alpha: 1.0)
-        } else if ratio > 0.25 {
-            selectionTargetHealthFill.fillColor = UIColor(red: 1.0, green: 0.72, blue: 0.20, alpha: 1.0)
-        } else {
-            selectionTargetHealthFill.fillColor = UIColor(red: 1.0, green: 0.28, blue: 0.18, alpha: 1.0)
-        }
+        selectionTargetHealthFill.fillColor = selectionTargetHealthColor(for: primary.target)
     }
 
     private func selectionInfoContent(for selected: [GameEntity]) -> (title: String, rows: [String]) {
