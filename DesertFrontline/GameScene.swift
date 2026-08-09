@@ -856,6 +856,8 @@ private final class GameEntity {
     var rallyPoint: CGPoint?
     let node = SKNode()
     let selectionNode: SKShapeNode
+    let weaponReadinessNode = SKNode()
+    var weaponReadinessTicks: [SKShapeNode] = []
     let sonarCoverageNode = SKShapeNode()
     let escortCoverageNode = SKShapeNode()
     let navalGunRangeNode = SKShapeNode()
@@ -2081,6 +2083,7 @@ final class GameScene: SKScene {
         entity.selectionNode.isHidden = true
         entity.selectionNode.zPosition = -1
         entity.node.addChild(entity.selectionNode)
+        configureWeaponReadinessVisuals(for: entity)
 
         configureSonarCoverageNode(for: entity)
         entity.node.addChild(entity.sonarCoverageNode)
@@ -4356,6 +4359,7 @@ final class GameScene: SKScene {
         refreshHudButtonStyles()
 
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
+        refreshWeaponReadinessVisuals(for: selected)
         refreshAirDefenseThreatVisuals(for: selected)
         refreshIncomingThreatVisuals(for: selected)
         refreshCommandIntentVisuals(for: selected)
@@ -11128,6 +11132,99 @@ final class GameScene: SKScene {
         }
     }
 
+    private func configureWeaponReadinessVisuals(for entity: GameEntity) {
+        let radiusY = entity.kind.footprint * 0.41
+        let tickLength = max(4.2, min(8.0, entity.kind.footprint * 0.16))
+        let tickHeight = max(1.8, min(2.4, entity.kind.footprint * 0.055))
+        let tickGap = max(2.4, min(5.0, entity.kind.footprint * 0.10))
+        let totalWidth = tickLength * 4 + tickGap * 3
+        let startX = -totalWidth * 0.5 + tickLength * 0.5
+
+        entity.weaponReadinessNode.removeAllChildren()
+        entity.weaponReadinessTicks.removeAll(keepingCapacity: true)
+        entity.weaponReadinessNode.position = .zero
+        entity.weaponReadinessNode.zPosition = 0.15
+        entity.weaponReadinessNode.isHidden = true
+
+        for index in 0..<4 {
+            let tick = SKShapeNode(
+                rectOf: CGSize(width: tickLength, height: tickHeight),
+                cornerRadius: tickHeight * 0.5
+            )
+            let normalizedIndex = CGFloat(index) - 1.5
+            tick.position = CGPoint(
+                x: startX + CGFloat(index) * (tickLength + tickGap),
+                y: -radiusY - 2.4 - abs(normalizedIndex) * 0.4
+            )
+            tick.zRotation = normalizedIndex * 0.045
+            tick.fillColor = UIColor(white: 0.08, alpha: 0.86)
+            tick.strokeColor = UIColor.black.withAlphaComponent(0.8)
+            tick.lineWidth = 0.55
+            tick.zPosition = 0
+            entity.weaponReadinessTicks.append(tick)
+            entity.weaponReadinessNode.addChild(tick)
+        }
+
+        entity.selectionNode.addChild(entity.weaponReadinessNode)
+    }
+
+    private func refreshWeaponReadinessVisuals(for selected: [GameEntity]) {
+        let slotColor = UIColor(white: 0.08, alpha: 0.86)
+        let slotStroke = UIColor.black.withAlphaComponent(0.8)
+        let reloadColor = UIColor(red: 1.0, green: 0.66, blue: 0.18, alpha: 1.0)
+        let reloadStroke = UIColor(red: 0.38, green: 0.17, blue: 0.03, alpha: 1.0)
+        let readyColor = UIColor(red: 0.25, green: 1.0, blue: 0.84, alpha: 1.0)
+        let readyStroke = UIColor(red: 0.04, green: 0.30, blue: 0.25, alpha: 1.0)
+
+        for entity in entities.values {
+            entity.weaponReadinessNode.isHidden = true
+            for tick in entity.weaponReadinessTicks {
+                tick.fillColor = slotColor
+                tick.strokeColor = slotStroke
+                tick.alpha = 0.88
+            }
+        }
+
+        for entity in selected where
+            entity.faction == .player &&
+            entity.isAlive &&
+            entity.isOperational &&
+            !entity.kind.isStructure &&
+            entity.kind.damage > 0 &&
+            !entity.node.isHidden &&
+            !entity.selectionNode.isHidden {
+            let cooldown = effectiveAttackCooldown(for: entity)
+            let timer = entity.attackTimer
+            let isReady = timer <= 0.05
+            let progress: CGFloat
+            if isReady {
+                progress = 1
+            } else if timer.isFinite && cooldown.isFinite {
+                let duration = max(cooldown, 0.2)
+                let normalizedProgress = max(0.0, min(1.0, 1.0 - timer / duration))
+                progress = CGFloat(normalizedProgress)
+            } else {
+                progress = 0
+            }
+
+            let filledCount = progress >= 1
+                ? entity.weaponReadinessTicks.count
+                : Int(floor(progress * CGFloat(entity.weaponReadinessTicks.count)))
+            for (index, tick) in entity.weaponReadinessTicks.enumerated() {
+                if isReady {
+                    tick.fillColor = readyColor
+                    tick.strokeColor = readyStroke
+                    tick.alpha = 1
+                } else if index < filledCount {
+                    tick.fillColor = reloadColor
+                    tick.strokeColor = reloadStroke
+                    tick.alpha = 0.96
+                }
+            }
+            entity.weaponReadinessNode.isHidden = false
+        }
+    }
+
     private func refreshSelection() {
         for entity in entities.values {
             entity.selectionNode.isHidden = !selectedIDs.contains(entity.id)
@@ -11143,6 +11240,7 @@ final class GameScene: SKScene {
             }
         }
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
+        refreshWeaponReadinessVisuals(for: selected)
         refreshCommandIntentVisuals(for: selected)
         refreshFocusFireMarker(for: selected)
     }

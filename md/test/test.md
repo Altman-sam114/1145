@@ -6,6 +6,8 @@ v5.10 目视口径：复用现有 24 张截图检查六格竖直耐久塔的满�
 
 v5.11 目视口径：复用现有 24 张截图检查选中战斗面板行色层级，不新增 launch。`simulator-combat-ui.png` 核对多选 HP/Wnd/Crit、PRIMARY、Eng/Rdy 的绿 / 琥珀 / 红橙优先级；`simulator-incoming-ui.png` 核对 Critical HP 与 `INCOMING` / `IN` 红橙状态、切换选择后无颜色残留；`simulator-target-cycle.png`、`simulator-enemy-touch-assist.png` 核对目标 HP 与 Weapon ready / Reload 颜色对应真实状态；`simulator-land-combat.png`、`simulator-damage-state.png`、`simulator-naval-salvo.png`、`simulator-coastal-battery.png`、`simulator-carrier-strike.png`、`simulator-mobile-aa.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png`、`simulator-naval-damage.png` 核对颜色不压过单位模型、六格耐久塔、FOCUS / ATK、炮击、水柱、舰载机或 ASW 反馈；BUILD / RALLY / SUPPORT / 空选择等非战斗面板行恢复中性浅色。颜色只读复用既有 HP、primaryCombatTarget、attackTimer、incomingThreatSummary 和迷雾边界，不改变文案、布局或战斗规则。
 
+v5.12 目视口径：复用现有 24 张截图检查选中玩家作战单位选择圈低侧的四段武器就绪刻度，不新增 launch。`simulator-combat-ui.png` 核对多选中一名 partial reload 与其余 ready 的琥珀 / 青绿刻度差异，同时保留右侧颜色面板、FOCUS、八段目标血条、维修链和炮线可读；`simulator-target-cycle.png` 核对四个选中陆空单位的 ready 刻度与 TGT / ATK / FOCUS 不重叠；`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-naval-damage.png` 核对 Battleship / Carrier 选中圈的 partial ticks 不压过舰炮、航迹、水柱、ASW HIT 或战损；`simulator-mobile-aa.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 核对小型陆空选中圈仍可辨、不遮挡双弹 / 火箭、投影、旗标、耐久塔和命中反馈。`simulator-land-combat.png`、`simulator-damage-state.png`、`simulator-incoming-ui.png`、`simulator-enemy-touch-assist.png` 及其余截图核对敌军、结构、Mechanic、施工、pending / 空选择没有刻度残留，迷雾不泄露位置，24 张 PNG 尺寸 / 亮度 / 日志均正常。刻度只读 `attackTimer` 并以含 veterancy multiplier 的 `effectiveAttackCooldown` 归一化，不新增战斗状态或操作。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。

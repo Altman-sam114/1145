@@ -30,7 +30,7 @@ flowchart TD
   Combat --> Render
   AI --> Render
   Fog --> Render
-  Mission --> HUD["HUD / 小地图\nTACT九动作/全局26动作、TACT/BUILD/AIR/SEA/SUP五页单排命令条、TGT select/none/CODE i-n动态状态、单选目标HP/距离/装填/INCOMING、多选Combat/Engaged/Ready/Wounded/Critical/PRIMARY/IN与面板目标血条、选中战斗面板行色层级(自身HP/目标HP/Ready-Reload/INCOMING)且每帧恢复中性、选中受威胁实体方向箭头/小地图告警圈、金钱、队列、生产来源提示、航母甲板/集结/普通翼队组成/GW组成与紧凑绑定站位/接触数类型目标交战状态/多选CV GW组成摘要/HEL-JET CV GUARD组成与距离状态/HOLD Carrier无bound wing也显示anchor范围圈、高价值海军护航状态/缺口类型/半径圈/多选摘要、Mechanic维修反馈/来源提示/范围圈、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、跨页命令高亮、支援按钮缺资产/资金提示、目标面板资产提示、领域化小地图符号/选择外圈/相机框"]
+  Mission --> HUD["HUD / 小地图\nTACT九动作/全局26动作、TACT/BUILD/AIR/SEA/SUP五页单排命令条、TGT select/none/CODE i-n动态状态、单选目标HP/距离/装填/INCOMING、多选Combat/Engaged/Ready/Wounded/Critical/PRIMARY/IN与面板目标血条、选中战斗面板行色层级(自身HP/目标HP/Ready-Reload/INCOMING)且每帧恢复中性、选中玩家作战单位选择圈低侧预创建武器就绪刻度(attackTimer/effectiveAttackCooldown只读分段)、选中受威胁实体方向箭头/小地图告警圈、金钱、队列、生产来源提示、航母甲板/集结/普通翼队组成/GW组成与紧凑绑定站位/接触数类型目标交战状态/多选CV GW组成摘要/HEL-JET CV GUARD组成与距离状态/HOLD Carrier无bound wing也显示anchor范围圈、高价值海军护航状态/缺口类型/半径圈/多选摘要、Mechanic维修反馈/来源提示/范围圈、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、跨页命令高亮、支援按钮缺资产/资金提示、目标面板资产提示、领域化小地图符号/选择外圈/相机框"]
   Render --> HUD
 ```
 
@@ -138,3 +138,4 @@ flowchart TD
 - v5.1：TACT 新增 `TGT`，按当前视野、玩家已知与 `canAttack` 边界稳定循环目标，并让地图点击与循环集火共享攻击执行；CI 新增第二十一次 target-cycle 截图探针。
 - v5.2：玩家己方选择新增 26pt 屏幕尺度辅助半径与重叠候选稳定循环，精确敌军攻击和双击同型选择保持；CI 新增第二十二次 selection-cycle 截图探针。
 - v5.3：普通点击在精确实体之后、友军辅助之前增加合法敌军 26pt 屏幕尺度辅助攻击，按距离桶 / id 取首项且不循环，继续复用直接攻击 helper；CI 新增第二十三次 enemy-touch-assist 截图探针。
+- v5.12：选中 Blue 作战机动单位的选择圈低侧增加四个预创建武器就绪刻度，ready 显示青绿色、装填按 `attackTimer / effectiveAttackCooldown` 只读逐段显示琥珀；敌军、结构、Mechanic、pending / 空选择隐藏，复用二十四次既有云端截图探针。
