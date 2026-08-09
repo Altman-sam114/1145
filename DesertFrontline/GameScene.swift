@@ -11641,47 +11641,64 @@ final class GameScene: SKScene {
     }
 
     private func showAttackTargetMarker(at point: CGPoint, footprint: CGFloat, label: String, persistent: Bool = false) {
-        let color = UIColor(red: 1.0, green: 0.30, blue: 0.20, alpha: 1.0)
+        let color = UIColor(red: 1.0, green: 0.25, blue: 0.16, alpha: 1.0)
+        let cueColor = UIColor(red: 1.0, green: 0.67, blue: 0.18, alpha: 1.0)
         let width = max(64, min(112, footprint * 1.55))
         let height = max(34, width * 0.52)
-        let halfWidth = width * 0.5
-        let halfHeight = height * 0.5
-        let cornerLength = min(18, width * 0.22)
         let node = SKNode()
         node.position = point
         node.zPosition = 268
 
-        let ring = SKShapeNode(ellipseOf: CGSize(width: width * 0.82, height: height * 0.72))
-        ring.strokeColor = color.withAlphaComponent(0.82)
-        ring.fillColor = color.withAlphaComponent(0.08)
-        ring.lineWidth = 2
-        ring.glowWidth = 1.5
+        let ringRect = CGRect(x: -width * 0.5, y: -height * 0.5, width: width, height: height)
+        let ringPath = CGPath(ellipseIn: ringRect, transform: nil)
+        let dashedRingPath = ringPath.copy(dashingWithPhase: 0, lengths: [9, 6])
+
+        let ringFill = SKShapeNode(path: ringPath)
+        ringFill.strokeColor = .clear
+        ringFill.fillColor = color.withAlphaComponent(0.035)
+        node.addChild(ringFill)
+
+        let ringBack = SKShapeNode(path: dashedRingPath)
+        ringBack.strokeColor = UIColor(red: 0.12, green: 0.03, blue: 0.02, alpha: 0.58)
+        ringBack.lineWidth = 5.2
+        ringBack.lineCap = .round
+        node.addChild(ringBack)
+
+        let ring = SKShapeNode(path: dashedRingPath)
+        ring.strokeColor = color.withAlphaComponent(0.96)
+        ring.lineWidth = 2.8
+        ring.lineCap = .round
+        ring.glowWidth = 0.9
         node.addChild(ring)
 
-        let bracketPath = CGMutablePath()
-        for xSide in [-1.0, 1.0] {
-            for ySide in [-1.0, 1.0] {
-                let x = CGFloat(xSide) * halfWidth
-                let y = CGFloat(ySide) * halfHeight
-                bracketPath.move(to: CGPoint(x: x - CGFloat(xSide) * cornerLength, y: y))
-                bracketPath.addLine(to: CGPoint(x: x, y: y))
-                bracketPath.addLine(to: CGPoint(x: x, y: y - CGFloat(ySide) * cornerLength * 0.65))
-            }
+        let cueWidth = max(8, min(13, width * 0.12))
+        let cueHeight = max(6, min(8, width * 0.075))
+        let cueGap = max(5, min(9, width * 0.07))
+        let cueCenterY = height * 0.20
+        let cueCenterOffset = (cueWidth + cueGap) * 0.5
+        let cuePath = CGMutablePath()
+        for centerX in [-cueCenterOffset, cueCenterOffset] {
+            cuePath.move(to: CGPoint(x: centerX - cueWidth * 0.5, y: cueCenterY + cueHeight * 0.5))
+            cuePath.addLine(to: CGPoint(x: centerX, y: cueCenterY - cueHeight * 0.5))
+            cuePath.addLine(to: CGPoint(x: centerX + cueWidth * 0.5, y: cueCenterY + cueHeight * 0.5))
         }
-        let brackets = SKShapeNode(path: bracketPath)
-        brackets.strokeColor = color
-        brackets.lineWidth = 4
-        brackets.lineCap = .square
-        brackets.lineJoin = .round
-        node.addChild(brackets)
 
-        let dot = SKShapeNode(circleOfRadius: 3.5)
-        dot.fillColor = color
-        dot.strokeColor = .white
-        dot.lineWidth = 1
-        node.addChild(dot)
+        let cueBack = SKShapeNode(path: cuePath)
+        cueBack.strokeColor = UIColor(red: 0.16, green: 0.05, blue: 0.01, alpha: 0.82)
+        cueBack.lineWidth = 5.2
+        cueBack.lineCap = .round
+        cueBack.lineJoin = .round
+        node.addChild(cueBack)
 
-        let labelNode = commandMarkerLabel(text: "ATK \(label)", color: color, y: halfHeight + 11)
+        let cue = SKShapeNode(path: cuePath)
+        cue.strokeColor = cueColor
+        cue.lineWidth = 2.5
+        cue.lineCap = .round
+        cue.lineJoin = .round
+        cue.glowWidth = 0.8
+        node.addChild(cue)
+
+        let labelNode = commandMarkerLabel(text: "ATK \(label)", color: color, y: -height * 0.5 - 12)
         node.addChild(labelNode)
         presentCommandMarker(node, persistent: persistent, exitScale: 1.16)
     }
