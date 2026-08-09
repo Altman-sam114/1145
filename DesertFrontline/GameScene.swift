@@ -858,6 +858,7 @@ private final class GameEntity {
     let selectionNode: SKShapeNode
     let weaponReadinessNode = SKNode()
     var weaponReadinessTicks: [SKShapeNode] = []
+    let landAirCombatRangeNode = SKShapeNode()
     let sonarCoverageNode = SKShapeNode()
     let escortCoverageNode = SKShapeNode()
     let navalGunRangeNode = SKShapeNode()
@@ -2084,6 +2085,9 @@ final class GameScene: SKScene {
         entity.selectionNode.zPosition = -1
         entity.node.addChild(entity.selectionNode)
         configureWeaponReadinessVisuals(for: entity)
+
+        configureLandAirCombatRangeNode(for: entity)
+        entity.node.addChild(entity.landAirCombatRangeNode)
 
         configureSonarCoverageNode(for: entity)
         entity.node.addChild(entity.sonarCoverageNode)
@@ -4360,6 +4364,7 @@ final class GameScene: SKScene {
 
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
         refreshWeaponReadinessVisuals(for: selected)
+        refreshLandAirCombatRangeVisuals()
         refreshAirDefenseThreatVisuals(for: selected)
         refreshIncomingThreatVisuals(for: selected)
         refreshCommandIntentVisuals(for: selected)
@@ -11241,6 +11246,7 @@ final class GameScene: SKScene {
         }
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
         refreshWeaponReadinessVisuals(for: selected)
+        refreshLandAirCombatRangeVisuals()
         refreshCommandIntentVisuals(for: selected)
         refreshFocusFireMarker(for: selected)
     }
@@ -11346,6 +11352,39 @@ final class GameScene: SKScene {
             entity.isAlive &&
             entity.isOperational &&
             (entity.kind == .battleship || entity.kind == .coastalBattery)
+    }
+
+    private func shouldShowLandAirCombatRange(for entity: GameEntity) -> Bool {
+        selectedIDs.count == 1 &&
+            selectedIDs.contains(entity.id) &&
+            pendingConstructionKind == nil &&
+            pendingSupportPower == nil &&
+            !isSettingRallyPoint &&
+            !isSettingAttackMove &&
+            entity.faction == .player &&
+            entity.isAlive &&
+            entity.isOperational &&
+            !entity.node.isHidden &&
+            !entity.kind.isStructure &&
+            (entity.kind.domain == .land || entity.kind.domain == .air) &&
+            entity.kind.damage > 0 &&
+            entity.kind != .aaTruck &&
+            entity.kind != .samSite &&
+            entity.kind != .mechanic
+    }
+
+    private func refreshLandAirCombatRangeVisuals() {
+        for entity in entities.values {
+            entity.landAirCombatRangeNode.isHidden = true
+        }
+
+        guard selectedIDs.count == 1,
+              let selectedID = selectedIDs.first,
+              let entity = entities[selectedID],
+              shouldShowLandAirCombatRange(for: entity)
+        else { return }
+
+        entity.landAirCombatRangeNode.isHidden = false
     }
 
     private func shouldShowMechanicRepairCoverage(for entity: GameEntity) -> Bool {
@@ -11668,6 +11707,33 @@ final class GameScene: SKScene {
         entity.navalGunRangeNode.glowWidth = 1.1
         entity.navalGunRangeNode.zPosition = -6
         entity.navalGunRangeNode.isHidden = true
+    }
+
+    private func configureLandAirCombatRangeNode(for entity: GameEntity) {
+        guard (entity.kind.domain == .land || entity.kind.domain == .air),
+              !entity.kind.isStructure,
+              entity.kind.damage > 0,
+              entity.kind != .aaTruck,
+              entity.kind != .samSite,
+              entity.kind != .mechanic
+        else {
+            entity.landAirCombatRangeNode.isHidden = true
+            return
+        }
+
+        let range = entity.kind.attackRange
+        let width = range * 2
+        let height = range * 0.58
+        entity.landAirCombatRangeNode.path = CGPath(
+            ellipseIn: CGRect(x: -width * 0.5, y: -height * 0.5, width: width, height: height),
+            transform: nil
+        )
+        entity.landAirCombatRangeNode.fillColor = UIColor(red: 0.18, green: 0.78, blue: 0.86, alpha: 0.018)
+        entity.landAirCombatRangeNode.strokeColor = UIColor(red: 0.28, green: 0.92, blue: 0.96, alpha: 0.42)
+        entity.landAirCombatRangeNode.lineWidth = entity.kind.domain == .air ? 1.8 : 2.0
+        entity.landAirCombatRangeNode.glowWidth = 0.8
+        entity.landAirCombatRangeNode.zPosition = -7
+        entity.landAirCombatRangeNode.isHidden = true
     }
 
     private func configureRepairCoverageNode(for entity: GameEntity) {

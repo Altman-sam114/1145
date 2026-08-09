@@ -8,6 +8,8 @@ v5.11 目视口径：复用现有 24 张截图检查选中战斗面板行色层�
 
 v5.12 目视口径：复用现有 24 张截图检查选中玩家作战单位选择圈低侧的四段武器就绪刻度，不新增 launch。`simulator-combat-ui.png` 核对多选中一名 partial reload 与其余 ready 的琥珀 / 青绿刻度差异，同时保留右侧颜色面板、FOCUS、八段目标血条、维修链和炮线可读；`simulator-target-cycle.png` 核对四个选中陆空单位的 ready 刻度与 TGT / ATK / FOCUS 不重叠；`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-naval-damage.png` 核对 Battleship / Carrier 选中圈的 partial ticks 不压过舰炮、航迹、水柱、ASW HIT 或战损；`simulator-mobile-aa.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 核对小型陆空选中圈仍可辨、不遮挡双弹 / 火箭、投影、旗标、耐久塔和命中反馈。`simulator-land-combat.png`、`simulator-damage-state.png`、`simulator-incoming-ui.png`、`simulator-enemy-touch-assist.png` 及其余截图核对敌军、结构、Mechanic、施工、pending / 空选择没有刻度残留，迷雾不泄露位置，24 张 PNG 尺寸 / 亮度 / 日志均正常。刻度只读 `attackTimer` 并以含 veterancy multiplier 的 `effectiveAttackCooldown` 归一化，不新增战斗状态或操作。
 
+v5.13 目视口径：复用现有 24 张截图检查单选 Blue 陆空作战单位的 `attackRange` 射程椭圆，不新增 launch。`simulator-selection-cycle.png` 核对单 Tank 单选时范围椭圆与 SEL / 选择圈、旗标、耐久塔和模型共存；`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 核对单选 Fighter / Helicopter 的冷色低透明椭圆不遮挡机体、投影、导弹 / 火箭、命中反馈和目标信息；`simulator-mobile-aa.png`、`simulator-enemy-touch-assist.png` 核对 AA Truck 编队继续只显示既有防空威胁圈，不出现通用陆空椭圆；`simulator-target-cycle.png`、`simulator-combat-ui.png` 核对多选时新椭圆全部隐藏且 TGT / ATK / FOCUS、readiness、目标生命条和维修链不回归；`simulator-naval-salvo.png`、`simulator-coastal-battery.png`、`simulator-carrier-strike.png`、`simulator-naval-damage.png` 核对既有海军炮圈 / 护航圈 / 航迹 / 炮迹 / 水柱 / ASW HIT 不被重复绘制或改色。`simulator-incoming-ui.png`、`simulator-damage-state.png` 及其余截图核对建筑、Mechanic、SAM、敌军、迷雾、死亡、空选择和 build / rally / support / AMOV pending 没有射程圈残留；24 张 PNG 尺寸 / 亮度 / 日志正常。新节点只读 `EntityKind.attackRange`，不改变 `canAttack`、目标、攻击、AI 或迷雾。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。

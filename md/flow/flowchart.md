@@ -2,7 +2,7 @@
 
 本文用 Mermaid 图把 `md/flow/flow.md` 的核心逻辑可视化。每张图前都有中文读图说明，便于人工快速检查当前项目运行链路。
 
-当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，`updateHealthBar` 以既有 HP ratio 刷新填充格并隐藏旧水平实体生命条；该节点仍属于实体子树，沿用镜像、迷雾、战损、维修和死亡清理链路。
+当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，并为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆；这些节点仍属于实体子树，沿用镜像、迷雾、战损、维修和死亡清理链路，范围视觉不改攻击规则。
 
 ## 1. 项目核心逻辑图
 
@@ -18,7 +18,7 @@ flowchart TD
   Loop --> Build["施工 / 生产\n建筑进度、RAD/SON/GT/SAM/CB、AA Truck、旗点覆盖、BuildOrder、出兵、航母甲板起飞反馈、集结点与面板状态"]
   Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖、旗点奖金与占领进度"]
   Loop --> Commands["移动 / 命令\nMOVE青绿落点、AMOV琥珀双环、已知目标红色虚线环+橙色双V、STOP一键清理、TGT循环视野内已知合法目标/混编只改合法攻击者、沙地/油地陆军方向胎迹与尘团、海军方向航迹、空军方向投影/84间距/同阵营避让/攻击环站位、HOLD、Carrier guard wing最多2架anchor station/分配组成cue/脱离反馈、已知HQ指引和面板摘要、路径和编队"]
-  Loop --> Combat["战斗 / 维修\n合法主目标/Engaged/Ready/Wounded/Critical只读态势、已知来袭攻击者单次快照/IN方向标、共享FOCUS目标百分比/分段血条、未完工攻击结构禁火、SAM/AA 防空与选中空军已知覆盖威胁圈/顶标/摘要、岸防反舰、目标搜索、Carrier guard wing近域威胁优先、Mechanic自动维修双层束/目标十字/双方已知过滤、有效伤害、Artillery已知炮位炮口焰/烟尘/炮线、空战导弹烟迹/弹体/命中环、已知 Carrier 三机错列俯冲/双反舰弹/舰体命中且单次伤害、已知战列舰/岸防双发齐射、岸防双炮后坐/炮床冲击/岸边尘浪与可见水面主副水柱/舰体命中、已知潜艇 direct-fire 双压力环/水沫/气泡 ASW HIT、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
+  Loop --> Combat["战斗 / 维修\n单选 Blue HMV/TNK/ART/HEL/JET 显示 attackRange 只读陆空射程椭圆，多选/AA/SAM/Mechanic/结构/海军/pending 隐藏；合法主目标/Engaged/Ready/Wounded/Critical只读态势、已知来袭攻击者单次快照/IN方向标、共享FOCUS目标百分比/分段血条、未完工攻击结构禁火、SAM/AA 防空与选中空军已知覆盖威胁圈/顶标/摘要、岸防反舰、目标搜索、Carrier guard wing近域威胁优先、Mechanic自动维修双层束/目标十字/双方已知过滤、有效伤害、Artillery已知炮位炮口焰/烟尘/炮线、空战导弹烟迹/弹体/命中环、已知 Carrier 三机错列俯冲/双反舰弹/舰体命中且单次伤害、已知战列舰/岸防双发齐射、岸防双炮后坐/炮床冲击/岸边尘浪与可见水面主副水柱/舰体命中、已知潜艇 direct-fire 双压力环/水沫/气泡 ASW HIT、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
   Loop --> HealthVisual["实体耐久视觉\nconfigureEntityNode 一次性创建旗杆旗标与六格竖直耐久塔\nupdateHealthBar 以 hp/maxHP ratio 更新填充格\n旧水平实体生命条隐藏；节点随实体镜像、移动、维修、战损与迷雾"]
   HealthVisual --> Render
   Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、已知潜艇压力补 ASW、合法认知 SCAN 巡扫、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、海岸目标权重、跳过不可生产兵种、支援、混编主攻波次、低血单位撤退回修、受损老兵保护、空闲Carrier警戒翼队、高价值海军护航门槛、attack-move 波次"]
