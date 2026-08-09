@@ -5392,3 +5392,25 @@
 
 - 云端冻结截图覆盖了小屏 HUD 的颜色层级和主要陆海空战斗状态，但不能替代真机触控手感、长时间交火压力或性能评估；后续仍需人工玩法检查。
 - 当前没有独立 XCTest target。下一轮继续从 Submarine 基础模型、岩石群 / 中东民居地物或海空战细节中选择范围有限的增量；总目标仍未完成。
+
+### v5.12 / 选中单位武器就绪刻度云端验收
+
+日期：2026-08-09
+
+验收结论：
+
+- `GameEntity` 的选中作战单位在既有 `selectionNode` 子树低侧显示四段武器就绪刻度；青绿色表示 ready，琥珀色表示已恢复段，深色槽位表示仍在装填。刻度只读 `attackTimer` 与包含 veterancy multiplier 的 `effectiveAttackCooldown`，不新增战斗状态、命令或攻击执行分支。
+- 每帧先隐藏所有实体刻度，再只对玩家、存活、operational、非结构、可攻击且当前选中的实体显示；战争迷雾 / 潜艇隐藏、战损、死亡和 skirmish 重开继续复用现有节点生命周期。建造、支援、集结点和 attack-move pending 均不会遗留旧选择刻度。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.12 实现提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`288f3c944c04d12f42c49f57284f429561d2bf81`，commit subject 为 `v5.12: 选中单位武器就绪刻度`。
+- GitHub Actions run：`31298881326`，attempt `1`，conclusion `success`；artifact：`desert-frontline-ci-v5.12-main-288f3c944c04-run31298881326-attempt1`，artifact ID `9033996335`，缓存于 `/private/tmp/desert-frontline-c-review-31298881326/`，未加密。官方 ZIP `/private/tmp/desert-frontline-c-review-31298881326/artifact-9033996335.zip` 已执行 `unzip -t`，全部条目通过且压缩数据无错误。
+- manifest 与本地 `main`、`origin/main`、Actions head 完全匹配，记录 `branch=main`、`commitSha=288f3c944c04d12f42c49f57284f429561d2bf81`、`runId=31298881326`、`runAttempt=1`、`version=v5.12`；static checks、project lint、generic iOS build、simulator launch 均为 success。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），`xcodebuild.log` 含 `BUILD SUCCEEDED`。
+- 二十四次 simulator launch 均在截图后存活，二十四张 PNG 均为 `1206x2622`，亮度 / 对比度正常；App / launch 日志未命中 crash、fatal error、SIGABRT、watchdog 或未捕获异常。`simulator-combat-ui.png`、`simulator-target-cycle.png`、`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-mobile-aa.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png`、`simulator-damage-state.png`、`simulator-naval-damage.png`、`simulator-incoming-ui.png` 和 `simulator-enemy-touch-assist.png` 目视确认 ready / reload 刻度清晰，未遮挡模型、舰炮、水柱、ASW HIT、FOCUS / ATK、HUD 或小地图。
+- 本轮按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针；只做了代码边界核对、artifact 完整性检查和文档 diff 检查。验收账号确认为 `Altman-sam114`。
+
+遗留事项：
+
+- 云端冻结截图覆盖了主要陆海空单位及 partial / ready 状态，但不能替代真机触控手感、长时间交火压力或性能评估；后续可继续从 Submarine 模型、地物密度或海空战细节中选择范围有限的增量，总目标仍未完成。
