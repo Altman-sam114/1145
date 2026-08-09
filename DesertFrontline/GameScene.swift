@@ -11698,7 +11698,9 @@ final class GameScene: SKScene {
         cue.glowWidth = 0.8
         node.addChild(cue)
 
-        let labelNode = commandMarkerLabel(text: "ATK \(label)", color: color, y: -height * 0.5 - 12)
+        // Keep the attack caption below the focus health segments when both markers share a target.
+        let labelY = min(-height * 0.5 - 12, -footprint * 0.62 - 24)
+        let labelNode = commandMarkerLabel(text: "ATK \(label)", color: color, y: labelY)
         node.addChild(labelNode)
         presentCommandMarker(node, persistent: persistent, exitScale: 1.16)
     }
