@@ -5340,3 +5340,29 @@
 
 - 云端冻结截图能证明三条攻击入口共享的新 marker 在 Fighter / Artillery 和缩远镜头下可读，但不能覆盖连续快速点按、不同缩放级别下的极端目标拥挤、真机触控手感或密集交战压力，仍需后续人工玩法检查。
 - 当前没有独立 XCTest target。下一轮继续从 Submarine 基础模型、岩石群 / 中东民居地物或海空战细节中选择范围有限的增量；总目标仍未完成。
+
+### v5.10 / 竖直分段耐久塔
+
+日期：2026-08-09
+
+核心变更：
+
+- `GameEntity` 为单位与建筑统一增加一次性创建的六格竖直耐久塔，沿用既有 `hp / maxHP` 比例与 45% 绿 / 红阈值；隐藏旧水平生命条，满血实体完成配置后立即刷新，避免初始空塔。
+- 塔继续挂在 `entity.node` 下，随实体镜像、战争迷雾、维修、战损、死亡和 skirmish 重开链路运行；未改变伤害、生产、寻路、目标合法性、潜艇侦测或胜负规则。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.10 实现提示词已同步；人工 `project.pbxproj` Team ID 与未跟踪 Unity 分析目录保持未暂存。
+
+验证结果：
+
+- 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`，并保留用户未提交改动。
+- 实现提交：`0125f3531408c2901de1c4e339ffa1dc86e0eba2`，commit subject 为 `v5.10: 竖直分段耐久塔`。
+- 初始 run `31292826614` attempt `1` 的 build / launch 均成功，但 `simulator-combat-ui.png`、`simulator-coastal-battery.png` 近全白且 `simulator-carrier-strike.png` 近全灰，按截图竞态不计为通过；同一 SHA 重新运行 attempt `2`。
+- 最终 GitHub Actions run：`31292826614`，attempt `2`，conclusion `success`，job `93194316707` 总耗时 15 分 09 秒；artifact：`desert-frontline-ci-v5.10-main-0125f3531408-run31292826614-attempt2`，artifact ID `9032305172`，缓存于 `/private/tmp/desert-frontline-c-review-31292826614-a2/`，未加密约 32 MB。
+- manifest 记录 `branch=main`、`commitSha=0125f3531408c2901de1c4e339ffa1dc86e0eba2`、`runId=31292826614`、`runAttempt=2`、`version=v5.10`；static checks、project lint、generic iOS build、simulator launch 均为 success。JUnit 4 项检查、0 failures、1 skipped（无 XCTest target）。
+- 二十四次 simulator launch 均在截图后存活，二十四张 PNG 均为 `1206x2622`；逐张灰度均值约 78.93-117.71、标准差约 60.92-68.71、均含完整 0-255 范围，无白 / 灰空屏。App / launch 日志未命中 crash、fatal error、SIGABRT、watchdog 或未捕获异常。
+- 目视 `simulator-land-combat.png`、`simulator-combat-ui.png`、`simulator-target-cycle.png`、`simulator-enemy-touch-assist.png`、`simulator-coastal-battery.png`、`simulator-carrier-strike.png` 与 `simulator-naval-damage.png`：六格竖直塔在满血、受击和陆海空混战画面中可辨，攻击目标环 / FOCUS 条、舰载机、水柱、ASW HIT、HUD 与小地图无新增遮挡；attempt 2 亮度正常。
+- 验收账号确认为 `Altman-sam114`；Actions 的 Node 20 deprecation annotation 不影响项目结果。
+
+遗留事项：
+
+- 云端冻结截图覆盖了六格耐久塔的满血 / 受击静态状态与主要陆海空场景，但不能替代真机触控手感、长时间交火压力或性能评估；后续仍需人工玩法检查。
+- 当前没有独立 XCTest target。下一轮继续从 Submarine 基础模型、岩石群 / 中东民居地物或海空战细节中选择范围有限的增量；总目标仍未完成。
