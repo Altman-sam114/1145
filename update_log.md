@@ -5326,14 +5326,15 @@
 验证结果：
 
 - 按人工要求未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check` 和 `plutil -lint DesertFrontline.xcodeproj/project.pbxproj` 并通过。
-- 实现提交：`6b4e33197ae44d5eaeb4391455bc453968c2b5cc`，commit subject 为 `v5.9: 强化攻击目标标识`。
-- GitHub Actions run：`31290516784`，attempt `1`，conclusion `success`，job 总耗时 9 分 40 秒；artifact：`desert-frontline-ci-v5.9-main-6b4e33197ae4-run31290516784-attempt1`，artifact ID `9031303020`，缓存于 `/private/tmp/desert-frontline-c-review-31290516784/`，未加密约 32 MB。
-- manifest 记录 `branch=main`、`commitSha=6b4e33197ae44d5eaeb4391455bc453968c2b5cc`、`runId=31290516784`、`runAttempt=1`、`version=v5.9`，static checks、project lint、generic iOS build、simulator launch 均为 success。JUnit 4 项检查、0 failures、1 skipped（无 XCTest target）。
+- 初始实现提交：`6b4e33197ae44d5eaeb4391455bc453968c2b5cc`，commit subject 为 `v5.9: 强化攻击目标标识`；对应 run `31290516784` 的 build / launch 均 success，但三张目标截图发现 `ATK ...` 与 FOCUS 分段血条叠字，未计为最终验收通过。
+- 追加强化提交：`10b2ff8ec27a11b47aa877e07169197e896c4d08`，commit subject 为 `v5.9: 避让攻击目标集火条`；仅按 FOCUS 条几何计算 `ATK` 标签下移间距，不改攻击或目标状态。
+- 最终 GitHub Actions run：`31291536653`，attempt `1`，conclusion `success`，job 总耗时 12 分 30 秒；artifact：`desert-frontline-ci-v5.9-main-10b2ff8ec27a-run31291536653-attempt1`，artifact ID `9031680989`，缓存于 `/private/tmp/desert-frontline-c-review-31291536653/`，未加密约 32 MB。
+- manifest 记录 `branch=main`、`commitSha=10b2ff8ec27a11b47aa877e07169197e896c4d08`、`runId=31291536653`、`runAttempt=1`、`version=v5.9`，static checks、project lint、generic iOS build、simulator launch 均为 success。JUnit 4 项检查、0 failures、1 skipped（无 XCTest target）。
 - generic iOS device 与 simulator build 日志均包含 `** BUILD SUCCEEDED **`；二十四次 simulator launch 均在截图后 "still running"，二十四张 PNG 均为 1206x2622，亮度 / 方差扫描无白 / 黑帧；严格 crash、fatal error、SIGABRT、watchdog、uncaught exception 关键词命中为 0。验收账号确认为 `Altman-sam114`。
-- 目视 `simulator-command-attack-target.png`（SHA-256 `54ee13301a4110804d0133db64aaafc2b63a8484747fe48eee3acc19938894cb`）：Red Fighter 周围红色虚线目标环、橙色双 V 与环下 `ATK JET` 清晰，模型 / 投影 / 血条 / 旗标、FOCUS、HUD 与小地图无新遮挡。
-- 目视 `simulator-target-cycle.png`（SHA-256 `d3e3bcb900046068b3f3bd26fd7ba4c17aaa27209ef29605a7229f66bd2f32eb`）：Artillery 目标的虚线环、双 V、`ATK 2/3 ART` 与 `FOCUS 4 ART 57%`、八段血条、四条攻击意图线、九动作 TACT 和选择面板同时可读。
-- 目视 `simulator-enemy-touch-assist.png`（SHA-256 `3a968b611bf2dc9b875e8f0db1ec66ffcd5fa10dee08ba11bcf2608457a8e57e`）：1.58 缩远镜头下 `ATK TAP JET`、虚线环、双 V、`FOCUS 2 JET 64%` 与 Fighter 模型保持清晰；其余 21 张 PNG 未见白屏 / 黑屏或布局回归。
-- 代码审查确认：本轮只改变 `showAttackTargetMarker(...)` 的绘制节点，未修改 `issueDirectAttackOrder(...)`、`attackTarget`、`destination`、伤害 / 冷却、AI、迷雾、sonar 或 `revealedUntil`。
+- 目视 `simulator-command-attack-target.png`（SHA-256 `5d24acf61ea55ac98f25fff938a7159e06d0b7319619dbbdde3fa9a86e4c807f`）：Red Fighter 周围红色虚线目标环、橙色双 V 与环下 `ATK JET` 清晰，标签与 FOCUS 八段条有明确间距，模型 / 投影 / 血条 / 旗标、HUD 与小地图无新遮挡。
+- 目视 `simulator-target-cycle.png`（SHA-256 `e5ea60ed6284400ffa3485ec1c6ed1afdfee11a1842f153714e457a6f7626a7a`）：Artillery 目标的虚线环、双 V、下置 `ATK 2/3 ART`、`FOCUS 4 ART 57%` 与八段血条完全分离，四条攻击意图线、九动作 TACT 和选择面板同时可读。
+- 目视 `simulator-enemy-touch-assist.png`（SHA-256 `a763e5cd6ebd2078c4123c53b97f2a2c4abf30e8daab067596844a819af3e8fc`）：1.58 缩远镜头下 `ATK TAP JET`、虚线环、双 V、`FOCUS 2 JET 64%` 与 Fighter 模型保持清晰且不叠字；其余 21 张 PNG 未见白屏 / 黑屏或布局回归。
+- 代码审查确认：本轮只改变 `showAttackTargetMarker(...)` 的绘制节点和标签间距，未修改 `issueDirectAttackOrder(...)`、`attackTarget`、`destination`、伤害 / 冷却、AI、迷雾、sonar 或 `revealedUntil`。
 
 遗留事项：
 
