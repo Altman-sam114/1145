@@ -9419,12 +9419,6 @@ final class GameScene: SKScene {
             faction: .player,
             persistent: true
         )
-        showNavalWaterImpact(
-            at: enemyBattleship.node.position + CGPoint(x: 24, y: -8),
-            faction: .player,
-            scale: 0.82,
-            persistent: true
-        )
         showDamageFloater(
             at: enemyBattleship.node.position + CGPoint(x: -20, y: 24),
             amount: carrier.kind.damage,
@@ -14192,6 +14186,7 @@ final class GameScene: SKScene {
                 at: end,
                 faction: faction,
                 surfaceTarget: targetKind != .submarine,
+                incomingDirection: direction,
                 persistent: true
             )
         } else {
@@ -14203,7 +14198,8 @@ final class GameScene: SKScene {
                     self?.showCarrierStrikeImpact(
                         at: end,
                         faction: faction,
-                        surfaceTarget: targetKind != .submarine
+                        surfaceTarget: targetKind != .submarine,
+                        incomingDirection: direction
                     )
                 },
                 .removeFromParent()
@@ -14307,9 +14303,28 @@ final class GameScene: SKScene {
         at point: CGPoint,
         faction: Faction,
         surfaceTarget: Bool,
+        incomingDirection: CGPoint? = nil,
         persistent: Bool = false
     ) {
         if surfaceTarget {
+            let approach = incomingDirection?.normalized ?? CGPoint(x: 1, y: 0)
+            let normal = CGPoint(x: -approach.y, y: approach.x)
+            let mainSplashPoint = point + normal * 17 - approach * 6
+            let nearMissPoint = point - normal * 23 + approach * 12
+            showNavalWaterImpact(
+                at: mainSplashPoint,
+                faction: faction,
+                scale: 0.82,
+                incomingDirection: incomingDirection,
+                persistent: persistent
+            )
+            showNavalWaterImpact(
+                at: nearMissPoint,
+                faction: faction,
+                scale: 0.50,
+                incomingDirection: incomingDirection,
+                persistent: persistent
+            )
             showNavalHullStrike(
                 at: point + CGPoint(x: 8, y: 3),
                 faction: faction,

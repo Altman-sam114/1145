@@ -26,6 +26,8 @@ v5.20 目视口径：复用现有 24 张 PNG 检查任务面板内固定六阶�
 
 v5.21 目视口径：复用现有 24 张 PNG 检查 Battleship / Coastal Battery 双炮齐射的方向、层级和清理，不新增 launch 或 capture。`simulator-naval-salvo.png` 核对 Blue Battleship 的两条分离炮线、第二 lane 的短暂错列、双炮口闪光 / 烟雾、炮弹和主 / 次水柱、舰体命中、目标 HP / 距离 / reload 同时可读；`simulator-coastal-battery.png` 核对岸防炮双线、recoil / 岸边尘浪、方向化水柱与舰体命中不遮挡海岸、舰体或 HUD；`simulator-naval-damage.png`、`simulator-carrier-strike.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 核对战损、Submarine / ASW HIT、Carrier strike 和其他海空命中反馈不回归。代码审阅确认 runtime 方向只来自已通过既有 `attackerKnownToPlayer` / `shouldShowNavalWaterImpact(...)` 的 `fire(...)`，`target.hp`、伤害、冷却、AI、fog、潜艇侦测不变；普通特效仍移除，persistent capture 一次创建完整静态效果，未传 attacker 位置的 CI helper 保留 entity-id fallback。其余 20 张 PNG 核对无残留炮弹 / 水柱 / smoke、HUD 溢出、未知敌方或未侦测潜艇泄漏；24 张 PNG 尺寸 / RGBA、manifest、JUnit、日志、PID 和 ZIP 完整性仍须正常。固定 capture 只能证明静态层级、方向化几何、generic build 与启动稳定性，不能外推真机、真实触控、连续交火或动态时序。
 
+v5.22 目视口径：复用现有 24 张 PNG，不新增 launch 或 capture。`simulator-carrier-strike.png` 必须同时显示三架错列舰载机、两枚反舰弹、按航母到目标来袭方向稳定的紧凑主水溅射、较小近失回响、舰体闪光 / 火花、伤害飘字、目标 HP / 距离 / reload、Carrier 甲板 / 护航圈、航迹和 HUD；主 / 次水柱不能重复叠加、跨舰体覆盖或遮挡单排命令条 / 小地图。`simulator-naval-salvo.png`、`simulator-coastal-battery.png` 核对 v5.21 双炮线、方向化水柱和岸防尘浪不回归；`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png`、`simulator-naval-damage.png` 核对既有空袭、战损、Submarine / ASW HIT、水沫和气泡不受 Carrier 专属回响污染。代码审阅确认 Carrier 水面反馈只从 `launchCarrierWing(...) -> showCarrierStrikeImpact(...)` 统一产生，fixture 不再额外调用 `showNavalWaterImpact(...)`；`target.hp`、伤害、射程、冷却、AI、生产、fog、潜艇侦测不变，普通水柱按既有 helper 清理，persistent 立即构图。其余 18 张 PNG、manifest、JUnit、build / launch 日志、PID、ZIP 完整性和未知目标边界仍须正常；固定 capture 不能外推真实触控、连续交火或真机性能。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。
