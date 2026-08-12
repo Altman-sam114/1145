@@ -12,6 +12,8 @@ v5.13 目视口径：复用现有 24 张截图检查单选 Blue 陆空作战单�
 
 v5.14 目视口径：复用现有 24 张截图检查 Carrier 三个固定停机位轮廓，不新增 launch 或 capture。`simulator-carrier-strike.png`、`simulator-naval-salvo.png`、`simulator-naval-damage.png` 核对三个位点沿甲板跑道错列、低透明空位和舰岛 / 跑道 / 航迹 / 战损层级不互相遮挡；`simulator-carrier-strike.png` 同时核对三机 strike、反舰弹、命中反馈仍优先可读。`simulator-hud-naval.png` 核对选中 Carrier 的 `Deck 3PAD H/J` 短文案不挤出单排面板；若探针场景存在真实 Carrier HOLD guard wing 或 HEL/JET BuildOrder，绑定位应提亮、队列位应显示琥珀条，空位保持暗色。`simulator-combat-ui.png`、`simulator-selection-cycle.png`、`simulator-map-terrain.png` 及其余截图核对非 Carrier 不出现停机位、敌方未知 Carrier 不通过甲板节点泄露迷雾位置，死亡 / 重开 / 未完工 Carrier 不留节点。节点只读现有 `boundCarrierGuardWing(for:)`、`BuildOrder` 和 `isOperational`，不新增飞机实体、队列、护航状态、攻击规则或第 25 次截图探针；24 张 PNG 尺寸 / 亮度 / 日志仍须正常。
 
+v5.15 目视口径：复用现有 24 张截图检查潜艇局部模型与实体本地接触 cue，不新增 launch 或 capture。`simulator-naval-damage.png` 核对 Red Submarine 的艏艉层次、声呐穹顶、潜望镜、鱼雷口、尾舵/螺旋桨与低透明航迹共存，`CONTACT` cue 不遮挡 `ASW HIT`、双压力环、水沫、气泡、血条或 Battleship 战损；`simulator-naval-salvo.png` 核对潜艇细节在海战炮迹、航迹、射程圈和 HUD 之间保持低对比可读；`simulator-carrier-strike.png`、`simulator-map-terrain.png` 核对 Carrier 甲板、海岸层次、浅水和小地图没有潜艇节点或 cue 残留。代码审阅同时确认选中的 Blue Submarine 只读显示 `STEALTH` / `SONAR` / `DETECT`，玩家未知 Red Submarine 不显示模型或 cue，已知 Red Submarine 只显示 `CONTACT`；不把固定 capture 误称为真实隐身转换、长时间战斗或触控验证。节点预创建并挂在实体树，24 张 PNG 尺寸 / 亮度 / 日志和迷雾边界仍须正常。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。

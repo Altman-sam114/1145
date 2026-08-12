@@ -859,6 +859,10 @@ private final class GameEntity {
     let weaponReadinessNode = SKNode()
     var weaponReadinessTicks: [SKShapeNode] = []
     let landAirCombatRangeNode = SKShapeNode()
+    let submarineDetailNode = SKNode()
+    let submarineContactCueNode = SKNode()
+    let submarineContactCueRing = SKShapeNode(ellipseOf: CGSize(width: 66, height: 24))
+    let submarineContactCueLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     let carrierDeckAircraftNode: SKNode = {
         let node = SKNode()
         node.isHidden = true
@@ -2082,6 +2086,10 @@ final class GameScene: SKScene {
         }
 
         configureNavalWakeNode(for: entity)
+        configureSubmarineDetailNode(for: entity)
+        entity.node.addChild(entity.submarineDetailNode)
+        configureSubmarineContactCueNode(for: entity)
+        entity.node.addChild(entity.submarineContactCueNode)
         configureAirShadowNode(for: entity)
         configureLandDustNode(for: entity)
         configureDamageStateNode(for: entity)
@@ -3714,6 +3722,164 @@ final class GameScene: SKScene {
         }
     }
 
+    private func configureSubmarineDetailNode(for entity: GameEntity) {
+        guard entity.kind == .submarine else {
+            entity.submarineDetailNode.isHidden = true
+            return
+        }
+
+        let navalColor = entity.faction == .enemy
+            ? UIColor(red: 0.46, green: 0.34, blue: 0.32, alpha: 1.0)
+            : UIColor(red: 0.31, green: 0.44, blue: 0.50, alpha: 1.0)
+        let hullHighlight = entity.faction == .enemy
+            ? UIColor(red: 0.90, green: 0.46, blue: 0.36, alpha: 1.0)
+            : UIColor(red: 0.38, green: 0.86, blue: 0.92, alpha: 1.0)
+        let darkMetal = UIColor(white: 0.08, alpha: 0.92)
+
+        entity.submarineDetailNode.removeAllChildren()
+        entity.submarineDetailNode.zPosition = 5
+
+        let keel = SKShapeNode(ellipseOf: CGSize(width: 48, height: 10))
+        keel.position = CGPoint(x: -1, y: -2)
+        keel.fillColor = darkMetal.withAlphaComponent(0.56)
+        keel.strokeColor = UIColor.black.withAlphaComponent(0.78)
+        keel.lineWidth = 1
+        keel.zPosition = 0
+        entity.submarineDetailNode.addChild(keel)
+
+        let hullBand = SKShapeNode(ellipseOf: CGSize(width: 50, height: 8))
+        hullBand.position = CGPoint(x: 1, y: 1)
+        hullBand.fillColor = navalColor.withAlphaComponent(0.34)
+        hullBand.strokeColor = hullHighlight.withAlphaComponent(0.42)
+        hullBand.lineWidth = 1.1
+        hullBand.zPosition = 1
+        entity.submarineDetailNode.addChild(hullBand)
+
+        let bowDome = SKShapeNode(ellipseOf: CGSize(width: 9, height: 12))
+        bowDome.position = CGPoint(x: 25, y: 0)
+        bowDome.fillColor = UIColor(red: 0.30, green: 0.76, blue: 0.82, alpha: 0.22)
+        bowDome.strokeColor = hullHighlight.withAlphaComponent(0.66)
+        bowDome.lineWidth = 1
+        bowDome.zPosition = 2
+        entity.submarineDetailNode.addChild(bowDome)
+
+        for y in [CGFloat(-4.5), 4.5] {
+            let torpedoPort = SKShapeNode(ellipseOf: CGSize(width: 5.5, height: 2.8))
+            torpedoPort.position = CGPoint(x: 19, y: y)
+            torpedoPort.fillColor = UIColor.black.withAlphaComponent(0.78)
+            torpedoPort.strokeColor = hullHighlight.withAlphaComponent(0.52)
+            torpedoPort.lineWidth = 0.7
+            torpedoPort.zPosition = 3
+            entity.submarineDetailNode.addChild(torpedoPort)
+        }
+
+        let saddle = SKShapeNode(ellipseOf: CGSize(width: 17, height: 7))
+        saddle.position = CGPoint(x: -1, y: 7)
+        saddle.fillColor = navalColor.darker(by: 0.08).withAlphaComponent(0.96)
+        saddle.strokeColor = UIColor.white.withAlphaComponent(0.20)
+        saddle.lineWidth = 0.8
+        saddle.zPosition = 3
+        entity.submarineDetailNode.addChild(saddle)
+
+        let hatch = SKShapeNode(ellipseOf: CGSize(width: 8, height: 3.5))
+        hatch.position = CGPoint(x: -9, y: 7)
+        hatch.fillColor = darkMetal
+        hatch.strokeColor = hullHighlight.withAlphaComponent(0.46)
+        hatch.lineWidth = 0.7
+        hatch.zPosition = 4
+        entity.submarineDetailNode.addChild(hatch)
+
+        let periscope = SKShapeNode(rectOf: CGSize(width: 1.6, height: 9), cornerRadius: 0.7)
+        periscope.position = CGPoint(x: 4, y: 14)
+        periscope.fillColor = hullHighlight.withAlphaComponent(0.82)
+        periscope.strokeColor = darkMetal
+        periscope.lineWidth = 0.5
+        periscope.zPosition = 5
+        entity.submarineDetailNode.addChild(periscope)
+
+        let periscopeHead = SKShapeNode(rectOf: CGSize(width: 5.5, height: 1.5), cornerRadius: 0.7)
+        periscopeHead.position = CGPoint(x: 6, y: 18.1)
+        periscopeHead.fillColor = hullHighlight.withAlphaComponent(0.82)
+        periscopeHead.strokeColor = darkMetal
+        periscopeHead.lineWidth = 0.5
+        periscopeHead.zPosition = 6
+        entity.submarineDetailNode.addChild(periscopeHead)
+
+        let tailFinPath = CGMutablePath()
+        tailFinPath.move(to: CGPoint(x: -21, y: 0))
+        tailFinPath.addLine(to: CGPoint(x: -29, y: 8))
+        tailFinPath.addLine(to: CGPoint(x: -24, y: 2))
+        tailFinPath.closeSubpath()
+        let upperTailFin = SKShapeNode(path: tailFinPath)
+        upperTailFin.fillColor = navalColor.darker(by: 0.10)
+        upperTailFin.strokeColor = hullHighlight.withAlphaComponent(0.34)
+        upperTailFin.lineWidth = 0.8
+        upperTailFin.zPosition = 2
+        entity.submarineDetailNode.addChild(upperTailFin)
+
+        let lowerTailFin = SKShapeNode(path: tailFinPath)
+        lowerTailFin.yScale = -1
+        lowerTailFin.fillColor = navalColor.darker(by: 0.12)
+        lowerTailFin.strokeColor = hullHighlight.withAlphaComponent(0.28)
+        lowerTailFin.lineWidth = 0.8
+        lowerTailFin.zPosition = 2
+        entity.submarineDetailNode.addChild(lowerTailFin)
+
+        let rudder = SKShapeNode(rectOf: CGSize(width: 2.2, height: 12), cornerRadius: 1)
+        rudder.position = CGPoint(x: -25, y: 4)
+        rudder.fillColor = navalColor.darker(by: 0.16)
+        rudder.strokeColor = hullHighlight.withAlphaComponent(0.30)
+        rudder.lineWidth = 0.7
+        rudder.zPosition = 3
+        entity.submarineDetailNode.addChild(rudder)
+
+        let propellerHub = SKShapeNode(circleOfRadius: 2.4)
+        propellerHub.position = CGPoint(x: -29, y: 0)
+        propellerHub.fillColor = hullHighlight.withAlphaComponent(0.72)
+        propellerHub.strokeColor = darkMetal
+        propellerHub.lineWidth = 0.7
+        propellerHub.zPosition = 4
+        entity.submarineDetailNode.addChild(propellerHub)
+
+        for rotation in [CGFloat(0.0), CGFloat.pi / 3.0, 2.0 * CGFloat.pi / 3.0] {
+            let blade = SKShapeNode(ellipseOf: CGSize(width: 2.5, height: 9))
+            blade.position = CGPoint(x: -29, y: 0)
+            blade.zRotation = rotation
+            blade.fillColor = hullHighlight.withAlphaComponent(0.42)
+            blade.strokeColor = .clear
+            blade.zPosition = 3
+            entity.submarineDetailNode.addChild(blade)
+        }
+
+        entity.submarineDetailNode.isHidden = false
+    }
+
+    private func configureSubmarineContactCueNode(for entity: GameEntity) {
+        guard entity.kind == .submarine else {
+            entity.submarineContactCueNode.isHidden = true
+            return
+        }
+
+        entity.submarineContactCueNode.removeAllChildren()
+        entity.submarineContactCueNode.position = CGPoint(x: 0, y: -18)
+        entity.submarineContactCueNode.zPosition = 12
+
+        entity.submarineContactCueRing.fillColor = UIColor.black.withAlphaComponent(0.08)
+        entity.submarineContactCueRing.strokeColor = UIColor.white.withAlphaComponent(0.82)
+        entity.submarineContactCueRing.lineWidth = 1.25
+        entity.submarineContactCueRing.glowWidth = 0.7
+        entity.submarineContactCueNode.addChild(entity.submarineContactCueRing)
+
+        entity.submarineContactCueLabel.fontSize = 7.5
+        entity.submarineContactCueLabel.fontColor = UIColor.white.withAlphaComponent(0.94)
+        entity.submarineContactCueLabel.verticalAlignmentMode = .center
+        entity.submarineContactCueLabel.horizontalAlignmentMode = .center
+        entity.submarineContactCueLabel.position = CGPoint(x: 0, y: -14)
+        entity.submarineContactCueLabel.zPosition = 1
+        entity.submarineContactCueNode.addChild(entity.submarineContactCueLabel)
+        entity.submarineContactCueNode.isHidden = true
+    }
+
     private func configureNavalWakeNode(for entity: GameEntity) {
         guard entity.kind.domain == .naval else { return }
 
@@ -4377,6 +4543,7 @@ final class GameScene: SKScene {
         refreshWeaponReadinessVisuals(for: selected)
         refreshLandAirCombatRangeVisuals()
         refreshCarrierDeckAircraftVisuals()
+        refreshSubmarineContactCueVisuals()
         refreshAirDefenseThreatVisuals(for: selected)
         refreshIncomingThreatVisuals(for: selected)
         refreshCommandIntentVisuals(for: selected)
@@ -11513,6 +11680,41 @@ final class GameScene: SKScene {
             entity.carrierDeckAircraftNode.isHidden = !entity.isAlive ||
                 !entity.isOperational ||
                 entity.node.isHidden
+        }
+    }
+
+    private func refreshSubmarineContactCueVisuals() {
+        for entity in entities.values {
+            entity.submarineContactCueNode.isHidden = true
+            guard entity.kind == .submarine,
+                  entity.isAlive,
+                  !entity.node.isHidden else { continue }
+
+            let isSelectedPlayerSubmarine = entity.faction == .player && selectedIDs.contains(entity.id)
+            let isKnownEnemySubmarine = entity.faction == .enemy && isKnownToFaction(entity, observer: .player)
+            guard isSelectedPlayerSubmarine || isKnownEnemySubmarine else { continue }
+
+            let cueText: String
+            let cueColor: UIColor
+            if entity.faction == .enemy {
+                cueText = "CONTACT"
+                cueColor = UIColor(red: 1.0, green: 0.48, blue: 0.32, alpha: 1.0)
+            } else if entity.revealedUntil > lastUpdateTime {
+                cueText = "DETECT"
+                cueColor = UIColor(red: 1.0, green: 0.72, blue: 0.28, alpha: 1.0)
+            } else if isCoveredByKnownEnemySonar(entity) {
+                cueText = "SONAR"
+                cueColor = UIColor(red: 1.0, green: 0.72, blue: 0.28, alpha: 1.0)
+            } else {
+                cueText = "STEALTH"
+                cueColor = UIColor(red: 0.34, green: 0.92, blue: 1.0, alpha: 1.0)
+            }
+
+            entity.submarineContactCueRing.strokeColor = cueColor.withAlphaComponent(0.92)
+            entity.submarineContactCueRing.fillColor = cueColor.withAlphaComponent(0.08)
+            entity.submarineContactCueLabel.text = cueText
+            entity.submarineContactCueLabel.fontColor = cueColor.withAlphaComponent(0.96)
+            entity.submarineContactCueNode.isHidden = false
         }
     }
 
