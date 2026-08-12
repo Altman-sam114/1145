@@ -5414,3 +5414,27 @@
 遗留事项：
 
 - 云端冻结截图覆盖了主要陆海空单位及 partial / ready 状态，但不能替代真机触控手感、长时间交火压力或性能评估；后续可继续从 Submarine 模型、地物密度或海空战细节中选择范围有限的增量，总目标仍未完成。
+
+### v5.13 / 单选陆空作战射程椭圆云端验收
+
+日期：2026-08-12
+
+验收结论：
+
+- `GameEntity` 为可攻击陆空实体预创建独立的 `landAirCombatRangeNode`，单选 Blue Humvee、Tank、Artillery、Helicopter 或 Fighter 时以既有 `attackRange` 绘制低透明、垂直压缩的等距射程椭圆；节点属于实体树，沿用移动、镜像、战争迷雾、死亡和 skirmish 重开生命周期。
+- 多选、空选择、敌军、结构、Mechanic、AA Truck、SAM Site、海军实体、未 operational 实体和 build / rally / support / AMOV pending 均隐藏新圈；Battleship / Coastal Battery 炮圈、防空威胁圈、维修圈和 Carrier 覆盖圈保持独立，射程椭圆只读显示，不参与目标合法性或攻击执行。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.13 提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`b8f3a152e246c691e516975f95063e1400cc7012`，commit subject 为 `v5.13: 单选陆空作战射程椭圆`。
+- GitHub Actions run：`31301748390`，attempt `1`，conclusion `success`；artifact：`desert-frontline-ci-v5.13-main-b8f3a152e246-run31301748390-attempt1`，artifact ID `9034895597`，缓存于 `/private/tmp/desert-frontline-c-review-31301748390/`，未加密约 32 MB。
+- manifest 与本地 `main`、`origin/main`、Actions head 完全匹配，记录 `branch=main`、`commitSha=b8f3a152e246c691e516975f95063e1400cc7012`、`runId=31301748390`、`runAttempt=1`、`version=v5.13`；static checks、project lint、generic iOS build、simulator launch 均为 success。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），`xcodebuild.log` 含 `BUILD SUCCEEDED`。
+- 二十四次 simulator launch 均完成截图并保持进程存活，二十四张 PNG 均为 `1206x2622`，均有正常动态范围；`DesertFrontline.xcresult`、`simulator-launch.log`、`simulator-app.log` 和失败摘要均已核对，未发现 crash、fatal error、SIGABRT、watchdog 或未捕获异常。
+- 重点图 SHA-256：`simulator-land-combat.png` `3a252f2864754c13e5925eb1fcb2c9316daaaee375750ffae639c2988e336de8`；`simulator-combat-ui.png` `525cb3eabf0b99cd13f08325574baedca0317b4e6d53aebf8392a7101f9dd3a1`；`simulator-target-cycle.png` `8366484aa37ff7087a785a252d2a02ef0c8d21691eb618f1681827f936ec6da4`；`simulator-fighter-strike.png` `c2de5d1d6c239b9d6adc9377ff5652ec8fd8cf11afe5b06ff01df73f857c59fb`；`simulator-helicopter-salvo.png` `16b50f560310a4c86b5bd7106e105c17157442da8009c9abb127854a9bc914c5`；`simulator-mobile-aa.png` `42d04073010224329ac1ce1a248f4af005aa1bb7f6b0b57381d5d2b855b5db69`；`simulator-enemy-touch-assist.png` `eefc7ce72d3d3c7d5e8c9327156c3480db8c6651da984bb9463740578e3805aa`；`simulator-naval-salvo.png` `918505fb55c0ae17d4b76e5222948914e50e3b66954d04180f623512efb60bea`；`simulator-carrier-strike.png` `95172eb5e92ee05e26f9e9ee88f4905a8876426aea3209f50ed21116460edb2d`；`simulator-naval-damage.png` `b08dc53b810d5a306b4e9161217675cf81b17d56acc2411ff9bab4684bf68d53`。
+- 目视确认 `simulator-selection-cycle.png` 的单 Tank 椭圆与选择圈 / 旗标 / 耐久塔共存；`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 的低透明空战椭圆不压住机体、投影、弹体、命中反馈或目标信息；`simulator-mobile-aa.png`、`simulator-enemy-touch-assist.png` 未出现通用陆空圈；`simulator-combat-ui.png`、`simulator-target-cycle.png` 的多选与目标循环未残留新圈；`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-naval-damage.png` 的海军圈、炮迹、水柱、舰载机和 ASW 反馈无新增遮挡。
+- 本轮按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针；只运行云端 artifact 核对和文档轻量检查。验收账号确认为 `Altman-sam114`。
+
+遗留事项：
+
+- 云端冻结截图覆盖了单选陆空范围提示与主要陆海空回归场景，但不能替代真机触控手感、长时间交火压力或性能评估；总目标仍未完成。下一轮候选为海空单位的读图增量，优先在不增加操作负担的前提下强化航母甲板 / 编队状态或海岸交战信息。
