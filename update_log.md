@@ -5463,3 +5463,28 @@
 遗留事项：
 
 - 云端冻结截图覆盖了航母甲板读图与主要陆海空回归场景，但不能替代真机触控手感、长时间交火压力或性能评估；总目标仍未完成。下一轮候选为海空 / UI 的另一个范围有限增量，继续优先云端探针验证。
+
+### v5.15 / 潜艇模型与声呐接触可读性云端验收
+
+日期：2026-08-12
+
+验收结论：
+
+- Submarine 在原椭圆舰体 / 指挥塔上增加低对比度舰体带、艏部声呐穹顶、双鱼雷口、鞍部舱盖、潜望镜、尾鳍、舵和螺旋桨；细节挂在 `submarineDetailNode` 实体子树，沿用实体镜像、父节点迷雾和死亡清理，不修改 footprint、移动、攻击或伤害。
+- `refreshSubmarineContactCueVisuals()` 只更新预创建实体本地环和短标签：选中的玩家潜艇只读 `revealedUntil`、`isCoveredByKnownEnemySonar(...)` 显示 `DETECT` / `SONAR` / `STEALTH`，玩家已知敌方潜艇显示 `CONTACT`；未知敌方或不可见实体隐藏 cue，不新增探测状态、不写入迷雾或 `revealedUntil`。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.15 提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`2291f9d0e60c9ac433cff09b81e070f2a27cde92`，commit subject 为 `v5.15: 细化潜艇模型与声呐接触提示`。
+- GitHub Actions run：`31591110966`，attempt `1`，conclusion `success`，job `94096027614`；artifact：`desert-frontline-ci-v5.15-main-2291f9d0e60c-run31591110966-attempt1`，artifact ID `9139517169`，缓存于 `/private/tmp/desert-frontline-c-review-31591110966/`，未加密约 32 MB。
+- manifest 与本地 `main`、`origin/main`、Actions head 完全匹配，记录 `branch=main`、`commitSha=2291f9d0e60c9ac433cff09b81e070f2a27cde92`、`runId=31591110966`、`runAttempt=1`、`version=v5.15`；static checks、project lint、generic iOS build、simulator launch 均为 success。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），`xcodebuild.log` 与 simulator build 日志均含 `BUILD SUCCEEDED`。
+- 二十四次 simulator launch 均完成截图并在截图后记录进程仍运行，二十四张 PNG 均为 `1206x2622`，哈希无重复；只读图像扫描的均值范围为 `74.07-110.61`、标准差范围为 `59.71-65.58`，未见黑 / 白 / 近灰空屏。App / launch 日志未命中 crash、fatal error、SIGABRT、watchdog 或未捕获异常；重复的 UIKit SpriteKit focus warning 属于既有系统噪声，不影响 run 结论。
+- 重点截图 SHA-256：`simulator-naval-damage.png` `2ffdd3a4d279b07c008e6787cffc4d9fb1eaaa5236eaf9e1ee746db2c8c22102`；`simulator-naval-salvo.png` `1c3fd7f2b4b580a1e29955f67313629626bcb18fa71fcab57bb7c6400b9587ee`；`simulator-carrier-strike.png` `59c9c8f9744d5408b9f5236343926ff8d9fa10e4633d0cc7914b5f21c8efc8aa`；`simulator-map-terrain.png` `c604a1d9c7cee672da1466e4b45e9cea2ef86158456950106234dd923f1df70f`。
+- 目视确认 `simulator-naval-damage.png` 的 Red Submarine 艏艉层次、声呐穹顶、潜望镜、鱼雷口、尾舵 / 螺旋桨、低透明航迹、`CONTACT` cue、血条、双压力环、水沫、气泡和 `ASW HIT` 同时可辨，未遮挡 Battleship 战损、目标面板或 HUD；`simulator-naval-salvo.png` 的海战炮迹 / 航迹 / 射程圈与潜艇模型共存；`simulator-carrier-strike.png`、`simulator-map-terrain.png` 未出现潜艇节点或 cue 残留，Carrier 甲板、海岸层次、浅水和小地图无明显回归。
+- 代码审阅确认新节点只挂在实体树，cue 刷新只读既有选择、`revealedUntil`、声呐覆盖和 `isKnownToFaction(...)`；没有改变 `fire(...)`、`showAntiSubmarineHit(...)`、`updateFog(...)`、AI、生产或第 25 次截图。按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针。
+
+遗留事项：
+
+- 现有固定 `naval-damage` 证明了已知 Red Submarine 的新模型和 `CONTACT` 可读性，但不能证明选中 Blue Submarine 的三种 cue 在真实触控、声呐边缘进出、长时间隐身 / 暴露转换或密集混战中的体验；这些仍需后续人工玩法检查。
+- 当前没有独立 XCTest target；总目标仍未完成。下一轮继续从海空 / UI、海岸地物或地图读图中选择范围有限的增量，并优先复用云端 24 张探针。
