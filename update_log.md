@@ -5611,3 +5611,26 @@
 
 - 云端固定 capture 证明了当前 24 个场景中的任务面板几何、颜色层级、启动存活和 generic build，但不能替代真实动态任务推进、重开后的连续交互、窄窗口布局、真机触控或长时间性能评估；固定截图也未覆盖每个阶段逐一完成后的动态过渡。
 - 当前没有独立 XCTest target；总目标仍未完成。下一轮继续从海空 / UI、海岸炮击反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
+
+### v5.21 / 海军炮击与命中反馈细化云端验收
+
+日期：2026-08-13
+
+验收结论：通过
+
+- `GameScene.swift` 在既有 `fire(attacker:target:)` 视觉路径中传递攻击者来袭方向；Battleship / Coastal Battery 的 `showNavalGunSalvo(...)` 增加第二炮线约 `0.045s` 的纯视觉错列，`showNavalSalvoImpact(...)` 按来袭方向错位主 / 次水柱并旋转水面椭圆。普通效果仍按原生命周期清理，`persistent=true` 仅用于 capture 且立即生成完整静态效果。
+- `target.hp`、伤害、射程、冷却、AI、生产、战争迷雾、潜艇侦测、ASW 和胜负链路保持不变；未传 attacker 位置的 CI helper 继续使用既有 entity-id fallback。`README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.21 实现提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`40951310ec34f8f9eeed2724c1357ce44462b05b`，commit subject 为 `v5.21: 海军炮击与命中反馈细化`。
+- GitHub Actions run：`31634631117`，attempt `1`，conclusion `success`，job `94241717838`；artifact：`desert-frontline-ci-v5.21-main-40951310ec34-run31634631117-attempt1`，artifact ID `9157054516`，缓存于 `/private/tmp/desert-frontline-c-review-31634631117/`。未加密 ZIP `/private/tmp/desert-frontline-c-review-31634631117/artifact-9157054516.zip` 的 SHA-256 为 `64a84d6cfe3a0a87adc02bc64ab6a506c5baf52ee9d26ad98d4f21ea297bdcdb`，`unzip -t` 通过，包含 40 个文件。
+- Agent C 核对确认 manifest 的 `branch=main`、`commitSha=40951310ec34f8f9eeed2724c1357ce44462b05b`、`runId=31634631117`、`runAttempt=1`、`version=v5.21` 与本地 `main`、`origin/main`、Actions head 完全匹配；static checks、project lint、generic iOS build、simulator launch 均为 success，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），`ci-failure-summary.md`、`simulator-launch.log`、`simulator-app.log` 和 `DesertFrontline.xcresult` 均存在。
+- artifact 含 24 张项目专属 PNG，全部为 `1206x2622`、8-bit RGBA，压缩数据完整；24 次 launch 均完成截图并在截图后确认进程存活。日志未发现 crash、fatal error、SIGABRT、watchdog 或异常终止，重复的 UIKit / SpriteKit 系统 warning 不改变 run 结论。
+- 目视确认 `simulator-naval-salvo.png` 的 Blue Battleship 双炮线、短暂错列、双炮口闪光 / 烟团、两枚弹体、方向化主 / 次水柱、舰体命中和目标 HP / 距离 / reload 同时可读；`simulator-coastal-battery.png` 的岸防炮双线、后坐、岸边尘浪、方向化水柱与舰体命中不遮挡海岸、舰体或 HUD。`simulator-naval-damage.png`、`simulator-carrier-strike.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 的战损、Submarine / ASW HIT、航母 / 空袭和其他海空反馈保持可读；其余 20 张 PNG 未见炮弹、水柱、烟团残留、HUD 溢出或迷雾边界回归。
+- 本轮按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行了 artifact / ZIP 完整性核对和文档轻量检查，验收账号确认为 `Altman-sam114`。
+
+遗留事项：
+
+- 云端固定 capture 证明了双炮线错列、来袭方向化水面命中几何、启动存活和 generic build，但不能替代真实触控、动态连续交火、全部地图 seed、真机性能或水柱时序体验；当前没有独立 XCTest target。
+- 总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
