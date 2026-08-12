@@ -5588,3 +5588,26 @@
 
 - 云端固定 capture 证明了静态 FOCUS / ATK 层级、海空模型共存、启动存活和 generic build，但不能替代真实触控、动态移动中的 marker 更新、连续交火、全部 seed 或真机性能评估；当前没有独立 XCTest target。
 - 总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
+
+### v5.20 / 任务目标进度带与阶段可读性云端验收
+
+日期：2026-08-13
+
+验收结论：通过
+
+- `GameScene.swift` 在既有任务面板内增加固定六阶段进度带和五条连接线。节点状态直接读取 `completedMissionStages` 与 `activeMissionStage()`：已完成为青绿色、当前阶段为金色、未开始为低透明度中性色；任务规则、完成条件、奖励、任务顺序、战争迷雾、胜负和 `SKRM` 重开重置均未改变。
+- 任务面板高度与标题 / 详情布局同步调整，compact HUD 和标准 HUD 都在面板内部使用稳定坐标；进度带只作为 HUD 读图反馈，不增加按钮、任务字段、地图目标、外部依赖或新的探针。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.20 Agent A 提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`bbc6dcbb74379d17a8b6e1f9f14fb62674800b91`，commit subject 为 `v5.20: 增加任务阶段进度带`。
+- GitHub Actions run：`31626189475`，attempt `1`，conclusion `success`，job `94213034223`；artifact：`desert-frontline-ci-v5.20-main-bbc6dcbb7437-run31626189475-attempt1`，artifact ID `9153628482`，缓存于 `/private/tmp/desert-frontline-c-review-31626189475/`。完整 ZIP `/private/tmp/desert-frontline-c-review-31626189475/artifact-9153628482.zip` 已通过 `unzip -t`，SHA-256 为 `57cf3adea6b3d96ac95121f93a065b7b7f48a4defd27ea7f7730e6ce35517884`。
+- Agent C 核对确认 manifest 的 `branch=main`、`commitSha=bbc6dcbb74379d17a8b6e1f9f14fb62674800b91`、`runId=31626189475`、`runAttempt=1`、`version=v5.20` 与本地 `main`、`origin/main`、Actions head 完全匹配；static checks、project lint、generic iOS build、simulator launch 全部 success。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），必需 `xcodebuild.log`、`ci-failure-summary.md`、`simulator-launch.log`、`simulator-app.log` 和 `DesertFrontline.xcresult` 均存在。
+- artifact 含 24 张项目专属 PNG，全部为 `1206x2622`、8-bit RGBA，ZIP 压缩数据无错误；未发现 crash、fatal error、SIGABRT、watchdog 或异常终止。代表性截图 `simulator-screenshot.png`、`simulator-map-terrain.png`、`simulator-hud-build.png`、`simulator-hud-support.png` 目视确认六个进度节点和五条连接线位于任务面板底部，不遮挡标题、详情、资源 / 状态面板、小地图、命令条或海空 / 战斗模型；其余截图未见任务带污染既有视觉反馈。
+- 本轮按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、暂存内容检查、远端同步、artifact 完整性核对和截图目视复核，验收账号确认为 `Altman-sam114`。
+
+遗留事项：
+
+- 云端固定 capture 证明了当前 24 个场景中的任务面板几何、颜色层级、启动存活和 generic build，但不能替代真实动态任务推进、重开后的连续交互、窄窗口布局、真机触控或长时间性能评估；固定截图也未覆盖每个阶段逐一完成后的动态过渡。
+- 当前没有独立 XCTest target；总目标仍未完成。下一轮继续从海空 / UI、海岸炮击反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
