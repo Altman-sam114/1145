@@ -5540,3 +5540,27 @@
 
 - 云端固定 capture 证明了 24 个冻结场景中的小地图海空微标、HUD 层级、雾边界和启动稳定性，但不能替代真实触控、持续移动中的航向刷新、动态 AI、连续交火、潜艇隐身转换或真机性能评估；这些仍需后续人工玩法检查。
 - 当前没有独立 XCTest target；总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
+
+### v5.18 / 海岸线湿沙唇与礁石边缘微细节云端验收
+
+日期：2026-08-12
+
+验收结论：通过
+
+- 地图构建复用共享四方向岸线边表，在水邻 `.sand` / `.oil` 陆地格内侧增加低对比湿沙唇与稀疏高光，在水邻 `.ridge` 增加短暗色礁石轮廓 / 少量碎片；`.road` 不增加陆地侧装饰。新增节点只挂 `mapNode`，沿用 `terrainDetailHash(for:)` 和既有 `fogLayer`，不进入实体、效果、HUD、小地图或每帧更新。
+- `TerrainEdge` 统一保存岸线边信息，`shorelineSegments(for:)` 与新增陆地侧岸线绘制复用同一边表；Terrain、碰撞、路径、登陆、建造、AI、战斗、生产、迷雾和胜负链路保持不变。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.18 Agent A 提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`6ae2c94ef77a5dc64afd9e7abaaee72e5bd7f812`，commit subject 为 `v5.18: 海岸线湿沙唇与礁石边缘微细节`。
+- GitHub Actions run：`31608996561`，attempt `1`，conclusion `success`，job `94155198880`；artifact：`desert-frontline-ci-v5.18-main-6ae2c94ef77a-run31608996561-attempt1`，artifact ID `9146867302`，缓存于 `/private/tmp/desert-frontline-c-review-31608996561/`，官方 ZIP `/private/tmp/desert-frontline-v5.18-9146867302.zip` 已通过 `unzip -t`。
+- Agent C 重新核对 artifact：manifest 的 `branch=main`、`commitSha=6ae2c94ef77a5dc64afd9e7abaaee72e5bd7f812`、`runId=31608996561`、`runAttempt=1`、`version=v5.18` 与本地 `main`、`origin/main`、Actions head 完全匹配；static checks、project lint、generic iOS build、simulator launch 全部 success，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），必需日志、`ci-failure-summary.md` 和 `DesertFrontline.xcresult` 均存在。
+- 24 次 simulator launch、截图和截图后 PID 存活均成功；24 张 PNG 均为 `1206x2622 RGBA`，SHA-256 无重复。日志未发现 crash、fatal error、SIGABRT 或 watchdog。
+- 目视确认 `simulator-map-terrain.png` 的水侧浅水 / wash / foam 与陆地湿沙唇连续，Ridge 礁石稀疏且不成黑带；`simulator-coastal-battery.png`、`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-fighter-strike.png`、`simulator-naval-damage.png` 的岸防炮、舰船、航母、空袭、战损、ASW HIT、水沫、气泡、HUD 与迷雾边界均未被遮挡或污染。正常的 `RegisterExecutionPolicyException`、UIKit focus 和无 AppIntents 依赖提示不影响结论。
+- 本轮按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只做了工作树与 artifact 核对，验收账号为 `Altman-sam114`。
+
+遗留事项：
+
+- 云端固定 capture 证明了静态岸线几何、层级、fog 覆盖、启动存活和 generic build，但不能替代真实触控、动态移动、海陆通行、连续战斗、全部 seed 或长时间性能评估；当前没有独立 XCTest target。
+- 总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
