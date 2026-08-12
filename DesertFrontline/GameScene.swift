@@ -1034,6 +1034,8 @@ final class GameScene: SKScene {
     private let selectionInfoWarningColor = UIColor(red: 1.0, green: 0.72, blue: 0.20, alpha: 1.0)
     private let selectionInfoCriticalColor = UIColor(red: 1.0, green: 0.38, blue: 0.24, alpha: 1.0)
     private var selectionTargetHealthBarFrame = CGRect.zero
+    private var selectionInfoRowAvailableWidth: CGFloat = 0
+    private var selectionInfoRowBaseFontSize: CGFloat = 9
     private var hudButtonFrames: [HudAction: CGRect] = [:]
     private var hudButtonSubtitleLabels: [HudAction: SKLabelNode] = [:]
     private var hudButtonShapes: [HudAction: SKShapeNode] = [:]
@@ -4131,6 +4133,9 @@ final class GameScene: SKScene {
         panel.lineWidth = 2.5
         hudNode.addChild(panel)
 
+        selectionInfoRowAvailableWidth = max(0, frame.width - 20)
+        selectionInfoRowBaseFontSize = compact ? 9 : 10
+
         selectionInfoTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
         selectionInfoTitleLabel.fontSize = compact ? 10 : 11
         selectionInfoTitleLabel.fontColor = UIColor(red: 0.74, green: 0.95, blue: 1.0, alpha: 1.0)
@@ -4737,10 +4742,68 @@ final class GameScene: SKScene {
             : UIColor(red: 1.0, green: 0.48, blue: 0.24, alpha: 1.0)
         let rowColors = selectionInfoRowColors(for: selected)
         for (index, label) in selectionInfoRowLabels.enumerated() {
-            label.text = index < content.rows.count ? content.rows[index] : ""
+            let rawText = index < content.rows.count ? content.rows[index] : ""
+            label.text = compactSelectionInfoRow(rawText)
+            fitSelectionInfoRow(label)
             label.fontColor = rowColors[index]
         }
         updateSelectionTargetHealthBar(selected: selected)
+    }
+
+    private func compactSelectionInfoRow(_ text: String) -> String {
+        guard !text.isEmpty else { return "" }
+
+        let replacements: [(String, String)] = [
+            ("Temporary detected", "Detect"),
+            ("Known sonar contact", "Sonar contact"),
+            ("Stealth / no known contact", "Stealth / no contact"),
+            ("Stealth while undetected", "Stealth / unseen"),
+            ("ASW attack", "ASW"),
+            ("No sonar", "No SON"),
+            ("Weapon ready", "Ready"),
+            ("Reload ", "Rld "),
+            ("Rally unset", "RLY-"),
+            ("Rally set", "RLY+"),
+            ("Queue idle", "Q idle"),
+            ("Queue ", "Q "),
+            ("Wing ", "W "),
+            ("Escort ", "Esc "),
+            ("Need ", "N "),
+            ("Operational", "OP"),
+            ("Attack-moving", "AMOV"),
+            ("Holding position", "HOLD"),
+            ("Combat units", "Combat"),
+            ("Seek radius", "Seek"),
+            ("Nearest approx", "Near"),
+            ("Max rng", "R"),
+            ("Sonar ", "SON "),
+            (" Ctc ", " C")
+        ]
+        var compact = text
+        for (source, replacement) in replacements {
+            compact = compact.replacingOccurrences(of: source, with: replacement)
+        }
+        while compact.contains("  ") {
+            compact = compact.replacingOccurrences(of: "  ", with: " ")
+        }
+        return compact.trimmingCharacters(in: .whitespaces)
+    }
+
+    private func fitSelectionInfoRow(_ label: SKLabelNode) {
+        label.fontSize = selectionInfoRowBaseFontSize
+        label.xScale = 1
+        guard selectionInfoRowAvailableWidth > 0,
+              !(label.text?.isEmpty ?? true) else { return }
+
+        let rawWidth = label.frame.width
+        guard rawWidth > selectionInfoRowAvailableWidth else { return }
+
+        let fontRatio = selectionInfoRowAvailableWidth / max(rawWidth, 1)
+        label.fontSize = max(7.5, selectionInfoRowBaseFontSize * fontRatio)
+        let fittedWidth = label.frame.width
+        if fittedWidth > selectionInfoRowAvailableWidth {
+            label.xScale = min(1, selectionInfoRowAvailableWidth / max(fittedWidth, 1))
+        }
     }
 
     private func selectionInfoRowColors(for selected: [GameEntity]) -> [UIColor] {

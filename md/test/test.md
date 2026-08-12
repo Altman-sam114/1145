@@ -14,6 +14,8 @@ v5.14 目视口径：复用现有 24 张截图检查 Carrier 三个固定停机�
 
 v5.15 目视口径：复用现有 24 张截图检查潜艇局部模型与实体本地接触 cue，不新增 launch 或 capture。`simulator-naval-damage.png` 核对 Red Submarine 的艏艉层次、声呐穹顶、潜望镜、鱼雷口、尾舵/螺旋桨与低透明航迹共存，`CONTACT` cue 不遮挡 `ASW HIT`、双压力环、水沫、气泡、血条或 Battleship 战损；`simulator-naval-salvo.png` 核对潜艇细节在海战炮迹、航迹、射程圈和 HUD 之间保持低对比可读；`simulator-carrier-strike.png`、`simulator-map-terrain.png` 核对 Carrier 甲板、海岸层次、浅水和小地图没有潜艇节点或 cue 残留。代码审阅同时确认选中的 Blue Submarine 只读显示 `STEALTH` / `SONAR` / `DETECT`，玩家未知 Red Submarine 不显示模型或 cue，已知 Red Submarine 只显示 `CONTACT`；不把固定 capture 误称为真实隐身转换、长时间战斗或触控验证。节点预创建并挂在实体树，24 张 PNG 尺寸 / 亮度 / 日志和迷雾边界仍须正常。
 
+v5.16 目视口径：复用现有 24 张截图检查海空选择面板的确定性短码与单行宽度 fitting，不新增 launch 或 capture。`simulator-hud-naval.png` 核对 Battleship / Carrier / Submarine 的 `ASW`、`SON`、`C<n>`、`Deck 3PAD H/J`、`Q` / `W` / `GW` / `Esc` 信息仍在面板边界内；`simulator-hud-air.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 核对目标、距离、`Ready` / `Rld`、空防摘要与模型/弹体不被行文本遮挡；`simulator-naval-salvo.png`、`simulator-naval-damage.png`、`simulator-carrier-strike.png` 核对目标 HP、ASW HIT、舰炮 / 舰载机 / 航迹和 v5.15 潜艇细节保持可读。`simulator-combat-ui.png`、`simulator-incoming-ui.png`、`simulator-target-cycle.png`、`simulator-enemy-touch-assist.png` 核对多选 `PRIMARY` / `Eng` / `Rdy` / `IN` 行的颜色索引与事实文本不变；`simulator-map-terrain.png`、`simulator-screenshot.png`、`simulator-hud-build.png`、`simulator-hud-support.png` 核对非海空、pending、空选择和地图面板没有短码残留或溢出。该轮只验证固定云端 capture 的布局可读性，不能外推真实触控、任意尺寸窗口、长时间战斗或全部动态状态；短码与 fitting 只读展示，不改变原始 rows、目标血条、命令、战斗、声呐、迷雾或生产规则。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。

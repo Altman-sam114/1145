@@ -2,7 +2,7 @@
 
 本文用 Mermaid 图把 `md/flow/flow.md` 的核心逻辑可视化。每张图前都有中文读图说明，便于人工快速检查当前项目运行链路。
 
-当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；这些节点仍属于实体子树，沿用镜像、迷雾、战损、维修和死亡清理链路，范围、甲板与潜艇 cue 都不改攻击或生产规则。
+当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；HUD 选择面板另在写入行文本时使用集中式海空短码与有界单行 fitting；这些节点仍属于实体子树，沿用镜像、迷雾、战损、维修和死亡清理链路，范围、甲板、潜艇 cue 与面板适配都不改攻击或生产规则。
 
 ## 1. 项目核心逻辑图
 
@@ -140,3 +140,4 @@ flowchart TD
 - v5.3：普通点击在精确实体之后、友军辅助之前增加合法敌军 26pt 屏幕尺度辅助攻击，按距离桶 / id 取首项且不循环，继续复用直接攻击 helper；CI 新增第二十三次 enemy-touch-assist 截图探针。
 - v5.12：选中 Blue 作战机动单位的选择圈低侧增加四个预创建武器就绪刻度，ready 显示青绿色、装填按 `attackTimer / effectiveAttackCooldown` 只读逐段显示琥珀；敌军、结构、Mechanic、pending / 空选择隐藏，复用二十四次既有云端截图探针。
 - v5.14：Carrier 实体树新增三个固定停机位舰载机轮廓；`refreshCarrierDeckAircraftVisuals()` 只读 Carrier HOLD 绑定翼队与 HEL/JET BuildOrder，绑定机体提亮、队列显示琥珀条、空位保持暗色，选中航母面板使用 `Deck 3PAD H/J`；不新增实体、生产、攻击或第 25 次截图探针。
+- v5.16：海空选择信息面板在保留原始事实 rows、颜色索引与目标血条的前提下，集中压缩 `ASW` / `SON` / `Rld` / `RLY` / `Q` / `W` / `GW` / `Esc` 等展示 token，并按缓存面板宽度做有界单行字号 / 水平 fitting；不新增状态、控件或第 25 次探针。
