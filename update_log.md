@@ -5514,3 +5514,29 @@
 
 - 现有 24 张固定 capture 证明了已覆盖场景的单行 HUD 可读性与视觉回归，但没有直接覆盖窄于当前固定窗口的尺寸、Carrier 实际 HOLD/GW 与活动 Queue/Wing 全长组合；`carrier-strike` fixture 的目标行会覆盖部分 Queue/Wing 行，因此不能把静态截图宣称为动态护航 / 生产或真实触控验证。
 - 当前没有独立 XCTest target；总目标仍未完成。下一轮继续在海空/UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
+
+### v5.17 / 小地图海空朝向与交战微标云端验收
+
+日期：2026-08-12
+
+验收结论：
+
+- `minimapBlipNode(for:)` 为海军 / 空军 blip 增加只读的 5pt 级朝向齿：优先读取合法且对玩家已知的攻击目标，其次读取 `attackMoveDestination`、`destination`、`path.last`，没有明确移动意图时回退到既有 `node.xScale` 左右朝向；陆军、建筑和支援节点不新增该微标。
+- 选中的 Blue 海军 / 空军在拥有合法且已知 `attackTarget` 时显示短红色目标方向齿；已有 `incomingThreatsByTargetID` 时显示短琥珀来袭方向齿。目标方向再次经过 `isKnownToFaction(...)` 与 `canAttack(...)` 过滤，未知敌方目标、未侦测潜艇和迷雾外信息不通过小地图泄露。
+- 微标作为 blip 子节点随 `updateMinimap()` 重建，不新增 `GameEntity` 状态、航向字段、命令、连线或战斗分支；既有小地图域符号、选择框、来袭圈、潜艇侦测、海空 HUD、触控命令、AI、伤害、生产和胜负链路保持不变。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.17 实现提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`dc3fe38d84019e184615752cb0ee488e182c201c`，commit subject 为 `v5.17: 小地图海空朝向与交战微标`。
+- GitHub Actions run：`31597922012`，attempt `1`，conclusion `success`，job `94117895179`；artifact：`desert-frontline-ci-v5.17-main-dc3fe38d8401-run31597922012-attempt1`，artifact ID `9142273529`，缓存于 `/private/tmp/desert-frontline-c-review-31597922012/`，未加密约 31 MB。
+- Agent C 重新下载并核对 artifact：manifest 的 `branch=main`、`commitSha=dc3fe38d84019e184615752cb0ee488e182c201c`、`runId=31597922012`、`runAttempt=1`、`version=v5.17` 与本地 `main`、`origin/main`、Actions head 完全匹配；static checks、project lint、generic iOS build、simulator launch 均为 success，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target）。
+- artifact 含 manifest、JUnit、失败摘要、`DesertFrontline.xcresult`、build / launch / app 日志和 24 张项目专属 PNG；24 次 launch 均写出截图并记录进程仍在运行，24 张 PNG 均为 `1206x2622 RGBA`，哈希无重复。日志未发现 crash、fatal error、SIGABRT、watchdog 或未捕获异常；UIKit / SpriteKit 系统 warning 不改变 run 结论。
+- 重点截图 SHA-256：`simulator-hud-naval.png` `678871e70a6b7e32dec4a1e05acf08185cc2c7f11a501c5f43add8e91bafb64c`；`simulator-hud-air.png` `57cfdbe71aa39100a7e7dbe910a84bad8f0d49f14bd5ae58310dbc83031139ba`；`simulator-command-move.png` `b08d22b53dafe1e7e5c841129a572e4ed2b98a78fdf6a07f3d945075419f8857`；`simulator-command-attack-move.png` `6c17444faec114c1e9a6f9c4cddb3ddd51b2a2e81d87d0679ebae701a4dbf7ec`；`simulator-command-attack-target.png` `acc938828a4511fc92f9554ea1425d3c38f28d130413b61adc10dc1c7ecc0594`；`simulator-naval-salvo.png` `9b810febe23b25ef9b201856f586c29d9e776c1b69c3f40cba061f68bbdb43a1`；`simulator-carrier-strike.png` `cfa8d6a60c812c41e19ef8ff7e8c26d5ae42f05a89e762fed5b798e8b4f60d8b`；`simulator-fighter-strike.png` `471011ea864ac21b9b7c1058d19f4480ae4617f4849c3a2dd8314304f44e7615`；`simulator-helicopter-salvo.png` `d9e1c7f159405d1cefce9835a216c7745aadcd0c794d2617093d7181408b1be0`；`simulator-incoming-ui.png` `fd38f3440da7bbd92bb98adf8087c150c6cab7f1611f64e6d19105f7c40a4c46`；`simulator-naval-damage.png` `a9ea83545f85129ed95888c2cad026107ee11390b44a6690a6c3f86a6c97b2a9`；`simulator-stop-command.png` `2559e74384c42c4ee8afc5d0c033d4a64a7d33ebcc325ff0a96cb019c49b1605`；`simulator-target-cycle.png` `1b26126ac10e395c8224ff279ebf26e4d496f709503f84de6c84eaf89d869d4e`；`simulator-map-terrain.png` `da2ce63b1e22ba1cd8b31239314d8c747c9b14a6158b4d295804f5674c9f1c51`；`simulator-hud-build.png` `e60732fc37e1da89ae214147b253b77b16b07a53a79e06e5c0ca5c2c8e084aab`；`simulator-hud-support.png` `30ba0a171fa7e5209c3bb414c9655041dae830cf54e4cd07ef49241f13f53223`。
+- 目视确认 `simulator-hud-naval.png` / `simulator-hud-air.png` 的海空域符号和面板、`simulator-command-move.png` / `simulator-command-attack-move.png` / `simulator-command-attack-target.png` 的命令态、`simulator-naval-salvo.png` / `simulator-carrier-strike.png` / `simulator-fighter-strike.png` / `simulator-helicopter-salvo.png` 的海空模型与攻击反馈、`simulator-incoming-ui.png` / `simulator-naval-damage.png` 的来袭与战损，以及 `simulator-stop-command.png` / `simulator-target-cycle.png` 的清理 / 目标循环；未见微标溢出、重复残留、HUD 遮挡或迷雾边界回归。`simulator-map-terrain.png`、`simulator-hud-build.png`、`simulator-hud-support.png` 保持地图、生产和支援页可读。
+- 本轮按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check` 和 `plutil -lint DesertFrontline.xcodeproj/project.pbxproj`，云端验收账号确认为 `Altman-sam114`。
+
+遗留事项：
+
+- 云端固定 capture 证明了 24 个冻结场景中的小地图海空微标、HUD 层级、雾边界和启动稳定性，但不能替代真实触控、持续移动中的航向刷新、动态 AI、连续交火、潜艇隐身转换或真机性能评估；这些仍需后续人工玩法检查。
+- 当前没有独立 XCTest target；总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
