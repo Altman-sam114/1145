@@ -90,7 +90,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 
 ### `MissionStage`
 
-自动任务阶段：占油、夺旗、建立海岸据点、混合军种、摧毁 Red 生产、摧毁 Red HQ。建立海岸据点阶段由 `coastalAssetCount(for:)` 统计己方存活且已完工的 Shipyard、Sonar Buoy 和 Coastal Battery，未完工建筑不计入；任务详情用 `coastalAssetBreakdown(for:)` 显示同一 operational 口径下的 `SY` / `SON` / `CB` 分项摘要，但完成条件仍是任意 2 个 coastal assets；单选这三类海岸资产时，选择信息面板也显示职责摘要和 `Secure Coast: counted/pending/not counted` 状态，仍只把 Blue 存活且 operational 的海岸资产视为 counted，不改变任务计数；`missionReward(for:)` 当前在建立海岸据点首次完成时通过 `changeMoney(for: .player, by: 600)` 发放 `$600`，在混合军种首次完成时发放 `$800`，在摧毁 Red 生产首次完成时发放 `$900`，依赖 `completedMissionStages` 防止重复发放。终局 `Destroy Red HQ` 详情只在 Red HQ 满足 `isKnownToFaction(..., observer: .player)` 时显示 HP；同一已知边界也用于 `AMOV` 的短暂 HQ 攻击指引和 armed 选择面板摘要，未知时只提示侦察或推进，不泄露隐藏 HQ 信息。
+自动任务阶段：占油、夺旗、建立海岸据点、混合军种、摧毁 Red 生产、摧毁 Red HQ。建立海岸据点阶段由 `coastalAssetCount(for:)` 统计己方存活且已完工的 Shipyard、Sonar Buoy 和 Coastal Battery，未完工建筑不计入；任务详情用 `coastalAssetBreakdown(for:)` 显示同一 operational 口径下的 `SY` / `SON` / `CB` 分项摘要，但完成条件仍是任意 2 个 coastal assets；单选这三类海岸资产时，选择信息面板也显示职责摘要和 `Secure Coast: counted/pending/not counted` 状态，仍只把 Blue 存活且 operational 的海岸资产视为 counted，不改变任务计数；`missionReward(for:)` 当前在建立海岸据点首次完成时通过 `changeMoney(for: .player, by: 600)` 发放 `$600`，在混合军种首次完成时发放 `$800`，在摧毁 Red 生产首次完成时发放 `$900`，依赖 `completedMissionStages` 防止重复发放。任务面板同时依据 `completedMissionStages` 与 `activeMissionStage()` 绘制固定六阶段进度带：已完成为青绿色、当前为金色、未开始为低透明度中性色；该带只读显示，不增加任务状态或改变完成顺序。终局 `Destroy Red HQ` 详情只在 Red HQ 满足 `isKnownToFaction(..., observer: .player)` 时显示 HP；同一已知边界也用于 `AMOV` 的短暂 HQ 攻击指引和 armed 选择面板摘要，未知时只提示侦察或推进，不泄露隐藏 HQ 信息。
 
 ## 4. 关键运行流程
 

@@ -22,6 +22,8 @@ v5.18 目视口径：复用现有 24 张 PNG 检查海岸线陆地侧湿沙唇�
 
 v5.19 目视口径：复用现有 24 张 PNG 检查既有 FOCUS / ATK 世界交战标注的确定性层级和海空 caption 分带，不新增 launch 或 capture。`simulator-land-combat.png`、`simulator-combat-ui.png`、`simulator-incoming-ui.png` 核对 FOCUS 双环、八段目标生命条、`ATK <shortCode>` 与选中面板 / 来袭标记不互相覆盖；`simulator-naval-salvo.png`、`simulator-coastal-battery.png`、`simulator-carrier-strike.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png`、`simulator-naval-damage.png` 核对海军 / 空军模型、舰炮、航迹、弹体、舰载机、ASW HIT、水沫、战损与 FOCUS / ATK 环和文字同时可读。检查 `simulator-command-attack-target.png`、`simulator-target-cycle.png`、`simulator-stop-command.png` 中直接攻击 / TGT / STOP marker 的出现与清理，`simulator-map-terrain.png`、`simulator-hud-build.png`、`simulator-hud-support.png` 中无残留标注。代码审阅必须确认 FOCUS / ATK 只改变 effects-layer z 序、label 分带或 marker 布局，继续经过玩家已知 / 存活 / `canAttack` 边界，未知敌方、未知 HQ、未侦测 Submarine 不会因 z 序提升泄露；固定 capture 只能证明静态层级、启动稳定性和 generic build，不能外推真实触控、动态移动、连续交火或真机性能，24 张 PNG 尺寸 / 哈希 / 日志 / PID 仍须正常。
 
+v5.20 目视口径：复用现有 24 张 PNG 检查任务面板内固定六阶段进度带的层级与布局，不新增 launch 或 capture。`simulator-screenshot.png`、`simulator-map-terrain.png`、`simulator-hud-build.png`、`simulator-hud-support.png` 核对六个节点与五条连接线不遮挡标题、详情、资源面板、小地图或命令条；代码审阅确认节点状态只读取 `completedMissionStages` / `activeMissionStage()`，完成为青绿色、当前为金色、未开始为低透明度，且胜负/重开刷新路径不会残留旧色。其余 20 张 PNG 核对任务带不污染海空模型、战斗反馈、选择面板、迷雾和 pending 命令。该轮只验证固定 capture 的 HUD 几何、颜色层级、generic build 与启动稳定性，不能外推真实触控、动态任务推进或真机性能；不新增任务规则、奖励、按钮、地图目标或第 25 次截图探针。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。

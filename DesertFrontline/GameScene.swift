@@ -1029,6 +1029,8 @@ final class GameScene: SKScene {
     private var messageLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     private var missionTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     private var missionDetailLabel = SKLabelNode(fontNamed: "Menlo")
+    private var missionProgressConnectors: [SKShapeNode] = []
+    private var missionProgressNodes: [SKShapeNode] = []
     private var forcesLabel = SKLabelNode(fontNamed: "Menlo")
     private var aiStatusLabel = SKLabelNode(fontNamed: "Menlo")
     private var selectionInfoTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
@@ -4135,8 +4137,8 @@ final class GameScene: SKScene {
         hudNode.addChild(messageLabel)
 
         let missionPanelWidth = min(compactHUD ? 350 : 500, max(280, size.width - 590))
-        let missionPanelHeight: CGFloat = compactHUD ? 52 : 58
-        let missionPanelY = halfH - (compactHUD ? 102 : 106)
+        let missionPanelHeight: CGFloat = compactHUD ? 68 : 74
+        let missionPanelY = halfH - (compactHUD ? 110 : 114)
         let missionPanel = SKShapeNode(rectOf: CGSize(width: missionPanelWidth, height: missionPanelHeight), cornerRadius: 7)
         missionPanel.fillColor = UIColor(red: 0.07, green: 0.08, blue: 0.08, alpha: 0.88)
         missionPanel.strokeColor = UIColor(red: 0.70, green: 0.58, blue: 0.28, alpha: 0.92)
@@ -4149,7 +4151,7 @@ final class GameScene: SKScene {
         missionTitleLabel.fontColor = UIColor(red: 0.98, green: 0.84, blue: 0.46, alpha: 1.0)
         missionTitleLabel.horizontalAlignmentMode = .left
         missionTitleLabel.verticalAlignmentMode = .center
-        missionTitleLabel.position = CGPoint(x: -missionPanelWidth / 2 + 14, y: missionPanelY + 12)
+        missionTitleLabel.position = CGPoint(x: -missionPanelWidth / 2 + 14, y: missionPanelY + 22)
         hudNode.addChild(missionTitleLabel)
 
         missionDetailLabel = SKLabelNode(fontNamed: "Menlo")
@@ -4157,8 +4159,34 @@ final class GameScene: SKScene {
         missionDetailLabel.fontColor = UIColor(white: 0.92, alpha: 1.0)
         missionDetailLabel.horizontalAlignmentMode = .left
         missionDetailLabel.verticalAlignmentMode = .center
-        missionDetailLabel.position = CGPoint(x: -missionPanelWidth / 2 + 14, y: missionPanelY - 12)
+        missionDetailLabel.position = CGPoint(x: -missionPanelWidth / 2 + 14, y: missionPanelY - 2)
         hudNode.addChild(missionDetailLabel)
+
+        missionProgressConnectors = []
+        missionProgressNodes = []
+        let progressInset = compactHUD ? 16.0 : 18.0
+        let progressY = missionPanelY - missionPanelHeight / 2 + (compactHUD ? 10 : 11)
+        let progressStartX = -missionPanelWidth / 2 + progressInset
+        let progressEndX = missionPanelWidth / 2 - progressInset
+        let progressStep = (progressEndX - progressStartX) / CGFloat(max(1, MissionStage.allCases.count - 1))
+        for index in 0..<MissionStage.allCases.count {
+            let x = progressStartX + CGFloat(index) * progressStep
+            if index < MissionStage.allCases.count - 1 {
+                let connector = SKShapeNode(rectOf: CGSize(width: max(6, progressStep - (compactHUD ? 9 : 11)), height: compactHUD ? 2 : 2.5), cornerRadius: 1)
+                connector.position = CGPoint(x: x + progressStep / 2, y: progressY)
+                connector.fillColor = UIColor(white: 0.34, alpha: 0.72)
+                connector.strokeColor = .clear
+                hudNode.addChild(connector)
+                missionProgressConnectors.append(connector)
+            }
+            let node = SKShapeNode(circleOfRadius: compactHUD ? 4.2 : 4.8)
+            node.position = CGPoint(x: x, y: progressY)
+            node.fillColor = UIColor(white: 0.34, alpha: 0.78)
+            node.strokeColor = UIColor(white: 0.60, alpha: 0.52)
+            node.lineWidth = 1
+            hudNode.addChild(node)
+            missionProgressNodes.append(node)
+        }
 
         let statusPanelY = min(commandBarTop + 80, halfH - 122)
         let statusPanel = SKShapeNode(rectOf: CGSize(width: 244, height: 56), cornerRadius: 7)
@@ -4675,6 +4703,7 @@ final class GameScene: SKScene {
         let missionStatus = missionStatusContent()
         missionTitleLabel.text = missionStatus.title
         missionDetailLabel.text = missionStatus.detail
+        updateMissionProgressVisuals()
         for (action, subtitleLabel) in hudButtonSubtitleLabels {
             subtitleLabel.text = subtitle(for: action)
             if let power = action.supportPower, supportCooldown(for: .player, power: power) > 0 {
@@ -4747,6 +4776,42 @@ final class GameScene: SKScene {
 
     private func mobileCount(for faction: Faction) -> Int {
         entities.values.filter { $0.faction == faction && !$0.kind.isStructure && $0.isAlive }.count
+    }
+
+    private func updateMissionProgressVisuals() {
+        let stages = MissionStage.allCases
+        let activeStage = activeMissionStage()
+        let completeColor = UIColor(red: 0.42, green: 0.98, blue: 0.62, alpha: 1.0)
+        let activeColor = UIColor(red: 1.0, green: 0.78, blue: 0.28, alpha: 1.0)
+        let pendingColor = UIColor(white: 0.38, alpha: 0.86)
+        let completeConnectorColor = UIColor(red: 0.34, green: 0.72, blue: 0.52, alpha: 0.92)
+        let pendingConnectorColor = UIColor(white: 0.30, alpha: 0.68)
+
+        for (index, stage) in stages.enumerated() where index < missionProgressNodes.count {
+            let node = missionProgressNodes[index]
+            if completedMissionStages.contains(stage) {
+                node.fillColor = completeColor
+                node.strokeColor = UIColor(red: 0.76, green: 1.0, blue: 0.82, alpha: 1.0)
+                node.alpha = 1.0
+                node.setScale(1.0)
+            } else if stage == activeStage {
+                node.fillColor = activeColor
+                node.strokeColor = UIColor(red: 1.0, green: 0.92, blue: 0.60, alpha: 1.0)
+                node.alpha = 1.0
+                node.setScale(1.2)
+            } else {
+                node.fillColor = pendingColor
+                node.strokeColor = UIColor(white: 0.60, alpha: 0.40)
+                node.alpha = 0.72
+                node.setScale(1.0)
+            }
+        }
+
+        for (index, connector) in missionProgressConnectors.enumerated() {
+            let isCompleted = index < stages.count - 1 && completedMissionStages.contains(stages[index])
+            connector.fillColor = isCompleted ? completeConnectorColor : pendingConnectorColor
+            connector.alpha = isCompleted ? 1.0 : 0.72
+        }
     }
 
     private func missionStatusContent() -> (title: String, detail: String) {
