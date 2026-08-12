@@ -859,6 +859,15 @@ private final class GameEntity {
     let weaponReadinessNode = SKNode()
     var weaponReadinessTicks: [SKShapeNode] = []
     let landAirCombatRangeNode = SKShapeNode()
+    let carrierDeckAircraftNode: SKNode = {
+        let node = SKNode()
+        node.isHidden = true
+        return node
+    }()
+    var carrierDeckAircraftPads: [SKNode] = []
+    var carrierDeckAircraftPadBases: [SKShapeNode] = []
+    var carrierDeckAircraftBodies: [SKShapeNode] = []
+    var carrierDeckAircraftQueueBars: [SKShapeNode] = []
     let sonarCoverageNode = SKShapeNode()
     let escortCoverageNode = SKShapeNode()
     let navalGunRangeNode = SKShapeNode()
@@ -2088,6 +2097,8 @@ final class GameScene: SKScene {
 
         configureLandAirCombatRangeNode(for: entity)
         entity.node.addChild(entity.landAirCombatRangeNode)
+        configureCarrierDeckAircraftVisuals(for: entity)
+        entity.node.addChild(entity.carrierDeckAircraftNode)
 
         configureSonarCoverageNode(for: entity)
         entity.node.addChild(entity.sonarCoverageNode)
@@ -4365,6 +4376,7 @@ final class GameScene: SKScene {
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
         refreshWeaponReadinessVisuals(for: selected)
         refreshLandAirCombatRangeVisuals()
+        refreshCarrierDeckAircraftVisuals()
         refreshAirDefenseThreatVisuals(for: selected)
         refreshIncomingThreatVisuals(for: selected)
         refreshCommandIntentVisuals(for: selected)
@@ -4890,7 +4902,7 @@ final class GameScene: SKScene {
     }
 
     private func carrierDeckCapabilityLine() -> String {
-        "Deck HEL/JET"
+        "Deck 3PAD H/J"
     }
 
     private func carrierDeckQueueAndRallyLine(for entity: GameEntity) -> String {
@@ -11385,6 +11397,123 @@ final class GameScene: SKScene {
         else { return }
 
         entity.landAirCombatRangeNode.isHidden = false
+    }
+
+    private func configureCarrierDeckAircraftVisuals(for entity: GameEntity) {
+        guard entity.kind == .carrier else {
+            entity.carrierDeckAircraftNode.isHidden = true
+            return
+        }
+
+        let accent = entity.faction == .enemy
+            ? UIColor(red: 1.0, green: 0.44, blue: 0.30, alpha: 1.0)
+            : UIColor(red: 0.32, green: 0.92, blue: 1.0, alpha: 1.0)
+        let slotPositions: [CGPoint] = [
+            CGPoint(x: -22, y: 0),
+            CGPoint(x: -5, y: 3),
+            CGPoint(x: 12, y: 6)
+        ]
+
+        entity.carrierDeckAircraftNode.zPosition = 6
+        entity.carrierDeckAircraftNode.removeAllChildren()
+        entity.carrierDeckAircraftPads.removeAll(keepingCapacity: true)
+        entity.carrierDeckAircraftPadBases.removeAll(keepingCapacity: true)
+        entity.carrierDeckAircraftBodies.removeAll(keepingCapacity: true)
+        entity.carrierDeckAircraftQueueBars.removeAll(keepingCapacity: true)
+
+        for (index, position) in slotPositions.enumerated() {
+            let pad = SKNode()
+            pad.name = "carrier-deck-pad:\(index)"
+            pad.position = position
+            pad.zRotation = 0.18
+
+            let padBase = SKShapeNode(ellipseOf: CGSize(width: 16, height: 6))
+            padBase.fillColor = UIColor.black.withAlphaComponent(0.48)
+            padBase.strokeColor = accent.withAlphaComponent(0.28)
+            padBase.lineWidth = 0.8
+            pad.addChild(padBase)
+
+            let aircraft = SKShapeNode(path: jetPath())
+            aircraft.setScale(0.22)
+            aircraft.position = CGPoint(x: -1, y: 1)
+            aircraft.fillColor = accent.withAlphaComponent(0.14)
+            aircraft.strokeColor = accent.withAlphaComponent(0.52)
+            aircraft.lineWidth = 0.8
+            aircraft.zPosition = 1
+            pad.addChild(aircraft)
+
+            let canopy = SKShapeNode(ellipseOf: CGSize(width: 3.4, height: 1.8))
+            canopy.position = CGPoint(x: 1.7, y: 1)
+            canopy.fillColor = UIColor.white.withAlphaComponent(0.30)
+            canopy.strokeColor = .clear
+            canopy.zPosition = 2
+            pad.addChild(canopy)
+
+            let queueBar = SKShapeNode(rectOf: CGSize(width: 11, height: 1.4), cornerRadius: 0.7)
+            queueBar.position = CGPoint(x: 0, y: -5)
+            queueBar.fillColor = UIColor(red: 1.0, green: 0.66, blue: 0.22, alpha: 0.92)
+            queueBar.strokeColor = .clear
+            queueBar.isHidden = true
+            queueBar.zPosition = 3
+            pad.addChild(queueBar)
+
+            entity.carrierDeckAircraftPads.append(pad)
+            entity.carrierDeckAircraftPadBases.append(padBase)
+            entity.carrierDeckAircraftBodies.append(aircraft)
+            entity.carrierDeckAircraftQueueBars.append(queueBar)
+            entity.carrierDeckAircraftNode.addChild(pad)
+        }
+
+        entity.carrierDeckAircraftNode.isHidden = false
+    }
+
+    private func refreshCarrierDeckAircraftVisuals() {
+        for entity in entities.values where entity.kind == .carrier {
+            let accent = entity.faction == .enemy
+                ? UIColor(red: 1.0, green: 0.44, blue: 0.30, alpha: 1.0)
+                : UIColor(red: 0.32, green: 0.92, blue: 1.0, alpha: 1.0)
+            let guardWing: [GameEntity] = entity.holdPosition == nil ? [] : boundCarrierGuardWing(for: entity)
+            let boundCount = min(entity.carrierDeckAircraftPads.count, guardWing.count)
+            let queuedCount = min(
+                max(0, entity.carrierDeckAircraftPads.count - boundCount),
+                buildOrders.filter {
+                    $0.sourceID == entity.id &&
+                        ($0.kind == .helicopter || $0.kind == .fighter)
+                }.count
+            )
+
+            for index in entity.carrierDeckAircraftPads.indices {
+                let isBound = index < boundCount
+                let isQueued = !isBound && index < boundCount + queuedCount
+                let bodyColor: UIColor
+                let bodyStroke: UIColor
+                let baseStroke: UIColor
+                if isBound {
+                    bodyColor = accent.withAlphaComponent(0.62)
+                    bodyStroke = accent.withAlphaComponent(0.98)
+                    baseStroke = accent.withAlphaComponent(0.72)
+                } else if isQueued {
+                    let queueColor = UIColor(red: 1.0, green: 0.66, blue: 0.22, alpha: 1.0)
+                    bodyColor = queueColor.withAlphaComponent(0.48)
+                    bodyStroke = queueColor.withAlphaComponent(0.94)
+                    baseStroke = queueColor.withAlphaComponent(0.64)
+                } else {
+                    bodyColor = accent.withAlphaComponent(0.09)
+                    bodyStroke = accent.withAlphaComponent(0.28)
+                    baseStroke = accent.withAlphaComponent(0.22)
+                }
+
+                entity.carrierDeckAircraftPadBases[index].fillColor = UIColor.black.withAlphaComponent(0.48)
+                entity.carrierDeckAircraftPadBases[index].strokeColor = baseStroke
+                entity.carrierDeckAircraftBodies[index].fillColor = bodyColor
+                entity.carrierDeckAircraftBodies[index].strokeColor = bodyStroke
+                entity.carrierDeckAircraftQueueBars[index].isHidden = !isQueued
+            }
+
+            entity.carrierDeckAircraftNode.isHidden = !entity.isAlive ||
+                !entity.isOperational ||
+                entity.node.isHidden
+        }
     }
 
     private func shouldShowMechanicRepairCoverage(for entity: GameEntity) -> Bool {
