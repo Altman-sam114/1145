@@ -1085,6 +1085,9 @@ final class GameScene: SKScene {
     private let airSeparationRadius: CGFloat = 76
     private let airSeparationWeight: CGFloat = 0.68
     private let airAttackStationRadius: CGFloat = 104
+    // Keep world combat captions above domain entities while leaving projectile effects in higher bands.
+    private let worldCombatFocusMarkerZ: CGFloat = 244
+    private let worldCombatAttackMarkerZ: CGFloat = 270
     private let isCICaptureMode = ProcessInfo.processInfo.environment["DESERT_CI_CAPTURE_MODE"] == "1"
 
     override func didMove(to view: SKView) {
@@ -1101,7 +1104,7 @@ final class GameScene: SKScene {
         worldNode.addChild(entityLayer)
         worldNode.addChild(effectsLayer)
         effectsLayer.addChild(focusFireMarkerNode)
-        focusFireMarkerNode.zPosition = 240
+        focusFireMarkerNode.zPosition = worldCombatFocusMarkerZ
         focusFireMarkerNode.isHidden = true
         worldNode.addChild(fogLayer)
 
@@ -12094,7 +12097,7 @@ final class GameScene: SKScene {
         let color = UIColor(red: 1.0, green: 0.28, blue: 0.22, alpha: 1.0)
         let footprint = max(28, target.kind.footprint)
         focusFireMarkerNode.position = target.node.position
-        focusFireMarkerNode.zPosition = 240
+        focusFireMarkerNode.zPosition = worldCombatFocusMarkerZ
 
         let outer = SKShapeNode(ellipseOf: CGSize(width: footprint * 1.9, height: footprint * 1.05))
         outer.strokeColor = color
@@ -12130,8 +12133,7 @@ final class GameScene: SKScene {
         label.fontColor = color
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
-        let airLabelLift: CGFloat = target.kind.domain == .air ? 14 : 0
-        label.position = CGPoint(x: 0, y: footprint * 0.72 + 12 + airLabelLift)
+        label.position = CGPoint(x: 0, y: focusFireLabelY(for: target, footprint: footprint))
         focusFireMarkerNode.addChild(label)
 
         let segmentCount = 8
@@ -12147,7 +12149,7 @@ final class GameScene: SKScene {
         } else {
             segmentColor = color
         }
-        let barY = -footprint * 0.62 - 12
+        let barY = focusFireHealthBarY(for: footprint)
         for index in 0..<segmentCount {
             let segment = SKShapeNode(
                 rectOf: CGSize(width: segmentWidth, height: 6),
@@ -12166,6 +12168,23 @@ final class GameScene: SKScene {
         }
 
         focusFireMarkerNode.isHidden = false
+    }
+
+    private func focusFireLabelY(for target: GameEntity, footprint: CGFloat) -> CGFloat {
+        let domainLift: CGFloat
+        switch target.kind.domain {
+        case .air:
+            domainLift = 20
+        case .naval:
+            domainLift = 12
+        case .land, .structure:
+            domainLift = 0
+        }
+        return footprint * 0.72 + 18 + domainLift
+    }
+
+    private func focusFireHealthBarY(for footprint: CGFloat) -> CGFloat {
+        -footprint * 0.62 - 16
     }
 
     private func refreshCommandIntentVisuals(for selected: [GameEntity]) {
@@ -12579,7 +12598,7 @@ final class GameScene: SKScene {
         let height = max(34, width * 0.52)
         let node = SKNode()
         node.position = point
-        node.zPosition = 268
+        node.zPosition = worldCombatAttackMarkerZ
 
         let ringRect = CGRect(x: -width * 0.5, y: -height * 0.5, width: width, height: height)
         let ringPath = CGPath(ellipseIn: ringRect, transform: nil)
@@ -12631,10 +12650,14 @@ final class GameScene: SKScene {
         node.addChild(cue)
 
         // Keep the attack caption below the focus health segments when both markers share a target.
-        let labelY = min(-height * 0.5 - 12, -footprint * 0.62 - 24)
+        let labelY = attackTargetMarkerLabelY(footprint: footprint, height: height)
         let labelNode = commandMarkerLabel(text: "ATK \(label)", color: color, y: labelY)
         node.addChild(labelNode)
         presentCommandMarker(node, persistent: persistent, exitScale: 1.16)
+    }
+
+    private func attackTargetMarkerLabelY(footprint: CGFloat, height: CGFloat) -> CGFloat {
+        min(-height * 0.5 - 16, -footprint * 0.62 - 34)
     }
 
     private func showStopMarker(at point: CGPoint, count: Int, persistent: Bool = false) {
