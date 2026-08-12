@@ -5564,3 +5564,27 @@
 
 - 云端固定 capture 证明了静态岸线几何、层级、fog 覆盖、启动存活和 generic build，但不能替代真实触控、动态移动、海陆通行、连续战斗、全部 seed 或长时间性能评估；当前没有独立 XCTest target。
 - 总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
+
+### v5.19 / 海空交战反馈层级云端验收
+
+日期：2026-08-13
+
+验收结论：通过
+
+- `GameScene.swift` 为既有世界 FOCUS / ATK marker 集中定义有限的 effects-layer z 序：FOCUS 使用 `worldCombatFocusMarkerZ = 244`，直接攻击 marker 使用 `worldCombatAttackMarkerZ = 270`；未新增战斗状态或改变攻击、输入、AI、生产、迷雾、任务和胜负链路。
+- FOCUS caption 按空军 / 海军 / 陆地目标使用确定性 lift，八段目标生命条固定下移；`ATK <shortCode>` 文案继续位于目标环下方并进一步与 FOCUS 生命段分带。同一目标同时存在 FOCUS / ATK 时不依赖创建时序，保留既有红色虚线环、橙色双 V cue、目标合法性和 marker 清理链路。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.19 提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`cf8d0500f75df0e680f9806e99fb9fcaa5b6f177`，commit subject 为 `v5.19: 海空交战反馈层级`。
+- GitHub Actions run：`31617746743`，attempt `1`，conclusion `success`，job `94184685725`；artifact：`desert-frontline-ci-v5.19-main-cf8d0500f75d-run31617746743-attempt1`，artifact ID `9150289697`，缓存于 `/private/tmp/desert-frontline-c-review-31617746743/`。官方 ZIP `/private/tmp/desert-frontline-v5.19-9150289697.zip` 已由主线程下载并通过 `unzip -t`。
+- Agent C 核对确认 manifest 的 `branch=main`、`commitSha=cf8d0500f75df0e680f9806e99fb9fcaa5b6f177`、`runId=31617746743`、`runAttempt=1`、`version=v5.19` 与本地 `main`、`origin/main`、Actions head 完全匹配；static checks、project lint、generic iOS build、simulator launch 全部 success。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），必需日志、failure summary 和 `DesertFrontline.xcresult` 均存在。
+- 24 次 launch、截图和截图后 PID 存活均成功；24 张 PNG 均为 `1206x2622`、8-bit RGBA，SHA-256 无重复。`xcodebuild.log` 与 simulator build 均含 `** BUILD SUCCEEDED **`；未发现 crash、fatal error、SIGABRT、watchdog 或异常终止。
+- 目视确认 `simulator-enemy-touch-assist.png` 的 `FOCUS 2 JET 64%`、红色目标环、橙色 cue、两条攻击意图线与 Fighter 模型共存；`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png`、`simulator-naval-damage.png` 的舰炮、航迹、弹体、舰载机、空海模型、ASW HIT、水沫、战损与 FOCUS / ATK 标注均保持可读；`simulator-combat-ui.png` 的 FOCUS、目标血条、HUD、小地图和交战模型无新增遮挡。未见迷雾或未侦测潜艇信息泄露。
+- 本轮按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只运行 `git diff --check`、`git diff --cached --check`、artifact 核对和官方 ZIP 完整性检查，验收账号为 `Altman-sam114`。Agent C 复核时 GitHub API 曾触发配额限制，无法再次下载 ZIP；主线程已保留并核对指定未加密 ZIP，未将此环境限制伪装成源码失败。
+
+遗留事项：
+
+- 云端固定 capture 证明了静态 FOCUS / ATK 层级、海空模型共存、启动存活和 generic build，但不能替代真实触控、动态移动中的 marker 更新、连续交火、全部 seed 或真机性能评估；当前没有独立 XCTest target。
+- 总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
