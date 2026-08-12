@@ -24,6 +24,8 @@ v5.19 目视口径：复用现有 24 张 PNG 检查既有 FOCUS / ATK 世界交�
 
 v5.20 目视口径：复用现有 24 张 PNG 检查任务面板内固定六阶段进度带的层级与布局，不新增 launch 或 capture。`simulator-screenshot.png`、`simulator-map-terrain.png`、`simulator-hud-build.png`、`simulator-hud-support.png` 核对六个节点与五条连接线不遮挡标题、详情、资源面板、小地图或命令条；代码审阅确认节点状态只读取 `completedMissionStages` / `activeMissionStage()`，完成为青绿色、当前为金色、未开始为低透明度，且胜负/重开刷新路径不会残留旧色。其余 20 张 PNG 核对任务带不污染海空模型、战斗反馈、选择面板、迷雾和 pending 命令。该轮只验证固定 capture 的 HUD 几何、颜色层级、generic build 与启动稳定性，不能外推真实触控、动态任务推进或真机性能；不新增任务规则、奖励、按钮、地图目标或第 25 次截图探针。
 
+v5.21 目视口径：复用现有 24 张 PNG 检查 Battleship / Coastal Battery 双炮齐射的方向、层级和清理，不新增 launch 或 capture。`simulator-naval-salvo.png` 核对 Blue Battleship 的两条分离炮线、第二 lane 的短暂错列、双炮口闪光 / 烟雾、炮弹和主 / 次水柱、舰体命中、目标 HP / 距离 / reload 同时可读；`simulator-coastal-battery.png` 核对岸防炮双线、recoil / 岸边尘浪、方向化水柱与舰体命中不遮挡海岸、舰体或 HUD；`simulator-naval-damage.png`、`simulator-carrier-strike.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 核对战损、Submarine / ASW HIT、Carrier strike 和其他海空命中反馈不回归。代码审阅确认 runtime 方向只来自已通过既有 `attackerKnownToPlayer` / `shouldShowNavalWaterImpact(...)` 的 `fire(...)`，`target.hp`、伤害、冷却、AI、fog、潜艇侦测不变；普通特效仍移除，persistent capture 一次创建完整静态效果，未传 attacker 位置的 CI helper 保留 entity-id fallback。其余 20 张 PNG 核对无残留炮弹 / 水柱 / smoke、HUD 溢出、未知敌方或未侦测潜艇泄漏；24 张 PNG 尺寸 / RGBA、manifest、JUnit、日志、PID 和 ZIP 完整性仍须正常。固定 capture 只能证明静态层级、方向化几何、generic build 与启动稳定性，不能外推真机、真实触控、连续交火或动态时序。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。

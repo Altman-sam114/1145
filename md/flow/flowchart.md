@@ -2,7 +2,7 @@
 
 本文用 Mermaid 图把 `md/flow/flow.md` 的核心逻辑可视化。每张图前都有中文读图说明，便于人工快速检查当前项目运行链路。
 
-当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；HUD 选择面板在写入行文本时使用集中式海空短码与有界单行 fitting，小地图海军/空军 blip 另增加已知朝向与选中交战微齿；地图构建还沿共享四方向岸线边表为 `.sand` / `.oil` 增加低对比湿沙唇、为水邻 `.ridge` 稀疏增加暗色礁石边缘，节点只进入 `mapNode` 并继续受 `fogLayer` 覆盖；这些节点仍沿用现有迷雾、选择、告警和死亡清理链路，所有新增 cue 都不改攻击、移动或生产规则。
+当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；HUD 选择面板在写入行文本时使用集中式海空短码与有界单行 fitting，小地图海军/空军 blip 另增加已知朝向与选中交战微齿；地图构建还沿共享四方向岸线边表为 `.sand` / `.oil` 增加低对比湿沙唇、为水邻 `.ridge` 稀疏增加暗色礁石边缘，海军双炮线加入短暂方向化错列与成对水柱反馈，节点只进入 `mapNode` 并继续受 `fogLayer` 覆盖；这些节点仍沿用现有迷雾、选择、告警和死亡清理链路，所有新增 cue 都不改攻击、移动或生产规则。
 
 ## 1. 项目核心逻辑图
 
@@ -145,3 +145,4 @@ flowchart TD
 - v5.18：地图构建复用同一四方向岸线边表，在水邻 `.sand` / `.oil` 陆地侧增加缩进、低对比湿沙唇与稀疏高光，在水邻 `.ridge` 增加短暗色礁石轮廓 / 碎片；`.road` 不增加陆地侧装饰，节点只进入 `mapNode` 并受 `fogLayer` 覆盖，不新增 terrain、碰撞、寻路或第 25 次探针。
 - v5.19：既有 FOCUS / ATK 世界交战标注使用确定性的 effects-layer z 序与上下文字带；空军、海军目标按域抬高 FOCUS caption，目标生命段与 `ATK <shortCode>` 分离，继续复用玩家已知目标和既有 marker 清理链路，不改变攻击、迷雾或第 25 次探针。
 - v5.20：任务面板在既有标题与详情下方增加固定六阶段进度带；`updateHUD()` 从 `completedMissionStages` 和 `activeMissionStage()` 直接刷新已完成、当前、未开始的节点及连接线，`SKRM` 清空任务集合后自然恢复初始状态，不改变任务规则、奖励或战争迷雾。
+- v5.21：Battleship / Coastal Battery 视觉齐射保留确定性双 lane，普通播放给第二条 lane 增加 0.045 秒错列，并让运行时成对水柱按攻击者来袭方向错位与旋转；capture-only persistent 仍一次生成完整效果，未传攻击者位置的直接 helper 保留 entity-id fallback，不改变 fire 结算、伤害、迷雾或 24 次探针。

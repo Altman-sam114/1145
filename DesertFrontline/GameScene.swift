@@ -10037,7 +10037,11 @@ final class GameScene: SKScene {
         }
         if shouldShowNavalWaterImpact(attacker: attacker, target: target) {
             if attacker.kind == .battleship || attacker.kind == .coastalBattery {
-                showNavalSalvoImpact(target: target, faction: attacker.faction)
+                showNavalSalvoImpact(
+                    target: target,
+                    faction: attacker.faction,
+                    incomingFrom: attacker.node.position
+                )
             } else {
                 let side: CGFloat = target.id.isMultiple(of: 2) ? 1 : -1
                 let impactPoint = target.node.position + CGPoint(
@@ -13649,6 +13653,7 @@ final class GameScene: SKScene {
             let laneOffset = normal * (CGFloat(side) * 5.2)
             let muzzle = start + direction * muzzleDistance + laneOffset
             let impact = end - direction * 10 + laneOffset * 0.62
+            let laneDelay: TimeInterval = side < 0 ? 0 : 0.045
             let path = CGMutablePath()
             path.move(to: muzzle)
             path.addLine(to: impact)
@@ -13697,17 +13702,38 @@ final class GameScene: SKScene {
             effectsLayer.addChild(smoke)
 
             guard !persistent else { continue }
-            glow.run(.sequence([.fadeOut(withDuration: 0.34), .removeFromParent()]))
-            core.run(.sequence([.fadeOut(withDuration: 0.26), .removeFromParent()]))
+            glow.alpha = 0
+            core.alpha = 0
+            shell.alpha = 0
+            flash.alpha = 0
+            smoke.alpha = 0
+            glow.run(.sequence([
+                .wait(forDuration: laneDelay),
+                .fadeIn(withDuration: 0.02),
+                .fadeOut(withDuration: 0.34),
+                .removeFromParent()
+            ]))
+            core.run(.sequence([
+                .wait(forDuration: laneDelay),
+                .fadeIn(withDuration: 0.02),
+                .fadeOut(withDuration: 0.26),
+                .removeFromParent()
+            ]))
             shell.run(.sequence([
+                .wait(forDuration: laneDelay),
+                .fadeIn(withDuration: 0.02),
                 .group([.move(to: impact, duration: 0.28), .fadeOut(withDuration: 0.28)]),
                 .removeFromParent()
             ]))
             flash.run(.sequence([
+                .wait(forDuration: laneDelay),
+                .fadeIn(withDuration: 0.02),
                 .group([.scale(to: 1.55, duration: 0.20), .fadeOut(withDuration: 0.20)]),
                 .removeFromParent()
             ]))
             smoke.run(.sequence([
+                .wait(forDuration: laneDelay),
+                .fadeIn(withDuration: 0.02),
                 .group([.move(by: CGVector(dx: -direction.x * 12, dy: -direction.y * 12), duration: 0.48), .scale(to: 1.45, duration: 0.48), .fadeOut(withDuration: 0.48)]),
                 .removeFromParent()
             ]))
@@ -14610,6 +14636,7 @@ final class GameScene: SKScene {
         at point: CGPoint,
         faction: Faction,
         scale: CGFloat,
+        incomingDirection: CGPoint? = nil,
         persistent: Bool = false
     ) {
         guard faction == .player || isVisible(point: point) else { return }
@@ -14627,12 +14654,18 @@ final class GameScene: SKScene {
         wash.fillColor = waterColor.withAlphaComponent(0.16)
         wash.strokeColor = waterColor.withAlphaComponent(0.92)
         wash.lineWidth = 3
+        if let incomingDirection, incomingDirection.length > 0.01 {
+            wash.zRotation = atan2(incomingDirection.y, incomingDirection.x)
+        }
         node.addChild(wash)
 
         let innerRing = SKShapeNode(ellipseOf: CGSize(width: 34 * scale, height: 13 * scale))
         innerRing.fillColor = UIColor.white.withAlphaComponent(0.10)
         innerRing.strokeColor = accentColor.withAlphaComponent(0.82)
         innerRing.lineWidth = 2
+        if let incomingDirection, incomingDirection.length > 0.01 {
+            innerRing.zRotation = atan2(incomingDirection.y, incomingDirection.x)
+        }
         node.addChild(innerRing)
 
         let columnPath = CGMutablePath()
@@ -14695,19 +14728,52 @@ final class GameScene: SKScene {
     private func showNavalSalvoImpact(
         target: GameEntity,
         faction: Faction,
+        incomingFrom: CGPoint? = nil,
         persistent: Bool = false
     ) {
-        let side: CGFloat = target.id.isMultiple(of: 2) ? 1 : -1
-        let mainPoint = target.node.position + CGPoint(
-            x: side * target.kind.footprint * 0.32,
-            y: -target.kind.footprint * 0.10
+        let fallbackSide: CGFloat = target.id.isMultiple(of: 2) ? 1 : -1
+        let incomingDirection: CGPoint?
+        if let incomingFrom {
+            let candidate = (target.node.position - incomingFrom).normalized
+            incomingDirection = candidate.length > 0.01 ? candidate : nil
+        } else {
+            incomingDirection = nil
+        }
+
+        let mainPoint: CGPoint
+        let secondaryPoint: CGPoint
+        if let incomingDirection {
+            let normal = CGPoint(x: -incomingDirection.y, y: incomingDirection.x)
+            mainPoint = target.node.position
+                + normal * (fallbackSide * target.kind.footprint * 0.32)
+                - incomingDirection * (target.kind.footprint * 0.10)
+            secondaryPoint = target.node.position
+                - normal * (fallbackSide * target.kind.footprint * 0.24)
+                + incomingDirection * (target.kind.footprint * 0.14)
+        } else {
+            mainPoint = target.node.position + CGPoint(
+                x: fallbackSide * target.kind.footprint * 0.32,
+                y: -target.kind.footprint * 0.10
+            )
+            secondaryPoint = target.node.position + CGPoint(
+                x: -fallbackSide * target.kind.footprint * 0.24,
+                y: target.kind.footprint * 0.14
+            )
+        }
+        showNavalWaterImpact(
+            at: mainPoint,
+            faction: faction,
+            scale: 1.12,
+            incomingDirection: incomingDirection,
+            persistent: persistent
         )
-        let secondaryPoint = target.node.position + CGPoint(
-            x: -side * target.kind.footprint * 0.24,
-            y: target.kind.footprint * 0.14
+        showNavalWaterImpact(
+            at: secondaryPoint,
+            faction: faction,
+            scale: 0.68,
+            incomingDirection: incomingDirection,
+            persistent: persistent
         )
-        showNavalWaterImpact(at: mainPoint, faction: faction, scale: 1.12, persistent: persistent)
-        showNavalWaterImpact(at: secondaryPoint, faction: faction, scale: 0.68, persistent: persistent)
         showNavalHullStrike(at: target.node.position, faction: faction, persistent: persistent)
     }
 
