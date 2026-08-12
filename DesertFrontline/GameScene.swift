@@ -785,6 +785,13 @@ private struct TileCoord: Hashable {
     let col: Int
 }
 
+private struct TerrainEdge {
+    let index: Int
+    let neighbor: TileCoord
+    let start: CGPoint
+    let end: CGPoint
+}
+
 private struct BuildOrder {
     let kind: EntityKind
     let faction: Faction
@@ -1501,6 +1508,7 @@ final class GameScene: SKScene {
             crackNode.lineCap = .round
             crackNode.zPosition = zPosition(for: center) + 0.22
             mapNode.addChild(crackNode)
+            addLandShorelineDetails(for: tile, terrain: terrain, at: center)
         case .ridge:
             let hash = terrainDetailHash(for: tile)
             for index in 0..<3 {
@@ -1556,6 +1564,7 @@ final class GameScene: SKScene {
                 rubble.zPosition = zPosition(for: center) + 0.38
                 mapNode.addChild(rubble)
             }
+            addLandShorelineDetails(for: tile, terrain: terrain, at: center)
         case .sand:
             let hash = terrainDetailHash(for: tile)
             if hash % 5 == 0 {
@@ -1599,6 +1608,7 @@ final class GameScene: SKScene {
                 shrub.zPosition = zPosition(for: center) + 0.5
                 mapNode.addChild(shrub)
             }
+            addLandShorelineDetails(for: tile, terrain: terrain, at: center)
         }
     }
 
@@ -1607,6 +1617,106 @@ final class GameScene: SKScene {
             ^ (tile.col &* 19_349_663)
             ^ (skirmishSeed &* 83_492_791)
         return value & 0x7fff_ffff
+    }
+
+    private func addLandShorelineDetails(for tile: TileCoord, terrain: Terrain, at center: CGPoint) {
+        let edges = landShorelineEdges(for: tile)
+        guard !edges.isEmpty else { return }
+
+        let hash = terrainDetailHash(for: tile)
+        switch terrain {
+        case .sand, .oil:
+            let wetLineColor: UIColor
+            let highlightColor: UIColor
+            switch terrain {
+            case .sand:
+                wetLineColor = UIColor(red: 0.35, green: 0.46, blue: 0.42, alpha: 0.42)
+                highlightColor = UIColor(red: 0.70, green: 0.77, blue: 0.64, alpha: 0.30)
+            case .oil:
+                wetLineColor = UIColor(red: 0.28, green: 0.32, blue: 0.28, alpha: 0.42)
+                highlightColor = UIColor(red: 0.56, green: 0.59, blue: 0.47, alpha: 0.26)
+            default:
+                return
+            }
+
+            for edge in edges {
+                let edgeHash = hash + edge.index * 31
+                let start = CGPoint(x: edge.start.x * 0.82, y: edge.start.y * 0.82)
+                let end = CGPoint(x: edge.end.x * 0.82, y: edge.end.y * 0.82)
+                let wetPath = CGMutablePath()
+                wetPath.move(to: start)
+                wetPath.addLine(to: end)
+
+                let wetLine = SKShapeNode(path: wetPath)
+                wetLine.position = center
+                wetLine.strokeColor = wetLineColor
+                wetLine.lineWidth = 2.2
+                wetLine.lineCap = .round
+                wetLine.zPosition = zPosition(for: center) + 0.24
+                mapNode.addChild(wetLine)
+
+                if edgeHash % 3 == 0 {
+                    let highlightStart = pointAlongShoreline(from: start, to: end, fraction: 0.20)
+                    let highlightEnd = pointAlongShoreline(from: start, to: end, fraction: 0.58)
+                    let highlightPath = CGMutablePath()
+                    highlightPath.move(to: highlightStart)
+                    highlightPath.addLine(to: highlightEnd)
+
+                    let highlight = SKShapeNode(path: highlightPath)
+                    highlight.position = center
+                    highlight.strokeColor = highlightColor
+                    highlight.lineWidth = 1.1
+                    highlight.lineCap = .round
+                    highlight.zPosition = zPosition(for: center) + 0.26
+                    mapNode.addChild(highlight)
+                }
+            }
+        case .ridge:
+            for edge in edges {
+                let edgeHash = hash + edge.index * 29
+                guard edgeHash % 3 == 0 else { continue }
+
+                let edgeStart = CGPoint(x: edge.start.x * 0.78, y: edge.start.y * 0.78)
+                let edgeEnd = CGPoint(x: edge.end.x * 0.78, y: edge.end.y * 0.78)
+                let startFraction = 0.14 + CGFloat(edgeHash % 7) * 0.02
+                let endFraction = 0.64 + CGFloat((edgeHash / 5) % 4) * 0.05
+                let reefStart = pointAlongShoreline(from: edgeStart, to: edgeEnd, fraction: startFraction)
+                let reefEnd = pointAlongShoreline(from: edgeStart, to: edgeEnd, fraction: endFraction)
+                let reefPath = CGMutablePath()
+                reefPath.move(to: reefStart)
+                reefPath.addLine(to: reefEnd)
+
+                let reef = SKShapeNode(path: reefPath)
+                reef.position = center
+                reef.strokeColor = UIColor(red: 0.13, green: 0.12, blue: 0.11, alpha: 0.48)
+                reef.lineWidth = 1.7
+                reef.lineCap = .round
+                reef.zPosition = zPosition(for: center) + 0.36
+                mapNode.addChild(reef)
+
+                if edgeHash % 5 == 0 {
+                    let fragment = SKShapeNode(ellipseOf: CGSize(width: 4.6, height: 2.4))
+                    fragment.position = center + pointAlongShoreline(
+                        from: reefStart,
+                        to: reefEnd,
+                        fraction: 0.56
+                    )
+                    fragment.fillColor = UIColor(red: 0.17, green: 0.15, blue: 0.13, alpha: 0.56)
+                    fragment.strokeColor = .clear
+                    fragment.zPosition = zPosition(for: center) + 0.38
+                    mapNode.addChild(fragment)
+                }
+            }
+        default:
+            return
+        }
+    }
+
+    private func pointAlongShoreline(from start: CGPoint, to end: CGPoint, fraction: CGFloat) -> CGPoint {
+        CGPoint(
+            x: start.x + (end.x - start.x) * fraction,
+            y: start.y + (end.y - start.y) * fraction
+        )
     }
 
     private func roadConnectionPoints(for tile: TileCoord) -> [CGPoint] {
@@ -1643,23 +1753,51 @@ final class GameScene: SKScene {
         return path
     }
 
-    private func shorelineSegments(for tile: TileCoord) -> [(start: CGPoint, end: CGPoint)] {
-        guard terrain(at: tile) == .water else { return [] }
-
+    private func terrainEdges(for tile: TileCoord) -> [TerrainEdge] {
         let top = CGPoint(x: 0, y: tileHeight / 2)
         let right = CGPoint(x: tileWidth / 2, y: 0)
         let bottom = CGPoint(x: 0, y: -tileHeight / 2)
         let left = CGPoint(x: -tileWidth / 2, y: 0)
-        let edges: [(neighbor: TileCoord, start: CGPoint, end: CGPoint)] = [
-            (neighbor: TileCoord(row: tile.row - 1, col: tile.col), start: top, end: right),
-            (neighbor: TileCoord(row: tile.row, col: tile.col + 1), start: right, end: bottom),
-            (neighbor: TileCoord(row: tile.row + 1, col: tile.col), start: bottom, end: left),
-            (neighbor: TileCoord(row: tile.row, col: tile.col - 1), start: left, end: top)
+        return [
+            TerrainEdge(
+                index: 0,
+                neighbor: TileCoord(row: tile.row - 1, col: tile.col),
+                start: top,
+                end: right
+            ),
+            TerrainEdge(
+                index: 1,
+                neighbor: TileCoord(row: tile.row, col: tile.col + 1),
+                start: right,
+                end: bottom
+            ),
+            TerrainEdge(
+                index: 2,
+                neighbor: TileCoord(row: tile.row + 1, col: tile.col),
+                start: bottom,
+                end: left
+            ),
+            TerrainEdge(
+                index: 3,
+                neighbor: TileCoord(row: tile.row, col: tile.col - 1),
+                start: left,
+                end: top
+            )
         ]
+    }
 
-        return edges.compactMap { edge in
+    private func shorelineSegments(for tile: TileCoord) -> [(start: CGPoint, end: CGPoint)] {
+        guard terrain(at: tile) == .water else { return [] }
+
+        return terrainEdges(for: tile).compactMap { edge in
             guard isValid(edge.neighbor), terrain(at: edge.neighbor) != .water else { return nil }
             return (start: edge.start, end: edge.end)
+        }
+    }
+
+    private func landShorelineEdges(for tile: TileCoord) -> [TerrainEdge] {
+        terrainEdges(for: tile).filter { edge in
+            isValid(edge.neighbor) && terrain(at: edge.neighbor) == .water
         }
     }
 
