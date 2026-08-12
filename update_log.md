@@ -5438,3 +5438,28 @@
 遗留事项：
 
 - 云端冻结截图覆盖了单选陆空范围提示与主要陆海空回归场景，但不能替代真机触控手感、长时间交火压力或性能评估；总目标仍未完成。下一轮候选为海空单位的读图增量，优先在不增加操作负担的前提下强化航母甲板 / 编队状态或海岸交战信息。
+
+### v5.14 / 航母甲板停机位与舰载机可读性云端验收
+
+日期：2026-08-12
+
+验收结论：
+
+- Carrier 的 `GameEntity` 实体树新增一次性预创建的 `carrierDeckAircraftNode` 与三个固定停机位；每个位包含低透明深色底座、微型舰载机轮廓和可选琥珀队列条。节点属于 Carrier 自身，不进入 `effectsLayer`、HUD 或小地图，沿用实体镜像、移动、迷雾、未完工 / 死亡隐藏和 skirmish 重开生命周期。
+- `refreshCarrierDeckAircraftVisuals()` 只读既有 `boundCarrierGuardWing(for:)`、该 Carrier 的 HEL/JET `BuildOrder`、阵营、`isOperational` 和 `isAlive`：绑定 guard wing 的停机位提高阵营亮度，生产队列显示琥珀条，其余保持低透明暗色；没有新增飞机实体、航母容量、队列字段、护航状态或攻击规则。
+- 选中 Carrier 的能力行改为紧凑真实文案 `Deck 3PAD H/J`，原有 Rally、Queue、Wing/GW、起飞、三机 strike、生产、AI、迷雾、航迹、战损和胜负链路保持不变。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.14 Agent A 提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`caad6fd9f5f9d0cc3c424f0930061cfcbedc1c18`，commit subject 为 `v5.14: 航母甲板停机位与舰载机可读性`。
+- GitHub Actions run：`31580224204`，attempt `1`，conclusion `success`；artifact：`desert-frontline-ci-v5.14-main-caad6fd9f5f9-run31580224204-attempt1`，artifact ID `9135272461`，缓存于 `/private/tmp/desert-frontline-c-review-31580224204/`，未加密约 31 MB；官方 API ZIP `/private/tmp/desert-frontline-v5.14-9135272461.zip` 已执行 `unzip -t`，无压缩数据错误。
+- manifest 与本地 `main`、`origin/main`、Actions head 完全匹配，记录 `branch=main`、`commitSha=caad6fd9f5f9d0cc3c424f0930061cfcbedc1c18`、`runId=31580224204`、`runAttempt=1`、`version=v5.14`；static checks、project lint、generic iOS build、simulator launch 均为 success。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），`xcodebuild.log` 与 simulator build 日志均含 `BUILD SUCCEEDED`。
+- 二十四次 simulator launch 均完成截图并保持进程存活，二十四张 PNG 均为 `1206x2622`，均有正常内容；`DesertFrontline.xcresult`、`simulator-launch.log`、`simulator-app.log` 和失败摘要均已核对，未发现 crash、fatal error、SIGABRT、watchdog 或未捕获异常。
+- 重点截图 SHA-256：`simulator-carrier-strike.png` `8ec1a44234d8da87fbd7c8cae922ceea648cd4ed5de63070cd0d9f69330aef99`；`simulator-naval-salvo.png` `db6a452eb3420bafcaeb258673ae8e1fb460c6b5ace5417425a8bfeb2ac5034e`；`simulator-naval-damage.png` `38e8feb806e47cf60c951eab252f8c7a2f4b7cde276993e82481f9500014a186`；`simulator-screenshot.png` `113409c30e3208c2debee3b644e5a07f2441a23ed4f2721e336d4eb73cdcec6f`；`simulator-hud-naval.png` `ee584b2117703f8f815a0c0230abd660b7553da95eb097f16263544b0722da7d`；`simulator-map-terrain.png` `19fd4361a8e691feab9119067197ac98871b73ccde78a6016bc4319fb7ebd1d9`。
+- 目视确认 `simulator-carrier-strike.png` 的航母甲板、斜角跑道、三处停机位轮廓与三机进场线 / 双反舰弹 / 水面命中共存，未遮挡舰岛或实体耐久塔；`simulator-naval-salvo.png`、`simulator-naval-damage.png` 的舰炮、航迹、战损、潜艇 ASW HIT 与水面反馈保持可读；`simulator-hud-naval.png`、`simulator-screenshot.png` 的单排 HUD / 小地图未见新增溢出或非航母停机位；重点图局部放大也未见停机位层级越界或迷雾泄露。
+- 本轮按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针；只运行了 `git diff --check`、`git diff --cached --check`、`plutil -lint DesertFrontline.xcodeproj/project.pbxproj` 和云端 artifact 核对。验收账号确认为 `Altman-sam114`。
+
+遗留事项：
+
+- 云端冻结截图覆盖了航母甲板读图与主要陆海空回归场景，但不能替代真机触控手感、长时间交火压力或性能评估；总目标仍未完成。下一轮候选为海空 / UI 的另一个范围有限增量，继续优先云端探针验证。
