@@ -5488,3 +5488,29 @@
 
 - 现有固定 `naval-damage` 证明了已知 Red Submarine 的新模型和 `CONTACT` 可读性，但不能证明选中 Blue Submarine 的三种 cue 在真实触控、声呐边缘进出、长时间隐身 / 暴露转换或密集混战中的体验；这些仍需后续人工玩法检查。
 - 当前没有独立 XCTest target；总目标仍未完成。下一轮继续从海空 / UI、海岸地物或地图读图中选择范围有限的增量，并优先复用云端 24 张探针。
+
+### v5.16 / 海空选择面板紧凑适配云端验收
+
+日期：2026-08-12
+
+验收结论：
+
+- `updateSelectionInfoPanel(...)` 仍使用 `singleSelectionInfo(...)` / `groupSelectionInfo(...)` 的原始事实 rows 和既有颜色索引；写入预创建的四/五个行节点时，集中执行海空高频 token 的确定性展示短码（`ASW`、`SON`、`C<n>`、`Ready`、`Rld`、`RLY`、`Q`、`W`、`GW`、`Esc`、`OP`、`AMOV`、`HOLD` 等），不修改状态源、目标血条或命令语义。
+- 选择面板记录当前 frame 的文本可用宽度；每次刷新先恢复基准字号和 `xScale`，超宽行再按有界下限做字号 / 水平 fitting。没有新增 label、按钮、滚动、触摸命中区、状态、探针或外部依赖。
+- HP、目标类型 / HP / 距离、Ready / Reload、INCOMING / IN、ASW / SON / contact、Carrier deck / queue / wing / guard 和 escort 等既有信息仍沿用原行优先级；v5.15 潜艇模型 / cue、航母停机位、海空攻击反馈和地图层次未改。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.16 提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`4ae86702f33857cd6b8b5c8e02586406bf80026c`，commit subject 为 `v5.16: 紧凑海空选择面板`。
+- GitHub Actions run：`31594361528`，attempt `1`，conclusion `success`，job `94106271306`；artifact：`desert-frontline-ci-v5.16-main-4ae86702f338-run31594361528-attempt1`，artifact ID `9140773471`，缓存于 `/private/tmp/desert-frontline-c-review-31594361528/`，未加密约 32 MB。
+- manifest 与本地 `main`、`origin/main`、Actions head 完全匹配，记录 `branch=main`、`commitSha=4ae86702f33857cd6b8b5c8e02586406bf80026c`、`runId=31594361528`、`runAttempt=1`、`version=v5.16`；static checks、project lint、generic iOS build、simulator launch 均为 success，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target）。
+- 二十四次 simulator launch 均完成截图并在截图后保持进程存活，二十四张 PNG 均为 `1206x2622 RGBA`，哈希无重复；artifact 含 manifest、JUnit、失败摘要、build / launch / app 日志和 `DesertFrontline.xcresult`。日志未发现 crash、fatal error、SIGABRT、watchdog 或未捕获异常；重复的 UIKit / SpriteKit 背景任务、focus 和 drawable warning 属于既有系统噪声，不影响 run 结论。
+- 目视确认 `simulator-hud-naval.png`、`simulator-hud-air.png` 的海空页签 / 单排 HUD、`simulator-naval-damage.png` / `simulator-naval-salvo.png` 的 `ASW` / `SON` / `C<n>` / `Rld` / 目标行与潜艇 / 舰炮反馈、`simulator-carrier-strike.png` 的 Carrier 目标 / 装填 / 舰载机反馈、`simulator-fighter-strike.png` / `simulator-helicopter-salvo.png` 的空战模型 / 弹体，以及 `simulator-combat-ui.png` / `simulator-incoming-ui.png` 的颜色、`PRIMARY`、`Eng`、`Ready`、`IN` 行均无新增溢出或遮挡；`simulator-map-terrain.png` 的非选择面板没有错误残留短码。
+- 重点截图 SHA-256：`simulator-hud-naval.png` `dec2d33d5b4a8220068fd51837af245de1c768f9558777568e28ef11e409b700`；`simulator-hud-air.png` `b2ccbfb7389b5192dab5ad736b75c397ae6a79359c3110694802d39c5282713a`；`simulator-naval-damage.png` `7ade73ebb70ed55e064bb2c94eced4f68d6565d6059429c1c812dbe11700fefd`；`simulator-naval-salvo.png` `0aee64eefedfc761d121491f916c168f5b49fda38156fe47f24499e5282d2d24`；`simulator-carrier-strike.png` `16d73c0fe54191f992ea9861ac50b61c1aabc7546ff1f54a769f7f07ac866676`；`simulator-fighter-strike.png` `0a75454af04d563e699564d64101e06069fbe178edbc483a3b2a413de894d265`；`simulator-helicopter-salvo.png` `95eaf57206c5a744276eb1da34ca30917389c0c0887cce98b3489a7a53dec2dc`；`simulator-combat-ui.png` `0d40640532f3d180a3d035921dc2ee59db5d65040a837c0255171b57e3a647ab`；`simulator-incoming-ui.png` `4b22397465a315d2f54360659a7376e9867d3edf8e2cf29beb3be8b68ba97c70`；`simulator-map-terrain.png` `8b0d404af900412cef0a7b0aa1203f8b5a1fda8eadade485ffef8d86aab2d134`。
+- 本轮按规则未运行本地 Xcode build、本地 simulator 或本地玩法探针；本机只做了 `git diff --check`、`git diff --cached --check`、`plutil -lint DesertFrontline.xcodeproj/project.pbxproj` 和云端 artifact 核对。验收账号确认为 `Altman-sam114`。
+
+遗留事项：
+
+- 现有 24 张固定 capture 证明了已覆盖场景的单行 HUD 可读性与视觉回归，但没有直接覆盖窄于当前固定窗口的尺寸、Carrier 实际 HOLD/GW 与活动 Queue/Wing 全长组合；`carrier-strike` fixture 的目标行会覆盖部分 Queue/Wing 行，因此不能把静态截图宣称为动态护航 / 生产或真实触控验证。
+- 当前没有独立 XCTest target；总目标仍未完成。下一轮继续在海空/UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
