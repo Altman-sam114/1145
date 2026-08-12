@@ -181,6 +181,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 ### HUD / 小地图
 
 - HUD 每帧由 `updateHUD()` 汇总金钱、收入、队列、任务、兵力、AI 状态、选择信息和按钮状态。
+- `updateMinimap()` 仍按既有 `isKnownToFaction(...)` 过滤并重建 blip；海军菱形和空军三角额外挂载少量只读朝向齿，优先读取合法已知 `attackTarget`，再读取 `attackMoveDestination` / `destination` / `path.last`，无意图时回退 `node.xScale`。选中的 Blue 海空单位仅在合法已知目标或 `incomingThreatsByTargetID` 存在时显示短红色目标齿 / 琥珀来袭齿，不改变小地图点击、迷雾、命令、战斗或实体状态。
 - 选择信息面板仍由 `singleSelectionInfo(...)` / `groupSelectionInfo(...)` 提供事实 rows；`updateSelectionInfoPanel(...)` 只在写入四/五个单行 label 时集中执行海空高频 token 短码（如 `ASW`、`SON`、`Rld`、`RLY`、`GW`、`Esc`）和基于缓存面板宽度的有界字号 / 水平 fitting。该适配不改颜色索引、目标血条、HP / 目标 / 距离 / ready / incoming / Carrier deck 与 guard 状态，也不改变触控、战斗、声呐、迷雾或生产。
 - `layoutHUD()` 在横屏使用固定单排命令区，五个 `HudPage` 页签常驻，当前页最多 9 个动作；紧凑尺寸下页签宽 44、动作按可用宽度在 40...76 之间稳定布局，命令区高度由旧双排约 114 降为 54，当前 26 个动作仍且只出现于一个页面。`SKRM` 重开恢复 `TACT`；CI capture 可用 `DESERT_CI_HUD_PAGE` 只覆盖初始显示页，不改变普通启动默认值。
 - AI 状态行默认用 `R# F# AI ...` 显示 Red 兵力、旗点和难度；Red routine 主攻波成功下发且至少一个 wave 单位对玩家已知后，难度位置会临时替换为最近可感知 wave 子集的 `Seen n Lx/Ax/Nx` 短构成摘要，用于提示玩家 Red 已暴露推进部队的混编规模和 CV / HEL / JET 参与情况，约 12 秒后恢复难度显示；`Seen n` 只代表玩家已知子集数量，不代表完整主攻波规模。

@@ -5932,6 +5932,42 @@ final class GameScene: SKScene {
 
         node.addChild(symbol)
 
+        if entity.kind.domain == .air || entity.kind.domain == .naval {
+            let heading = minimapHeadingVector(for: entity)
+            addMinimapDirectionCue(
+                to: node,
+                vector: heading,
+                color: color.withAlphaComponent(0.82),
+                length: 5.0,
+                lineWidth: 1.05,
+                zPosition: 1
+            )
+
+            if entity.faction == .player && selectedIDs.contains(entity.id) {
+                if let target = knownMinimapAttackTarget(for: entity) {
+                    addMinimapDirectionCue(
+                        to: node,
+                        vector: (target.node.position - entity.node.position).normalized,
+                        color: UIColor(red: 1.0, green: 0.24, blue: 0.12, alpha: 0.98),
+                        length: 6.6,
+                        lineWidth: 1.45,
+                        zPosition: 2
+                    )
+                }
+
+                if let incoming = incomingThreatsByTargetID[entity.id]?.first {
+                    addMinimapDirectionCue(
+                        to: node,
+                        vector: (incoming.node.position - entity.node.position).normalized,
+                        color: UIColor(red: 1.0, green: 0.62, blue: 0.18, alpha: 0.98),
+                        length: 5.8,
+                        lineWidth: 1.2,
+                        zPosition: 3
+                    )
+                }
+            }
+        }
+
         if selectedIDs.contains(entity.id) {
             let selectionRing = SKShapeNode(circleOfRadius: selectionRadius)
             selectionRing.fillColor = .clear
@@ -5953,6 +5989,68 @@ final class GameScene: SKScene {
         }
 
         return node
+    }
+
+    private func minimapHeadingVector(for entity: GameEntity) -> CGPoint {
+        let origin = entity.node.position
+        if let target = knownMinimapAttackTarget(for: entity) {
+            let direction = (target.node.position - origin).normalized
+            if direction.length > 0.001 { return direction }
+        }
+        if let attackMoveDestination = entity.attackMoveDestination {
+            let direction = (attackMoveDestination - origin).normalized
+            if direction.length > 0.001 { return direction }
+        }
+        if let destination = entity.destination {
+            let direction = (destination - origin).normalized
+            if direction.length > 0.001 { return direction }
+        }
+        if let pathPoint = entity.path.last {
+            let direction = (pathPoint - origin).normalized
+            if direction.length > 0.001 { return direction }
+        }
+        return CGPoint(x: entity.node.xScale < 0 ? -1 : 1, y: 0)
+    }
+
+    private func knownMinimapAttackTarget(for entity: GameEntity) -> GameEntity? {
+        guard let target = entity.attackTarget,
+              target.isAlive,
+              entity.kind.canAttack(target.kind),
+              (target.faction == .player || isKnownToFaction(target, observer: .player))
+        else { return nil }
+        return target
+    }
+
+    private func addMinimapDirectionCue(
+        to node: SKNode,
+        vector: CGPoint,
+        color: UIColor,
+        length: CGFloat,
+        lineWidth: CGFloat,
+        zPosition: CGFloat
+    ) {
+        let direction = vector.normalized
+        guard direction.length > 0.001 else { return }
+
+        let side = CGPoint(x: -direction.y, y: direction.x)
+        let tip = direction * length
+        let base = direction * max(0, length - 2.0)
+        let path = CGMutablePath()
+        path.move(to: direction * 1.6)
+        path.addLine(to: tip)
+        path.move(to: base + side * 1.45)
+        path.addLine(to: tip)
+        path.move(to: base - side * 1.45)
+        path.addLine(to: tip)
+
+        let cue = SKShapeNode(path: path)
+        cue.strokeColor = color
+        cue.lineWidth = lineWidth
+        cue.lineCap = .round
+        cue.lineJoin = .round
+        cue.glowWidth = zPosition > 1 ? 0.65 : 0.35
+        cue.zPosition = zPosition
+        node.addChild(cue)
     }
 
     private func minimapBlipColor(for entity: GameEntity) -> UIColor {
