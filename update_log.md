@@ -5634,3 +5634,28 @@
 
 - 云端固定 capture 证明了双炮线错列、来袭方向化水面命中几何、启动存活和 generic build，但不能替代真实触控、动态连续交火、全部地图 seed、真机性能或水柱时序体验；当前没有独立 XCTest target。
 - 总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
+
+### v5.22 / 航母反舰水面溅射回响云端验收
+
+日期：2026-08-13
+
+验收结论：通过
+
+- Carrier 对水面目标的既有 `fire(...) -> launchCarrierWing(...) -> showCarrierStrikeImpact(...)` 视觉链现在统一组合 `showNavalWaterImpact(...)` 与 `showNavalHullStrike(...)`：主溅射按来袭方向靠近命中舷侧，较小近失回响沿来袭方向 / 法线有限错位；三机 strike、两枚反舰弹、舰体闪光 / 火花和伤害飘字继续共存。
+- `persistent=true` 只服务固定 capture，立即构成完整静态效果；普通模式沿既有 helper 的 wait / fade / remove 生命周期清理。`prepareCICarrierStrikeCaptureScene()` 已删除重复的手动水柱来源，只保留一次统一 Carrier strike 入口。
+- HP、伤害、射程、冷却、AI、生产、Carrier guard、移动、任务、胜负、战争迷雾、潜艇侦测和 ASW 均未改变；潜艇目标继续走非水面命中分支。`README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.22 提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`484bc78abb4dcbe64e020c5dc850688a6de1ec68`，commit subject 为 `v5.22: 航母反舰水面溅射回响`；本记录所在的后续 `main` 文档提交负责触发日志闭环 run，其准确 SHA 以 Git 历史和该 run manifest 为准。
+- GitHub Actions run：`31642541579`，attempt `1`，conclusion `success`，job `94268334379`；artifact：`desert-frontline-ci-v5.22-main-484bc78abb4d-run31642541579-attempt1`，artifact ID `9159725271`，缓存于 `/private/tmp/desert-frontline-c-review-31642541579/`。未加密 ZIP `/private/tmp/desert-frontline-c-review-31642541579/artifact-9159725271.zip` 的 SHA-256 为 `ac00c7890849aeef25a347fef60bedfa8bdd77e25291082bb0c91c51d7ecd06e`，`unzip -t` 通过。
+- Agent C 核对确认 manifest 的 `branch=main`、`commitSha=484bc78abb4dcbe64e020c5dc850688a6de1ec68`、`runId=31642541579`、`runAttempt=1`、`version=v5.22` 与本地 `main`、`origin/main`、Actions head 完全匹配；static checks、project lint、generic iOS build、simulator launch 全部 success，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），必需日志、失败摘要和 `DesertFrontline.xcresult` 均存在。
+- 24 次 simulator launch 均完成截图并在截图后确认进程存活；24 张 PNG 全部为 `1206x2622`、8-bit RGBA。日志未发现 crash、fatal error、SIGABRT、watchdog 或异常终止；UIKit / SpriteKit 系统 warning 不改变 run 结论。
+- 重点截图 SHA-256：`simulator-carrier-strike.png` `7d78f43c260b69cfb3fb12f59726a89eb52205767bec95aabf8509b98bf0d686`；`simulator-naval-salvo.png` `7511db81048a58dd86c9dfff203f4b7f1ac288d37c315435d47fc68c28b08e1f`；`simulator-coastal-battery.png` `38807184c56d65709b8e118f38a03bddcb34c2cc514547f040c72dfc257350f8`；`simulator-fighter-strike.png` `563737e5ef51e6587a8266900283388f2145965746b200a2c5deb3632fd65881`；`simulator-helicopter-salvo.png` `204c079095c52fbf6bb1a3eb21098905dc79fe1d3ec38e32220a7430cf02c1f2`；`simulator-naval-damage.png` `704757d530aaa4931b3d6ff4590c908d03dc6ea239f6c8a738e2243fa5f5af0f`。
+- 目视确认 `simulator-carrier-strike.png` 中三架错列舰载机、两枚反舰弹及烟迹、紧凑主溅射、较小近失回响、舰体命中、伤害飘字、目标 HP / 距离 / reload、Carrier 甲板、护航圈、HUD 和小地图同时可读，没有旧 fixture 叠加的重复大水柱。`simulator-naval-salvo.png`、`simulator-coastal-battery.png` 的 v5.21 双炮线、方向化水柱和岸防尘浪无回归；`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png`、`simulator-naval-damage.png` 未受 Carrier 专属回响污染。
+- 本轮按规则未运行本地 Xcode build、本地 simulator、`simctl` 或本地玩法探针；本机只做了 artifact / ZIP 完整性、日志、截图和文档轻量核对，验收账号确认为 `Altman-sam114`。
+
+遗留事项：
+
+- 云端固定 capture 证明了静态 Carrier 水面命中构图、24 个场景的视觉回归、启动存活和 generic build，但不能替代真实触控、普通模式动画时序、连续交火、全部地图 seed 或真机性能；当前没有独立 XCTest target。
+- 总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
