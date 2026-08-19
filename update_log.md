@@ -5731,3 +5731,30 @@
 遗留事项：
 
 - 日志提交后仍需下载并核对该日志提交对应的最新 `origin/main` Actions artifact，确认正式文档闭环；总目标仍未完成。下一轮可在 Agent X 判断后从海空 / UI、Carrier 对空独立 capture、海岸交战反馈或地图细节中选择一个范围有限的增量，并继续优先复用现有 24 张探针。
+
+### v5.26 / 命令条 HUD 命中隔离云端验收
+
+日期：2026-08-20
+
+验收结论：通过
+
+- `GameScene.swift` 将命令条当前可见页签 / 动作的视觉 frame 与语义 hit frame 分离：页签和当前页动作按既有页面 / action 顺序生成独立命中区，宽高至少 `44pt`，以正的 `hitGap` 保持互不重叠；视觉 `SKShapeNode` 尺寸、标题、subtitle、颜色和页面映射不变。
+- `hudCommandStripFrame` 仅覆盖底部命令条实际行及其端部安全范围；`touchesBegan(...)` 保持多指 -> 页签 -> 当前页动作 -> 命令条 gap inert -> minimap -> 世界的顺序。gap 分支清理本次触摸起点和相机 / minimap 状态后早退，不调用命令、地图、移动 / 攻击 / 建造 / 支援逻辑，也不清除 pending。
+- `HudAction`、`HudPage`、`HudPage.actions`、`handleHudPage(...)` / `handleHudAction(...)`、pending 状态、世界 `26pt` 辅助命中、`touchesMoved` / `touchesEnded`、AI、战争迷雾、战斗、生产、重开和胜负均未被改写。`README.md`、`md/flow/flow.md`、`md/flow/flowchart.md` 已同步；未增加第 25 个探针或外部素材。
+
+验证结果：
+
+- 实现提交：`6577f675ce2138e891fdbf6e80ce9fb3bd88085a`，commit subject 为 `v5.26: 命令条 HUD 命中隔离`。验收时本地 `main`、`origin/main`、GitHub `main` 和 Actions head 均为该 SHA；活动 GitHub 账号确认为 `Altman-sam114`。
+- 实现 GitHub Actions run：`32295392725`，attempt `1`，job `96205402358`，结论 `success`；artifact ID `9381433495`，名称 `desert-frontline-ci-v5.26-main-6577f675ce21-run32295392725-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-32295392725/`，未加密且保留未删除。
+- 官方 artifact ZIP `/private/tmp/desert-frontline-c-review-32295392725/artifact-9381433495.zip` 大小 `32867019` bytes；GitHub API digest 与本地 SHA-256 均为 `c4b911f96b3cef49a84a5b0b2629cda56f66c4420870796baaad9ed0702dd87c`。`unzip -tq` 通过，ZIP 共 40 个条目且压缩数据无错误；manifest 报告文件全部存在。
+- manifest 与本地 `main`、`origin/main`、Actions head 完全匹配，记录 `branch=main`、`commitSha=6577f675ce2138e891fdbf6e80ce9fb3bd88085a`、`runId=32295392725`、`runAttempt=1`、`version=v5.26`、`destination=generic/platform=iOS`；static checks、project lint、generic iOS build、simulator launch 全部为 `success`。JUnit 为 4 项 CI 检查、0 failures、1 skipped；唯一 skipped 是当前项目没有 XCTest target。`xcodebuild.log` 含 `** BUILD SUCCEEDED **`，project lint 为 `OK`，静态检查无输出即通过。
+- simulator launch log 记录 24 次独立启动、24 个截图路径和 24 次截图后对应 PID 仍存活；app / launch 日志未发现 crash、fatal error、SIGABRT、watchdog、未捕获异常或进程提前退出。重复的 UIKit / SpriteKit focus、drawable、background 和 `getpwuid_r` 系统提示不构成 App 崩溃。
+- manifest、解压目录和 ZIP 均核对出同一组 24 张项目 PNG；全部为 `1206x2622`、`8-bit/color RGBA`、`non-interlaced`，通过 PNG 结构 / 解码检查，且每张均位于对应 launch 截图后 PID 存活记录之后。SHA-256 如下：`simulator-carrier-strike.png` `fb30e5561ec3a56088e9520c4d7e967b5634d1084c1d3dc5c756ae75ff6417a0`；`simulator-coastal-battery.png` `b0ecf4528554ad5f5e7a45a413e591b65fa3374471c28ff5568cb50ddbfdcbf0`；`simulator-combat-ui.png` `70131420a310d87a816289033cdaed4c18618e233f4ed8239c133c46222db4db`；`simulator-command-attack-move.png` `6b28b90456b27e3fc69a3c6a94efe02d1988c0ac8c0f02f09e6b13ffac6c8150`；`simulator-command-attack-target.png` `76e08af5893cf9011813934f7ad781c858191b6f429b5f212cf998bb586a5b41`；`simulator-command-move.png` `fc3b0aac8fd0b37e4d88368b0c7be46f0ab867b58fc8ea85575961ba557d7c28`；`simulator-damage-state.png` `98a7b81f61ebc8bed5a949212631252888395fd04623c05b496c21d4c17fd892`；`simulator-enemy-touch-assist.png` `4337be2b2bd80d0231397d2aeef2da8bf3fa174673dd6ac7e7f03ca1552cf10d`；`simulator-fighter-strike.png` `a513b472bcf0e315b87c02749d32466ca2c250dad25458f3c6ca851466c3053d`；`simulator-helicopter-salvo.png` `e258b66b09aeb0b28bcec12b79364d98ad0ae20fe761a87ce9721e2ec4b6340d`；`simulator-hud-air.png` `1bea1fc392a862016d1df3564312858eb46261324376c1ae8fa0d0b96af09ac2`；`simulator-hud-build.png` `91b744f6bc7546089249edd7150d14244853b96a4d520b4e449beff765ab5219`；`simulator-hud-naval.png` `645dfb5b1fcc3ddc3433083519d2b4073fdb2205c52438eb35286d6888e8b8ac`；`simulator-hud-support.png` `bac0a759ecdd740e786a04c44c4fb7a2bbb360280dfe29cd90e53690f753dd4a`；`simulator-incoming-ui.png` `d3bfe9a3a802ba609de0ae27ad014185e09c4e37991c8220edf463c08863f77e`；`simulator-land-combat.png` `dab6d0af9c7aa7eebee59d286953e6d7420f372f0549b895dfbcb9af16308805`；`simulator-map-terrain.png` `290f234e59e6a15e76e1ab12146da71b7d4b1a3afc8a429ef41ec9efa931ea40`；`simulator-mobile-aa.png` `857c10d042d8df54baf2138111560065bd4163f1eb935dafc2a0058eae419ed4`；`simulator-naval-damage.png` `7bcfbb5c0f10429dbfb5314a356b9982898c6f895c6d1902dc3c8d8294fd61c0`；`simulator-naval-salvo.png` `777483736f85a14ca92963b9d2f73a30bcc9585ca50a9b0077c13b527416b7f7`；`simulator-screenshot.png` `8936db670d5eba1fb850d0eedb267201ef83ec4726ef4225bd50994bff2f8183`；`simulator-selection-cycle.png` `b9dc458b4f880738ac8b96abf615c11a0b6d224bb10df6d412aee225ee5c81ed`；`simulator-stop-command.png` `d138434180161187fce0cd7e8df9a8ebc93d8eabae5bc5846b14d31ee63c17f9`；`simulator-target-cycle.png` `9459da96c00ad57b6f1c61c12d67dfd436e3fa76c8edc7091ecd33ddb2ce1887`。
+- 目视核对 `simulator-screenshot.png`、`simulator-hud-air.png`、`simulator-hud-support.png` 和 `simulator-map-terrain.png` 的单排页签 / 动作、视觉间隙、页面高亮、任务 / 选择面板、小地图和地图构图；未见命令条裁切、视觉按钮放大、HUD 遮挡或既有场景污染。其余 20 张 PNG 完成文件名、解码、尺寸 / 格式、manifest 归属和截图后 PID 关联核对。
+- 证据边界：固定 24 张 PNG、云端 generic build、静态截图、launch/PID、JUnit、日志和 result bundle 只能证明构建、包完整性、启动稳定性及固定窗口的静态 HUD / 世界回归；不能证明真实手指命中率、gap 误触已由 CI 直接证明、任意窄屏 / 短高度、多指手势、连续交互、长时间运行、真机触控手感或设备性能。
+- 本轮按规则未运行本地 `xcodebuild`、Simulator、`simctl` 或本地 UI / 玩法探针；只做了云端结果包核对、源码边界审阅、artifact ZIP 完整性、PNG 解码 / 目视复核、`git diff --check` 和文档检查。用户保留的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 改动、`md/unity分析/`、v5.23 / v5.24 / v5.25 / v5.26 未跟踪提示词均未触碰。
+
+遗留事项：
+
+- 日志提交后仍需下载并核对该日志提交对应的最新 `origin/main` Actions artifact，确认正式文档闭环；真实触控、gap 误触、任意窄屏 / 短高度、多指和长时间动态行为仍需后续人工设备或模拟器检查。
+- 当前没有独立 XCTest target；总目标仍未完成。下一轮可在 Agent X 判断后从海空 / UI、造船厂 / Carrier 模型、海岸地物或地图细节中选择一个范围有限的增量，并继续优先复用现有 24 张探针。
