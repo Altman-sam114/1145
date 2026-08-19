@@ -5683,3 +5683,25 @@
 
 - 云端固定 capture 证明了 `.sand` / `.oil` 下洗静态构图、AA 隔离、24 个场景的视觉回归、启动存活和 generic build，但不能替代真实触控、普通模式动画时序、动态地形变化、连续交火、全部地图 seed 或真机性能评估；当前没有独立 XCTest target。
 - 本记录提交后还需核对该日志提交对应的最新 `origin/main` Actions artifact，确认文档闭环；总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
+
+### v5.24 / 海面舰船艏波与分层尾流云端验收
+
+日期：2026-08-20
+
+验收结论：通过
+
+- `GameScene.swift` 在既有实体自有 `navalWakeNode` 内一次性预创建海军纯视觉层：Battleship 使用较窄、较锐的艏部 V 形浅水冲洗与中等长度近 / 远段尾流，Carrier 使用较宽、较长的同层级尾流；两者都保留亮色泡沫边和固定数量错列舰艉推进器扰流。Submarine 只保留低透明艏部 / 尾流扰动，不新增明亮或长距离隐身提示。
+- `updateNavalWake(for:direction:)` 仍只按实际移动方向旋转实体子节点、更新既有透明度脉冲并显示，`animateIdle(_:,dt:)` 停止时隐藏；未新增运行态状态、每帧节点分配、`effectsLayer` 节点、移动 / 战斗 / AI / 触摸 / HUD / fog / 声呐 / ASW / 任务 / 胜负逻辑。README、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改、未跟踪 `md/unity分析/` 与提示词保持未触碰。
+
+验证结果：
+
+- 实现提交：`10fae82dd91e18fa6424e2f96ac0d2bf996ade48`，commit subject 为 `v5.24: 增加海面舰船艏波与分层尾流`。
+- GitHub Actions run：`32280885837`，attempt `1`，conclusion `success`，job `96159141209`；artifact：`desert-frontline-ci-v5.24-main-10fae82dd91e-run32280885837-attempt1`，artifact ID `9376036274`，缓存于 `/private/tmp/desert-frontline-c-review-32280885837/`。原始 ZIP `/private/tmp/desert-frontline-c-review-32280885837/desert-frontline-v5.24-artifact.zip` 的 SHA-256 为 `0904fe75f82f4bcd55bc71e04ff5cd2f713fb257ebeda136b307c2a76acf22c3`，大小 `32896003` bytes，`unzip -t` 通过。
+- Agent C 核对确认 manifest 的 `branch=main`、`commitSha=10fae82dd91e18fa6424e2f96ac0d2bf996ade48`、`runId=32280885837`、`runAttempt=1`、`version=v5.24`、`destination=generic/platform=iOS` 与本地 `main`、`origin/main`、Actions head 完全匹配；static checks、project lint、generic iOS build、simulator launch 全部 success，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），`ci-artifact-manifest.json`、`ci-failure-summary.md`、`xcodebuild.log`、`simulator-launch.log`、`simulator-app.log` 和 `DesertFrontline.xcresult` 均存在。
+- artifact 含 24 张项目专属 PNG，24 次 launch 均完成截图并在截图后确认进程存活；全部 PNG 为 `1206x2622`、8-bit RGBA，24 个 SHA-256 均唯一。日志未发现 crash、fatal error、SIGABRT、watchdog 或异常终止；UIKit focus / AppIntents 缺失等系统提示不影响结论。
+- 目视确认 `simulator-map-terrain.png`、`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-coastal-battery.png` 和 `simulator-naval-damage.png` 中艏波、近 / 远段尾流、泡沫边和舰艉扰流与舰体、双炮线、航母甲板 / strike、岸防反馈、ASW HIT、Submarine 低透明细节和 HUD / 小地图同时可读；没有看到新航迹遮挡舰体或泄露未知潜艇位置。固定 capture 只证明静态构图、层级、generic build 和启动存活，不外推普通模式连续航行时序、真实触控或长时间性能。
+- 本轮按规则未运行本地 Xcode build、本地 simulator、`simctl` 或本地玩法探针；本机只运行了工作树 / diff 轻量检查、准确 artifact 下载、ZIP / manifest / JUnit / 日志 / PNG 核对和重点截图目视复核，验收账号确认为 `Altman-sam114`。
+
+遗留事项：
+
+- 本记录提交后还需核对该日志提交对应的最新 `origin/main` Actions artifact，确认文档闭环；总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
