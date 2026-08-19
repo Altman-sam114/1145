@@ -5758,3 +5758,29 @@
 
 - 日志提交后仍需下载并核对该日志提交对应的最新 `origin/main` Actions artifact，确认正式文档闭环；真实触控、gap 误触、任意窄屏 / 短高度、多指和长时间动态行为仍需后续人工设备或模拟器检查。
 - 当前没有独立 XCTest target；总目标仍未完成。下一轮可在 Agent X 判断后从海空 / UI、造船厂 / Carrier 模型、海岸地物或地图细节中选择一个范围有限的增量，并继续优先复用现有 24 张探针。
+
+### v5.27 / 沙地沿岸潮痕与漂砾微层云端验收
+
+日期：2026-08-20
+
+验收结论：通过
+
+- `GameScene.swift` 只在 `addLandShorelineDetails(for:terrain:at:)` 的 `.sand` 分支增加潮痕与漂砾：真实四方向 `landShorelineEdges(for:)` 经过 `terrainDetailHash(for:)`、`skirmishSeed` 和 `edge.index` 的确定性门槛，每个 sand tile 最多一条短平行潮痕和一个小型漂砾；潮痕端点、stroke 和漂砾的内缩 / 局部偏移均留在当前 tile 内，低对比、低密度且不形成连续边框。新节点只进入 `mapNode`，低于 scenery 并自然受 `fogLayer` 覆盖，由 `drawMap()` / `restartSkirmish()` 既有清理和重建路径管理。
+- `.oil` 的湿沙唇 / 高光、`.ridge` 的暗礁线 / 碎片以及道路无陆地岸线装饰的既有行为保持不变；没有改动 `Terrain`、`isPassable`、`isCoastal`、寻路、AI、实体、战斗、生产、触摸、HUD、小地图、战争迷雾、胜负、任务、重开玩法状态或 CI workflow。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 只同步了静态地图事实、一次性 `mapNode` 数据流和复用 24 张 PNG 的验收边界；未将固定截图扩大为所有 seed、动态重开、实时移动、真实触控、AI 或性能证据。
+
+验证结果：
+
+- 实现提交：`5b13332e56057c237042ded5f0b9c15044c3f8e0`，commit subject 为 `v5.27: 沙地沿岸潮痕与漂砾微层`。验收时本地 `main`、`origin/main`、GitHub `main` 和实现 run head 均为该 SHA；活动 GitHub 账号确认为 `Altman-sam114`。
+- 实现 GitHub Actions run：`32302550177`，attempt `1`，job `96228164164`，conclusion `success`；artifact ID `9383897635`，名称 `desert-frontline-ci-v5.27-main-5b13332e5605-run32302550177-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-32302550177/`，未加密且保留未删除。
+- 官方 artifact ZIP `/private/tmp/desert-frontline-c-review-32302550177/desert-frontline-ci-v5.27-run32302550177-attempt1.zip` 大小 `32880765` bytes；GitHub API digest 与本地 SHA-256 均为 `bfbb07b74260ae9f9846f49f4572cc2f89a9dd3adf1b07e7b2cf16faedc55866`。`unzip -t`、ZIP CRC 和逐条压缩数据检查通过，ZIP 共 40 个条目且无错误。
+- manifest 与本地 `main`、`origin/main`、GitHub Actions head 完全匹配，记录 `branch=main`、`commitSha=5b13332e56057c237042ded5f0b9c15044c3f8e0`、`runId=32302550177`、`runAttempt=1`、`version=v5.27`、`destination=generic/platform=iOS`；`staticChecksOutcome`、`projectLintOutcome`、`buildOutcome`、`simulatorLaunchOutcome` 均为 `success`，`testOutcome=skipped` 仅因当前项目没有 XCTest target。`xcodebuild.log` 含 `** BUILD SUCCEEDED **`，`project-lint.log` 为 `OK`，`static-checks.log` 为空但对应静态检查 step 与 manifest 均成功；`ci-failure-summary.md`、`simulator-launch.log`、`simulator-app.log` 和 `DesertFrontline.xcresult` 均来自同一 run，xcresult `Info.plist` 可读且 lint 通过。
+- simulator launch log 记录 24 次独立启动、24 个截图路径和 24 次截图后对应 PID 仍存活；app / launch 日志未发现 crash、fatal error、SIGABRT、watchdog、未捕获异常或进程提前退出。重复的 UIKit / SpriteKit focus、drawable、background、XCTTargetBootstrap 与 `getpwuid_r` 系统提示不构成 App 崩溃。
+- manifest、解压目录和 ZIP 均核对出同一组 24 张 PNG：`simulator-screenshot.png`、`simulator-hud-build.png`、`simulator-hud-air.png`、`simulator-hud-naval.png`、`simulator-hud-support.png`、`simulator-command-move.png`、`simulator-command-attack-move.png`、`simulator-command-attack-target.png`、`simulator-land-combat.png`、`simulator-map-terrain.png`、`simulator-combat-ui.png`、`simulator-incoming-ui.png`、`simulator-naval-salvo.png`、`simulator-coastal-battery.png`、`simulator-carrier-strike.png`、`simulator-mobile-aa.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png`、`simulator-damage-state.png`、`simulator-stop-command.png`、`simulator-target-cycle.png`、`simulator-selection-cycle.png`、`simulator-enemy-touch-assist.png`、`simulator-naval-damage.png`。全部成功解码为 `1206x2622`、RGBA、非空 PNG；ZIP 内逐图解码和 CRC 检查均通过，且每张均能关联到对应截图后 PID 记录。
+- 重点目视核对 `simulator-map-terrain.png`：真实水邻 sand tile 的潮痕为低密度、短小、断续、沿岸平行线，漂砾小且靠近湿边，没有跨接缝、侵入水侧、道路或形成连续边框；浅水 / wash / foam、沙丘、油田、Ridge、道路、scenery、海岸和小地图仍清晰。`simulator-coastal-battery.png`、`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-naval-damage.png` 中岸防炮、舰体、舰炮 / 舰载机、命中反馈、战损、Submarine / ASW HIT、水沫和迷雾边界优先可读；其余 20 张 PNG 的 HUD、生产、支援、陆空模型、命令 marker 和非海岸地图没有新装饰污染。
+- 本轮按规则未运行本地 `xcodebuild`、Simulator、`simctl` 或本地探针；只做了文档必需的 `git diff --check`、云端结果包核对、源码边界审阅、artifact ZIP 完整性、PNG 解码 / 目视复核和 `xcresult` 元数据检查。用户保留的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 改动、`md/unity分析/`、v5.23 / v5.24 / v5.25 / v5.26 / v5.27 未跟踪提示词均未触碰。
+
+证据边界与遗留事项：
+
+- 固定 24 张 PNG、云端 generic iOS build、静态截图、launch/PID、JUnit、日志、manifest、ZIP 和 result bundle 只能证明本次 commit 的 artifact 完整性、构建 / 启动稳定性及固定窗口的静态地图层级与回归；不能证明所有 `skirmishSeed` 的分布、动态 `SKRM` 重开、实时移动、真实触控、AI、连续战斗、海陆通行或真机长期性能。
+- 日志提交后仍需下载并核对该日志提交对应的最新 `origin/main` Actions artifact，完成正式日志闭环；当前没有独立 XCTest target，总目标仍未完成。
