@@ -5659,3 +5659,27 @@
 
 - 云端固定 capture 证明了静态 Carrier 水面命中构图、24 个场景的视觉回归、启动存活和 generic build，但不能替代真实触控、普通模式动画时序、连续交火、全部地图 seed 或真机性能；当前没有独立 XCTest target。
 - 总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
+
+### v5.23 / 直升机旋翼下洗沙尘视觉反馈云端验收
+
+日期：2026-08-20
+
+验收结论：通过
+
+- `GameScene.swift` 将旋翼下洗效果严格收口到 `showHelicopterRocketSalvo(...)`：仅当直升机执行火箭齐射且当前地形为 `.sand` 或 `.oil` 时，在创建火箭轨迹前生成低透明沙尘环 / 尘流；`.rock`、`.ridge`、`.road`、`.water` 等地形不生成该反馈。`showMobileAASalvo(...)` 不再调用 rotor-wash，避免移动防空炮误显示直升机尘土。
+- `persistent=true` 的 capture 路径立即构成完整下洗构图；普通 root 沿既有短时效果生命周期约 `0.52s` 后统一移除。下洗只属于视觉层，不改变直升机火箭的伤害、HP、射程、冷却、AI、移动、生产、战争迷雾、任务、胜负或重开 skirmish 状态流。
+- 修复提交仅调整 `DesertFrontline/GameScene.swift` 的下洗入口和生命周期；`README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.23 Agent A 提示词已同步；人工未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改和未跟踪 `md/unity分析/` 保持未触碰。
+
+验证结果：
+
+- 实现提交：`e30e4911d50337b8720dfb262a338a73b1a31e19`，commit subject 为 `v5.23: 修正旋翼下洗入口`。此前 `1bdf1be` 曾把下洗调用错误放入移动防空齐射入口，已由本提交修正；最终唯一调用点为直升机火箭齐射。
+- GitHub Actions run：`32235247875`，attempt `1`，conclusion `success`，job `96013635802`；artifact ID `9359069772`，artifact 名称为 `desert-frontline-ci-v5.23-main-e30e4911d503-run32235247875-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-32235247875/`。未加密 ZIP `/private/tmp/desert-frontline-c-review-32235247875/artifact-9359069772.zip` 的 SHA-256 为 `6b324668cce80a98aebc68a5054c46594ebc0767392aec1c7315cd51699369db`，`unzip -t` 通过。
+- Agent C 核对确认 manifest 的 `branch=main`、`commitSha=e30e4911d50337b8720dfb262a338a73b1a31e19`、`runId=32235247875`、`runAttempt=1`、`version=v5.23` 与本地 `main`、`origin/main`、Actions head 完全匹配；static checks、project lint、generic iOS build、simulator launch 全部 success，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 为 4 项检查、0 failures、1 skipped（当前无 XCTest target），必需的 `ci-artifact-manifest.json`、`ci-failure-summary.md`、`xcodebuild.log`、`simulator-launch.log`、`simulator-app.log` 和 `DesertFrontline.xcresult` 均存在。
+- artifact 含 24 张项目专属 PNG；24 次 launch 均完成截图并在截图后确认进程存活，24 张 PNG 全部为 `1206x2622`、8-bit RGBA，ZIP 压缩数据完整。关键截图哈希：`simulator-helicopter-salvo.png` 为 `484f7e37aad0fcd64ec50173c8abb1bb1da3d3199a73a59b3457aac083d538c1`，`simulator-fighter-strike.png` 为 `c83973ba3e7b7bea06b1306d8349008cef5d5ba898f07df4b051f686ae3b7cd5`，`simulator-mobile-aa.png` 为 `1fdcb123fb472e4ff92077fe0d54bf008c9fcf9f7b6b378d3960e312efcfca23`，`simulator-damage-state.png` 为 `27e6aae6191fb34a24ee1539b22dbe6b814b31e4a0768df043446a62d67ac25f`，`simulator-map-terrain.png` 为 `f5102ce1553b134f0ded11801e21caf097da3fae6bb451b63a144b354307e785`，`simulator-naval-salvo.png` 为 `825047d48ca4dca353470570fdf48c9fc6527023afb8791ef95bc2e0bb5ed7ee`。
+- 目视确认 `simulator-helicopter-salvo.png` 及放大图 `/private/tmp/desert-frontline-c-review-32235247875/helicopter-center.png` 可见直升机、旋翼、双火箭轨迹、命中、HUD 与低透明旋翼下洗沙尘环 / 尘流；沙尘未遮挡主体。`simulator-mobile-aa.png` 未出现 rotor-wash，`simulator-fighter-strike.png`、`simulator-map-terrain.png`、`simulator-naval-salvo.png` 与 `simulator-damage-state.png` 未见下洗效果污染或既有海空 / 地图 / 战损反馈回归。
+- 本轮按规则未运行本地 Xcode build、本地 simulator、`simctl` 或本地玩法探针；本机只做了工作树、artifact、日志、PNG、官方 ZIP 完整性和目视复核，验收账号确认为 `Altman-sam114`。正常的 UIKit focus、无 AppIntents 依赖等系统提示不影响结论。
+
+遗留事项：
+
+- 云端固定 capture 证明了 `.sand` / `.oil` 下洗静态构图、AA 隔离、24 个场景的视觉回归、启动存活和 generic build，但不能替代真实触控、普通模式动画时序、动态地形变化、连续交火、全部地图 seed 或真机性能评估；当前没有独立 XCTest target。
+- 本记录提交后还需核对该日志提交对应的最新 `origin/main` Actions artifact，确认文档闭环；总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
