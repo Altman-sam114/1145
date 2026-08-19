@@ -5705,3 +5705,29 @@
 遗留事项：
 
 - 本记录提交后还需核对该日志提交对应的最新 `origin/main` Actions artifact，确认文档闭环；总目标仍未完成。下一轮继续从海空 / UI、海岸交战反馈或地图细节中选择范围有限的增量，并优先复用现有云端 24 张探针。
+
+### v5.25 / 航母对空拦截反馈云端验收
+
+日期：2026-08-20
+
+验收结论：通过
+
+- `GameScene.swift` 在共享 `fire(attacker:target:)` 已接受攻击路径中增加 Carrier -> `.air` 的纯视觉分支：玩家已知 Carrier 先显示 `CV INTERCEPT` 甲板脉冲，再复用既有舰载战斗机飞行和 `showGuidedMissileTrail(...)` 生成短时拦截光迹；后续既有 `showAirMissileImpact(...)` 入口扩展到 Carrier，显示空中命中环。`attackerKnownToPlayer` 与目标 `target.faction == .player || isKnownToFaction(target, observer: .player)` 门槛保持来源 / 目标认知边界，未知敌方 Carrier 或未知空中目标不会通过该分支泄露。
+- 新分支只创建 `effectsLayer` 的短生命周期节点：甲板脉冲、舰载机、光迹 / 弹体和空中命中环分别沿现有 helper 的 fade / remove 链清理；没有新增实体、永久舰载机、每帧战斗循环或平行攻击入口。`restartSkirmish()` 仍通过 `effectsLayer.removeAllChildren()` 清理效果。
+- `EntityKind.canAttack` 中 Carrier 的空中目标能力、`updateCombat` 的目标合法性 / 认知 / 射程 / 冷却和 `fire` 的伤害结算保持原状；`target.hp`、伤害倍数、攻击计时、AI 选敌 / 护航、生产、战争迷雾、胜负、重开和潜艇隐身 / 声呐链路没有被视觉分支改写。`README.md`、`md/flow/flow.md` 和 `md/flow/flowchart.md` 已同步，未增加第 25 个探针或外部素材。
+
+验证结果：
+
+- 实现提交：`91a15d45e476707eb8b7142469e173539c1f65e2`，commit subject 为 `v5.25: 增加航母对空拦截反馈`。验收时本地 `main`、`origin/main`、GitHub `main` 和 Actions head 均为该 SHA；活动 GitHub 账号确认为 `Altman-sam114`。
+- 实现 GitHub Actions run：`32288555289`，attempt `1`，job `96183794080`，结论 `success`；run head 为 `91a15d45e476707eb8b7142469e173539c1f65e2`。artifact ID `9379213570`，名称 `desert-frontline-ci-v5.25-main-91a15d45e476-run32288555289-attempt1`，缓存于 `/private/tmp/desert-frontline-c-review-32288555289/`，未加密且保留未删除。
+- 官方 artifact ZIP `/private/tmp/desert-frontline-c-review-32288555289/desert-frontline-ci-v5.25-main-91a15d45e476-run32288555289-attempt1.zip` 大小 `32977859` bytes；GitHub API digest 与本地 SHA-256 均为 `c723034581592ee65ea879dbbe51648338552ebad0ab5151a3a1b5bd02b5ca78`。`unzip -t` 通过，ZIP 共 40 个条目且压缩数据无错误；manifest 报告文件 27 项全部存在，包含 `DesertFrontline.xcresult`、build / launch / app 日志和失败摘要。
+- manifest 与本地 `main`、`origin/main`、Actions head 完全匹配，记录 `branch=main`、`commitSha=91a15d45e476707eb8b7142469e173539c1f65e2`、`runId=32288555289`、`runAttempt=1`、`version=v5.25`、`destination=generic/platform=iOS`；static checks、project lint、generic iOS build、simulator launch 全部为 `success`。JUnit 为 4 项 CI 检查、0 failures、1 skipped；唯一 skipped 是当前项目没有 XCTest target。`xcodebuild.log` 含 `** BUILD SUCCEEDED **`，project lint 为 `OK`，静态检查无输出即通过。
+- simulator launch log 记录 24 次独立启动、24 个截图路径和 24 次截图后进程仍存活；app / launch 日志未发现 crash、fatal error、SIGABRT、watchdog、未捕获异常或进程提前退出。日志中的 UIKit / SpriteKit focus、background assertion、drawable 和网络系统提示属于云端运行时噪声，不构成 App 崩溃。
+- manifest 与解压目录均核对出同一组 24 张项目 PNG；ZIP 也含 24 个 PNG 条目。全部文件均为 `1206x2622`、`8-bit/color RGBA`、`non-interlaced`，24 张均通过 `sips` 解码检查。SHA-256 如下：`simulator-carrier-strike.png` `975ccb2745b9865c453c308a771e5835d4c6c0245c52c47cbfcb2ed06cb52fc2`；`simulator-coastal-battery.png` `13cf12c8db539f1eafedc780c31a6fffe761fe959c5855ee78b9ee3a9deb543f`；`simulator-combat-ui.png` `d32ac6862e94f21208568d3f35612550ed8c145b63c83cac62f9a398abd82dd6`；`simulator-command-attack-move.png` `6b14e6442bde714b30d85d67f8051db2169cca56b7e72f67d9bbb0bbfbe9eac1`；`simulator-command-attack-target.png` `b2f477d1a6139dbeb8d6af3c1fb56a26533a35e954aae3d201d62d7f4063f7b0`；`simulator-command-move.png` `b5e58ee7adee11eb6c06811140896cfae4393354d0f3e366982e0aa61bcc0759`；`simulator-damage-state.png` `754b9af756671d5193245bfadec456ecb5da601156a1c3090c9798c37f604f0f`；`simulator-enemy-touch-assist.png` `d2cc697d11584f4bca6cd8eb2717c6674c882f8293bce88cf410bc07fc6eb7d4`；`simulator-fighter-strike.png` `e726da98838104d0978135e0e9686ce70ba999e5afc321efcf466b14d2ba606c`；`simulator-helicopter-salvo.png` `20018bc418e73617daedd255540af3ee7a056c361fe78bd9a579f9facf63488d`；`simulator-hud-air.png` `796b8d2ea5a214e590654ce507746ebbeb5c2f292e1a0b76e98a6bc5654b0b6e`；`simulator-hud-build.png` `697b1f4d1cfbd86511b6e7a24bb7c24712bce1de90992cf8c6f17580820e31f7`；`simulator-hud-naval.png` `f507317e361672153a733093e034c7232ec4ea08492a37b6498d7a6cc6343943`；`simulator-hud-support.png` `a491d08c8ccef2fdd2a649a3385cc4cb9f18ec9a4e4dacd7199997874d157eb0`；`simulator-incoming-ui.png` `993480250e0fa921cc18a9b17a6764c2418154b3e9b394a41f213aba0641e2d6`；`simulator-land-combat.png` `6aea6e2cb02fdc98c2cbe631894b05ce70af32639c19245952d46883791d22d2`；`simulator-map-terrain.png` `3b5a0f8ad2478fd8110c094bf6718437b8c56f72903bbabdd0839b6f54f2a008`；`simulator-mobile-aa.png` `2ab91e274b70835be93df76e948c09629450f5fd02aa5019bdade1a342efd033`；`simulator-naval-damage.png` `e745678fa555c07c5919d8f7de4b4ffe7088fe601bf3f1b0eeacbee2d807dcc3`；`simulator-naval-salvo.png` `e00550d813c5ac94e55cf5c16b7633f23a7fe6c7d8e5bcfd80fa1f8934186ae7`；`simulator-screenshot.png` `d9470b8a7f1abd0b75074904a194b32b16d7edde0f46a9e86f695eb42ee509fb`；`simulator-selection-cycle.png` `73cf54214176152d7650901ed971c7819586b72e7062a6750baf763cb76cf847`；`simulator-stop-command.png` `5c1fbb5114d4f2372ad9c756630d3cf25e0befa29e025e765eca998279beafc1`；`simulator-target-cycle.png` `908086e6c315d9ec4250798ebc9031323080cf40483aed541bac07bd0d5f18b7`.
+- 重点目视核对：`simulator-carrier-strike.png` 仅作为 Carrier -> sea 的三机 / 反舰弹 / 舰体命中基线；`simulator-mobile-aa.png` 显示 mobile AA -> air 的双弹 / 空战命中对照。两图的舰载机、导弹 / 光迹、命中环、舰体 / Fighter、目标面板、HUD 和小地图均可读，未见 v5.25 新分支造成的回归。
+- 证据边界：当前固定 24 张 PNG 没有唯一、可追溯的 Carrier -> air 连续动态或真实触控场景；因此本轮不能把 `simulator-carrier-strike.png` 或 `simulator-mobile-aa.png` 冒充 Carrier -> air 直接动态证据。云端 generic build、静态截图、launch/PID 和日志只能证明构建、包完整性、启动稳定性及已有海战 / mobile-AA 空战基线；Carrier -> air 普通模式连续动画时序、真实手指命中、目标移动、重开后的动态清理、真机性能和全部设备表现仍未直接验证。
+- 本轮按规则未运行本地 `xcodebuild`、Simulator、`simctl` 或本地玩法探针；只做了云端结果包核对、源码边界审阅、`git diff --check` 和文档检查。用户保留的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 改动、`md/unity分析/`、v5.23 / v5.24 / v5.25 未跟踪提示词均未触碰。
+
+遗留事项：
+
+- 日志提交后仍需下载并核对该日志提交对应的最新 `origin/main` Actions artifact，确认正式文档闭环；总目标仍未完成。下一轮可在 Agent X 判断后从海空 / UI、Carrier 对空独立 capture、海岸交战反馈或地图细节中选择一个范围有限的增量，并继续优先复用现有 24 张探针。
