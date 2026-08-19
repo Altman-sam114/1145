@@ -5784,3 +5784,10 @@
 
 - 固定 24 张 PNG、云端 generic iOS build、静态截图、launch/PID、JUnit、日志、manifest、ZIP 和 result bundle 只能证明本次 commit 的 artifact 完整性、构建 / 启动稳定性及固定窗口的静态地图层级与回归；不能证明所有 `skirmishSeed` 的分布、动态 `SKRM` 重开、实时移动、真实触控、AI、连续战斗、海陆通行或真机长期性能。
 - 日志提交后仍需下载并核对该日志提交对应的最新 `origin/main` Actions artifact，完成正式日志闭环；当前没有独立 XCTest target，总目标仍未完成。
+
+### v5.27 / 日志闭环版本元数据修正
+
+日期：2026-08-20
+
+- 上一日志提交 `1a75a12227665280be451894903ca54aa8d4a4dc` 的内容和实现验收记录保持不变，但其 subject 为 `docs: record v5.27 cloud acceptance`，CI 按 subject 冒号前缀生成的日志 artifact manifest 因此记录为 `version=unversioned`，不满足 v5.27 闭环门槛。
+- 本次仅追加这条真实元数据说明并以 `v5.27:` 开头提交，未修改 `GameScene.swift`、实现文档、CI workflow 或用户工作树文件；新的准确 Actions artifact 仍须在 push 后按同一 run 核对，核对完成前不宣称日志闭环通过。
