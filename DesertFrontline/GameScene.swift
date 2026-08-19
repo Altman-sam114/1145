@@ -1046,11 +1046,14 @@ final class GameScene: SKScene {
     private var selectionInfoRowAvailableWidth: CGFloat = 0
     private var selectionInfoRowBaseFontSize: CGFloat = 9
     private var hudButtonFrames: [HudAction: CGRect] = [:]
+    private var hudButtonHitFrames: [HudAction: CGRect] = [:]
     private var hudButtonSubtitleLabels: [HudAction: SKLabelNode] = [:]
     private var hudButtonShapes: [HudAction: SKShapeNode] = [:]
     private var hudPage: HudPage = .tactical
     private var hudPageFrames: [HudPage: CGRect] = [:]
+    private var hudPageHitFrames: [HudPage: CGRect] = [:]
     private var hudPageShapes: [HudPage: SKShapeNode] = [:]
+    private var hudCommandStripFrame = CGRect.zero
     private var minimapFrame = CGRect.zero
     private var minimapBlipsNode = SKNode()
     private var minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 36, height: 24), cornerRadius: 2)
@@ -4139,10 +4142,13 @@ final class GameScene: SKScene {
     private func layoutHUD() {
         hudNode.removeAllChildren()
         hudButtonFrames.removeAll()
+        hudButtonHitFrames.removeAll()
         hudButtonSubtitleLabels.removeAll()
         hudButtonShapes.removeAll()
         hudPageFrames.removeAll()
+        hudPageHitFrames.removeAll()
         hudPageShapes.removeAll()
+        hudCommandStripFrame = .zero
         selectionInfoRowLabels.removeAll()
 
         let halfW = size.width / 2
@@ -4300,32 +4306,68 @@ final class GameScene: SKScene {
         )
         addSelectionInfoPanel(frame: infoPanelFrame, compact: compactHUD)
 
-        let gap: CGFloat = compactHUD ? 5 : 7
+        let visualGap: CGFloat = compactHUD ? 5 : 7
         let availableWidth = size.width - 32
         let pageButtonWidth: CGFloat = compactHUD ? 44 : 64
         let elementCount = pages.count + actions.count
-        let gapWidth = CGFloat(max(0, elementCount - 1)) * gap
+        let gapWidth = CGFloat(max(0, elementCount - 1)) * visualGap
         let actionWidth = min(
             compactHUD ? 76 : 86,
             (availableWidth - CGFloat(pages.count) * pageButtonWidth - gapWidth) / CGFloat(actions.count)
         )
         let buttonSize = CGSize(width: max(minimumCommandButtonWidth, actionWidth), height: commandButtonHeight)
-        let totalWidth = CGFloat(pages.count) * pageButtonWidth + CGFloat(actions.count) * buttonSize.width + gapWidth
+        let pageHitWidth = max(44, pageButtonWidth)
+        let actionHitWidth = max(44, buttonSize.width)
+        let hitContentWidth = CGFloat(pages.count) * pageHitWidth + CGFloat(actions.count) * actionHitWidth
+        let minimumHitGap: CGFloat = 1
+        let gapCapacityWidth = max(0, size.width - (compactHUD ? 8 : 32))
+        let hitGap = max(
+            minimumHitGap,
+            min(
+                visualGap,
+                (gapCapacityWidth - hitContentWidth) / CGFloat(max(1, elementCount - 1))
+            )
+        )
+        let totalWidth = hitContentWidth + CGFloat(max(0, elementCount - 1)) * hitGap
         var x = -totalWidth / 2
         let y = -halfH + 18 + commandButtonHeight / 2
+        let hitHeight: CGFloat = max(44, commandButtonHeight)
+        let hitY = y - hitHeight / 2
 
         for page in pages {
-            let frame = CGRect(x: x, y: y - commandButtonHeight / 2, width: pageButtonWidth, height: commandButtonHeight)
+            let hitFrame = CGRect(x: x, y: hitY, width: pageHitWidth, height: hitHeight)
+            let frame = CGRect(
+                x: x + (pageHitWidth - pageButtonWidth) / 2,
+                y: y - commandButtonHeight / 2,
+                width: pageButtonWidth,
+                height: commandButtonHeight
+            )
             hudPageFrames[page] = frame
+            hudPageHitFrames[page] = hitFrame
             hudNode.addChild(makeHudPageTab(page: page, frame: frame))
-            x += pageButtonWidth + gap
+            x += pageHitWidth + hitGap
         }
         for action in actions {
-            let frame = CGRect(x: x, y: y - commandButtonHeight / 2, width: buttonSize.width, height: commandButtonHeight)
+            let hitFrame = CGRect(x: x, y: hitY, width: actionHitWidth, height: hitHeight)
+            let frame = CGRect(
+                x: x + (actionHitWidth - buttonSize.width) / 2,
+                y: y - commandButtonHeight / 2,
+                width: buttonSize.width,
+                height: commandButtonHeight
+            )
             hudButtonFrames[action] = frame
+            hudButtonHitFrames[action] = hitFrame
             hudNode.addChild(makeButton(action: action, frame: frame))
-            x += buttonSize.width + gap
+            x += actionHitWidth + hitGap
         }
+
+        let commandStripEdgeInset: CGFloat = compactHUD ? 4 : 6
+        hudCommandStripFrame = CGRect(
+            x: -totalWidth / 2 - commandStripEdgeInset,
+            y: -halfH + 18,
+            width: totalWidth + commandStripEdgeInset * 2,
+            height: commandBarHeight
+        )
 
         refreshHudButtonStyles()
     }
@@ -6398,6 +6440,14 @@ final class GameScene: SKScene {
             touchStartWorld = nil
             return
         }
+        if hudCommandStripGap(at: uiPoint) {
+            touchStartScene = nil
+            touchStartWorld = nil
+            panStartCamera = nil
+            isPanning = false
+            isUsingMinimap = false
+            return
+        }
         if minimapFrame.contains(uiPoint) {
             isUsingMinimap = true
             cameraRig.position = clampCamera(worldPoint(fromMinimap: uiPoint))
@@ -6594,17 +6644,20 @@ final class GameScene: SKScene {
     }
 
     private func hudAction(at point: CGPoint) -> HudAction? {
-        for (action, frame) in hudButtonFrames where frame.contains(point) {
-            return action
+        hudPage.actions.first { action in
+            hudButtonHitFrames[action]?.contains(point) == true
         }
-        return nil
     }
 
     private func hudPage(at point: CGPoint) -> HudPage? {
-        for (page, frame) in hudPageFrames where frame.contains(point) {
-            return page
+        HudPage.allCases.first { page in
+            hudPageHitFrames[page]?.contains(point) == true
         }
-        return nil
+    }
+
+    private func hudCommandStripGap(at point: CGPoint) -> Bool {
+        guard hudCommandStripFrame.contains(point) else { return false }
+        return hudPage(at: point) == nil && hudAction(at: point) == nil
     }
 
     private func handleHudPage(_ page: HudPage) {

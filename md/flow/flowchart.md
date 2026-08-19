@@ -8,6 +8,8 @@ Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界�
 
 海军实体的 `navalWakeNode` 也在实体配置阶段一次性预创建：Battleship / Carrier 依舰体尺度绘制艏部 V 形浅水冲洗、近 / 远段递减尾流、泡沫边与舰艉推进器扰流，Submarine 仅保留低透明扰动；移动时沿既有方向旋转，停止、死亡、重开和 fog 隐藏继续复用实体父节点生命周期，不新增状态、每帧节点或第 25 次探针。固定 capture 只能核对静态构图与层级，不能外推普通模式连续航行时序。
 
+命令条保留视觉按钮尺寸与页面 / action 映射；当前可见页签和动作另有按固定顺序查询的、互不重叠且至少 44pt 的语义 hit frame。按钮间隙及两端安全范围只在命令条实际行内由 HUD inert guard 消费，不能穿透 minimap / 世界或清除 pending。
+
 ## 1. 项目核心逻辑图
 
 读图说明：从 App 启动开始，SwiftUI 只负责承载 SpriteKit；所有游戏运行态进入 `GameScene`。每帧 update 推进各系统，最后更新节点渲染、HUD、小地图和胜负状态。
@@ -52,7 +54,9 @@ flowchart TD
   PageCheck -- "是" --> PageSwitch["handleHudPage\n只切换单排动作页并重建HUD\n保留选择/队列/pending状态"]
   PageCheck -- "否" --> HUDCheck{"是否点到当前页 HUD 按钮"}
   HUDCheck -- "是" --> HudAction["handleHudAction\nG1/G2 保存或召回控制组\nHOLD、STOP统一撤销、TGT按视野/已知/canAttack稳定循环并复用直接攻击、AMOV、生产、支援、AI、重开\nCarrier guard wing anchor station/分配cue/脱离反馈/近域威胁优先状态\n终局AMOV提示已知HQ并刷新面板摘要\npending按钮及所属隐藏页签高亮由状态刷新"]
-  HUDCheck -- "否" --> MiniMap{"是否点到小地图"}
+  HUDCheck -- "否" --> GapCheck{"是否位于命令条行内空隙"}
+  GapCheck -- "是" --> InertGap["HUD inert gap guard\n消费本次触摸起点\n不执行命令、不改 pending、不进入世界"]
+  GapCheck -- "否" --> MiniMap{"是否点到小地图"}
   MiniMap -- "是" --> Camera["移动相机到小地图位置"]
   MiniMap -- "否" --> MultiTouch{"是否双指触摸"}
   MultiTouch -- "是" --> PanZoom["相机平移 / 缩放"]
@@ -158,3 +162,4 @@ flowchart TD
 - v5.23：Helicopter 既有 `showHelicopterRocketSalvo(...)` 共享入口按 `updateAirShadow(...)` 世界偏移在有效 `.sand` / `.oil` 投影锚点创建低透明压缩 rotor-wash 尘环、两侧短尘流和固定颗粒；普通 root 约 0.52 秒统一淡出移除，persistent capture 立即保留完整构图，不改变火箭、伤害、迷雾、AI 或 24 次探针。
 - v5.24：海军实体自有 `navalWakeNode` 增加按舰种尺度区分的艏部 V 形浅水冲洗、近 / 远段递减双侧尾流、亮色泡沫边与固定舰艉推进器扰流；Battleship 较窄、Carrier 较宽 / 较长，Submarine 保持低透明扰动，复用既有移动旋转、idle 隐藏、fog / death / `SKRM` 生命周期，不改变海军玩法或 24 次探针。
 - v5.25：Carrier 对已接受且玩家可知的 `.air` 目标增加短时 `CV INTERCEPT` 甲板脉冲、舰载战斗机拦截飞行、导引光迹与空中命中环；复用 `effectsLayer` 和现有清理链路，不改变 fire 伤害、范围、冷却、AI、护航、生产、迷雾或 24 次探针。
+- v5.26：命令条视觉 frame 与语义 hit frame 分离，当前页签 / 动作使用固定顺序、互不重叠且至少 44pt 的命中区；命令条 gap 与两端安全范围由 HUD inert guard 消费，不穿透 minimap / 世界、不清除 pending，也不新增探针。

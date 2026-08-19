@@ -86,7 +86,7 @@ Mechanic 实体另持有预创建的 `mechanicRepairEffectNode`，由阵营化�
 
 ### `HudAction`
 
-底部命令条使用 `HudPage` 把 26 个 `HudAction` 分成五个单排页面：`TACT` 为选军、`G1` / `G2`、`HOLD`、`STOP`、`TGT`、`AMOV`、`RLY`、HQ；`BUILD` 为陆军生产和 `BASE`；`AIR` 为 HELI / JET；`SEA` 为 SHIP / SUB / CV；`SUP` 为四种支援、AI 难度和重开 skirmish。切页只重建 HUD，不清理选中单位、队列或 pending 命令；隐藏页面含 armed 动作时页签继续显示 stroke/glow，高亮语义仍来自原 pending 状态。
+底部命令条使用 `HudPage` 把 26 个 `HudAction` 分成五个单排页面：`TACT` 为选军、`G1` / `G2`、`HOLD`、`STOP`、`TGT`、`AMOV`、`RLY`、HQ；`BUILD` 为陆军生产和 `BASE`；`AIR` 为 HELI / JET；`SEA` 为 SHIP / SUB / CV；`SUP` 为四种支援、AI 难度和重开 skirmish。切页只重建 HUD，不清理选中单位、队列或 pending 命令；隐藏页面含 armed 动作时页签继续显示 stroke/glow，高亮语义仍来自原 pending 状态。当前可见页签与动作保留独立视觉 frame，并按固定页面 / 动作顺序查询互不重叠、至少 44pt 的语义 hit frame；命令条横向边界和按钮行内的 gap 由 HUD inert guard 消费，不穿透 minimap 或世界，也不清除 pending。
 
 ### `AIDifficulty`
 
@@ -102,6 +102,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 
 - HUD 点击先于世界点击处理。
 - HUD 页签点击先于具体 `HudAction` 命中；`handleHudPage(...)` 只切换当前页面并调用 `layoutHUD()` / `updateHUD()`，不会执行动作或取消地图目标模式。
+- `touchesBegan(...)` 在多指分支后按页签 hit -> 当前页动作 hit -> 命令条实际行内的 inert gap -> minimap -> 世界流程解析；页签 / 动作使用独立的最小 44pt 语义 frame，gap 只消费本次触摸起点，不调用命令、不改写 pending，也不改变世界 26pt 辅助命中。
 - 双指触摸进入相机平移/缩放。
 - 单指拖动可框选玩家移动单位。
 - 建筑放置、支援技能、集结点和 attack-move 都是 pending 模式；进入新模式时必须清理冲突模式。
