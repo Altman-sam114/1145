@@ -6,6 +6,8 @@
 
 Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界偏移，在有效 `.sand` / `.oil` 投影锚点经 `tile(at:)` / `terrain(at:)` 生成低透明压缩 rotor-wash 尘环、两侧短尘流和固定颗粒；普通 root 约 0.52 秒统一清理，persistent capture 立即保留完整构图，road / ridge / water / 无效点和未知敌方来源不进入该 effects-layer 视觉链。
 
+海军实体的 `navalWakeNode` 也在实体配置阶段一次性预创建：Battleship / Carrier 依舰体尺度绘制艏部 V 形浅水冲洗、近 / 远段递减尾流、泡沫边与舰艉推进器扰流，Submarine 仅保留低透明扰动；移动时沿既有方向旋转，停止、死亡、重开和 fog 隐藏继续复用实体父节点生命周期，不新增状态、每帧节点或第 25 次探针。固定 capture 只能核对静态构图与层级，不能外推普通模式连续航行时序。
+
 ## 1. 项目核心逻辑图
 
 读图说明：从 App 启动开始，SwiftUI 只负责承载 SpriteKit；所有游戏运行态进入 `GameScene`。每帧 update 推进各系统，最后更新节点渲染、HUD、小地图和胜负状态。
@@ -152,3 +154,4 @@ flowchart TD
 - v5.21：Battleship / Coastal Battery 视觉齐射保留确定性双 lane，普通播放给第二条 lane 增加 0.045 秒错列，并让运行时成对水柱按攻击者来袭方向错位与旋转；capture-only persistent 仍一次生成完整效果，未传攻击者位置的直接 helper 保留 entity-id fallback，不改变 fire 结算、伤害、迷雾或 24 次探针。
 - v5.22：Carrier 对水面目标的既有三机 / 双反舰弹 strike 在统一 `showCarrierStrikeImpact(...)` 中增加按来袭方向旋转的紧凑近舷水溅射和较小近失回响，保留舰体命中；普通节点复用既有清理，persistent capture 一次创建完整效果，移除 carrier fixture 的重复手动水柱，不改变 fire 结算或 24 次探针。
 - v5.23：Helicopter 既有 `showHelicopterRocketSalvo(...)` 共享入口按 `updateAirShadow(...)` 世界偏移在有效 `.sand` / `.oil` 投影锚点创建低透明压缩 rotor-wash 尘环、两侧短尘流和固定颗粒；普通 root 约 0.52 秒统一淡出移除，persistent capture 立即保留完整构图，不改变火箭、伤害、迷雾、AI 或 24 次探针。
+- v5.24：海军实体自有 `navalWakeNode` 增加按舰种尺度区分的艏部 V 形浅水冲洗、近 / 远段递减双侧尾流、亮色泡沫边与固定舰艉推进器扰流；Battleship 较窄、Carrier 较宽 / 较长，Submarine 保持低透明扰动，复用既有移动旋转、idle 隐藏、fog / death / `SKRM` 生命周期，不改变海军玩法或 24 次探针。

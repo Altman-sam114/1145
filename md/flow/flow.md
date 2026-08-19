@@ -56,6 +56,8 @@ Carrier 实体在同一实体子树一次性预创建 `carrierDeckAircraftNode` 
 
 空军实体另持有预创建的 `airShadowNode`：Helicopter 使用机身、尾梁和旋翼投影，Fighter 使用缩小 jet 轮廓；移动更新按方向调整投影偏移和透明度。投影是实体子节点，会随敌方实体迷雾隐藏，不产生独立残留节点或位置泄露。
 
+海军实体的 `navalWakeNode` 仍是实体配置阶段一次性创建的唯一航迹几何入口。Battleship 使用较窄、较短的艏部 V 形浅水冲洗与近 / 远段双侧尾流，Carrier 使用较宽、较长的同层级尾流，二者都叠加低成本舰艉错列椭圆扰流；Submarine 只保留低透明的艏部 / 尾流扰动。`updateNavalWake(for:direction:)` 只按实际移动方向旋转根节点、做既有透明度脉冲并显示，`animateIdle(_:,dt:)` 停止时隐藏；节点留在实体树的背景层，继续继承镜像、死亡、重开和 fog 父节点可见性，不进入 `effectsLayer`，不产生每帧节点分配或海军玩法状态。
+
 Helicopter 的既有 `showHelicopterRocketSalvo(...)` 共享入口沿 `updateAirShadow(...)` 的世界偏移计算投影地面锚点，并只在 `tile(at:)` / `terrain(at:)` 判定为 `.sand` 或 `.oil` 时创建纯视觉 rotor-wash：低透明垂直压缩尘环、与攻击方向相关的两侧短尘流和固定颗粒。普通 root 在约 0.52 秒内扩散、淡出并统一移除，`persistent` 立即保留完整静态构图；道路、岩脊、水面、无效点和未知敌方来源不创建节点，也不新增实体状态或每帧生成链路。
 
 机动陆军实体持有预创建的 `landDustNode`，由双胎迹 / 履带印和三组确定性尘团组成。`updateMovement(...)` 按实际方向和实体镜像旋转该节点，只在 sand / oil 地形移动时显示，road / water / ridge、停止和无效位置时隐藏；节点属于实体子树，会随敌方实体迷雾隐藏和销毁，不按帧创建独立残留。CI land capture 可用 `forceVisible` 冻结方向证据，但普通启动不走该参数。
@@ -124,7 +126,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 ### 移动与战斗
 
 - 陆、空、海按 `Domain` 使用不同移动和地形规则；空军直飞，陆海需要路径点。
-- 海军单位只有在本帧实际位移时显示方向化舰艉航迹，idle / 到达路径点后隐藏；航迹不改变速度、路径、碰撞、战斗或潜艇侦测。
+- 海军单位只有在本帧实际位移时显示方向化艏波、分层舰艉航迹和紧凑推进器扰流，idle / 到达路径点后隐藏；航迹不改变速度、路径、碰撞、战斗或潜艇侦测。
 - formation move 仍按 land / air / naval 分组并复用同一命令入口；air slot 间距由 58 提高到 84。空军实际移动时只对 `airSeparationRadius=76` 内同阵营存活空军叠加受限分离向量，并保证调整后方向仍与目的地方向保持正向点积；不会推开敌军、结构或其他 domain，也不新增物理碰撞。
 - 空军拥有攻击目标时，`attackDestination(...)` 按 attacker id 分配目标周围 8 个椭圆站位，水平基准半径 104、纵向压缩为 0.64；空军会继续靠近自身站位而不是全部收敛到目标中心，但射程、目标和 `fire(...)` 结算不变。
 - 选中玩家空军时，`activeKnownAirDefenseThreats(...)` 只收集玩家当前已知、存活、operational 且真实射程覆盖至少一架选中空军的敌方 SAM Site / AA Truck；这些威胁显示红橙低填充射程圈和三重顶标，选择状态行与普通单选/多选信息显示 `AA THRn Sn Mn Cx/y`（`S`=SAM、`M`=mobile AA、`C`=被覆盖选中空军），没有威胁时显示 `CLEAR`。覆盖判断复用静态 `attackRange`、`canAttack(...)` 和玩家迷雾认知，只读更新节点与 HUD，不修改目标、伤害、AI、移动或可见性。

@@ -30,6 +30,8 @@ v5.22 目视口径：复用现有 24 张 PNG，不新增 launch 或 capture。`s
 
 v5.23 目视口径：复用现有 24 张 PNG，不新增 launch 或 capture。`simulator-helicopter-salvo.png` 必须在 Blue Helicopter 投影附近同时显示低透明、垂直压缩的等距尘环、沿攻击方向稳定分开的两侧短尘流和少量固定颗粒，并继续保持机体、旋翼、双 weapon pods、四枚火箭 / 烟点 / 发射闪光、耐久塔、三点命中、伤害飘字、Red Tank 目标信息、HUD 与小地图可读；persistent capture 不能依赖等待或 fade-in 才出现。`simulator-fighter-strike.png`、`simulator-mobile-aa.png`、`simulator-damage-state.png`、`simulator-map-terrain.png` 及其余 20 张图核对 Fighter / AA / 战损 / 沙地道路油田 Ridge 水面与既有海空反馈不出现直升机尘环污染，尤其 `.water`、`.road`、`.ridge` 和无效点不创建下洗节点。代码审阅确认 rotor wash 只有 `showHelicopterRocketSalvo(...)` 一个调用点，runtime 仍受 `attackerKnownToPlayer` 约束；普通 root 在约 0.45--0.65 秒内统一 `removeFromParent()`，persistent 立即保留完整构图；不改 HP、伤害、射程、冷却、AI、移动、任务、胜负、fog、潜艇 / ASW 或 24 次探针。该轮只定义云端 generic build / 24 PNG 的复核口径，不能把静态检查代称编译、运行时或视觉已通过。
 
+v5.24 目视口径：复用现有 24 张 PNG，不新增 launch 或 capture。`simulator-map-terrain.png` 核对移动海军静态构图中的舰艏 V 形浅水冲洗、Battleship 较窄 / Carrier 较宽的近段尾流、远段递减泡沫边和舰艉推进器扰流，不遮挡舰体、舰炮、航母甲板、舰载机、岸线、HUD 或小地图；`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-coastal-battery.png` 核对新航迹与双炮线、舰载机 strike、岸防炮、水柱和目标信息同时可读；`simulator-naval-damage.png` 核对战损 Battleship、Submarine、ASW HIT、水沫、气泡与低透明潜艇扰动共存，Submarine 不出现明亮长距离尾流。`simulator-hud-naval.png`、`simulator-screenshot.png`、`simulator-command-*.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 及其余截图核对非海军场景无航迹污染、停止 / 未知敌方实体无残留节点、24 张 PNG 尺寸 / RGBA / 哈希和日志正常。代码审阅确认几何只在 `configureNavalWakeNode(for:)` 预创建，`updateNavalWake(...)` 不分配节点，root 仍挂实体树背景层并沿用 `animateIdle`、fog、死亡和 `SKRM` 清理；固定 capture 只能证明静态层级与 generic build / 启动稳定性，不能外推真实连续航行、触控或长时间战斗。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。

@@ -4028,32 +4028,106 @@ final class GameScene: SKScene {
     private func configureNavalWakeNode(for entity: GameEntity) {
         guard entity.kind.domain == .naval else { return }
 
-        let wakeLength: CGFloat = entity.kind == .carrier ? 78 : (entity.kind == .battleship ? 64 : 50)
-        let wakeSpread: CGFloat = entity.kind == .carrier ? 22 : (entity.kind == .battleship ? 18 : 13)
-        let startX = entity.kind.footprint * 0.24
+        entity.navalWakeNode.removeAllChildren()
 
-        let washPath = CGMutablePath()
-        washPath.move(to: CGPoint(x: startX, y: -4))
-        washPath.addLine(to: CGPoint(x: wakeLength, y: -wakeSpread))
-        washPath.move(to: CGPoint(x: startX, y: 4))
-        washPath.addLine(to: CGPoint(x: wakeLength, y: wakeSpread))
-        let wash = SKShapeNode(path: washPath)
-        wash.strokeColor = UIColor(red: 0.48, green: 0.94, blue: 1.0, alpha: entity.kind == .submarine ? 0.16 : 0.24)
-        wash.lineWidth = entity.kind == .carrier ? 11 : 8
-        wash.lineCap = .round
-        entity.navalWakeNode.addChild(wash)
+        let isCarrier = entity.kind == .carrier
+        let isSubmarine = entity.kind == .submarine
+        let wakeLength: CGFloat = isCarrier ? 112 : (entity.kind == .battleship ? 84 : 54)
+        let wakeSpread: CGFloat = isCarrier ? 30 : (entity.kind == .battleship ? 22 : 14)
+        let sternX: CGFloat = isCarrier ? 28 : (entity.kind == .battleship ? 25 : 17)
+        let bowX: CGFloat = -(isCarrier ? 45 : (entity.kind == .battleship ? 36 : 27))
+        let bowLength: CGFloat = isCarrier ? 27 : (entity.kind == .battleship ? 21 : 14)
+        let bowSpread: CGFloat = isCarrier ? 28 : (entity.kind == .battleship ? 20 : 12)
 
-        let foam = SKShapeNode(path: washPath)
-        foam.strokeColor = UIColor(white: 0.96, alpha: entity.kind == .submarine ? 0.34 : 0.72)
-        foam.lineWidth = entity.kind == .carrier ? 2.8 : 2.2
-        foam.lineCap = .round
-        entity.navalWakeNode.addChild(foam)
+        let nearLength: CGFloat = isCarrier ? 48 : (entity.kind == .battleship ? 38 : 24)
+        let nearEndX = sternX + nearLength
+        let farEndX = sternX + wakeLength
+        let farSpread = wakeSpread * (isCarrier ? 0.58 : 0.55)
+        let waterColor = UIColor(red: 0.48, green: 0.94, blue: 1.0, alpha: 1.0)
 
-        for index in 0..<3 {
-            let churn = SKShapeNode(ellipseOf: CGSize(width: 10 - CGFloat(index) * 1.6, height: 4.5 - CGFloat(index) * 0.6))
-            churn.position = CGPoint(x: startX + 12 + CGFloat(index) * 13, y: 0)
-            churn.fillColor = UIColor(white: 0.98, alpha: entity.kind == .submarine ? 0.22 : 0.58 - CGFloat(index) * 0.10)
-            churn.strokeColor = .clear
+        let sideStartY: [CGFloat] = [-2.8, 3.5]
+        let sideNearY: [CGFloat] = [-(wakeSpread + 0.8), wakeSpread - 0.7]
+        let sideFarY: [CGFloat] = [-(farSpread + 0.4), farSpread]
+
+        let nearWashPath = CGMutablePath()
+        let farWashPath = CGMutablePath()
+        for index in 0..<2 {
+            let startY = sideStartY[index]
+            let nearY = sideNearY[index]
+            let farY = sideFarY[index]
+            nearWashPath.move(to: CGPoint(x: sternX, y: startY))
+            nearWashPath.addQuadCurve(
+                to: CGPoint(x: nearEndX, y: nearY),
+                control: CGPoint(x: sternX + nearLength * 0.42, y: startY + (nearY - startY) * 0.42)
+            )
+            farWashPath.move(to: CGPoint(x: nearEndX - 2, y: nearY))
+            farWashPath.addQuadCurve(
+                to: CGPoint(x: farEndX, y: farY),
+                control: CGPoint(x: nearEndX + (farEndX - nearEndX) * 0.48, y: nearY + (farY - nearY) * 0.34)
+            )
+        }
+
+        let nearWash = SKShapeNode(path: nearWashPath)
+        nearWash.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.10 : (isCarrier ? 0.25 : 0.23))
+        nearWash.lineWidth = isSubmarine ? 5 : (isCarrier ? 11 : 8.5)
+        nearWash.lineCap = .round
+        entity.navalWakeNode.addChild(nearWash)
+
+        let farWash = SKShapeNode(path: farWashPath)
+        farWash.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.065 : (isCarrier ? 0.13 : 0.12))
+        farWash.lineWidth = isSubmarine ? 3.5 : (isCarrier ? 6.5 : 5.0)
+        farWash.lineCap = .round
+        entity.navalWakeNode.addChild(farWash)
+
+        let nearFoam = SKShapeNode(path: nearWashPath)
+        nearFoam.strokeColor = UIColor(white: 0.96, alpha: isSubmarine ? 0.12 : (isCarrier ? 0.72 : 0.68))
+        nearFoam.lineWidth = isSubmarine ? 1.0 : (isCarrier ? 2.0 : 1.7)
+        nearFoam.lineCap = .round
+        entity.navalWakeNode.addChild(nearFoam)
+
+        let farFoam = SKShapeNode(path: farWashPath)
+        farFoam.strokeColor = UIColor(white: 0.96, alpha: isSubmarine ? 0.07 : (isCarrier ? 0.40 : 0.34))
+        farFoam.lineWidth = isSubmarine ? 0.8 : (isCarrier ? 1.25 : 1.05)
+        farFoam.lineCap = .round
+        entity.navalWakeNode.addChild(farFoam)
+
+        let bowPath = CGMutablePath()
+        let bowStartY: [CGFloat] = [-2.2, 2.6]
+        let bowEndY: [CGFloat] = [-(bowSpread + 0.7), bowSpread]
+        for index in 0..<2 {
+            let startY = bowStartY[index]
+            let endY = bowEndY[index]
+            bowPath.move(to: CGPoint(x: bowX + 3, y: startY))
+            bowPath.addQuadCurve(
+                to: CGPoint(x: bowX - bowLength, y: endY),
+                control: CGPoint(x: bowX - bowLength * 0.42, y: startY + (endY - startY) * 0.28)
+            )
+        }
+
+        let bowWash = SKShapeNode(path: bowPath)
+        bowWash.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.09 : (isCarrier ? 0.22 : 0.20))
+        bowWash.lineWidth = isSubmarine ? 3.5 : (isCarrier ? 7 : 5.5)
+        bowWash.lineCap = .round
+        entity.navalWakeNode.addChild(bowWash)
+
+        let bowFoam = SKShapeNode(path: bowPath)
+        bowFoam.strokeColor = UIColor(white: 0.98, alpha: isSubmarine ? 0.10 : (isCarrier ? 0.64 : 0.58))
+        bowFoam.lineWidth = isSubmarine ? 0.8 : (isCarrier ? 1.7 : 1.4)
+        bowFoam.lineCap = .round
+        entity.navalWakeNode.addChild(bowFoam)
+
+        let churnSpacing: CGFloat = isCarrier ? 10 : (entity.kind == .battleship ? 8.5 : 7)
+        let churnWidth: CGFloat = isCarrier ? 15 : (entity.kind == .battleship ? 12 : 8.5)
+        let churnHeight: CGFloat = isCarrier ? 5.2 : (entity.kind == .battleship ? 4.4 : 3.3)
+        let churnY: [CGFloat] = [-3.4, 4.2, -4.8, 2.8]
+        for index in 0..<4 {
+            let scale = 1 - CGFloat(index) * 0.12
+            let churn = SKShapeNode(ellipseOf: CGSize(width: churnWidth * scale, height: churnHeight * scale))
+            churn.position = CGPoint(x: sternX + 4 + CGFloat(index) * churnSpacing, y: churnY[index])
+            churn.zRotation = index.isMultiple(of: 2) ? -0.12 : 0.16
+            churn.fillColor = UIColor(white: 0.98, alpha: isSubmarine ? 0.10 : (0.48 - CGFloat(index) * 0.07))
+            churn.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.055 : 0.24 - CGFloat(index) * 0.035)
+            churn.lineWidth = isSubmarine ? 0.45 : 0.8
             entity.navalWakeNode.addChild(churn)
         }
 
