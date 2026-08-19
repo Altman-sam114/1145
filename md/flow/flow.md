@@ -46,6 +46,8 @@
 
 实体配置阶段一次性创建并挂载旗杆 / 阵营燕尾旗与相邻的 `healthTowerNode` 六格竖直耐久塔；空格保留深色槽与边缘，填充格由 `updateHealthBar(...)` 的既有 `hp / maxHP` ratio 驱动并沿用绿 / 红阈值，旧水平实体生命条只保留为隐藏兼容节点。塔根根据 footprint 做有限 clamp，并把上缘留在 FOCUS / ATK 世界文字带以下，避免小型陆空目标的标注竞争。新实体在配置完成时立即走同一刷新入口，避免满血单位初始显示为空塔。塔与旗标沿用实体镜像、移动、维修、战损、死亡清理、重开和迷雾父节点隐藏链路，不产生第二份 HP 状态或信息泄露。
 
+结构模型仍由 `configureEntityNode(...)` 一次性挂在实体 `base` 下；其中 Shipyard 的既有 dock / crane 继续保留原尺寸与包络，并在同一 `.shipyard` 分支增加两条短内轨、三处低矮龙骨支架、一段窄内侧码头边缘和三个系泊标记。它们只使用 SpriteKit shape、没有独立状态或每帧更新，随实体父节点继承镜像、施工、迷雾、死亡清理和 `SKRM` 重开，不改变 footprint、碰撞、生产、rally 或海岸规则。
+
 选中的玩家存活作战机动实体在同一 `selectionNode` 子树内一次性挂载 `weaponReadinessNode` 与四个低侧固定刻度；`refreshWeaponReadinessVisuals(for:)` 每帧先隐藏 / 恢复所有刻度，再只对玩家、存活、operational、非结构且 `kind.damage > 0` 的当前选中实体读取 `attackTimer`。就绪门槛沿用 `attackTimer <= 0.05` 并显示青绿色全刻度；装填中以 `1 - clamp(attackTimer / max(effectiveAttackCooldown(for:), 0.2), 0...1)` 按段着色琥珀已恢复刻度，未恢复槽位保留深色。节点不进入 `effectsLayer`，随实体镜像、移动、迷雾 / 潜艇隐藏、战损、死亡清理和 skirmish 重开，不创建第二份 readiness / cooldown 状态，也不改变攻击执行；敌军、未知目标、结构、Mechanic、施工和 pending / 空选择始终隐藏。
 
 单选 Blue 的 Humvee、Tank、Artillery、Helicopter 或 Fighter 时，实体树另一次性预创建 `landAirCombatRangeNode`，以既有 `EntityKind.attackRange` 绘制低透明、垂直压缩的等距作战射程椭圆；`shouldShowLandAirCombatRange(for:)` 与 `refreshLandAirCombatRangeVisuals()` 每帧只重置隐藏状态并在唯一合法单选下显示。它不进入 `effectsLayer`，随实体移动、`xScale` 镜像、战争迷雾、死亡和重开，且在多选、空选择、敌军、结构、Mechanic、AA Truck、SAM Site、海军实体和 build / rally / support / AMOV pending 状态隐藏。Battleship / Coastal Battery 的暖色 `navalGunRangeNode`、AA Truck / SAM 的防空威胁圈、Mechanic 维修圈与 Carrier / escort 覆盖圈保持独立，不复用新节点；射程椭圆只读显示，不参与 `canAttack`、目标搜索或攻击执行。

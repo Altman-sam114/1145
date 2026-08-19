@@ -2509,6 +2509,80 @@ final class GameScene: SKScene {
             crane.fillColor = UIColor(red: 0.86, green: 0.67, blue: 0.22, alpha: 1.0)
             crane.strokeColor = .clear
             base.addChild(crane)
+
+            let railStroke = crane.fillColor.withAlphaComponent(0.72)
+            let railFill = dock.strokeColor.withAlphaComponent(0.78)
+            let upperRail = SKShapeNode(rectOf: CGSize(width: 44, height: 1.6), cornerRadius: 0.8)
+            upperRail.position = CGPoint(x: -6, y: 6.5)
+            upperRail.fillColor = railFill
+            upperRail.strokeColor = railStroke
+            upperRail.lineWidth = 0.7
+            upperRail.zPosition = 0.2
+            base.addChild(upperRail)
+
+            let lowerRail = SKShapeNode(rectOf: CGSize(width: 44, height: 1.6), cornerRadius: 0.8)
+            lowerRail.position = CGPoint(x: -6, y: -6.5)
+            lowerRail.fillColor = railFill
+            lowerRail.strokeColor = railStroke
+            lowerRail.lineWidth = 0.7
+            lowerRail.zPosition = 0.2
+            base.addChild(lowerRail)
+
+            let forwardStand = SKShapeNode(rectOf: CGSize(width: 5, height: 3.8), cornerRadius: 0.9)
+            forwardStand.position = CGPoint(x: -22, y: 0)
+            forwardStand.fillColor = crane.fillColor.withAlphaComponent(0.48)
+            forwardStand.strokeColor = dock.strokeColor.withAlphaComponent(0.82)
+            forwardStand.lineWidth = 0.7
+            forwardStand.zPosition = 0.28
+            base.addChild(forwardStand)
+
+            let centerStand = SKShapeNode(rectOf: CGSize(width: 5, height: 3.8), cornerRadius: 0.9)
+            centerStand.position = CGPoint(x: -8, y: 0)
+            centerStand.fillColor = crane.fillColor.withAlphaComponent(0.48)
+            centerStand.strokeColor = dock.strokeColor.withAlphaComponent(0.82)
+            centerStand.lineWidth = 0.7
+            centerStand.zPosition = 0.28
+            base.addChild(centerStand)
+
+            let aftStand = SKShapeNode(rectOf: CGSize(width: 5, height: 3.8), cornerRadius: 0.9)
+            aftStand.position = CGPoint(x: 6, y: 0)
+            aftStand.fillColor = crane.fillColor.withAlphaComponent(0.48)
+            aftStand.strokeColor = dock.strokeColor.withAlphaComponent(0.82)
+            aftStand.lineWidth = 0.7
+            aftStand.zPosition = 0.28
+            base.addChild(aftStand)
+
+            let innerQuayEdge = SKShapeNode(rectOf: CGSize(width: 40, height: 1.4), cornerRadius: 0.7)
+            innerQuayEdge.position = CGPoint(x: -8, y: -10.5)
+            innerQuayEdge.fillColor = dock.strokeColor.withAlphaComponent(0.76)
+            innerQuayEdge.strokeColor = railStroke
+            innerQuayEdge.lineWidth = 0.6
+            innerQuayEdge.zPosition = 0.34
+            base.addChild(innerQuayEdge)
+
+            let forwardLowerMooring = SKShapeNode(circleOfRadius: 1.3)
+            forwardLowerMooring.position = CGPoint(x: -27, y: -10.5)
+            forwardLowerMooring.fillColor = crane.fillColor.withAlphaComponent(0.68)
+            forwardLowerMooring.strokeColor = dock.strokeColor.withAlphaComponent(0.84)
+            forwardLowerMooring.lineWidth = 0.6
+            forwardLowerMooring.zPosition = 0.4
+            base.addChild(forwardLowerMooring)
+
+            let forwardUpperMooring = SKShapeNode(circleOfRadius: 1.3)
+            forwardUpperMooring.position = CGPoint(x: -27, y: 10.5)
+            forwardUpperMooring.fillColor = crane.fillColor.withAlphaComponent(0.68)
+            forwardUpperMooring.strokeColor = dock.strokeColor.withAlphaComponent(0.84)
+            forwardUpperMooring.lineWidth = 0.6
+            forwardUpperMooring.zPosition = 0.4
+            base.addChild(forwardUpperMooring)
+
+            let aftMooring = SKShapeNode(circleOfRadius: 1.3)
+            aftMooring.position = CGPoint(x: 13, y: -10.5)
+            aftMooring.fillColor = crane.fillColor.withAlphaComponent(0.68)
+            aftMooring.strokeColor = dock.strokeColor.withAlphaComponent(0.84)
+            aftMooring.lineWidth = 0.6
+            aftMooring.zPosition = 0.4
+            base.addChild(aftMooring)
         case .oilDerrick:
             let tower = SKShapeNode(path: derrickPath())
             tower.fillColor = UIColor(red: 0.16, green: 0.14, blue: 0.12, alpha: 1.0)

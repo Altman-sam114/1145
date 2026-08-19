@@ -2,7 +2,7 @@
 
 本文用 Mermaid 图把 `md/flow/flow.md` 的核心逻辑可视化。每张图前都有中文读图说明，便于人工快速检查当前项目运行链路。
 
-当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；HUD 选择面板在写入行文本时使用集中式海空短码与有界单行 fitting，小地图海军/空军 blip 另增加已知朝向与选中交战微齿；地图构建还沿共享四方向岸线边表为 `.sand` / `.oil` 增加低对比湿沙唇，其中 `.sand` 水邻 tile 按 `terrainDetailHash(for:)` 与 `edge.index` 稀疏增加至多一条短平行潮痕和一个小漂砾，为水邻 `.ridge` 稀疏增加暗色礁石边缘，海军双炮线加入短暂方向化错列与成对水柱反馈，Carrier 对已知 `.air` 目标的既有攻击再使用短时 `CV INTERCEPT` 舰载机、导引光迹与空中命中环，节点只进入 `mapNode` / `effectsLayer` 并继续受 `fogLayer` 覆盖；这些节点仍沿用现有迷雾、选择、告警和死亡清理链路，所有新增 cue 都不改攻击、移动或生产规则。
+当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；Shipyard 在既有 dock / crane 包络内增加静态内轨、龙骨支架、窄内侧码头边缘和系泊标记；HUD 选择面板在写入行文本时使用集中式海空短码与有界单行 fitting，小地图海军/空军 blip 另增加已知朝向与选中交战微齿；地图构建还沿共享四方向岸线边表为 `.sand` / `.oil` 增加低对比湿沙唇，其中 `.sand` 水邻 tile 按 `terrainDetailHash(for:)` 与 `edge.index` 稀疏增加至多一条短平行潮痕和一个小漂砾，为水邻 `.ridge` 稀疏增加暗色礁石边缘，海军双炮线加入短暂方向化错列与成对水柱反馈，Carrier 对已知 `.air` 目标的既有攻击再使用短时 `CV INTERCEPT` 舰载机、导引光迹与空中命中环，节点只进入 `mapNode` / `effectsLayer` 并继续受 `fogLayer` 覆盖；这些节点仍沿用现有迷雾、选择、告警和死亡清理链路，所有新增 cue 都不改攻击、移动或生产规则。
 
 Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界偏移，在有效 `.sand` / `.oil` 投影锚点经 `tile(at:)` / `terrain(at:)` 生成低透明压缩 rotor-wash 尘环、两侧短尘流和固定颗粒；普通 root 约 0.52 秒统一清理，persistent capture 立即保留完整构图，road / ridge / water / 无效点和未知敌方来源不进入该 effects-layer 视觉链。
 
@@ -32,7 +32,7 @@ flowchart TD
   Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、已知潜艇压力补 ASW、合法认知 SCAN 巡扫、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、海岸目标权重、跳过不可生产兵种、支援、混编主攻波次、低血单位撤退回修、受损老兵保护、空闲Carrier警戒翼队、高价值海军护航门槛、attack-move 波次"]
   Loop --> Fog["战争迷雾\n单位/已完工建筑/RAD/脆弱专职 SON/GT/SAM/CB 视野、侦察、潜艇检测、支援命中暴露"]
   Loop --> Mission["任务 / 胜负\n占油、夺旗、海岸资产分项摘要、混编/破生产奖励、已知HQ情报与AMOV面板摘要、HQ 摧毁判定"]
-  Build --> Render["SpriteKit 渲染\n沙地色差/风蚀纹、连通道路肩/路床/标线、岩脊落影/亮面/碎石、油污环/裂纹、浅滩/岸线浪花、Humvee四轮/风挡/枪座、Tank与Artillery履带/炮塔/炮座/光学件、Mechanic四轮/工具舱/吊臂、Battleship分层舰体/双联主炮/舰桥雷达/二级细节/两档舰体战损、Coastal Battery分层炮床/护坡沙袋/双联长炮/后膛测距仪/掩体弹药箱、HEL/JET细化模型与投影、实体节点、特效、进度条"]
+  Build --> Render["SpriteKit 渲染\n沙地色差/风蚀纹、连通道路肩/路床/标线、岩脊落影/亮面/碎石、油污环/裂纹、浅滩/岸线浪花、Shipyard坞区内轨/龙骨支架/窄内缘/系泊标记、Humvee四轮/风挡/枪座、Tank与Artillery履带/炮塔/炮座/光学件、Mechanic四轮/工具舱/吊臂、Battleship分层舰体/双联主炮/舰桥雷达/二级细节/两档舰体战损、Coastal Battery分层炮床/护坡沙袋/双联长炮/后膛测距仪/掩体弹药箱、HEL/JET细化模型与投影、实体节点、特效、进度条"]
   Economy --> Render
   Commands --> Render
   Combat --> Render
