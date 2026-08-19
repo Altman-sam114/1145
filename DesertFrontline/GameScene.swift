@@ -13174,17 +13174,6 @@ final class GameScene: SKScene {
     ) {
         let direction = (end - start).normalized
         guard direction.length > 0.01 else { return }
-        // Keep the rotor-wash anchor aligned with the air-shadow world offset.
-        let groundAnchor = start + CGPoint(
-            x: -direction.x * 11,
-            y: -12 - direction.y * 6
-        )
-        showHelicopterRotorWash(
-            at: groundAnchor,
-            direction: direction,
-            faction: faction,
-            persistent: persistent
-        )
         let normal = CGPoint(x: -direction.y, y: direction.x)
         let color = faction == .enemy
             ? UIColor(red: 1.0, green: 0.43, blue: 0.24, alpha: 1.0)
@@ -13399,6 +13388,17 @@ final class GameScene: SKScene {
     ) {
         let direction = (end - start).normalized
         guard direction.length > 0.01 else { return }
+        // Keep the rotor-wash anchor aligned with the air-shadow world offset.
+        let groundAnchor = start + CGPoint(
+            x: -direction.x * 11,
+            y: -12 - direction.y * 6
+        )
+        showHelicopterRotorWash(
+            at: groundAnchor,
+            direction: direction,
+            faction: faction,
+            persistent: persistent
+        )
         let normal = CGPoint(x: -direction.y, y: direction.x)
         let color = faction == .enemy
             ? UIColor(red: 1.0, green: 0.43, blue: 0.24, alpha: 1.0)
