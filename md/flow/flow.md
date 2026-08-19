@@ -56,6 +56,8 @@ Carrier 实体在同一实体子树一次性预创建 `carrierDeckAircraftNode` 
 
 空军实体另持有预创建的 `airShadowNode`：Helicopter 使用机身、尾梁和旋翼投影，Fighter 使用缩小 jet 轮廓；移动更新按方向调整投影偏移和透明度。投影是实体子节点，会随敌方实体迷雾隐藏，不产生独立残留节点或位置泄露。
 
+Helicopter 的既有 `showHelicopterRocketSalvo(...)` 共享入口沿 `updateAirShadow(...)` 的世界偏移计算投影地面锚点，并只在 `tile(at:)` / `terrain(at:)` 判定为 `.sand` 或 `.oil` 时创建纯视觉 rotor-wash：低透明垂直压缩尘环、与攻击方向相关的两侧短尘流和固定颗粒。普通 root 在约 0.52 秒内扩散、淡出并统一移除，`persistent` 立即保留完整静态构图；道路、岩脊、水面、无效点和未知敌方来源不创建节点，也不新增实体状态或每帧生成链路。
+
 机动陆军实体持有预创建的 `landDustNode`，由双胎迹 / 履带印和三组确定性尘团组成。`updateMovement(...)` 按实际方向和实体镜像旋转该节点，只在 sand / oil 地形移动时显示，road / water / ridge、停止和无效位置时隐藏；节点属于实体子树，会随敌方实体迷雾隐藏和销毁，不按帧创建独立残留。CI land capture 可用 `forceVisible` 冻结方向证据，但普通启动不走该参数。
 
 非结构、非 Submarine 的机动实体持有预创建的 `damageStateNode`、三段烟、焦痕和危急火点。`configureDamageStateNode(...)` 按 land / air / naval 选择发动机舱、机尾或舰体偏舷挂点与尺度；Battleship 额外在同一实体子树预创建甲板破口 / 撕裂和第二 Critical 热点。`updateHealthBar(...)` 统一调用 `updateDamageStateVisual(...)`，HP 比例 `<= 0.62` 显示短烟 / 焦痕与 Battleship 破口，`<= 0.35` 增加第三段浓烟、紧凑火点和 Battleship 第二热点，修复越过阈值时自动降级或隐藏。节点随移动、镜像、迷雾和销毁，不按帧创建；Submarine 不显示水面烟火，声呐与隐身链路不变。单选 HP 行复用相同阈值追加 `DMG` / `CRIT`，多选继续使用既有 Wounded / Critical 统计。
@@ -152,7 +154,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - Artillery 通过同一 `fire(...)` 合法开火时，玩家炮位或玩家已知敌方炮位会在射向目标的方向显示短促炮口焰、亮芯、烟团和贴地尘环，再沿原 `showProjectile(...)` 显示炮线；玩家未知敌方炮位不创建该特效。普通节点短时清理，CI land capture 才用 `persistent` 冻结双方 Artillery、炮口焰与炮线样本，伤害、射程、结构倍率和目标合法性不变。
 - Fighter、SAM Site 的 `showProjectile(...)` 分支使用宽低透明度烟迹、阵营弹道色高亮线和沿弹道移动的发光弹体；AA Truck 则由 `showMobileAASalvo(...)` 以两个法线错位发射点组合两次纯视觉 guided trail、约 0.055 秒错发、双发射闪光和短促雷达环 / 扫描线。该 helper 不调用 `fire`、不写 HP，普通节点约 0.46 秒内清理，capture-only 才可 persistent；未知 Red AA Truck 不派发来源视觉。命中玩家空军或玩家已知敌方空军时仍显示双环与六向火花，不改变伤害、射速、目标选择或防空规则。
 - Fighter 对非 Submarine 水面舰艇或建筑合法开火时，只有玩家 Fighter 或玩家已知 Red Fighter 才由 `fire(...)` 派发 `showFighterSurfaceStrike(...)`：两个翼下法线错位发射点沿轻微分离二次曲线显示约 0.055 秒错发的弹体、尾焰、短白烟迹、阵营亮芯和紧凑发射闪光。水面目标组合小型近舷水冲击与舰体火花，建筑目标使用小型闪光 / 尘环 / 碎屑；空战仍走既有 guided trail，Submarine 仍走既有 ASW 链路。新 helper 不调用 `fire`、不写 HP、不创建碰撞，普通节点约 0.7 秒内清理，persistent 只用于 CI capture，一次攻击仍只在统一位置扣一次 HP。
-- Helicopter 对 land、structure 或非 Submarine 水面舰艇合法开火时，只有玩家 Helicopter 或玩家已知 Red Helicopter 才由 `fire(...)` 派发 `showHelicopterRocketSalvo(...)`：双侧 weapon pods 交替发射四枚约 0.045 秒错开的火箭，四条轻微分离二次曲线包含可见弹体 / 尾焰、阵营细亮线、离散白色烟点和双 pod 发射闪光。陆地 / 建筑目标使用紧凑三点闪光、尘环和碎屑，水面目标使用小型近舷水冲击与舰体火花；Submarine 保持既有 tracer 与 ASW hit / 暴露链路。新 helper 不调用 `fire`、不写 HP、不创建碰撞或 splash，普通节点约 0.8 秒内清理，persistent 只用于 CI capture，一次攻击仍只在统一位置扣一次 HP。
+- Helicopter 对 land、structure 或非 Submarine 水面舰艇合法开火时，只有玩家 Helicopter 或玩家已知 Red Helicopter 才由 `fire(...)` 派发 `showHelicopterRocketSalvo(...)`：入口沿 `updateAirShadow(...)` 的方向偏移计算投影地面锚点，并最多调用一次纯视觉 `showHelicopterRotorWash(...)`；helper 先以 `tile(at:)` / `terrain(at:)` 拒绝 `.water`、`.road`、`.ridge` 和无效点，只在 `.sand` / `.oil` 创建低透明压缩尘环、两侧短尘流与固定颗粒，视觉落点贴近投影且不遮挡火箭、命中、耐久塔或 HUD。双侧 weapon pods 交替发射四枚约 0.045 秒错开的火箭，四条轻微分离二次曲线包含可见弹体 / 尾焰、阵营细亮线、离散白色烟点和双 pod 发射闪光。陆地 / 建筑目标使用紧凑三点闪光、尘环和碎屑，水面目标使用小型近舷水冲击与舰体火花；Submarine 保持既有 tracer 与 ASW hit / 暴露链路。新 helper 不调用 `fire`、不写 HP、不创建碰撞或 splash，普通下洗 root 约 0.52 秒统一移除，persistent 只用于 CI capture，一次攻击仍只在统一位置扣一次 HP。
 - 支援技能伤害仍走 `applySupportDamage(...)`，没有虚拟击杀者，因此不会把支援技能击杀计入任何单位 XP；`AIRS` / `BARR` 真实命中潜艇时会短暂设置该潜艇的 `revealedUntil`。
 - Mechanic 自动维修仍由 `updateRepair(dt:)` 统一执行：寻找同阵营、存活、非自身、受损的最近目标，目标距离小于 95 时按每秒 22 修复；实际维修通过预创建双层维修束和十字目标脉冲稳定显示来源与目标，替代该链路原有随机单点 spark。选择面板、受损单位维修来源提示和维修范围圈继续只读复用同一范围，不改变目标选择、维修量、AI、支援或移动 / 战斗规则；construction / support 的既有 spark 调用不变。
 

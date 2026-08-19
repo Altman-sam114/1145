@@ -13174,6 +13174,17 @@ final class GameScene: SKScene {
     ) {
         let direction = (end - start).normalized
         guard direction.length > 0.01 else { return }
+        // Keep the rotor-wash anchor aligned with the air-shadow world offset.
+        let groundAnchor = start + CGPoint(
+            x: -direction.x * 11,
+            y: -12 - direction.y * 6
+        )
+        showHelicopterRotorWash(
+            at: groundAnchor,
+            direction: direction,
+            faction: faction,
+            persistent: persistent
+        )
         let normal = CGPoint(x: -direction.y, y: direction.x)
         let color = faction == .enemy
             ? UIColor(red: 1.0, green: 0.43, blue: 0.24, alpha: 1.0)
@@ -13525,6 +13536,93 @@ final class GameScene: SKScene {
                 .wait(forDuration: 0.44), .run(showImpact), .removeFromParent()
             ]))
         }
+    }
+
+    private func showHelicopterRotorWash(
+        at groundAnchor: CGPoint,
+        direction: CGPoint,
+        faction: Faction,
+        persistent: Bool = false
+    ) {
+        guard let tile = tile(at: groundAnchor) else { return }
+        switch terrain(at: tile) {
+        case .sand, .oil:
+            break
+        case .water, .road, .ridge:
+            return
+        }
+
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+        let root = SKNode()
+        root.position = groundAnchor
+        root.zPosition = 276
+
+        let dustColor = faction == .enemy
+            ? UIColor(red: 0.54, green: 0.37, blue: 0.20, alpha: 1.0)
+            : UIColor(red: 0.70, green: 0.51, blue: 0.27, alpha: 1.0)
+        let dustHighlight = UIColor(red: 0.92, green: 0.74, blue: 0.44, alpha: 1.0)
+
+        let outerRing = SKShapeNode(ellipseOf: CGSize(width: 50, height: 15))
+        outerRing.position = CGPoint(x: 0, y: -4)
+        outerRing.fillColor = dustColor.withAlphaComponent(0.08)
+        outerRing.strokeColor = dustHighlight.withAlphaComponent(0.30)
+        outerRing.lineWidth = 1.7
+        outerRing.zPosition = 0
+        root.addChild(outerRing)
+
+        let innerRing = SKShapeNode(ellipseOf: CGSize(width: 34, height: 10))
+        innerRing.position = CGPoint(x: 0, y: -4)
+        innerRing.fillColor = .clear
+        innerRing.strokeColor = dustColor.withAlphaComponent(0.18)
+        innerRing.lineWidth = 1.0
+        innerRing.zPosition = 1
+        root.addChild(innerRing)
+
+        for side in [CGFloat(-1), CGFloat(1)] {
+            let streamPath = CGMutablePath()
+            let streamStart = normal * (side * 10) - direction * 1 + CGPoint(x: 0, y: -3)
+            let streamControl = normal * (side * 18) - direction * 6 + CGPoint(x: 0, y: -4)
+            let streamEnd = normal * (side * 25) - direction * 12 + CGPoint(x: 0, y: -4)
+            streamPath.move(to: streamStart)
+            streamPath.addQuadCurve(to: streamEnd, control: streamControl)
+
+            let stream = SKShapeNode(path: streamPath)
+            stream.strokeColor = dustColor.withAlphaComponent(0.24)
+            stream.lineWidth = 2.8
+            stream.lineCap = .round
+            stream.zPosition = 1
+            root.addChild(stream)
+        }
+
+        let particleSpecs: [(offset: CGPoint, radius: CGFloat)] = [
+            (normal * (-14) - direction * 2 + CGPoint(x: 0, y: -3), 1.7),
+            (normal * 14 - direction * 2 + CGPoint(x: 0, y: -3), 1.5),
+            (normal * (-21) - direction * 6 + CGPoint(x: 0, y: -4), 1.2),
+            (normal * 22 - direction * 7 + CGPoint(x: 0, y: -4), 1.1),
+            (direction * 7 - normal * 5 + CGPoint(x: 0, y: -5), 1.0)
+        ]
+        for (index, particleSpec) in particleSpecs.enumerated() {
+            let particle = SKShapeNode(circleOfRadius: particleSpec.radius)
+            particle.position = particleSpec.offset
+            particle.fillColor = index.isMultiple(of: 2)
+                ? dustHighlight.withAlphaComponent(0.34)
+                : dustColor.withAlphaComponent(0.30)
+            particle.strokeColor = .clear
+            particle.zPosition = 2
+            root.addChild(particle)
+        }
+
+        effectsLayer.addChild(root)
+        guard !persistent else { return }
+
+        root.setScale(0.84)
+        root.run(.sequence([
+            .group([
+                .scale(to: 1.12, duration: 0.52),
+                .fadeOut(withDuration: 0.52)
+            ]),
+            .removeFromParent()
+        ]))
     }
 
     private func showHelicopterRocketImpact(

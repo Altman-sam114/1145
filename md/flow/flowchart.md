@@ -4,6 +4,8 @@
 
 当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；HUD 选择面板在写入行文本时使用集中式海空短码与有界单行 fitting，小地图海军/空军 blip 另增加已知朝向与选中交战微齿；地图构建还沿共享四方向岸线边表为 `.sand` / `.oil` 增加低对比湿沙唇、为水邻 `.ridge` 稀疏增加暗色礁石边缘，海军双炮线加入短暂方向化错列与成对水柱反馈，节点只进入 `mapNode` 并继续受 `fogLayer` 覆盖；这些节点仍沿用现有迷雾、选择、告警和死亡清理链路，所有新增 cue 都不改攻击、移动或生产规则。
 
+Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界偏移，在有效 `.sand` / `.oil` 投影锚点经 `tile(at:)` / `terrain(at:)` 生成低透明压缩 rotor-wash 尘环、两侧短尘流和固定颗粒；普通 root 约 0.52 秒统一清理，persistent capture 立即保留完整构图，road / ridge / water / 无效点和未知敌方来源不进入该 effects-layer 视觉链。
+
 ## 1. 项目核心逻辑图
 
 读图说明：从 App 启动开始，SwiftUI 只负责承载 SpriteKit；所有游戏运行态进入 `GameScene`。每帧 update 推进各系统，最后更新节点渲染、HUD、小地图和胜负状态。
@@ -28,6 +30,8 @@ flowchart TD
   Economy --> Render
   Commands --> Render
   Combat --> Render
+  Combat --> RotorWash["Helicopter salvo -> rotor wash\n投影锚点 terrain guard、压缩尘环、双侧尘流、固定颗粒\n普通 root 约 0.52 秒移除 / persistent 立即构图"]
+  RotorWash --> Render
   AI --> Render
   Fog --> Render
   Mission --> HUD["HUD / 小地图\nTACT九动作/全局26动作、TACT/BUILD/AIR/SEA/SUP五页单排命令条、TGT select/none/CODE i-n动态状态、单选目标HP/距离/装填/INCOMING、多选Combat/Engaged/Ready/Wounded/Critical/PRIMARY/IN与面板目标血条、选中战斗面板行色层级(自身HP/目标HP/Ready-Reload/INCOMING)且每帧恢复中性、选中玩家作战单位选择圈低侧预创建武器就绪刻度(attackTimer/effectiveAttackCooldown只读分段)、选中受威胁实体方向箭头/小地图告警圈、金钱、队列、生产来源提示、航母甲板/集结/普通翼队组成/GW组成与紧凑绑定站位/接触数类型目标交战状态/多选CV GW组成摘要/HEL-JET CV GUARD组成与距离状态/HOLD Carrier无bound wing也显示anchor范围圈、高价值海军护航状态/缺口类型/半径圈/多选摘要、Mechanic维修反馈/来源提示/范围圈、集结点pending来源摘要、选择/反潜/声呐信息、海岸资产职责/计入状态、海岸任务摘要、声呐覆盖圈、任务、跨页命令高亮、支援按钮缺资产/资金提示、目标面板资产提示、领域化小地图符号/选择外圈/相机框"]
@@ -147,3 +151,4 @@ flowchart TD
 - v5.20：任务面板在既有标题与详情下方增加固定六阶段进度带；`updateHUD()` 从 `completedMissionStages` 和 `activeMissionStage()` 直接刷新已完成、当前、未开始的节点及连接线，`SKRM` 清空任务集合后自然恢复初始状态，不改变任务规则、奖励或战争迷雾。
 - v5.21：Battleship / Coastal Battery 视觉齐射保留确定性双 lane，普通播放给第二条 lane 增加 0.045 秒错列，并让运行时成对水柱按攻击者来袭方向错位与旋转；capture-only persistent 仍一次生成完整效果，未传攻击者位置的直接 helper 保留 entity-id fallback，不改变 fire 结算、伤害、迷雾或 24 次探针。
 - v5.22：Carrier 对水面目标的既有三机 / 双反舰弹 strike 在统一 `showCarrierStrikeImpact(...)` 中增加按来袭方向旋转的紧凑近舷水溅射和较小近失回响，保留舰体命中；普通节点复用既有清理，persistent capture 一次创建完整效果，移除 carrier fixture 的重复手动水柱，不改变 fire 结算或 24 次探针。
+- v5.23：Helicopter 既有 `showHelicopterRocketSalvo(...)` 共享入口按 `updateAirShadow(...)` 世界偏移在有效 `.sand` / `.oil` 投影锚点创建低透明压缩 rotor-wash 尘环、两侧短尘流和固定颗粒；普通 root 约 0.52 秒统一淡出移除，persistent capture 立即保留完整构图，不改变火箭、伤害、迷雾、AI 或 24 次探针。
