@@ -10021,6 +10021,14 @@ final class GameScene: SKScene {
                         targetKind: target.kind,
                         faction: attacker.faction
                     )
+                } else if target.kind.domain == .air {
+                    if target.faction == .player || isKnownToFaction(target, observer: .player) {
+                        showCarrierAirIntercept(
+                            from: attacker.node.position,
+                            to: target.node.position,
+                            faction: attacker.faction
+                        )
+                    }
                 } else {
                     showCarrierDeckPulse(at: attacker.node.position, faction: attacker.faction, label: "CV STRIKE")
                     showCarrierCraftFlight(
@@ -10145,7 +10153,7 @@ final class GameScene: SKScene {
 
     private func shouldShowAirMissileImpact(attacker: GameEntity, target: GameEntity) -> Bool {
         guard target.kind.domain == .air,
-              attacker.kind == .fighter || attacker.kind == .samSite || attacker.kind == .aaTruck
+              attacker.kind == .fighter || attacker.kind == .samSite || attacker.kind == .aaTruck || attacker.kind == .carrier
         else { return false }
         return target.faction == .player || isKnownToFaction(target, observer: .player)
     }
@@ -14377,6 +14385,28 @@ final class GameScene: SKScene {
                 .removeFromParent()
             ]))
         }
+    }
+
+    private func showCarrierAirIntercept(from start: CGPoint, to end: CGPoint, faction: Faction) {
+        let direction = (end - start).normalized
+        guard direction.length > 0.001 else { return }
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+
+        showCarrierDeckPulse(at: start, faction: faction, label: "CV INTERCEPT")
+        showCarrierCraftFlight(
+            kind: .fighter,
+            from: start + CGPoint(x: 0, y: 20),
+            to: end + CGPoint(x: 0, y: 18),
+            faction: faction,
+            duration: 0.34,
+            scale: 0.62
+        )
+        showGuidedMissileTrail(
+            from: start + direction * 42 + normal * 7,
+            to: end - direction * 16 + normal * 4,
+            kind: .fighter,
+            color: carrierLaunchColor(for: faction)
+        )
     }
 
     private func quadraticPoint(
