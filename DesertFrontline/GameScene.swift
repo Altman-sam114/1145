@@ -1633,20 +1633,95 @@ final class GameScene: SKScene {
 
         let hash = terrainDetailHash(for: tile)
         switch terrain {
-        case .sand, .oil:
-            let wetLineColor: UIColor
-            let highlightColor: UIColor
-            switch terrain {
-            case .sand:
-                wetLineColor = UIColor(red: 0.35, green: 0.46, blue: 0.42, alpha: 0.42)
-                highlightColor = UIColor(red: 0.70, green: 0.77, blue: 0.64, alpha: 0.30)
-            case .oil:
-                wetLineColor = UIColor(red: 0.28, green: 0.32, blue: 0.28, alpha: 0.42)
-                highlightColor = UIColor(red: 0.56, green: 0.59, blue: 0.47, alpha: 0.26)
-            default:
-                return
+        case .sand:
+            let wetLineColor = UIColor(red: 0.35, green: 0.46, blue: 0.42, alpha: 0.42)
+            let highlightColor = UIColor(red: 0.70, green: 0.77, blue: 0.64, alpha: 0.30)
+            for edge in edges {
+                let edgeHash = hash + edge.index * 31
+                let start = CGPoint(x: edge.start.x * 0.82, y: edge.start.y * 0.82)
+                let end = CGPoint(x: edge.end.x * 0.82, y: edge.end.y * 0.82)
+                let wetPath = CGMutablePath()
+                wetPath.move(to: start)
+                wetPath.addLine(to: end)
+
+                let wetLine = SKShapeNode(path: wetPath)
+                wetLine.position = center
+                wetLine.strokeColor = wetLineColor
+                wetLine.lineWidth = 2.2
+                wetLine.lineCap = .round
+                wetLine.zPosition = zPosition(for: center) + 0.24
+                mapNode.addChild(wetLine)
+
+                if edgeHash % 3 == 0 {
+                    let highlightStart = pointAlongShoreline(from: start, to: end, fraction: 0.20)
+                    let highlightEnd = pointAlongShoreline(from: start, to: end, fraction: 0.58)
+                    let highlightPath = CGMutablePath()
+                    highlightPath.move(to: highlightStart)
+                    highlightPath.addLine(to: highlightEnd)
+
+                    let highlight = SKShapeNode(path: highlightPath)
+                    highlight.position = center
+                    highlight.strokeColor = highlightColor
+                    highlight.lineWidth = 1.1
+                    highlight.lineCap = .round
+                    highlight.zPosition = zPosition(for: center) + 0.26
+                    mapNode.addChild(highlight)
+                }
             }
 
+            if let tideEdge = edges.first(where: { edge in
+                let edgeHash = hash + edge.index * 53
+                return edgeHash % 7 == 0
+            }) {
+                let edgeHash = hash + tideEdge.index * 53
+                let tideStart = CGPoint(x: tideEdge.start.x * 0.68, y: tideEdge.start.y * 0.68)
+                let tideEnd = CGPoint(x: tideEdge.end.x * 0.68, y: tideEdge.end.y * 0.68)
+                let startFraction = 0.18 + CGFloat((edgeHash / 7) % 4) * 0.03
+                let endFraction = startFraction + 0.28 + CGFloat((edgeHash / 11) % 3) * 0.035
+                let tidePath = CGMutablePath()
+                tidePath.move(to: pointAlongShoreline(from: tideStart, to: tideEnd, fraction: startFraction))
+                tidePath.addLine(to: pointAlongShoreline(from: tideStart, to: tideEnd, fraction: endFraction))
+
+                let tideMark = SKShapeNode(path: tidePath)
+                tideMark.position = center
+                tideMark.strokeColor = UIColor(red: 0.36, green: 0.41, blue: 0.34, alpha: 0.28)
+                tideMark.lineWidth = 1.4
+                tideMark.lineCap = .round
+                tideMark.zPosition = zPosition(for: center) + 0.22
+                mapNode.addChild(tideMark)
+            }
+
+            if let pebbleEdge = edges.first(where: { edge in
+                let edgeHash = hash + edge.index * 79
+                return edgeHash % 9 == 0
+            }) {
+                let edgeHash = hash + pebbleEdge.index * 79
+                let pebbleStart = CGPoint(x: pebbleEdge.start.x * 0.66, y: pebbleEdge.start.y * 0.66)
+                let pebbleEnd = CGPoint(x: pebbleEdge.end.x * 0.66, y: pebbleEdge.end.y * 0.66)
+                let edgePoint = pointAlongShoreline(
+                    from: pebbleStart,
+                    to: pebbleEnd,
+                    fraction: 0.30 + CGFloat((edgeHash / 13) % 5) * 0.08
+                )
+                let inward = CGPoint(x: -edgePoint.x * 0.12, y: -edgePoint.y * 0.12)
+                let localOffset = CGPoint(
+                    x: CGFloat((edgeHash / 17) % 5 - 2) * 0.65,
+                    y: CGFloat((edgeHash / 23) % 5 - 2) * 0.35
+                )
+                let pebble = SKShapeNode(ellipseOf: CGSize(
+                    width: 3.8 + CGFloat(edgeHash % 3) * 0.45,
+                    height: 1.8 + CGFloat((edgeHash / 3) % 3) * 0.25
+                ))
+                pebble.position = center + edgePoint + inward + localOffset
+                pebble.fillColor = UIColor(red: 0.43, green: 0.37, blue: 0.27, alpha: 0.34)
+                pebble.strokeColor = .clear
+                pebble.zRotation = CGFloat((edgeHash % 5) - 2) * 0.12
+                pebble.zPosition = zPosition(for: center) + 0.20
+                mapNode.addChild(pebble)
+            }
+        case .oil:
+            let wetLineColor = UIColor(red: 0.28, green: 0.32, blue: 0.28, alpha: 0.42)
+            let highlightColor = UIColor(red: 0.56, green: 0.59, blue: 0.47, alpha: 0.26)
             for edge in edges {
                 let edgeHash = hash + edge.index * 31
                 let start = CGPoint(x: edge.start.x * 0.82, y: edge.start.y * 0.82)

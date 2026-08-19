@@ -2,7 +2,7 @@
 
 本文用 Mermaid 图把 `md/flow/flow.md` 的核心逻辑可视化。每张图前都有中文读图说明，便于人工快速检查当前项目运行链路。
 
-当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；HUD 选择面板在写入行文本时使用集中式海空短码与有界单行 fitting，小地图海军/空军 blip 另增加已知朝向与选中交战微齿；地图构建还沿共享四方向岸线边表为 `.sand` / `.oil` 增加低对比湿沙唇、为水邻 `.ridge` 稀疏增加暗色礁石边缘，海军双炮线加入短暂方向化错列与成对水柱反馈，Carrier 对已知 `.air` 目标的既有攻击再使用短时 `CV INTERCEPT` 舰载机、导引光迹与空中命中环，节点只进入 `mapNode` / `effectsLayer` 并继续受 `fogLayer` 覆盖；这些节点仍沿用现有迷雾、选择、告警和死亡清理链路，所有新增 cue 都不改攻击、移动或生产规则。
+当前版本视觉增量：实体配置阶段创建旗杆阵营旗标旁的六格竖直耐久塔，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；HUD 选择面板在写入行文本时使用集中式海空短码与有界单行 fitting，小地图海军/空军 blip 另增加已知朝向与选中交战微齿；地图构建还沿共享四方向岸线边表为 `.sand` / `.oil` 增加低对比湿沙唇，其中 `.sand` 水邻 tile 按 `terrainDetailHash(for:)` 与 `edge.index` 稀疏增加至多一条短平行潮痕和一个小漂砾，为水邻 `.ridge` 稀疏增加暗色礁石边缘，海军双炮线加入短暂方向化错列与成对水柱反馈，Carrier 对已知 `.air` 目标的既有攻击再使用短时 `CV INTERCEPT` 舰载机、导引光迹与空中命中环，节点只进入 `mapNode` / `effectsLayer` 并继续受 `fogLayer` 覆盖；这些节点仍沿用现有迷雾、选择、告警和死亡清理链路，所有新增 cue 都不改攻击、移动或生产规则。
 
 Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界偏移，在有效 `.sand` / `.oil` 投影锚点经 `tile(at:)` / `terrain(at:)` 生成低透明压缩 rotor-wash 尘环、两侧短尘流和固定颗粒；普通 root 约 0.52 秒统一清理，persistent capture 立即保留完整构图，road / ridge / water / 无效点和未知敌方来源不进入该 effects-layer 视觉链。
 

@@ -32,6 +32,8 @@ v5.23 目视口径：复用现有 24 张 PNG，不新增 launch 或 capture。`s
 
 v5.24 目视口径：复用现有 24 张 PNG，不新增 launch 或 capture。`simulator-map-terrain.png` 核对移动海军静态构图中的舰艏 V 形浅水冲洗、Battleship 较窄 / Carrier 较宽的近段尾流、远段递减泡沫边和舰艉推进器扰流，不遮挡舰体、舰炮、航母甲板、舰载机、岸线、HUD 或小地图；`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-coastal-battery.png` 核对新航迹与双炮线、舰载机 strike、岸防炮、水柱和目标信息同时可读；`simulator-naval-damage.png` 核对战损 Battleship、Submarine、ASW HIT、水沫、气泡与低透明潜艇扰动共存，Submarine 不出现明亮长距离尾流。`simulator-hud-naval.png`、`simulator-screenshot.png`、`simulator-command-*.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 及其余截图核对非海军场景无航迹污染、停止 / 未知敌方实体无残留节点、24 张 PNG 尺寸 / RGBA / 哈希和日志正常。代码审阅确认几何只在 `configureNavalWakeNode(for:)` 预创建，`updateNavalWake(...)` 不分配节点，root 仍挂实体树背景层并沿用 `animateIdle`、fog、死亡和 `SKRM` 清理；固定 capture 只能证明静态层级与 generic build / 启动稳定性，不能外推真实连续航行、触控或长时间战斗。
 
+v5.27 目视口径：复用现有 24 张 PNG，不新增 launch 或 capture。`simulator-map-terrain.png` 核对真实水邻 `.sand` tile 上低密度、断续、短小且与岸线平行的潮痕，以及最多一个靠近湿边的小低对比漂砾；潮痕不连成边框，漂砾不变成大石，不跨 tile 接缝，不遮挡道路、沙丘、泡沫、海岸实体或小地图。`simulator-coastal-battery.png`、`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-naval-damage.png` 核对岸防炮、舰体、舰炮 / 舰载机、命中反馈、战损、Submarine / ASW HIT、水沫和迷雾边界优先可读；其余 20 张 PNG 核对 HUD、生产、支援、陆空模型、命令 marker 和非海岸地图无新装饰残留。代码审阅确认潮痕 / 漂砾只在 `addLandShorelineDetails(...)` 的 `.sand` 分支使用 `landShorelineEdges(for:)`、`terrainDetailHash(for:)` 与 `edge.index` 确定性选择，每个 tile 各自最多一条 / 一个，新节点只挂 `mapNode` 并随 `drawMap()` / `SKRM` 清理；oil / ridge / road 旧分支、Terrain / 通行 / AI / 战斗 / fog 状态 / 小地图 / CI fixture 不变。固定 PNG、generic build、launch/PID 和日志只能证明固定窗口静态层级与回归，不能外推全部 seed、动态重开、实时移动、真实触控、AI、连续战斗或真机性能。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。
