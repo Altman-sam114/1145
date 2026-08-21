@@ -3946,6 +3946,26 @@ final class GameScene: SKScene {
             runway.zPosition = 3
             base.addChild(runway)
 
+            let deckWorkRailOffsets: [CGFloat] = [-3.0, -1.2]
+            for offset in deckWorkRailOffsets {
+                let workRail = SKShapeNode(rectOf: CGSize(width: 34, height: 0.7), cornerRadius: 0.35)
+                workRail.position = CGPoint(x: -4, y: -2 + offset)
+                workRail.fillColor = UIColor(white: 0.68, alpha: 0.52)
+                workRail.strokeColor = .clear
+                workRail.zRotation = 0.18
+                workRail.zPosition = 4
+                base.addChild(workRail)
+            }
+
+            let safetyLineX: CGFloat = 9
+            let safetyLine = SKShapeNode(rectOf: CGSize(width: 0.9, height: 6.1), cornerRadius: 0.45)
+            safetyLine.position = CGPoint(x: safetyLineX, y: safetyLineX * 0.18 - 2)
+            safetyLine.fillColor = UIColor(white: 0.78, alpha: 0.48)
+            safetyLine.strokeColor = .clear
+            safetyLine.zRotation = 0.18
+            safetyLine.zPosition = 4
+            base.addChild(safetyLine)
+
             let dashOffsets: [CGFloat] = [-21, -7, 7, 21]
             for x in dashOffsets {
                 let dash = SKShapeNode(rectOf: CGSize(width: 7, height: 1.4), cornerRadius: 0.7)

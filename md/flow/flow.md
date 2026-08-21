@@ -54,6 +54,8 @@
 
 Carrier 实体在同一实体子树一次性预创建 `carrierDeckAircraftNode` 与三个固定停机位根节点，每个位包含低透明深色甲板底、微型舰载机轮廓和可选琥珀队列条；这些是 SpriteKit 视觉节点，不是新的飞机实体或生产状态。`refreshCarrierDeckAircraftVisuals()` 只读既有 `boundCarrierGuardWing(for:)` 与该航母的 `BuildOrder`：Carrier HOLD 已绑定的最多三个 HEL/JET 停机位提高阵营描边 / 机体亮度，队列中的 HEL/JET 显示琥珀条，空位保持低透明暗色；Carrier 未完工、死亡或被当前迷雾隐藏时整组隐藏。选中 Carrier 的紧凑面板文案为 `Deck 3PAD H/J`，不改变航母生产、护航绑定、起飞特效、攻击、AI、迷雾和三机 strike 链路；节点沿用实体镜像、移动、战损、死亡清理和 skirmish 重开。
 
+Carrier 的静态甲板作业轨和安全/拦阻边线也在同一 `configureEntityNode(...) -> addNavalUnitBody(...) -> entity base` 阶段一次性创建；它们是低对比 SpriteKit shape，只挂实体树，随实体移动、镜像、战争迷雾、死亡和 `SKRM` 重开，不进入 `effectsLayer`，不新增运行态状态、每帧更新、战斗或生产数据流。
+
 运行态实体：id、kind、faction、hp、destination、path、attackTarget、holdPosition、`guardAnchorCarrierID`、attackMoveDestination、attackTimer、revealedUntil、captureProgress、施工进度、rallyPoint、`veterancyXP`、`killCount` 和各类 SpriteKit 节点。海军实体持有预创建的 `navalWakeNode`，移动更新按实际方向旋转并显示双侧冲洗线、泡沫线和中心扰流，停止时隐藏；航迹作为实体子节点跟随实体可见性，因此敌方实体被迷雾隐藏时不会留下独立效果泄露位置，也不会按帧增加节点。`guardAnchorCarrierID` 用于 HEL/JET 记录当前 Carrier HOLD guard wing 归属；当绑定 Carrier 仍 HOLD 时，移动更新会把该 HEL/JET 的 `holdPosition` 维护到 Carrier 附近稳定站位，战斗目标获取会优先考虑 Carrier 近域内该翼队已知且可攻击的威胁，Carrier HOLD HUD 会用紧凑 `GW ... Hn/Jn Cn` 格式只读显示同一口径的 HEL/JET 组成、去重接触数，并在非零时追加 Air / Sea / Sub / Ground / Mix 类型摘要、`Tgt XXX` 优先接触短码和当前合法交战翼队数 `Eng n`，选中被有效 anchor 绑定的 HEL/JET 时也会只读显示 `CV GUARD`、距 anchor Carrier 的近似距离，以及当前存在合法 Carrier guard contact 时的 `Tgt XXX Air/Sea/Sub/Ground` 优先目标摘要；选中这些 HEL/JET 时会在 anchor Carrier 上显示基于 `carrierGuardThreatRadius` 的只读范围圈，选中玩家 HOLD Carrier 时即使没有绑定翼队也显示该 Carrier 自身同一范围圈，继续复用普通 HOLD 回位、警戒、迷雾和 `canAttack` 链路，不新增巡逻、完整 CAP、截击状态机或战斗加成。
 
 空军实体另持有预创建的 `airShadowNode`：Helicopter 使用机身、尾梁和旋翼投影，Fighter 使用缩小 jet 轮廓；移动更新按方向调整投影偏移和透明度。投影是实体子节点，会随敌方实体迷雾隐藏，不产生独立残留节点或位置泄露。

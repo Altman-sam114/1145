@@ -58,6 +58,8 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - Restartable skirmishes that cycle through map variants and reset the match state.
 - Victory and defeat conditions based on HQ destruction.
 
+- Carrier 飞行甲板的静态 SpriteKit 模型在既有跑道、舰岛和三个停机位之外包含两条低对比内部作业轨与一段短安全/拦阻边线；它们只是随 Carrier 实体生命周期显示的模型细节，不代表动态弹射、拦阻系统或新的生产机制。
+
 ## Controls
 
 - Tap `TACT`, `BUILD`, `AIR`, `SEA`, or `SUP` to switch the single-row command bar: tactical orders and HQ focus; land production and structure placement; aircraft production; naval production; or support powers plus AI difficulty and skirmish restart.

@@ -10,6 +10,8 @@ Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界�
 
 命令条保留视觉按钮尺寸与页面 / action 映射；当前可见页签和动作另有按固定顺序查询的、互不重叠且至少 44pt 的语义 hit frame。按钮间隙及两端安全范围只在命令条实际行内由 HUD inert guard 消费，不能穿透 minimap / 世界或清除 pending。
 
+Carrier 的甲板作业轨和安全/拦阻边线属于 `HealthVisual -> Render` 的实体静态模型子树：它们在 Carrier 创建时一次性挂入 `base`，不进入 `effectsLayer`，不增加玩法分支，并沿用实体移动、镜像、fog、死亡和 `SKRM` 生命周期。
+
 ## 1. 项目核心逻辑图
 
 读图说明：从 App 启动开始，SwiftUI 只负责承载 SpriteKit；所有游戏运行态进入 `GameScene`。每帧 update 推进各系统，最后更新节点渲染、HUD、小地图和胜负状态。
