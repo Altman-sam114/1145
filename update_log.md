@@ -5840,3 +5840,31 @@
 
 - 固定 24 张 PNG、generic iOS build、launch/PID、JUnit、manifest、日志、ZIP 和 result bundle 只能证明本次实现提交的静态模型层级、构建、artifact 完整性与固定场景启动稳定性；不能证明真实触控、动态生产 / 队列、fog 进出、实体死亡、`SKRM` 重开、连续战斗、Reduce Motion、全部 seed 或真机长期性能。
 - 本记录提交并 push 后仍须下载并核对该日志提交对应的最新 `origin/main` v5.29 Actions artifact；第二个 artifact 通过前不宣称 v5.29 正式闭环完成。当前没有独立 XCTest target，总目标仍未完成。
+
+### v5.30 / 战斗机对空双导弹反馈云端验收
+
+日期：2026-08-23
+
+验收结论：实现提交通过；正式日志闭环待本记录提交后的第二个 artifact 复核
+
+- `GameScene.swift` 将 Fighter -> `.air` 的来源视觉收口到窄 helper `showFighterAirMissileSalvo(...)`：从两个对称翼下点调用两次既有 `showGuidedMissileTrail(...)`，第二枚纯视觉导弹延迟 `0.055s`；`prepareCIAirCaptureScene()` 复用同一 helper 的 `persistent=true` 路径，一次生成完整双轨 / 双弹固定构图。
+- 运行时同时要求 `attackerKnownToPlayer` 成立，且空中目标为玩家单位或通过 `isKnownToFaction(..., observer: .player)` 对玩家已知；任一 fog 认知门槛失败均不创建 Fighter 对空来源轨迹，也不会回落到 generic 单弹。未知 Red Fighter 不会通过弹体或烟 / 光轨泄露来源。
+- 双导弹只增加视觉节点，不调用 `fire(...)`、不写 HP 或创建第二命中；统一攻击链仍只执行一次 `target.hp -=`、最多一次 damage floater、一次 `showAirMissileImpact(...)` 以及一次击杀 / XP 判定。底层 `showProjectile(...)`、`showGuidedMissileTrail(...)` 和 SAM Site、AA Truck、Carrier intercept、Fighter 对水面 / 建筑 / Submarine、Helicopter 路径均未修改。
+- 实现提交同步更新了 `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md` 和 `md/test/test.md`；用户未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改、`md/unity分析/` 和 v5.23–v5.30 未跟踪提示词均保持未触碰。
+
+验证结果：
+
+- 实现提交：`fb52f048c4a41779cf59eeb05e99a66c36dc2249`，commit subject 为 `v5.30: 战斗机对空双导弹反馈`；验收时本地 `main`、`origin/main`、GitHub `main` 和 Actions head 均为该 SHA，run actor / triggering actor 与活动 GitHub 账号均为 `Altman-sam114`。
+- GitHub Actions run：`32630247908`，attempt `1`，job `97171830219`，conclusion `success`；artifact ID `9491038664`，名称 `desert-frontline-ci-v5.30-main-fb52f048c4a4-run32630247908-attempt1`，API 大小 `33119247` bytes。解压内容缓存于 `/private/tmp/desert-frontline-c-review-32630247908/extracted/`，官方未加密 ZIP 保留于 `/private/tmp/desert-frontline-c-review-32630247908/artifact-9491038664.zip`；GitHub API digest 与本地 ZIP SHA-256 均为 `70d247348d7aa0641704c9e176beb46d921800ff50145a6dbd4eb924bcf67b9d`，`unzip -t` 通过，共 40 个条目，artifact 未删除。
+- manifest 与 `main`、`origin/main`、Actions head 完全匹配，记录 `branch=main`、`commitSha=fb52f048c4a41779cf59eeb05e99a66c36dc2249`、`runId=32630247908`、`runAttempt=1`、`version=v5.30`、`destination=generic/platform=iOS`；static checks、project lint、generic iOS build、simulator launch 均为 `success`，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 准确记录 4 项 CI 检查、0 failures，另有一个 `xctest` testcase 因当前无 XCTest target skipped，manifest 因此记录 `testOutcome=skipped`，不将其表述为“全部测试通过”。
+- `ci-artifact-manifest.json`、`junit.xml`、`ci-failure-summary.md`、`xcodebuild.log`、`simulator-launch.log`、`simulator-app.log` 和 `DesertFrontline.xcresult` 均存在；result bundle 约 `40K`，`Info.plist` 可读且 lint 通过，根数据文件非空。验收机没有可用的 `xcresulttool`，因此未对 result bundle 做本地语义展开；该环境限制不改变云端 build、manifest、JUnit 和日志事实。
+- simulator launch log 记录 24 次独立启动、24 张截图以及每次截图后对应 PID 仍存活。24 张 PNG 全部为 `1206x2622`、8-bit RGBA，24 个 SHA-256 均唯一，文件大小范围为 `1092432–1635494` bytes；逐张目视未见白屏、空图或明显回归。
+- 主证据 `simulator-hud-air.png`、`simulator-screenshot.png`、`simulator-command-move.png`、`simulator-command-attack-move.png` 和 `simulator-command-attack-target.png` 均可辨认 Blue Fighter -> Red Fighter 的两个分离翼下发射点、两条 guided trail 与两枚白色弹体，同时只显示一组同心 air impact、一个 `-24` 伤害飘字和单个既有爆炸样本；Fighter / Helicopter、投影、FOCUS / ATK、耐久塔、选择面板、HUD 和小地图仍可读。
+- `simulator-fighter-strike.png` 保持 Fighter -> structure 的既有双曲线 surface strike；`simulator-mobile-aa.png`、`simulator-carrier-strike.png`、`simulator-naval-salvo.png`、`simulator-coastal-battery.png`、`simulator-naval-damage.png` 以及其余截图未见 Fighter-air 双弹污染 AA Truck、Carrier、SAM、海战、岸防、Submarine / ASW、Helicopter、陆战、地图、HUD 或 fog 层级。
+- app / launch 日志含既有系统噪声：14 条 UIKit `focusItemsInRect` Error 级提示、18 条 SpriteKit `SKView: no drawables available` 提示，以及 AppIntents metadata warning 和 `getpwuid_r` 提示；未发现 crash、fatal error、SIGABRT、watchdog、未捕获异常、进程提前退出或截图后 PID 失活。
+- 本轮按规则未运行本地 `xcodebuild`、Simulator、`simctl` 或本地玩法探针；只进行了实际 commit diff、云端 run / artifact、官方 ZIP、manifest、JUnit、build / launch / app 日志、result bundle 结构、24 PNG 解码 / 哈希 / 目视和文档轻量检查。
+
+证据边界与遗留事项：
+
+- 固定 `persistent` PNG、generic iOS build、launch/PID、JUnit、manifest、日志、ZIP 和 result bundle 只能证明本次实现提交的构建、artifact 完整性、固定窗口静态双弹构图与启动稳定性；不能证明普通节点的运行时清理、真实 `0.055s` 错发时序、未知 Red Fighter 动态 fog 进出、Reduce Motion、真实触控、连续密集空战、全部动态战斗状态或真机性能。
+- 本记录提交并 push 后仍须下载并核对该日志提交对应的最新 `origin/main` v5.30 Actions artifact，确认新 run head、manifest、build、JUnit、ZIP、24 张 PNG、24 次 launch / PID 和日志仍通过；第二个 artifact 验收通过前不得宣称 v5.30 正式闭环完成。当前没有独立 XCTest target，总目标仍未完成。
