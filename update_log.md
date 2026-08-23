@@ -5868,3 +5868,21 @@
 
 - 固定 `persistent` PNG、generic iOS build、launch/PID、JUnit、manifest、日志、ZIP 和 result bundle 只能证明本次实现提交的构建、artifact 完整性、固定窗口静态双弹构图与启动稳定性；不能证明普通节点的运行时清理、真实 `0.055s` 错发时序、未知 Red Fighter 动态 fog 进出、Reduce Motion、真实触控、连续密集空战、全部动态战斗状态或真机性能。
 - 本记录提交并 push 后仍须下载并核对该日志提交对应的最新 `origin/main` v5.30 Actions artifact，确认新 run head、manifest、build、JUnit、ZIP、24 张 PNG、24 次 launch / PID 和日志仍通过；第二个 artifact 验收通过前不得宣称 v5.30 正式闭环完成。当前没有独立 XCTest target，总目标仍未完成。
+
+### v5.31 / 潜艇鱼雷航迹与水面命中反馈云端验收
+
+日期：2026-08-23
+
+验收结论：实现提交及云端 artifact 通过；本条记录作为正式日志 closure。
+
+- 实现提交：`721ae75ed9dd199f97963cd440dcf84c67682d3a`，commit subject 为 `v5.31: 潜艇鱼雷航迹与水面命中反馈`；验收确认活动 GitHub 账号为 `Altman-sam114`，分支为 `main`，远端为 `origin/main`。
+- GitHub Actions run：`32641810996`，attempt `1`，job `97199945266`，head 为实现 SHA，conclusion `success`。artifact ID：`9493924850`；名称：`desert-frontline-ci-v5.31-main-721ae75ed9dd-run32641810996-attempt1`；缓存路径：`/private/tmp/desert-frontline-c-review-32641810996/`。GitHub API digest 与官方 ZIP 本地 SHA-256 均为 `09d41afdf5d64a2d67ecb8089ff983d2a5f5700fe483070293feda1299d64b65`；ZIP `unzip -t` 通过，artifact 保留未删除。
+- `ci-artifact-manifest.json` 准确记录 `version=v5.31`、`branch=main`、实现 `commitSha`、`runId=32641810996`、`runAttempt=1`、`destination=generic/platform=iOS`；static checks、project lint、generic iOS build、simulator launch 均为 `success`，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 为 4 项 CI 检查、0 failures，XCTest 因项目无 XCTest target 准确记录为 skipped；failure summary、build / launch / app logs 与 `DesertFrontline.xcresult` 均存在。
+- simulator launch artifact 记录 24 次独立启动及每次截图后的 PID 存活检查。24 张 PNG 均为 `1206x2622`、原始 IHDR color type `6`（8-bit RGBA），24 个 SHA-256 均唯一且文件非空；固定截图未见白屏、空图或系统通知遮挡。
+- 主图 `simulator-naval-damage.png` 目视确认 Red Sub -> Blue BB 单鱼雷、短窄低透明扰流 / 气泡、一次方向化水面命中与舰体命中，同时保留 Blue BB 战损、玩家已知 Red Sub `CONTACT` 及 Blue BB -> Red Sub `ASW HIT`。`simulator-naval-salvo.png`、`simulator-carrier-strike.png`、`simulator-coastal-battery.png`、`simulator-fighter-strike.png`、`simulator-helicopter-salvo.png` 及其余截图未见鱼雷污染。
+- 源码边界审阅确认 `Submarine -> naval` 视觉分支受攻击者 / 目标玩家认知门槛约束，未知潜艇不回落 generic tracer；fixture 通过既有 sonar / fog / `isKnownToFaction(...)` 合法性确认且不手写 `revealedUntil`。水面舰使用一次 `showNavalWaterImpact` 与一次 `showNavalHullStrike`，sub-vs-sub 不进入水面舰反馈；统一攻击链仍只有一次 HP、damage floater、impact 与 kill-XP 结算。
+
+证据边界与遗留事项：
+
+- 固定 24 张 PNG、generic iOS build、launch/PID、JUnit、manifest、日志、ZIP 和 result bundle 只能证明本次实现的静态 capture、构建、artifact 完整性与固定场景启动稳定性；不能证明普通运行时节点清理、动态 sonar / fog 进出、真实触控、连续海战、实体死亡 / 重开 skirmish、Reduce Motion、全部 seed 或真机长期性能。
+- 本轮未运行本地 `xcodebuild`、Simulator、`simctl` 或玩法探针；除本条 `update_log.md` closure 外未修改 GameScene、README、flow、flowchart、test、workflow、prompt、project.pbxproj 或 `md/unity分析/`。
