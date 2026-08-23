@@ -14,6 +14,8 @@ Carrier 的甲板作业轨和安全/拦阻边线属于 `HealthVisual -> Render` 
 
 Fighter 对 `.air` 的视觉分派由 `showFighterAirMissileSalvo(...)` 从两个翼下点复用两次既有 guided trail，第二枚约错后 0.055 秒；只有攻击者对玩家已知且目标为玩家单位或玩家已知时才创建，门槛失败不回落通用单弹。双弹只属于 `effectsLayer` 视觉，统一 `fire(...)` 仍保持一次 HP、一次伤害飘字和一次空中命中反馈。
 
+Submarine 对 naval 的视觉分派先经过“攻击者为玩家 / 玩家已知且目标为玩家 / 玩家已知”门槛：通过后显示单鱼雷与短窄低透明扰流 / 气泡，水面舰再显示一次方向化水柱和一次舰体命中；门槛失败不回落通用 tracer，sub-vs-sub 不显示水面舰水柱。全部节点只进入 `effectsLayer`，普通模式有限清理、persistent 只供既有 `naval-damage` 构图，统一 `fire(...)` 仍只结算一次 HP / floater / impact / kill XP，sonar / `revealedUntil` / CONTACT / ASW / fog 保持原链路。
+
 ## 1. 项目核心逻辑图
 
 读图说明：从 App 启动开始，SwiftUI 只负责承载 SpriteKit；所有游戏运行态进入 `GameScene`。每帧 update 推进各系统，最后更新节点渲染、HUD、小地图和胜负状态。
@@ -31,6 +33,8 @@ flowchart TD
   Loop --> Combat["战斗 / 维修\n单选 Blue HMV/TNK/ART/HEL/JET 显示 attackRange 只读陆空射程椭圆，多选/AA/SAM/Mechanic/结构/海军/pending 隐藏；合法主目标/Engaged/Ready/Wounded/Critical只读态势、已知来袭攻击者单次快照/IN方向标、共享FOCUS目标百分比/分段血条、未完工攻击结构禁火、SAM/AA 防空与选中空军已知覆盖威胁圈/顶标/摘要、岸防反舰、目标搜索、Carrier guard wing近域威胁优先、Mechanic自动维修双层束/目标十字/双方已知过滤、有效伤害、Artillery已知炮位炮口焰/烟尘/炮线、玩家可知 Fighter 对空双翼下错发导弹/单次命中、其他空战导弹烟迹/弹体/命中环、已知 Carrier 三机错列俯冲/双反舰弹/方向化近舷水溅射与近失回响/舰体命中且单次伤害、已知战列舰/岸防双发齐射、岸防双炮后坐/炮床冲击/岸边尘浪与可见水面主副水柱/舰体命中、已知潜艇 direct-fire 双压力环/水沫/气泡 ASW HIT、潜艇局部艏艉/潜望镜/声呐穹顶细节与已知接触 cue、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
   Loop --> CarrierAirVisual["Carrier 对空纯视觉\nCV INTERCEPT 甲板脉冲 / 舰载战斗机 / 导引光迹 / 空中命中环\n只在既有 fire 已接受且目标已知时创建短生命周期 effectsLayer 节点"]
   CarrierAirVisual --> Render
+  Loop --> SubmarineTorpedoVisual["Submarine -> naval 纯视觉\n玩家认知门槛 -> 单鱼雷 / 窄扰流气泡\n水面舰一次方向化水柱 + 舰体命中；未知来源无 tracer"]
+  SubmarineTorpedoVisual --> Render
   Loop --> HealthVisual["实体耐久与甲板视觉\nconfigureEntityNode 一次性创建旗杆旗标、六格竖直耐久塔与 Carrier 三个停机位\nupdateHealthBar 以 hp/maxHP ratio 更新填充格；refreshCarrierDeckAircraftVisuals 只读绑定翼队/BuildOrder\n旧水平实体生命条隐藏；节点随实体镜像、移动、维修、战损与迷雾"]
   HealthVisual --> Render
   Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、已知潜艇压力补 ASW、合法认知 SCAN 巡扫、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、海岸目标权重、跳过不可生产兵种、支援、混编主攻波次、低血单位撤退回修、受损老兵保护、空闲Carrier警戒翼队、高价值海军护航门槛、attack-move 波次"]
@@ -168,3 +172,4 @@ flowchart TD
 - v5.25：Carrier 对已接受且玩家可知的 `.air` 目标增加短时 `CV INTERCEPT` 甲板脉冲、舰载战斗机拦截飞行、导引光迹与空中命中环；复用 `effectsLayer` 和现有清理链路，不改变 fire 伤害、范围、冷却、AI、护航、生产、迷雾或 24 次探针。
 - v5.26：命令条视觉 frame 与语义 hit frame 分离，当前页签 / 动作使用固定顺序、互不重叠且至少 44pt 的命中区；命令条 gap 与两端安全范围由 HUD inert guard 消费，不穿透 minimap / 世界、不清除 pending，也不新增探针。
 - v5.30：Fighter 对 `.air` 使用同一窄 helper 从双翼下点复用两次 guided trail，第二枚约错后 0.055 秒；运行时同时要求攻击者玩家可知与目标为玩家 / 玩家已知，门槛失败不回落通用单弹，仍只结算一次伤害 / 飘字 / 空中命中，并复用现有 24 次探针。
+- v5.31：Submarine 对 naval 使用互斥的玩家认知门槛；通过后显示单鱼雷与短窄扰流 / 气泡，水面舰只显示一次方向化水柱和一次舰体命中，未知来源不回落 generic tracer，sub-vs-sub 无水面舰水柱；统一结算和 sonar / `revealedUntil` / CONTACT / ASW / fog 不变，复用现有 24 次探针。

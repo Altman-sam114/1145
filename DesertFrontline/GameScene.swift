@@ -9817,6 +9817,17 @@ final class GameScene: SKScene {
               isKnownToFaction(enemySubmarine, observer: .player)
         else { return }
         refreshSelection()
+        showSubmarineTorpedoRun(
+            from: enemySubmarine.node.position,
+            to: playerBattleship.node.position,
+            persistent: true
+        )
+        showSubmarineSurfaceImpact(
+            target: playerBattleship,
+            faction: .enemy,
+            incomingFrom: enemySubmarine.node.position,
+            persistent: true
+        )
         showAntiSubmarineHit(
             at: enemySubmarine.node.position,
             faction: .player,
@@ -10233,7 +10244,16 @@ final class GameScene: SKScene {
         }
 
         let attackerKnownToPlayer = attacker.faction == .player || isKnownToFaction(attacker, observer: .player)
-        if attacker.kind == .carrier {
+        let targetKnownToPlayer = target.faction == .player || isKnownToFaction(target, observer: .player)
+        let submarineNavalTarget = attacker.kind == .submarine && target.kind.domain == .naval
+        if submarineNavalTarget {
+            if attackerKnownToPlayer && targetKnownToPlayer {
+                showSubmarineTorpedoRun(
+                    from: attacker.node.position,
+                    to: target.node.position
+                )
+            }
+        } else if attacker.kind == .carrier {
             if attackerKnownToPlayer {
                 if target.kind.domain == .naval {
                     launchCarrierWing(
@@ -10243,7 +10263,7 @@ final class GameScene: SKScene {
                         faction: attacker.faction
                     )
                 } else if target.kind.domain == .air {
-                    if target.faction == .player || isKnownToFaction(target, observer: .player) {
+                    if targetKnownToPlayer {
                         showCarrierAirIntercept(
                             from: attacker.node.position,
                             to: target.node.position,
@@ -10295,8 +10315,7 @@ final class GameScene: SKScene {
                     )
                 }
             } else if fighterAirMissileTarget {
-                if attackerKnownToPlayer &&
-                    (target.faction == .player || isKnownToFaction(target, observer: .player)) {
+                if attackerKnownToPlayer && targetKnownToPlayer {
                     showFighterAirMissileSalvo(
                         from: attacker.node.position,
                         to: target.node.position
@@ -10341,7 +10360,16 @@ final class GameScene: SKScene {
         if showASWHit {
             showAntiSubmarineHit(at: target.node.position, faction: attacker.faction)
         }
-        if shouldShowNavalWaterImpact(attacker: attacker, target: target) {
+        if submarineNavalTarget &&
+            target.kind != .submarine &&
+            attackerKnownToPlayer &&
+            targetKnownToPlayer {
+            showSubmarineSurfaceImpact(
+                target: target,
+                faction: attacker.faction,
+                incomingFrom: attacker.node.position
+            )
+        } else if shouldShowNavalWaterImpact(attacker: attacker, target: target) {
             if attacker.kind == .battleship || attacker.kind == .coastalBattery {
                 showNavalSalvoImpact(
                     target: target,
@@ -13504,6 +13532,82 @@ final class GameScene: SKScene {
         )
     }
 
+    private func showSubmarineTorpedoRun(
+        from start: CGPoint,
+        to end: CGPoint,
+        persistent: Bool = false
+    ) {
+        let direction = (end - start).normalized
+        guard direction.length > 0.01 else { return }
+
+        let launchPoint = start + direction * 22
+        let impactPoint = end - direction * 12
+        let travel = impactPoint - launchPoint
+        guard travel.length > 18 else { return }
+
+        let root = SKNode()
+        root.position = persistent ? launchPoint + travel * 0.58 : launchPoint
+        root.zRotation = atan2(direction.y, direction.x)
+        root.zPosition = 283
+
+        let disturbancePath = CGMutablePath()
+        disturbancePath.move(to: CGPoint(x: -72, y: 0))
+        disturbancePath.addQuadCurve(
+            to: CGPoint(x: -10, y: 0),
+            control: CGPoint(x: -40, y: 2.5)
+        )
+        let disturbance = SKShapeNode(path: disturbancePath)
+        disturbance.strokeColor = UIColor(red: 0.58, green: 0.92, blue: 1.0, alpha: 0.20)
+        disturbance.lineWidth = 4.2
+        disturbance.lineCap = .round
+        root.addChild(disturbance)
+
+        let wakeCore = SKShapeNode(path: disturbancePath)
+        wakeCore.strokeColor = UIColor.white.withAlphaComponent(0.22)
+        wakeCore.lineWidth = 1.1
+        wakeCore.lineCap = .round
+        wakeCore.zPosition = 1
+        root.addChild(wakeCore)
+
+        let bubbleOffsets = [
+            CGPoint(x: -62, y: -2.2), CGPoint(x: -51, y: 2.0),
+            CGPoint(x: -38, y: -1.6), CGPoint(x: -25, y: 1.8),
+            CGPoint(x: -15, y: -1.2)
+        ]
+        for (index, offset) in bubbleOffsets.enumerated() {
+            let bubble = SKShapeNode(circleOfRadius: index.isMultiple(of: 2) ? 1.7 : 1.2)
+            bubble.position = offset
+            bubble.fillColor = index.isMultiple(of: 2)
+                ? UIColor(red: 0.66, green: 0.95, blue: 1.0, alpha: 0.36)
+                : UIColor.white.withAlphaComponent(0.30)
+            bubble.strokeColor = .clear
+            bubble.zPosition = 2
+            root.addChild(bubble)
+        }
+
+        let torpedo = SKShapeNode(rectOf: CGSize(width: 18, height: 5), cornerRadius: 2.2)
+        torpedo.fillColor = UIColor(red: 0.72, green: 0.84, blue: 0.86, alpha: 0.96)
+        torpedo.strokeColor = UIColor(red: 0.36, green: 0.92, blue: 1.0, alpha: 0.94)
+        torpedo.lineWidth = 1.2
+        torpedo.glowWidth = 1
+        torpedo.zPosition = 3
+        root.addChild(torpedo)
+
+        effectsLayer.addChild(root)
+        guard !persistent else { return }
+
+        root.run(.sequence([
+            .group([
+                .move(to: impactPoint, duration: 0.34),
+                .sequence([
+                    .wait(forDuration: 0.24),
+                    .fadeOut(withDuration: 0.10)
+                ])
+            ]),
+            .removeFromParent()
+        ]))
+    }
+
     private func showMobileAASalvo(
         from start: CGPoint,
         to end: CGPoint,
@@ -15248,6 +15352,34 @@ final class GameScene: SKScene {
             persistent: persistent
         )
         showNavalHullStrike(at: target.node.position, faction: faction, persistent: persistent)
+    }
+
+    private func showSubmarineSurfaceImpact(
+        target: GameEntity,
+        faction: Faction,
+        incomingFrom: CGPoint,
+        persistent: Bool = false
+    ) {
+        let incomingDirection = (target.node.position - incomingFrom).normalized
+        guard incomingDirection.length > 0.01 else { return }
+        let normal = CGPoint(x: -incomingDirection.y, y: incomingDirection.x)
+        let side: CGFloat = target.id.isMultiple(of: 2) ? 1 : -1
+        let impactPoint = target.node.position
+            + normal * (side * target.kind.footprint * 0.24)
+            - incomingDirection * (target.kind.footprint * 0.10)
+
+        showNavalWaterImpact(
+            at: impactPoint,
+            faction: faction,
+            scale: 0.72,
+            incomingDirection: incomingDirection,
+            persistent: persistent
+        )
+        showNavalHullStrike(
+            at: target.node.position + normal * (side * target.kind.footprint * 0.08),
+            faction: faction,
+            persistent: persistent
+        )
     }
 
     private func showNavalHullStrike(
