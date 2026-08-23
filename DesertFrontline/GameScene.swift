@@ -10105,10 +10105,9 @@ final class GameScene: SKScene {
         refreshSelection()
         enemySAM.node.zPosition = entityZPosition(enemySAM)
         enemyAA.node.zPosition = entityZPosition(enemyAA)
-        showGuidedMissileTrail(
+        showFighterAirMissileSalvo(
             from: playerFighter.node.position,
             to: enemyFighter.node.position,
-            kind: .fighter,
             persistent: true
         )
         showAirMissileImpact(
@@ -10284,6 +10283,7 @@ final class GameScene: SKScene {
             }
             let fighterSurfaceStrike = attacker.kind == .fighter &&
                 ((target.kind.domain == .naval && target.kind != .submarine) || target.kind.isStructure)
+            let fighterAirMissileTarget = attacker.kind == .fighter && target.kind.domain == .air
             let helicopterRocketTarget = attacker.kind == .helicopter && target.kind != .submarine
             if fighterSurfaceStrike {
                 if attackerKnownToPlayer {
@@ -10292,6 +10292,14 @@ final class GameScene: SKScene {
                         to: target.node.position,
                         targetKind: target.kind,
                         faction: attacker.faction
+                    )
+                }
+            } else if fighterAirMissileTarget {
+                if attackerKnownToPlayer &&
+                    (target.faction == .player || isKnownToFaction(target, observer: .player)) {
+                    showFighterAirMissileSalvo(
+                        from: attacker.node.position,
+                        to: target.node.position
                     )
                 }
             } else if helicopterRocketTarget {
@@ -13468,6 +13476,32 @@ final class GameScene: SKScene {
         effectsLayer.addChild(tracer)
         guard !persistent else { return }
         tracer.run(.sequence([.fadeOut(withDuration: 0.16), .removeFromParent()]))
+    }
+
+    private func showFighterAirMissileSalvo(
+        from start: CGPoint,
+        to end: CGPoint,
+        persistent: Bool = false
+    ) {
+        let direction = (end - start).normalized
+        guard direction.length > 0.01 else { return }
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+        let launchCenter = start + direction * 23
+        let impactCenter = end - direction * 8
+
+        showGuidedMissileTrail(
+            from: launchCenter + normal * 11,
+            to: impactCenter + normal * 4,
+            kind: .fighter,
+            persistent: persistent
+        )
+        showGuidedMissileTrail(
+            from: launchCenter - normal * 11,
+            to: impactCenter - normal * 4,
+            kind: .fighter,
+            persistent: persistent,
+            delay: 0.055
+        )
     }
 
     private func showMobileAASalvo(

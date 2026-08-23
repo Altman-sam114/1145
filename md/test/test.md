@@ -37,6 +37,8 @@ v5.28 目视口径：复用现有 24 张 PNG，不新增 launch 或 capture。�
 
 v5.29 目视口径：复用现有 24 张 PNG，不新增 launch、capture 或第 25 张探针。主证据为 `simulator-carrier-strike.png`，核对 Carrier 舰体、甲板、跑道、舰岛、三停机位与动态舰载机仍可读，同时能辨识两条短平行低对比作业轨和一段内缩安全/拦阻边线；`simulator-naval-salvo.png`、`simulator-naval-damage.png`、`simulator-coastal-battery.png`、`simulator-map-terrain.png`、`simulator-hud-naval.png`、`simulator-hud-build.png` 及其余截图核对海战、HUD、地图和非 Carrier 场景无污染。代码审阅确认新几何只在 `addNavalUnitBody(for:to:)` 的 `.carrier` 分支挂入实体 `base`，无新状态、动画、每帧节点、生产、战斗、fog 或 CI 入口；固定 PNG、generic build、launch/PID、JUnit、manifest、日志和 ZIP 只能证明固定构图、层级、构建、artifact 完整性与启动稳定性，不能证明真实触控、动态生产/队列、fog 进出、死亡、`SKRM` 动态重开、连续战斗或真机性能。
 
+v5.30 目视口径：复用现有 24 张 PNG，不新增 launch、capture 或第 25 张探针。主证据 `simulator-hud-air.png`、`simulator-screenshot.png` 与三张 `simulator-command-*.png` 核对 Blue Fighter -> Red Fighter 的两个翼下发射点、两条 guided trail / 两枚弹体与既有 Fighter / Helicopter、投影、FOCUS / ATK、耐久塔、选择面板、HUD 和小地图共存，同时只保留一组 air impact、一次伤害飘字和既有单个爆炸样本。`simulator-fighter-strike.png` 核对 Fighter -> structure 仍为既有双曲线 surface strike，`simulator-mobile-aa.png`、`simulator-carrier-strike.png`、`simulator-naval-salvo.png`、`simulator-coastal-battery.png`、`simulator-naval-damage.png` 及其余截图核对 AA Truck、Carrier intercept / strike、SAM、海战、岸防、Submarine / ASW、Helicopter、陆战、HUD、地图和 fog 无额外 Fighter-air 轨迹污染。源码审阅必须确认 runtime 只在 Fighter -> `.air` 且 `attackerKnownToPlayer` 与目标玩家 / 玩家已知门槛同时成立时调用 `showFighterAirMissileSalvo(...)`，门槛失败不回落 generic；helper 只调用两次未改动的 `showGuidedMissileTrail(...)`，第二弹约延迟 0.055 秒，普通节点沿既有有限生命周期清理，persistent 只用于 air capture；`target.hp -=`、damage floater、air impact 与击杀 / XP 仍为单次统一链路。固定 persistent PNG、generic build、launch/PID、JUnit、manifest、日志和 ZIP 不能证明普通运行时清理、真实错发时序、未知 Red Fighter 动态 fog 进出、Reduce Motion、真实触控、连续密集空战或真机性能。
+
 ## 1. 默认策略
 
 - 默认云端重验证，本机只跑轻量检查。
