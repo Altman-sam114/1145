@@ -900,6 +900,7 @@ private final class GameEntity {
     let veterancyNode = SKNode()
     let captureNode = SKNode()
     let constructionNode = SKNode()
+    let navalHeadingCueNode = SKShapeNode()
     let navalWakeNode = SKNode()
     let airShadowNode = SKNode()
     let landDustNode = SKNode()
@@ -2323,6 +2324,7 @@ final class GameScene: SKScene {
         entity.selectionNode.lineWidth = 3
         entity.selectionNode.isHidden = true
         entity.selectionNode.zPosition = -1
+        configureNavalHeadingCueNode(for: entity)
         entity.node.addChild(entity.selectionNode)
         configureWeaponReadinessVisuals(for: entity)
 
@@ -4306,6 +4308,34 @@ final class GameScene: SKScene {
         entity.navalWakeNode.zPosition = -3
         entity.navalWakeNode.isHidden = true
         entity.node.addChild(entity.navalWakeNode)
+    }
+
+    private func configureNavalHeadingCueNode(for entity: GameEntity) {
+        guard entity.kind.domain == .naval else {
+            entity.navalHeadingCueNode.isHidden = true
+            return
+        }
+
+        let length: CGFloat = entity.kind == .carrier ? 11 : (entity.kind == .battleship ? 9.5 : 7.5)
+        let width: CGFloat = entity.kind == .carrier ? 5.0 : (entity.kind == .battleship ? 4.4 : 3.8)
+        let path = CGMutablePath()
+        // The local tip points toward the model bow; updateNavalWake applies the
+        // same wake rotation so the cue follows the existing mirrored heading.
+        path.move(to: CGPoint(x: -length * 0.5, y: 0))
+        path.addLine(to: CGPoint(x: length * 0.5, y: width * 0.5))
+        path.addLine(to: CGPoint(x: length * 0.5, y: -width * 0.5))
+        path.closeSubpath()
+
+        entity.navalHeadingCueNode.path = path
+        entity.navalHeadingCueNode.position = CGPoint(x: entity.kind.footprint * 0.74, y: 0)
+        entity.navalHeadingCueNode.fillColor = UIColor(red: 0.32, green: 0.94, blue: 0.90, alpha: 0.34)
+        entity.navalHeadingCueNode.strokeColor = UIColor.white.withAlphaComponent(0.42)
+        entity.navalHeadingCueNode.lineWidth = 0.7
+        entity.navalHeadingCueNode.glowWidth = 0
+        entity.navalHeadingCueNode.zPosition = 10
+        entity.navalHeadingCueNode.zRotation = .pi
+        entity.navalHeadingCueNode.isHidden = true
+        entity.selectionNode.addChild(entity.navalHeadingCueNode)
     }
 
     private func layoutHUD() {
@@ -8974,7 +9004,9 @@ final class GameScene: SKScene {
 
         let horizontalScale = entity.node.xScale == 0 ? 1 : entity.node.xScale
         let localWakeDirection = CGPoint(x: -direction.x / horizontalScale, y: -direction.y)
-        entity.navalWakeNode.zRotation = atan2(localWakeDirection.y, localWakeDirection.x)
+        let headingRotation = atan2(localWakeDirection.y, localWakeDirection.x)
+        entity.navalWakeNode.zRotation = headingRotation
+        entity.navalHeadingCueNode.zRotation = headingRotation
         entity.navalWakeNode.alpha = 0.82 + sin(CGFloat(lastUpdateTime) * 7 + CGFloat(entity.id)) * 0.10
         entity.navalWakeNode.isHidden = false
     }
@@ -12117,6 +12149,12 @@ final class GameScene: SKScene {
     private func refreshSelection() {
         for entity in entities.values {
             entity.selectionNode.isHidden = !selectedIDs.contains(entity.id)
+            let showNavalHeadingCue = entity.faction == .player &&
+                entity.isAlive &&
+                selectedIDs.contains(entity.id) &&
+                (entity.kind == .battleship || entity.kind == .carrier || entity.kind == .submarine) &&
+                !entity.node.isHidden
+            entity.navalHeadingCueNode.isHidden = !showNavalHeadingCue
             entity.rallyNode.isHidden = !(selectedIDs.contains(entity.id) && entity.kind.supportsRallyPoint && entity.rallyPoint != nil)
             entity.sonarCoverageNode.isHidden = !shouldShowSonarCoverage(for: entity)
             entity.escortCoverageNode.isHidden = !shouldShowHighValueNavalEscortCoverage(for: entity)

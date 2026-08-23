@@ -90,6 +90,7 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 - `BASE`, `RLY`, `AMOV`, `SCAN`, `REPR`, `AIRS`, and `BARR` highlight while waiting for a map target.
 - Use `ARMY`, any unit production button, HQ focus, or AI difficulty to leave structure placement/rally modes.
 - Use `SKRM` to start a new skirmish map variant.
+- Selecting a live, visible player Battleship, Carrier, or Submarine shows a low-contrast bow heading arrow; it follows naval movement and preserves the last heading when stopped.
 - Use the paged bottom HUD buttons to select the army, save or recall control groups, hold ground, attack-move, build units, focus HQ, cycle AI difficulty, place structures, or restart the skirmish.
 
 ## Open In Xcode

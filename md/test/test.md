@@ -341,6 +341,10 @@ du -sh /private/tmp/desert-frontline-c-review-<run_id>/
 
 ## 9. 回归层级
 
+### v5.32 选中海军艏向箭头
+
+复用现有 24 次 CI launch 与 PNG，不新增入口或截图。静态核对 `navalHeadingCueNode` 只预创建一次，`updateNavalWake(for:direction:)` 与既有 `localWakeDirection` / `xScale` 同步 rotation；仅玩家选中、存活、可见的 Battleship / Carrier / Submarine 显示，停止保留最后 rotation，取消选择、死亡、重开、fog 隐藏及未知敌方潜艇不显示。不得改变移动、尾流、声呐、迷雾或战斗规则。
+
 ### Smoke
 
 触发条件：

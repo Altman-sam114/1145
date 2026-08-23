@@ -60,7 +60,7 @@ Carrier 的静态甲板作业轨和安全/拦阻边线也在同一 `configureEnt
 
 空军实体另持有预创建的 `airShadowNode`：Helicopter 使用机身、尾梁和旋翼投影，Fighter 使用缩小 jet 轮廓；移动更新按方向调整投影偏移和透明度。投影是实体子节点，会随敌方实体迷雾隐藏，不产生独立残留节点或位置泄露。
 
-海军实体的 `navalWakeNode` 仍是实体配置阶段一次性创建的唯一航迹几何入口。Battleship 使用较窄、较短的艏部 V 形浅水冲洗与近 / 远段双侧尾流，Carrier 使用较宽、较长的同层级尾流，二者都叠加低成本舰艉错列椭圆扰流；Submarine 只保留低透明的艏部 / 尾流扰动。`updateNavalWake(for:direction:)` 只按实际移动方向旋转根节点、做既有透明度脉冲并显示，`animateIdle(_:,dt:)` 停止时隐藏；节点留在实体树的背景层，继续继承镜像、死亡、重开和 fog 父节点可见性，不进入 `effectsLayer`，不产生每帧节点分配或海军玩法状态。
+海军实体在配置阶段一次性创建 `navalWakeNode` 与低对比 `navalHeadingCueNode`。后者挂在选择节点下，仅对选中、存活、玩家阵营且实体未被既有可见性链路隐藏的 Battleship / Carrier / Submarine 显示；取消选择、死亡、重开或 fog 隐藏时由选择刷新隐藏，不泄露未知敌方潜艇。Battleship 使用较窄、较短的艏部 V 形浅水冲洗与近 / 远段双侧尾流，Carrier 使用较宽、较长的同层级尾流，二者都叠加低成本舰艉错列椭圆扰流；Submarine 只保留低透明的艏部 / 尾流扰动。`updateNavalWake(for:direction:)` 复用实际方向、`localWakeDirection` 与 `xScale` 镜像同时旋转尾流和箭头，`animateIdle(_:,dt:)` 停止时隐藏尾流但保留箭头最后 rotation；节点留在实体树，不进入 `effectsLayer`，不产生每帧节点分配或海军玩法状态。
 
 Helicopter 的既有 `showHelicopterRocketSalvo(...)` 共享入口沿 `updateAirShadow(...)` 的世界偏移计算投影地面锚点，并只在 `tile(at:)` / `terrain(at:)` 判定为 `.sand` 或 `.oil` 时创建纯视觉 rotor-wash：低透明垂直压缩尘环、与攻击方向相关的两侧短尘流和固定颗粒。普通 root 在约 0.52 秒内扩散、淡出并统一移除，`persistent` 立即保留完整静态构图；道路、岩脊、水面、无效点和未知敌方来源不创建节点，也不新增实体状态或每帧生成链路。
 
