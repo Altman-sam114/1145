@@ -108,6 +108,30 @@ jobs:
             xcrun simctl bootstatus "${sim_udid}" -b
             xcrun simctl install "${sim_udid}" "${app_path}"
             bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${app_path}/Info.plist")"
+
+            echo "Prewarming ${bundle_id} in capture mode before the 24 screenshot probes"
+            prewarm_output="$(SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=air SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE=1 SIMCTL_CHILD_DESERT_CI_HUD_PAGE=tactical SIMCTL_CHILD_DESERT_CI_COMMAND_MARKER=none xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}")"
+            echo "${prewarm_output}"
+            prewarm_pid="${prewarm_output##*: }"
+            if [[ ! "${prewarm_pid}" =~ ^[0-9]+$ ]]; then
+              echo "Could not parse prewarm app PID from simctl launch output: ${prewarm_output}"
+              exit 1
+            fi
+            if ! kill -0 "${prewarm_pid}" 2>/dev/null; then
+              echo "DesertFrontline prewarm process ${prewarm_pid} exited immediately."
+              exit 1
+            fi
+            echo "DesertFrontline prewarm process ${prewarm_pid} is running; waiting 90 seconds for first-boot system notifications to expire."
+            sleep 90
+            if ! kill -0 "${prewarm_pid}" 2>/dev/null; then
+              echo "DesertFrontline prewarm process ${prewarm_pid} exited before the notification wait completed."
+              exit 1
+            fi
+            echo "DesertFrontline prewarm process ${prewarm_pid} survived the notification wait."
+            xcrun simctl terminate "${sim_udid}" "${bundle_id}"
+            echo "DesertFrontline prewarm terminated; waiting 5 seconds before formal screenshot probes."
+            sleep 5
+
             launch_hud_page() {
               local page="$1"
               local screenshot_path="$2"
