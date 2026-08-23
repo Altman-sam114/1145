@@ -5816,3 +5816,27 @@
 
 - attempt 2 的固定 24 张 PNG、generic build、launch/PID、JUnit、manifest、日志、ZIP 和 result bundle 证明了本次 commit 的静态模型层级、构建、artifact 完整性与启动稳定性；不能外推真实生产队列、rally、施工进度、fog 进出、实体死亡、`SKRM` 动态重建、真实触控、全部 seed、连续海战或真机性能。
 - 首次 attempt 1 白屏 artifact 保留在 `/private/tmp/desert-frontline-c-review-32310608461/`，未用于验收；后续若需修改 CI capture 时序，应另立范围明确的测试维护任务。总目标仍未完成，下一轮从海空 / UI、Carrier / Shipyard 模型、海岸交战反馈或地图细节中选择一个有限增量，并继续优先复用现有 24 张探针。
+
+### v5.29 / 航母飞行甲板作业细节云端验收
+
+日期：2026-08-23
+
+验收结论：通过
+
+- `GameScene.swift` 只在 `.carrier` 模型分支的既有飞行甲板内增加两条 `34 x 0.7`、旋转 `0.18`、`zPosition=4` 的低对比作业轨，以及一段 `0.9 x 6.1`、同角度同层级的安全 / 拦阻边线；三段静态几何直接挂在实体 `base`，没有新增弹射、拦阻或甲板作业玩法状态。
+- 既有动态甲板仍只有三个停机位，`carrierDeckAircraftNode.zPosition=6`，继续高于新增静态线；没有增加第四停机位、飞机、生产队列、动画、随机、每帧分配或外部素材，也没有改变 Carrier footprint、移动、攻击、生产、护航、AI、HUD、fog、死亡和 `SKRM` 重开链路。
+- `README.md`、`md/flow/flow.md`、`md/flow/flowchart.md`、`md/test/test.md` 与 v5.29 提示词已同步；用户未提交的 `DesertFrontline.xcodeproj/project.pbxproj` Team ID 修改、`md/unity分析/` 和 v5.23–v5.29 未跟踪提示词均保持未触碰。
+
+验证结果：
+
+- 实现提交：`049fc1c457525b2b4688c689cbc3c5daa66cd6d0`，commit subject 为 `v5.29: 航母飞行甲板作业细节`；验收时本地 `main`、`origin/main`、GitHub `main` 和 Actions head 均为该 SHA，活动 GitHub 账号确认为 `Altman-sam114`。
+- GitHub Actions run：`32440095791`，attempt `1`，job `96648898277`，conclusion `success`；artifact ID `9432296797`，名称 `desert-frontline-ci-v5.29-main-049fc1c45752-run32440095791-attempt1`，API 大小 `32950354` bytes，缓存于 `/private/tmp/desert-frontline-c-review-32440095791/` 并保留未删除。官方未加密 ZIP `/private/tmp/desert-frontline-c-review-32440095791/artifact-9432296797.zip` 的 GitHub API digest 与本地 SHA-256 均为 `cea2b1e46fd365d951e2a04addb0c3b36626435ede08a363c42bdead4c0ee2c7`；`unzip -t` 通过，共 40 个条目。
+- manifest 与 `main`、`origin/main`、Actions head 完全匹配，记录 `branch=main`、`commitSha=049fc1c457525b2b4688c689cbc3c5daa66cd6d0`、`runId=32440095791`、`runAttempt=1`、`version=v5.29`、`destination=generic/platform=iOS`；static checks、project lint、generic iOS build、simulator launch 均为 `success`，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 记录 4 项 CI 检查、0 failures、1 skipped；唯一 skipped 是当前项目没有 XCTest target，manifest 因此准确记录 `testOutcome=skipped`。必需日志、失败摘要和 `DesertFrontline.xcresult` 均存在。
+- simulator launch log 记录 24 次独立启动、24 张截图以及每次截图后对应 PID 仍存活；24 张 PNG 全部为 `1206x2622`、8-bit RGBA，24 个 SHA-256 均唯一，文件大小范围为 `1092517–1613375` bytes，未见白屏、空图或明显视觉回归。app / launch 日志虽含既有 UIKit focus Error 级噪声、`SKView: no drawables`、AppIntents metadata warning 与 `getpwuid_r` 提示，但未发现 crash、fatal error、SIGABRT、watchdog 或进程提前退出。
+- 主证据 `simulator-carrier-strike.png` 的 SHA-256 为 `781b232d725f39d69d3858998d0965a9aeec69c63e800ddef926a55c86c7a0a5`；目视确认新增双作业轨和安全 / 拦阻边线保持在飞行甲板包络内，不遮挡三个动态停机位、舰载机、反舰导弹、烟迹、水面命中、舰体、护航圈或 HUD。`simulator-coastal-battery.png`、`simulator-naval-salvo.png`、`simulator-naval-damage.png`、`simulator-hud-naval.png` 及其余 19 张截图未见 Carrier 细节污染海战、岸防、地图、HUD、陆战、空战、命令 marker 或 fog 层级。
+- 本轮按规则未运行本地 `xcodebuild`、Simulator、`simctl` 或本地玩法探针；本机只做了源码边界审阅、Git 同步、文档轻量检查、官方 artifact / ZIP 完整性、日志、PNG 解码 / 哈希和截图目视复核。
+
+证据边界与遗留事项：
+
+- 固定 24 张 PNG、generic iOS build、launch/PID、JUnit、manifest、日志、ZIP 和 result bundle 只能证明本次实现提交的静态模型层级、构建、artifact 完整性与固定场景启动稳定性；不能证明真实触控、动态生产 / 队列、fog 进出、实体死亡、`SKRM` 重开、连续战斗、Reduce Motion、全部 seed 或真机长期性能。
+- 本记录提交并 push 后仍须下载并核对该日志提交对应的最新 `origin/main` v5.29 Actions artifact；第二个 artifact 通过前不宣称 v5.29 正式闭环完成。当前没有独立 XCTest target，总目标仍未完成。
