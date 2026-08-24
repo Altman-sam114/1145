@@ -5886,3 +5886,20 @@
 
 - 固定 24 张 PNG、generic iOS build、launch/PID、JUnit、manifest、日志、ZIP 和 result bundle 只能证明本次实现的静态 capture、构建、artifact 完整性与固定场景启动稳定性；不能证明普通运行时节点清理、动态 sonar / fog 进出、真实触控、连续海战、实体死亡 / 重开 skirmish、Reduce Motion、全部 seed 或真机长期性能。
 - 本轮未运行本地 `xcodebuild`、Simulator、`simctl` 或玩法探针；除本条 `update_log.md` closure 外未修改 GameScene、README、flow、flowchart、test、workflow、prompt、project.pbxproj 或 `md/unity分析/`。
+
+### v5.32 / 选中海军艏向航向箭头云端验收
+
+日期：2026-08-24
+
+验收结论：实现提交及云端修复 artifact 通过；本条记录作为正式日志 closure。
+
+- 实现提交：`56fce6be78958182b36a587e88f54f2c20bda1a5`，commit subject 为 `v5.32: 选中海军艏向航向箭头`；修复提交：`bc07c58dd58ba5efd7c5b49a92fcf868a429fd13`，commit subject 为 `v5.32: 修复云端探针系统通知遮挡`。验收确认本地 `main`、`origin/main` 和目标 Actions run head 均为修复 SHA，活动 GitHub 账号为 `Altman-sam114`。
+- GitHub Actions run：`32652066664`，attempt `1`，head 为 `bc07c58dd58ba5efd7c5b49a92fcf868a429fd13`，conclusion `success`。artifact ID：`9496584116`；名称：`desert-frontline-ci-v5.32-main-bc07c58dd58b-run32652066664-attempt1`；缓存路径：`/private/tmp/desert-frontline-c-review-32652066664/`。官方未加密 ZIP `/private/tmp/desert-frontline-c-review-32652066664/artifact-9496584116.zip` 的 SHA-256 为 `c9b06b5a946dd4b052dc48ecff366fb7419a69b55751541333431e3dee9dcf85`；`unzip -t` 通过。
+- `ci-artifact-manifest.json` 准确记录 `version=v5.32`、`branch=main`、`commitSha=bc07c58dd58ba5efd7c5b49a92fcf868a429fd13`、`runId=32652066664`、`runAttempt=1`、`destination=generic/platform=iOS`；static checks、project lint、generic iOS build、simulator launch 均为 `success`，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`。JUnit 为 4 项 CI 检查、0 failures，XCTest 因项目无 XCTest target 准确记录为 skipped；failure summary、build / launch / app logs 与 `DesertFrontline.xcresult` 均存在。
+- simulator launch log 记录先预热并等待首启系统通知消退，再执行正式 24 次截图探针。24 张 PNG 均为 `1206x2622`、原始 IHDR color type `6`（8-bit RGBA），24 个 SHA-256 均唯一且文件非空。重点 `simulator-coastal-battery.png` 单独目视确认不再出现 `Ready for Apple Intelligence` 系统通知；24 图 contact sheet 总览未见系统通知、弹窗、白屏、黑屏或明显遮挡。
+- 源码边界审阅确认 v5.32 的艏向箭头只挂在选中 Blue `.battleship`、`.carrier`、`.submarine` 的实体节点上，按移动方向更新并在停止时保留最近航向；箭头为低对比只读视觉，不改变移动、攻击、生产、AI、fog、sonar、`revealedUntil`、潜艇侦测、命令或胜负规则。
+
+证据边界与遗留事项：
+
+- 固定 24 张 PNG、generic iOS build、launch/PID、JUnit、manifest、日志、ZIP 和 result bundle 只能证明本次实现及 CI 通知遮挡修复的构建、artifact 完整性、固定场景启动稳定性与截图无遮挡；不能证明真实触控、动态航向连续变化、全部 fog / sonar 转换、连续海战、实体死亡 / 重开 skirmish、全部 seed 或真机长期性能。
+- 本轮未运行本地 `xcodebuild`、Simulator、`simctl` 或玩法探针；除本条 `update_log.md` closure 外未修改 GameScene、README、flow、flowchart、test、workflow、prompt、project.pbxproj 或 `md/unity分析/`。
