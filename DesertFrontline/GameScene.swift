@@ -5398,9 +5398,13 @@ final class GameScene: SKScene {
     private func updateSelectionInfoPanel(selected: [GameEntity]) {
         let content = selectionInfoContent(for: selected)
         selectionInfoTitleLabel.text = content.title
-        selectionInfoTitleLabel.fontColor = incomingThreatSummary(for: selected) == nil
-            ? UIColor(red: 0.74, green: 0.95, blue: 1.0, alpha: 1.0)
-            : UIColor(red: 1.0, green: 0.48, blue: 0.24, alpha: 1.0)
+        if incomingThreatSummary(for: selected) != nil {
+            selectionInfoTitleLabel.fontColor = HUDPalette.warning
+        } else if selected.count == 1, let entity = selected.first {
+            selectionInfoTitleLabel.fontColor = selectionDomainColor(for: entity.kind)
+        } else {
+            selectionInfoTitleLabel.fontColor = UIColor(red: 0.74, green: 0.95, blue: 1.0, alpha: 1.0)
+        }
         let rowColors = selectionInfoRowColors(for: selected)
         for (index, label) in selectionInfoRowLabels.enumerated() {
             let rawText = index < content.rows.count ? content.rows[index] : ""
@@ -5735,6 +5739,18 @@ final class GameScene: SKScene {
         case .air: return "AIR"
         case .naval: return kind == .submarine ? "SUB" : "SEA"
         case .structure: return "BASE"
+        }
+    }
+
+    private func selectionDomainColor(for kind: EntityKind) -> UIColor {
+        if kind.isStructure { return HUDPalette.gold }
+        switch kind.domain {
+        case .land: return UIColor(red: 0.82, green: 0.90, blue: 0.72, alpha: 1.0)
+        case .air: return UIColor(red: 0.50, green: 0.84, blue: 1.0, alpha: 1.0)
+        case .naval: return kind == .submarine
+            ? UIColor(red: 0.72, green: 0.65, blue: 1.0, alpha: 1.0)
+            : HUDPalette.cyan
+        case .structure: return HUDPalette.gold
         }
     }
 
