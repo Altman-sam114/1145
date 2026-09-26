@@ -39,6 +39,8 @@ jobs:
         run: |
           set -o pipefail
           {
+            set -e
+            python3 ci/check_watchdog.py
             zero_sha="0000000000000000000000000000000000000000"
             if [[ -n "${BASE_SHA:-}" && "$BASE_SHA" != "$zero_sha" ]] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
               git diff --check "$BASE_SHA" HEAD
@@ -59,12 +61,13 @@ jobs:
 
       - name: Xcode generic iOS build
         id: xcode-build
+        timeout-minutes: 12
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           rm -rf ci-results/DesertFrontline.xcresult .derivedData-ci
-          /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
+          python3 ci/run_bounded.py 600 /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
             -project DesertFrontline.xcodeproj \
             -scheme DesertFrontline \
             -configuration Debug \
@@ -77,15 +80,17 @@ jobs:
 
       - name: iOS simulator launch probe
         id: simulator-launch
+        timeout-minutes: 25
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           {
             set -euo pipefail
+            xcrun() { python3 ci/run_bounded.py 60 /usr/bin/xcrun "$@"; }
             rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-hud-build.png ci-results/simulator-hud-air.png ci-results/simulator-hud-naval.png ci-results/simulator-hud-support.png ci-results/simulator-command-move.png ci-results/simulator-command-attack-move.png ci-results/simulator-command-attack-target.png ci-results/simulator-land-combat.png ci-results/simulator-map-terrain.png ci-results/simulator-combat-ui.png ci-results/simulator-incoming-ui.png ci-results/simulator-naval-salvo.png ci-results/simulator-coastal-battery.png ci-results/simulator-carrier-strike.png ci-results/simulator-mobile-aa.png ci-results/simulator-fighter-strike.png ci-results/simulator-helicopter-salvo.png ci-results/simulator-damage-state.png ci-results/simulator-stop-command.png ci-results/simulator-target-cycle.png ci-results/simulator-selection-cycle.png ci-results/simulator-enemy-touch-assist.png ci-results/simulator-naval-damage.png ci-results/simulator-app.log
 
-            /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
+            python3 ci/run_bounded.py 600 /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
               -project DesertFrontline.xcodeproj \
               -scheme DesertFrontline \
               -configuration Debug \
@@ -104,8 +109,21 @@ jobs:
             sim_udid="$(xcrun simctl list devices available --json | python3 -c 'import json, sys; data = json.load(sys.stdin); devices = [device for runtime, runtime_devices in data.get("devices", {}).items() if "iOS" in runtime for device in runtime_devices if device.get("isAvailable") and device.get("name", "").startswith("iPhone")]; print(devices[0]["udid"] if devices else "", end=""); sys.exit(0 if devices else 1)')"
             echo "Using simulator ${sim_udid}"
 
-            xcrun simctl boot "${sim_udid}" || true
-            xcrun simctl bootstatus "${sim_udid}" -b
+            boot_ready=false
+            for boot_attempt in 1 2; do
+              echo "Simulator boot attempt $boot_attempt/2 (migration deadline 240s)"
+              xcrun simctl boot "$sim_udid" || true
+              if python3 ci/run_bounded.py 240 /usr/bin/xcrun simctl bootstatus "$sim_udid" -b; then
+                boot_ready=true
+                break
+              fi
+              xcrun simctl list devices --json > ci-results/simulator-boot-state.json || true
+              xcrun simctl shutdown "$sim_udid" || true
+            done
+            if [[ "$boot_ready" != true ]]; then
+              echo "Simulator boot failed after two bounded attempts; app probes did not run."
+              exit 1
+            fi
             xcrun simctl install "${sim_udid}" "${app_path}"
             bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${app_path}/Info.plist")"
 
@@ -134,6 +152,7 @@ jobs:
             done
             if [[ -z "${prewarm_pid}" ]]; then
               echo "DesertFrontline prewarm did not survive any of the bounded attempts."
+              xcrun simctl spawn "${sim_udid}" log show --last 10m --style compact --predicate 'process == "DesertFrontline" OR eventMessage CONTAINS[c] "DesertFrontline"' > ci-results/simulator-app.log || true
               exit 1
             fi
             xcrun simctl terminate "${sim_udid}" "${bundle_id}"
@@ -196,6 +215,8 @@ jobs:
 
       - name: Write manifest and summaries
         id: package-metadata
+        if: always()
+        timeout-minutes: 3
         shell: bash
         env:
           STATIC_OUTCOME: ${{ steps.static-checks.outcome }}
@@ -295,7 +316,7 @@ jobs:
               )
           junit = (
               '<?xml version="1.0" encoding="UTF-8"?>\n'
-              f'<testsuite name="DesertFrontlineCI" tests="{len(checks)}" '
+              f'<testsuite name="DesertFrontlineCI" tests="{len(checks) + 1}" '
               f'failures="{failure_count}" skipped="1">\n'
               + "\n".join(testcases)
               + '\n    <testcase classname="DesertFrontlineCI" name="xctest">'
@@ -364,6 +385,8 @@ jobs:
           PY
 
       - name: Upload CI results
+        if: always() && steps.package-metadata.outputs.artifact_name != ''
+        timeout-minutes: 5
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.package-metadata.outputs.artifact_name }}
@@ -372,6 +395,7 @@ jobs:
           retention-days: 14
 
       - name: Fail on unsuccessful checks
+        if: always()
         shell: bash
         env:
           STATIC_OUTCOME: ${{ steps.static-checks.outcome }}

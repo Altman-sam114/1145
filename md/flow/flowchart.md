@@ -173,3 +173,7 @@ flowchart TD
 - v5.26：命令条视觉 frame 与语义 hit frame 分离，当前页签 / 动作使用固定顺序、互不重叠且至少 44pt 的命中区；命令条 gap 与两端安全范围由 HUD inert guard 消费，不穿透 minimap / 世界、不清除 pending，也不新增探针。
 - v5.30：Fighter 对 `.air` 使用同一窄 helper 从双翼下点复用两次 guided trail，第二枚约错后 0.055 秒；运行时同时要求攻击者玩家可知与目标为玩家 / 玩家已知，门槛失败不回落通用单弹，仍只结算一次伤害 / 飘字 / 空中命中，并复用现有 24 次探针。
 - v5.31：Submarine 对 naval 使用互斥的玩家认知门槛；通过后显示单鱼雷与短窄扰流 / 气泡，水面舰只显示一次方向化水柱和一次舰体命中，未知来源不回落 generic tracer，sub-vs-sub 无水面舰水柱；统一结算和 sonar / `revealedUntil` / CONTACT / ASW / fog 不变，复用现有 24 次探针。
+
+### 云端超时留证（v5.39）
+
+读图补充：云端 build/simctl 先经过限时 watchdog；bootstatus 超时后同设备最多重试一次；成功进入24项截图探针，失败也进入 always 元数据与上传阶段。

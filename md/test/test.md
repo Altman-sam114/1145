@@ -419,3 +419,7 @@ du -sh /private/tmp/desert-frontline-c-review-<run_id>/
 - 不得伪造测试结果。
 - Agent X 循环不得跳过 Agent C 对最新 artifact 的复判。
 - 新增测试方式、脚本、XCTest target 或验证流程时，必须更新本文、`README.md` 和必要的 `update_log.md`。
+
+## v5.39 云端超时与失败留证
+
+云端 build 由 ci/run_bounded.py 限制600秒，普通 simctl 限制60秒，每30秒打印进度。bootstatus 每次最多240秒，失败后对同一云端模拟器 shutdown/boot 再试一次；两次失败明确报告环境启动失败。构建步骤12分钟、模拟器步骤25分钟、整个job45分钟。失败/取消后 metadata 和 upload 使用 always 尽力保存结果；runner强制结束无法保证上传。JUnit tests 数量包含 skipped XCTest。保留24项截图/PID探针，不把静态截图当作动态玩法测试。本轮人工要求只做云端测试。
