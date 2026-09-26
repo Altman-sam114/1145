@@ -4546,9 +4546,10 @@ final class GameScene: SKScene {
         addMinimap(frame: minimapFrame)
 
         let zoomButtonSize = CGSize(width: 34, height: 30)
-        let zoomY = minimapFrame.minY - 22
-        zoomOutHitFrame = CGRect(x: minimapFrame.minX, y: zoomY - zoomButtonSize.height / 2, width: zoomButtonSize.width, height: zoomButtonSize.height)
-        zoomInHitFrame = CGRect(x: minimapFrame.minX + zoomButtonSize.width + 6, y: zoomY - zoomButtonSize.height / 2, width: zoomButtonSize.width, height: zoomButtonSize.height)
+        let zoomY = minimapFrame.minY + 19
+        let zoomX = minimapFrame.maxX - zoomButtonSize.width * 2 - 20
+        zoomOutHitFrame = CGRect(x: zoomX, y: zoomY - zoomButtonSize.height / 2, width: zoomButtonSize.width, height: zoomButtonSize.height)
+        zoomInHitFrame = CGRect(x: zoomX + zoomButtonSize.width + 6, y: zoomY - zoomButtonSize.height / 2, width: zoomButtonSize.width, height: zoomButtonSize.height)
         addZoomButton(frame: zoomOutHitFrame, title: "−")
         addZoomButton(frame: zoomInHitFrame, title: "+")
 
@@ -4723,6 +4724,7 @@ final class GameScene: SKScene {
         button.fillColor = HUDPalette.panelRaised
         button.strokeColor = HUDPalette.cyan.withAlphaComponent(0.72)
         button.lineWidth = 1.2
+        button.zPosition = 70
         hudNode.addChild(button)
 
         let label = SKLabelNode(fontNamed: "Menlo-Bold")
@@ -4732,6 +4734,7 @@ final class GameScene: SKScene {
         label.horizontalAlignmentMode = .center
         label.verticalAlignmentMode = .center
         label.position = CGPoint(x: frame.midX, y: frame.midY - 1)
+        label.zPosition = 71
         hudNode.addChild(label)
     }
 

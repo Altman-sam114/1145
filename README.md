@@ -86,7 +86,7 @@ The battlefield HUD follows a clear command-console layout: the upper-left resou
 - Invalid map targets for building, rally, attack-move, support powers, impossible attacks, or non-mobile selections briefly show a red/orange denied marker at the clicked location while keeping the HUD message.
 - Tap the tactical minimap to move the camera.
 - Use two fingers to pan the battlefield; pinch with two fingers to zoom the tactical camera in or out.
-- Use the `−` and `+` buttons beneath the tactical minimap for one-handed camera zoom; they adjust the same bounded camera scale used by pinch zoom and do not affect world commands.
+- Use the `−` and `+` buttons in the tactical minimap footer for one-handed camera zoom; they adjust the same bounded camera scale used by pinch zoom and do not affect world commands.
 - Use `BASE` to cycle through War Factory, Airfield, Radar Outpost, Sonar Buoy, Guard Tower, SAM Site, Coastal Battery, Shipyard, and Oil Derrick placement, drag or tap the map to preview valid placement, then tap a valid tile to start constructing the selected structure.
 - `HMV`, `AA`, `TANK`, `ART`, and `MECH` subtitles show whether the next land unit will come from a `WF`; without an operational War Factory they show `need WF`.
 - `HELI` and `JET` subtitles show whether the next aircraft will come from an `AF` or `CV`; without an operational air source they show `need AF/CV`.
