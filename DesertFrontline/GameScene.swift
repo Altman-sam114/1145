@@ -4369,17 +4369,17 @@ final class GameScene: SKScene {
         let halfW = size.width / 2
         let halfH = size.height / 2
 
-        let topPanel = SKShapeNode(rectOf: CGSize(width: 332, height: 72), cornerRadius: 12)
+        let topPanel = SKShapeNode(rectOf: CGSize(width: 348, height: 82), cornerRadius: 14)
         topPanel.fillColor = HUDPalette.panel
         topPanel.strokeColor = HUDPalette.border
         topPanel.lineWidth = 1.6
-        topPanel.position = CGPoint(x: -halfW + 186, y: halfH - 53)
+        topPanel.position = CGPoint(x: -halfW + 194, y: halfH - 58)
         hudNode.addChild(topPanel)
 
         let topAccent = SKShapeNode(rectOf: CGSize(width: 4, height: 48), cornerRadius: 2)
         topAccent.fillColor = HUDPalette.gold
         topAccent.strokeColor = .clear
-        topAccent.position = CGPoint(x: -halfW + 29, y: halfH - 53)
+        topAccent.position = CGPoint(x: -halfW + 29, y: halfH - 58)
         hudNode.addChild(topAccent)
 
         let commandTitle = SKLabelNode(fontNamed: "Menlo-Bold")
@@ -4388,7 +4388,7 @@ final class GameScene: SKScene {
         commandTitle.fontColor = HUDPalette.gold
         commandTitle.horizontalAlignmentMode = .left
         commandTitle.verticalAlignmentMode = .center
-        commandTitle.position = CGPoint(x: -halfW + 78, y: halfH - 26)
+        commandTitle.position = CGPoint(x: -halfW + 78, y: halfH - 27)
         hudNode.addChild(commandTitle)
 
         let commandSubtitle = SKLabelNode(fontNamed: "Menlo")
@@ -4397,14 +4397,14 @@ final class GameScene: SKScene {
         commandSubtitle.fontColor = HUDPalette.mutedText
         commandSubtitle.horizontalAlignmentMode = .left
         commandSubtitle.verticalAlignmentMode = .center
-        commandSubtitle.position = CGPoint(x: -halfW + 78, y: halfH - 38)
+        commandSubtitle.position = CGPoint(x: -halfW + 78, y: halfH - 41)
         hudNode.addChild(commandSubtitle)
 
         let coin = SKShapeNode(ellipseOf: CGSize(width: 36, height: 36))
         coin.fillColor = HUDPalette.gold
         coin.strokeColor = UIColor(red: 0.28, green: 0.22, blue: 0.08, alpha: 1.0)
         coin.lineWidth = 2
-        coin.position = CGPoint(x: -halfW + 53, y: halfH - 59)
+        coin.position = CGPoint(x: -halfW + 53, y: halfH - 65)
         hudNode.addChild(coin)
 
         moneyLabel = SKLabelNode(fontNamed: "Menlo-Bold")
@@ -4412,7 +4412,7 @@ final class GameScene: SKScene {
         moneyLabel.fontColor = HUDPalette.text
         moneyLabel.horizontalAlignmentMode = .left
         moneyLabel.verticalAlignmentMode = .center
-        moneyLabel.position = CGPoint(x: -halfW + 78, y: halfH - 59)
+        moneyLabel.position = CGPoint(x: -halfW + 78, y: halfH - 65)
         hudNode.addChild(moneyLabel)
 
         incomeLabel = SKLabelNode(fontNamed: "Menlo")
@@ -4420,7 +4420,7 @@ final class GameScene: SKScene {
         incomeLabel.fontColor = UIColor(red: 0.46, green: 0.86, blue: 0.66, alpha: 1.0)
         incomeLabel.horizontalAlignmentMode = .left
         incomeLabel.verticalAlignmentMode = .center
-        incomeLabel.position = CGPoint(x: -halfW + 78, y: halfH - 76)
+        incomeLabel.position = CGPoint(x: -halfW + 78, y: halfH - 80)
         hudNode.addChild(incomeLabel)
 
         let actions = hudPage.actions
@@ -4542,6 +4542,36 @@ final class GameScene: SKScene {
 
         minimapFrame = CGRect(x: halfW - 250, y: halfH - 218, width: 222, height: 168)
         addMinimap(frame: minimapFrame)
+
+        // A quiet theater label gives the map a clear reading order: the player
+        // can identify the current operating sector before reading the blips.
+        let theaterPanel = SKShapeNode(
+            rectOf: CGSize(width: minimapFrame.width, height: 38),
+            cornerRadius: 10
+        )
+        theaterPanel.fillColor = HUDPalette.panelRaised
+        theaterPanel.strokeColor = HUDPalette.cyan.withAlphaComponent(0.66)
+        theaterPanel.lineWidth = 1.2
+        theaterPanel.position = CGPoint(x: minimapFrame.midX, y: minimapFrame.maxY + 25)
+        hudNode.addChild(theaterPanel)
+
+        let theaterTitle = SKLabelNode(fontNamed: "Menlo-Bold")
+        theaterTitle.text = "THEATER  /  COASTAL SECTOR"
+        theaterTitle.fontSize = 9
+        theaterTitle.fontColor = HUDPalette.cyan
+        theaterTitle.horizontalAlignmentMode = .left
+        theaterTitle.verticalAlignmentMode = .center
+        theaterTitle.position = CGPoint(x: minimapFrame.minX + 10, y: minimapFrame.maxY + 31)
+        hudNode.addChild(theaterTitle)
+
+        let theaterSubtitle = SKLabelNode(fontNamed: "Menlo")
+        theaterSubtitle.text = "MAP LINK  •  FOG ACTIVE  •  LIVE"
+        theaterSubtitle.fontSize = 7
+        theaterSubtitle.fontColor = HUDPalette.mutedText
+        theaterSubtitle.horizontalAlignmentMode = .left
+        theaterSubtitle.verticalAlignmentMode = .center
+        theaterSubtitle.position = CGPoint(x: minimapFrame.minX + 10, y: minimapFrame.maxY + 19)
+        hudNode.addChild(theaterSubtitle)
 
         let infoPanelTop = minimapFrame.minY - 12
         let infoPanelBottomLimit = commandBarTop + (compactHUD ? 72 : 38)
