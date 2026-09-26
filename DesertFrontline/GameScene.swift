@@ -5734,6 +5734,7 @@ final class GameScene: SKScene {
         case .land: return "LAND"
         case .air: return "AIR"
         case .naval: return kind == .submarine ? "SUB" : "SEA"
+        case .structure: return "BASE"
         }
     }
 
