@@ -4455,7 +4455,8 @@ final class GameScene: SKScene {
         messageLabel.position = CGPoint(x: 0, y: halfH - 22)
         hudNode.addChild(messageLabel)
 
-        let messageRule = SKShapeNode(rectOf: CGSize(width: min(520, size.width - 420), height: 22), cornerRadius: 11)
+        let messageRuleWidth = max(180, min(520, size.width - 40))
+        let messageRule = SKShapeNode(rectOf: CGSize(width: messageRuleWidth, height: 22), cornerRadius: 11)
         messageRule.fillColor = HUDPalette.panelDeep
         messageRule.strokeColor = HUDPalette.borderSoft
         messageRule.lineWidth = 1
