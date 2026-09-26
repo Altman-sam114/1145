@@ -36,6 +36,24 @@
 - 当前没有独立 XCTest target 或自动化玩法回归，Stage / Full 回归仍依赖云端 build 加人工设备或模拟器检查。
 - AI 战术分工、平衡、海军/航母深度和建筑科技层仍可继续增强。
 
+### v5.35 / 战区信息层级与资源卡优化
+
+日期：2026-09-26
+
+验收结论：实现提交及云端 artifact 通过；本条记录作为正式日志 closure。
+
+- 实现提交：`542b7d281711ddfb6d3642a27ecc4eb71f3f48f1`，commit subject 为 `v5.35: 优化战区信息层级与资源卡`；本地 `main`、`origin/main` 和 Actions head 一致。
+- `layoutHUD()` 将左上资源卡调整为独立的 348×82 深色玻璃卡，重新安排标题、资金、收入和资源行，避免资源数字贴边；小地图上方增加只读 `THEATER / COASTAL SECTOR` 状态条，统一显示 `MAP LINK / FOG ACTIVE / LIVE`，不增加玩法状态或命中区域。
+- README 与 v5.35 Agent A 提示词同步当前 HUD 行为；命令页、按钮 hit frame、pending 状态、迷雾、战斗和实体视觉生命周期保持不变。
+- GitHub Actions run：`36262079167`，attempt `1`，head 为实现 SHA，conclusion `success`；artifact ID `10913146678`，名称 `desert-frontline-ci-v5.35-main-542b7d281711-run36262079167-attempt1`，缓存目录 `/private/tmp/desert-frontline-c-review-36262079167/`，官方 ZIP 保留为 `artifact-auth.zip`。
+- `ci-artifact-manifest.json` 记录 `branch=main`、实现 `commitSha`、`runId=36262079167`、`runAttempt=1`、`version=v5.35`、`destination=generic/platform=iOS`；static checks、project lint、generic iOS build、simulator launch 均为 `success`，`xcodebuild.log` 含 `** BUILD SUCCEEDED **`，JUnit 的 XCTest 仍准确记录为 skipped（项目没有 XCTest target）。
+- 24 张 PNG 均随 artifact 保存并核对，启动日志记录预热和正式截图 PID 存活；主图确认资源卡、任务卡、战区状态条、小地图、选中信息和底部单排命令栏各自可辨，未遮挡海空战斗与地图主体。
+
+证据边界与遗留事项：
+
+- 原始截图为 CI 模拟器纵向容器中的横向内容，不能替代真机横屏手感验证；固定 PNG、generic build 和启动/PID 只能证明本轮固定窗口布局、构建、artifact 完整性与启动稳定性，不能外推任意尺寸、真实触控、长时间战斗、Reduce Motion 或真机性能。
+- 本轮按用户要求未运行本地 `xcodebuild`、Simulator、`simctl` 或本地玩法探针；后续可继续从战区地图镜头、海空信息卡或模型细节中选择单一视觉增量。
+
 ## 历史记录
 
 ### 初始可玩原型
