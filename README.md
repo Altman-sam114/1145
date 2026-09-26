@@ -64,6 +64,8 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 
 ## Controls
 
+Single-unit selection cards use a compact role tag (`LAND`, `AIR`, `SEA`, `SUB`, or `BASE`) before the unit name, so land, air, surface naval, submarine, and structure roles are immediately visible while reading HP and combat rows.
+
 The battlefield HUD follows a clear command-console layout: the upper-left resource card, centered mission card, upper-right theater/minimap stack, selection/status panels, and a single bottom command dock keep map visibility and one-tap RTS actions separate. Pages remain `TACT`, `BUILD`, `AIR`, `SEA`, and `SUP`; each action keeps a minimum 44pt semantic hit area while its visual card stays compact.
 
 - Tap `TACT`, `BUILD`, `AIR`, `SEA`, or `SUP` to switch the single-row command bar: tactical orders and HQ focus; land production and structure placement; aircraft production; naval production; or support powers plus AI difficulty and skirmish restart.

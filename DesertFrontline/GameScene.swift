@@ -5725,7 +5725,16 @@ final class GameScene: SKScene {
             }
         }
 
-        return ("\(entity.kind.displayName) \(entity.kind.shortCode)", rows)
+        return ("\(selectionDomainTag(for: entity.kind))  \(entity.kind.displayName) \(entity.kind.shortCode)", rows)
+    }
+
+    private func selectionDomainTag(for kind: EntityKind) -> String {
+        if kind.isStructure { return "BASE" }
+        switch kind.domain {
+        case .land: return "LAND"
+        case .air: return "AIR"
+        case .naval: return kind == .submarine ? "SUB" : "SEA"
+        }
     }
 
     private func damageStateShortLabel(for entity: GameEntity) -> String? {
