@@ -1074,6 +1074,8 @@ final class GameScene: SKScene {
     private var minimapFrame = CGRect.zero
     private var minimapBlipsNode = SKNode()
     private var minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 36, height: 24), cornerRadius: 2)
+    private var zoomOutHitFrame = CGRect.zero
+    private var zoomInHitFrame = CGRect.zero
 
     private var touchStartScene: CGPoint?
     private var touchStartWorld: CGPoint?
@@ -4543,6 +4545,13 @@ final class GameScene: SKScene {
         minimapFrame = CGRect(x: halfW - 250, y: halfH - 218, width: 222, height: 168)
         addMinimap(frame: minimapFrame)
 
+        let zoomButtonSize = CGSize(width: 34, height: 30)
+        let zoomY = minimapFrame.minY - 22
+        zoomOutHitFrame = CGRect(x: minimapFrame.minX, y: zoomY - zoomButtonSize.height / 2, width: zoomButtonSize.width, height: zoomButtonSize.height)
+        zoomInHitFrame = CGRect(x: minimapFrame.minX + zoomButtonSize.width + 6, y: zoomY - zoomButtonSize.height / 2, width: zoomButtonSize.width, height: zoomButtonSize.height)
+        addZoomButton(frame: zoomOutHitFrame, title: "−")
+        addZoomButton(frame: zoomInHitFrame, title: "+")
+
         // A quiet theater label gives the map a clear reading order: the player
         // can identify the current operating sector before reading the blips.
         let theaterPanel = SKShapeNode(
@@ -4706,6 +4715,24 @@ final class GameScene: SKScene {
         minimapCameraBox.fillColor = UIColor.clear
         minimapCameraBox.lineWidth = 2
         hudNode.addChild(minimapCameraBox)
+    }
+
+    private func addZoomButton(frame: CGRect, title: String) {
+        let button = SKShapeNode(rect: frame, cornerRadius: 8)
+        button.name = "hud:zoom:\(title)"
+        button.fillColor = HUDPalette.panelRaised
+        button.strokeColor = HUDPalette.cyan.withAlphaComponent(0.72)
+        button.lineWidth = 1.2
+        hudNode.addChild(button)
+
+        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label.text = title
+        label.fontSize = 18
+        label.fontColor = HUDPalette.text
+        label.horizontalAlignmentMode = .center
+        label.verticalAlignmentMode = .center
+        label.position = CGPoint(x: frame.midX, y: frame.midY - 1)
+        hudNode.addChild(label)
     }
 
     private func addSelectionInfoPanel(frame: CGRect, compact: Bool) {
@@ -6743,6 +6770,18 @@ final class GameScene: SKScene {
             touchStartWorld = nil
             return
         }
+        if zoomOutHitFrame.contains(uiPoint) {
+            adjustCameraZoom(by: 0.12)
+            touchStartScene = nil
+            touchStartWorld = nil
+            return
+        }
+        if zoomInHitFrame.contains(uiPoint) {
+            adjustCameraZoom(by: -0.12)
+            touchStartScene = nil
+            touchStartWorld = nil
+            return
+        }
         if let action = hudAction(at: uiPoint) {
             handleHudAction(action, tapCount: touch.tapCount)
             touchStartScene = nil
@@ -6956,6 +6995,16 @@ final class GameScene: SKScene {
         hudPage.actions.first { action in
             hudButtonHitFrames[action]?.contains(point) == true
         }
+    }
+
+    private func adjustCameraZoom(by delta: CGFloat) {
+        let previousScale = cameraRig.xScale
+        let nextScale = min(maxCameraScale, max(minCameraScale, cameraRig.xScale + delta))
+        guard abs(nextScale - cameraRig.xScale) > 0.001 else { return }
+        cameraRig.setScale(nextScale)
+        cameraRig.position = clampCamera(cameraRig.position)
+        updateMinimap()
+        showMessage(nextScale < previousScale ? "Zoom in" : "Zoom out", color: HUDPalette.cyan)
     }
 
     private func hudPage(at point: CGPoint) -> HudPage? {

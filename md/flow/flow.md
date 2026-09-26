@@ -90,6 +90,8 @@ Mechanic 实体另持有预创建的 `mechanicRepairEffectNode`，由阵营化�
 
 ### `HudAction`
 
+小地图下方的 `−` / `+` 是独立的 HUD 命中区域，调用 `adjustCameraZoom(by:)` 复用 `minCameraScale`、`maxCameraScale` 和 `clampCamera`，并刷新小地图 camera box；它们不属于 `HudAction`，不会穿透为世界点击或清理 pending 命令。
+
 底部命令条使用 `HudPage` 把 26 个 `HudAction` 分成五个单排页面：`TACT` 为选军、`G1` / `G2`、`HOLD`、`STOP`、`TGT`、`AMOV`、`RLY`、HQ；`BUILD` 为陆军生产和 `BASE`；`AIR` 为 HELI / JET；`SEA` 为 SHIP / SUB / CV；`SUP` 为四种支援、AI 难度和重开 skirmish。切页只重建 HUD，不清理选中单位、队列或 pending 命令；隐藏页面含 armed 动作时页签继续显示 stroke/glow，高亮语义仍来自原 pending 状态。当前可见页签与动作保留独立视觉 frame，并按固定页面 / 动作顺序查询互不重叠、至少 44pt 的语义 hit frame；命令条横向边界和按钮行内的 gap 由 HUD inert guard 消费，不穿透 minimap 或世界，也不清除 pending。 HUD 由 `HUDPalette` 统一为深色玻璃底、沙金任务强调、青色地图/选择信息和红橙告警；`layoutHUD()` 创建独立顶部资源条、任务卡、消息胶囊、状态卡、小地图、选择卡和底部 command dock，`updateHUD()` 仍只刷新既有文字与状态节点。视觉 frame 与语义 hit frame 继续分离，HUD 视觉重建不会增加或绕过任何命令状态。
 
 ### `AIDifficulty`
