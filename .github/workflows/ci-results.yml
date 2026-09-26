@@ -110,24 +110,32 @@ jobs:
             bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${app_path}/Info.plist")"
 
             echo "Prewarming ${bundle_id} in capture mode before the 24 screenshot probes"
-            prewarm_output="$(SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=air SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE=1 SIMCTL_CHILD_DESERT_CI_HUD_PAGE=tactical SIMCTL_CHILD_DESERT_CI_COMMAND_MARKER=none xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}")"
-            echo "${prewarm_output}"
-            prewarm_pid="${prewarm_output##*: }"
-            if [[ ! "${prewarm_pid}" =~ ^[0-9]+$ ]]; then
-              echo "Could not parse prewarm app PID from simctl launch output: ${prewarm_output}"
+            prewarm_pid=""
+            for prewarm_attempt in 1 2 3; do
+              prewarm_output="$(SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=air SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE=1 SIMCTL_CHILD_DESERT_CI_HUD_PAGE=tactical SIMCTL_CHILD_DESERT_CI_COMMAND_MARKER=none xcrun simctl launch --terminate-running-process "${sim_udid}" "${bundle_id}" || true)"
+              echo "Prewarm attempt ${prewarm_attempt}: ${prewarm_output}"
+              candidate_pid="${prewarm_output##*: }"
+              if [[ "${candidate_pid}" =~ ^[0-9]+$ ]] && kill -0 "${candidate_pid}" 2>/dev/null; then
+                echo "DesertFrontline prewarm process ${candidate_pid} is running; waiting 90 seconds for first-boot system notifications to expire."
+                sleep 90
+                if kill -0 "${candidate_pid}" 2>/dev/null; then
+                  prewarm_pid="${candidate_pid}"
+                  echo "DesertFrontline prewarm process ${prewarm_pid} survived the notification wait."
+                  break
+                fi
+                echo "DesertFrontline prewarm process ${candidate_pid} exited before the notification wait completed."
+              else
+                echo "DesertFrontline prewarm attempt ${prewarm_attempt} did not return a live app process."
+              fi
+              if [[ "${prewarm_attempt}" != 3 ]]; then
+                echo "Waiting 20 seconds before the next prewarm attempt."
+                sleep 20
+              fi
+            done
+            if [[ -z "${prewarm_pid}" ]]; then
+              echo "DesertFrontline prewarm did not survive any of the bounded attempts."
               exit 1
             fi
-            if ! kill -0 "${prewarm_pid}" 2>/dev/null; then
-              echo "DesertFrontline prewarm process ${prewarm_pid} exited immediately."
-              exit 1
-            fi
-            echo "DesertFrontline prewarm process ${prewarm_pid} is running; waiting 90 seconds for first-boot system notifications to expire."
-            sleep 90
-            if ! kill -0 "${prewarm_pid}" 2>/dev/null; then
-              echo "DesertFrontline prewarm process ${prewarm_pid} exited before the notification wait completed."
-              exit 1
-            fi
-            echo "DesertFrontline prewarm process ${prewarm_pid} survived the notification wait."
             xcrun simctl terminate "${sim_udid}" "${bundle_id}"
             echo "DesertFrontline prewarm terminated; waiting 5 seconds before formal screenshot probes."
             sleep 5
