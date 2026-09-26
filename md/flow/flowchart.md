@@ -8,7 +8,7 @@ Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界�
 
 海军实体的 `navalWakeNode` 与选中艏向箭头都在实体配置阶段一次性预创建：Battleship / Carrier 依舰体尺度绘制艏部 V 形浅水冲洗、近 / 远段递减尾流、泡沫边与舰艉推进器扰流，Submarine 仅保留低透明扰动；移动时 `updateNavalWake` 用同一 `localWakeDirection` 与 `xScale` 镜像同时旋转尾流和箭头。选择刷新只让玩家选中、存活且可见的三类海军显示箭头；停止保留最后 rotation，取消选择、死亡、重开和 fog 隐藏继续复用实体父节点生命周期，不新增状态、每帧节点或第 25 次探针。读图：海军 movement direction 分流到既有 wake rotation 与 heading cue rotation，selection / alive / fog 门槛控制 cue 显隐。
 
-命令条保留视觉按钮尺寸与页面 / action 映射；当前可见页签和动作另有按固定顺序查询的、互不重叠且至少 44pt 的语义 hit frame。按钮间隙及两端安全范围只在命令条实际行内由 HUD inert guard 消费，不能穿透 minimap / 世界或清除 pending。
+命令条保留视觉按钮尺寸与页面 / action 映射；当前可见页签和动作另有按固定顺序查询的、互不重叠且至少 44pt 的语义 hit frame。按钮间隙及两端安全范围只在命令条实际行内由 HUD inert guard 消费，不能穿透 minimap / 世界或清除 pending。 HUD 视觉层由 `HUDPalette` 统一深色玻璃面板、沙金任务卡、青色小地图/选择卡、红橙告警和底部 command dock；`layoutHUD()` 只创建渲染节点，`updateHUD()` 只刷新既有事实文本和状态，视觉重建不改变命令流。
 
 Carrier 的甲板作业轨和安全/拦阻边线属于 `HealthVisual -> Render` 的实体静态模型子树：它们在 Carrier 创建时一次性挂入 `base`，不进入 `effectsLayer`，不增加玩法分支，并沿用实体移动、镜像、fog、死亡和 `SKRM` 生命周期。
 

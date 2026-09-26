@@ -614,6 +614,22 @@ private enum HudPage: String, CaseIterable {
     }
 }
 
+/// Shared HUD palette: one restrained command-console language for every page.
+/// The colors are intentionally duplicated here instead of in gameplay state so
+/// a resize/rebuild never creates a second source of truth for the command flow.
+private enum HUDPalette {
+    static let panel = UIColor(red: 0.035, green: 0.060, blue: 0.070, alpha: 0.94)
+    static let panelRaised = UIColor(red: 0.055, green: 0.085, blue: 0.092, alpha: 0.96)
+    static let panelDeep = UIColor(red: 0.018, green: 0.030, blue: 0.038, alpha: 0.97)
+    static let border = UIColor(red: 0.34, green: 0.62, blue: 0.64, alpha: 0.88)
+    static let borderSoft = UIColor(red: 0.44, green: 0.48, blue: 0.42, alpha: 0.72)
+    static let gold = UIColor(red: 0.96, green: 0.72, blue: 0.28, alpha: 1.0)
+    static let cyan = UIColor(red: 0.35, green: 0.90, blue: 0.86, alpha: 1.0)
+    static let warning = UIColor(red: 1.0, green: 0.42, blue: 0.27, alpha: 1.0)
+    static let text = UIColor(red: 0.90, green: 0.94, blue: 0.91, alpha: 1.0)
+    static let mutedText = UIColor(red: 0.62, green: 0.73, blue: 0.70, alpha: 1.0)
+}
+
 private enum SupportPower: CaseIterable, Hashable {
     case reconSweep
     case fieldRepair
@@ -4353,34 +4369,58 @@ final class GameScene: SKScene {
         let halfW = size.width / 2
         let halfH = size.height / 2
 
-        let topPanel = SKShapeNode(rectOf: CGSize(width: 276, height: 62), cornerRadius: 7)
-        topPanel.fillColor = UIColor(red: 0.14, green: 0.13, blue: 0.10, alpha: 0.92)
-        topPanel.strokeColor = UIColor(red: 0.86, green: 0.68, blue: 0.28, alpha: 1.0)
-        topPanel.lineWidth = 3
-        topPanel.position = CGPoint(x: -halfW + 156, y: halfH - 54)
+        let topPanel = SKShapeNode(rectOf: CGSize(width: 332, height: 72), cornerRadius: 12)
+        topPanel.fillColor = HUDPalette.panel
+        topPanel.strokeColor = HUDPalette.border
+        topPanel.lineWidth = 1.6
+        topPanel.position = CGPoint(x: -halfW + 186, y: halfH - 53)
         hudNode.addChild(topPanel)
 
+        let topAccent = SKShapeNode(rectOf: CGSize(width: 4, height: 48), cornerRadius: 2)
+        topAccent.fillColor = HUDPalette.gold
+        topAccent.strokeColor = .clear
+        topAccent.position = CGPoint(x: -halfW + 29, y: halfH - 53)
+        hudNode.addChild(topAccent)
+
+        let commandTitle = SKLabelNode(fontNamed: "Menlo-Bold")
+        commandTitle.text = "DESERT FRONTLINE"
+        commandTitle.fontSize = 11
+        commandTitle.fontColor = HUDPalette.gold
+        commandTitle.horizontalAlignmentMode = .left
+        commandTitle.verticalAlignmentMode = .center
+        commandTitle.position = CGPoint(x: -halfW + 78, y: halfH - 26)
+        hudNode.addChild(commandTitle)
+
+        let commandSubtitle = SKLabelNode(fontNamed: "Menlo")
+        commandSubtitle.text = "BLUE COMMAND  /  LIVE OPS"
+        commandSubtitle.fontSize = 8
+        commandSubtitle.fontColor = HUDPalette.mutedText
+        commandSubtitle.horizontalAlignmentMode = .left
+        commandSubtitle.verticalAlignmentMode = .center
+        commandSubtitle.position = CGPoint(x: -halfW + 78, y: halfH - 38)
+        hudNode.addChild(commandSubtitle)
+
         let coin = SKShapeNode(ellipseOf: CGSize(width: 36, height: 36))
-        coin.fillColor = UIColor(red: 0.96, green: 0.82, blue: 0.18, alpha: 1.0)
-        coin.strokeColor = UIColor(red: 0.45, green: 0.34, blue: 0.05, alpha: 1.0)
-        coin.lineWidth = 3
-        coin.position = CGPoint(x: -halfW + 47, y: halfH - 54)
+        coin.fillColor = HUDPalette.gold
+        coin.strokeColor = UIColor(red: 0.28, green: 0.22, blue: 0.08, alpha: 1.0)
+        coin.lineWidth = 2
+        coin.position = CGPoint(x: -halfW + 53, y: halfH - 59)
         hudNode.addChild(coin)
 
         moneyLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        moneyLabel.fontSize = 30
-        moneyLabel.fontColor = UIColor(red: 0.86, green: 0.89, blue: 0.83, alpha: 1.0)
+        moneyLabel.fontSize = 26
+        moneyLabel.fontColor = HUDPalette.text
         moneyLabel.horizontalAlignmentMode = .left
         moneyLabel.verticalAlignmentMode = .center
-        moneyLabel.position = CGPoint(x: -halfW + 76, y: halfH - 48)
+        moneyLabel.position = CGPoint(x: -halfW + 78, y: halfH - 59)
         hudNode.addChild(moneyLabel)
 
         incomeLabel = SKLabelNode(fontNamed: "Menlo")
-        incomeLabel.fontSize = 12
-        incomeLabel.fontColor = UIColor(red: 0.74, green: 0.88, blue: 0.63, alpha: 1.0)
+        incomeLabel.fontSize = 10
+        incomeLabel.fontColor = UIColor(red: 0.46, green: 0.86, blue: 0.66, alpha: 1.0)
         incomeLabel.horizontalAlignmentMode = .left
         incomeLabel.verticalAlignmentMode = .center
-        incomeLabel.position = CGPoint(x: -halfW + 79, y: halfH - 75)
+        incomeLabel.position = CGPoint(x: -halfW + 78, y: halfH - 76)
         hudNode.addChild(incomeLabel)
 
         let actions = hudPage.actions
@@ -4393,7 +4433,7 @@ final class GameScene: SKScene {
 
         selectedLabel = SKLabelNode(fontNamed: "Menlo-Bold")
         selectedLabel.fontSize = compactHUD ? 12 : 14
-        selectedLabel.fontColor = .white
+        selectedLabel.fontColor = HUDPalette.text
         selectedLabel.horizontalAlignmentMode = .left
         selectedLabel.verticalAlignmentMode = .center
         selectedLabel.position = CGPoint(x: -halfW + 28, y: commandBarTop + 34)
@@ -4401,33 +4441,42 @@ final class GameScene: SKScene {
 
         queueLabel = SKLabelNode(fontNamed: "Menlo")
         queueLabel.fontSize = compactHUD ? 10 : 12
-        queueLabel.fontColor = UIColor(red: 0.95, green: 0.82, blue: 0.46, alpha: 1.0)
+        queueLabel.fontColor = HUDPalette.gold
         queueLabel.horizontalAlignmentMode = .left
         queueLabel.verticalAlignmentMode = .center
         queueLabel.position = CGPoint(x: -halfW + 28, y: commandBarTop + 14)
         hudNode.addChild(queueLabel)
 
         messageLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        messageLabel.fontSize = 15
-        messageLabel.fontColor = .white
+        messageLabel.fontSize = 13
+        messageLabel.fontColor = HUDPalette.text
         messageLabel.horizontalAlignmentMode = .center
         messageLabel.verticalAlignmentMode = .center
-        messageLabel.position = CGPoint(x: 0, y: halfH - 52)
+        messageLabel.position = CGPoint(x: 0, y: halfH - 22)
+        hudNode.addChild(messageLabel)
+
+        let messageRule = SKShapeNode(rectOf: CGSize(width: min(520, size.width - 420), height: 22), cornerRadius: 11)
+        messageRule.fillColor = HUDPalette.panelDeep
+        messageRule.strokeColor = HUDPalette.borderSoft
+        messageRule.lineWidth = 1
+        messageRule.alpha = 0.80
+        messageRule.position = CGPoint(x: 0, y: halfH - 22)
+        hudNode.addChild(messageRule)
         hudNode.addChild(messageLabel)
 
         let missionPanelWidth = min(compactHUD ? 350 : 500, max(280, size.width - 590))
-        let missionPanelHeight: CGFloat = compactHUD ? 68 : 74
-        let missionPanelY = halfH - (compactHUD ? 110 : 114)
-        let missionPanel = SKShapeNode(rectOf: CGSize(width: missionPanelWidth, height: missionPanelHeight), cornerRadius: 7)
-        missionPanel.fillColor = UIColor(red: 0.07, green: 0.08, blue: 0.08, alpha: 0.88)
-        missionPanel.strokeColor = UIColor(red: 0.70, green: 0.58, blue: 0.28, alpha: 0.92)
-        missionPanel.lineWidth = 2.5
+        let missionPanelHeight: CGFloat = compactHUD ? 72 : 82
+        let missionPanelY = halfH - (compactHUD ? 112 : 116)
+        let missionPanel = SKShapeNode(rectOf: CGSize(width: missionPanelWidth, height: missionPanelHeight), cornerRadius: 12)
+        missionPanel.fillColor = HUDPalette.panelRaised
+        missionPanel.strokeColor = HUDPalette.gold.withAlphaComponent(0.72)
+        missionPanel.lineWidth = 1.6
         missionPanel.position = CGPoint(x: 0, y: missionPanelY)
         hudNode.addChild(missionPanel)
 
         missionTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
         missionTitleLabel.fontSize = compactHUD ? 11 : 13
-        missionTitleLabel.fontColor = UIColor(red: 0.98, green: 0.84, blue: 0.46, alpha: 1.0)
+        missionTitleLabel.fontColor = HUDPalette.gold
         missionTitleLabel.horizontalAlignmentMode = .left
         missionTitleLabel.verticalAlignmentMode = .center
         missionTitleLabel.position = CGPoint(x: -missionPanelWidth / 2 + 14, y: missionPanelY + 22)
@@ -4435,7 +4484,7 @@ final class GameScene: SKScene {
 
         missionDetailLabel = SKLabelNode(fontNamed: "Menlo")
         missionDetailLabel.fontSize = compactHUD ? 9 : 11
-        missionDetailLabel.fontColor = UIColor(white: 0.92, alpha: 1.0)
+        missionDetailLabel.fontColor = HUDPalette.text
         missionDetailLabel.horizontalAlignmentMode = .left
         missionDetailLabel.verticalAlignmentMode = .center
         missionDetailLabel.position = CGPoint(x: -missionPanelWidth / 2 + 14, y: missionPanelY - 2)
@@ -4468,16 +4517,16 @@ final class GameScene: SKScene {
         }
 
         let statusPanelY = min(commandBarTop + 80, halfH - 122)
-        let statusPanel = SKShapeNode(rectOf: CGSize(width: 244, height: 56), cornerRadius: 7)
-        statusPanel.fillColor = UIColor(red: 0.10, green: 0.12, blue: 0.12, alpha: 0.88)
-        statusPanel.strokeColor = UIColor(white: 0.08, alpha: 1.0)
-        statusPanel.lineWidth = 3
+        let statusPanel = SKShapeNode(rectOf: CGSize(width: 254, height: 62), cornerRadius: 11)
+        statusPanel.fillColor = HUDPalette.panel
+        statusPanel.strokeColor = HUDPalette.borderSoft
+        statusPanel.lineWidth = 1.4
         statusPanel.position = CGPoint(x: -halfW + 150, y: statusPanelY)
         hudNode.addChild(statusPanel)
 
         forcesLabel = SKLabelNode(fontNamed: "Menlo")
         forcesLabel.fontSize = 12
-        forcesLabel.fontColor = UIColor(red: 0.72, green: 0.90, blue: 1.0, alpha: 1.0)
+        forcesLabel.fontColor = HUDPalette.cyan
         forcesLabel.horizontalAlignmentMode = .left
         forcesLabel.verticalAlignmentMode = .center
         forcesLabel.position = CGPoint(x: -halfW + 38, y: statusPanelY + 8)
@@ -4485,13 +4534,13 @@ final class GameScene: SKScene {
 
         aiStatusLabel = SKLabelNode(fontNamed: "Menlo")
         aiStatusLabel.fontSize = 12
-        aiStatusLabel.fontColor = UIColor(red: 1.0, green: 0.72, blue: 0.62, alpha: 1.0)
+        aiStatusLabel.fontColor = UIColor(red: 1.0, green: 0.57, blue: 0.42, alpha: 1.0)
         aiStatusLabel.horizontalAlignmentMode = .left
         aiStatusLabel.verticalAlignmentMode = .center
         aiStatusLabel.position = CGPoint(x: -halfW + 38, y: statusPanelY - 12)
         hudNode.addChild(aiStatusLabel)
 
-        minimapFrame = CGRect(x: halfW - 238, y: halfH - 208, width: 210, height: 158)
+        minimapFrame = CGRect(x: halfW - 250, y: halfH - 218, width: 222, height: 168)
         addMinimap(frame: minimapFrame)
 
         let infoPanelTop = minimapFrame.minY - 12
@@ -4533,6 +4582,25 @@ final class GameScene: SKScene {
         let hitHeight: CGFloat = max(44, commandButtonHeight)
         let hitY = y - hitHeight / 2
 
+        let commandDock = SKShapeNode(
+            rectOf: CGSize(width: totalWidth + 26, height: commandBarHeight + 16),
+            cornerRadius: 14
+        )
+        commandDock.fillColor = HUDPalette.panelDeep
+        commandDock.strokeColor = HUDPalette.border
+        commandDock.lineWidth = 1.5
+        commandDock.position = CGPoint(x: 0, y: y)
+        hudNode.addChild(commandDock)
+
+        let commandDockRule = SKShapeNode(
+            rectOf: CGSize(width: max(80, totalWidth - 24), height: 2),
+            cornerRadius: 1
+        )
+        commandDockRule.fillColor = HUDPalette.cyan.withAlphaComponent(0.56)
+        commandDockRule.strokeColor = .clear
+        commandDockRule.position = CGPoint(x: 0, y: y + commandBarHeight / 2 + 5)
+        hudNode.addChild(commandDockRule)
+
         for page in pages {
             let hitFrame = CGRect(x: x, y: hitY, width: pageHitWidth, height: hitHeight)
             let frame = CGRect(
@@ -4572,16 +4640,16 @@ final class GameScene: SKScene {
     }
 
     private func addMinimap(frame: CGRect) {
-        let panel = SKShapeNode(rect: frame, cornerRadius: 7)
-        panel.fillColor = UIColor(red: 0.04, green: 0.06, blue: 0.06, alpha: 0.92)
-        panel.strokeColor = UIColor(red: 0.78, green: 0.68, blue: 0.42, alpha: 1.0)
-        panel.lineWidth = 3
+        let panel = SKShapeNode(rect: frame, cornerRadius: 12)
+        panel.fillColor = HUDPalette.panelDeep
+        panel.strokeColor = HUDPalette.border
+        panel.lineWidth = 1.6
         hudNode.addChild(panel)
 
         let title = SKLabelNode(fontNamed: "Menlo-Bold")
-        title.text = "TACTICAL MAP"
-        title.fontSize = 11
-        title.fontColor = UIColor(red: 0.95, green: 0.84, blue: 0.55, alpha: 1.0)
+        title.text = "TACTICAL MAP  /  LIVE"
+        title.fontSize = 10
+        title.fontColor = HUDPalette.gold
         title.horizontalAlignmentMode = .left
         title.verticalAlignmentMode = .center
         title.position = CGPoint(x: frame.minX + 10, y: frame.maxY - 13)
@@ -4611,10 +4679,10 @@ final class GameScene: SKScene {
     }
 
     private func addSelectionInfoPanel(frame: CGRect, compact: Bool) {
-        let panel = SKShapeNode(rect: frame, cornerRadius: 7)
-        panel.fillColor = UIColor(red: 0.05, green: 0.07, blue: 0.07, alpha: 0.90)
-        panel.strokeColor = UIColor(red: 0.34, green: 0.64, blue: 0.70, alpha: 0.95)
-        panel.lineWidth = 2.5
+        let panel = SKShapeNode(rect: frame, cornerRadius: 12)
+        panel.fillColor = HUDPalette.panel
+        panel.strokeColor = HUDPalette.border
+        panel.lineWidth = 1.6
         hudNode.addChild(panel)
 
         selectionInfoRowAvailableWidth = max(0, frame.width - 20)
@@ -4622,7 +4690,7 @@ final class GameScene: SKScene {
 
         selectionInfoTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
         selectionInfoTitleLabel.fontSize = compact ? 10 : 11
-        selectionInfoTitleLabel.fontColor = UIColor(red: 0.74, green: 0.95, blue: 1.0, alpha: 1.0)
+        selectionInfoTitleLabel.fontColor = HUDPalette.cyan
         selectionInfoTitleLabel.horizontalAlignmentMode = .left
         selectionInfoTitleLabel.verticalAlignmentMode = .center
         selectionInfoTitleLabel.position = CGPoint(x: frame.minX + 10, y: frame.maxY - 14)
@@ -4692,17 +4760,23 @@ final class GameScene: SKScene {
         node.name = "hud:\(action.rawValue)"
         node.position = CGPoint(x: frame.midX, y: frame.midY)
 
-        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 8)
+        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 10)
         shape.fillColor = buttonColor(for: action)
-        shape.strokeColor = UIColor.black
-        shape.lineWidth = 4
+        shape.strokeColor = HUDPalette.panelDeep
+        shape.lineWidth = 2
         node.addChild(shape)
         hudButtonShapes[action] = shape
+
+        let topLine = SKShapeNode(rectOf: CGSize(width: max(12, frame.width - 14), height: 2), cornerRadius: 1)
+        topLine.fillColor = UIColor.white.withAlphaComponent(0.22)
+        topLine.strokeColor = .clear
+        topLine.position = CGPoint(x: 0, y: frame.height / 2 - 6)
+        node.addChild(topLine)
 
         let title = SKLabelNode(fontNamed: "Menlo-Bold")
         title.text = action.title
         title.fontSize = frame.width < 48 ? 10 : (frame.width < 62 ? 13 : 16)
-        title.fontColor = .white
+        title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
         title.position = CGPoint(x: 0, y: frame.height < 62 ? 9 : 12)
@@ -4711,7 +4785,7 @@ final class GameScene: SKScene {
         let subtitleLabel = SKLabelNode(fontNamed: "Menlo")
         subtitleLabel.text = subtitle(for: action)
         subtitleLabel.fontSize = frame.width < 48 ? 6 : (frame.width < 62 ? 7 : 9)
-        subtitleLabel.fontColor = UIColor(white: 0.92, alpha: 1.0)
+        subtitleLabel.fontColor = HUDPalette.mutedText
         subtitleLabel.verticalAlignmentMode = .center
         subtitleLabel.horizontalAlignmentMode = .center
         subtitleLabel.position = CGPoint(x: 0, y: frame.height < 62 ? -14 : -18)
@@ -4726,17 +4800,23 @@ final class GameScene: SKScene {
         node.name = "hud-page:\(page.rawValue)"
         node.position = CGPoint(x: frame.midX, y: frame.midY)
 
-        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 7)
+        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 10)
         shape.fillColor = hudPageColor(page, active: page == hudPage)
-        shape.strokeColor = UIColor.black
-        shape.lineWidth = 3
+        shape.strokeColor = HUDPalette.panelDeep
+        shape.lineWidth = 2
         node.addChild(shape)
         hudPageShapes[page] = shape
+
+        let topLine = SKShapeNode(rectOf: CGSize(width: max(12, frame.width - 12), height: 2), cornerRadius: 1)
+        topLine.fillColor = UIColor.white.withAlphaComponent(0.22)
+        topLine.strokeColor = .clear
+        topLine.position = CGPoint(x: 0, y: frame.height / 2 - 6)
+        node.addChild(topLine)
 
         let title = SKLabelNode(fontNamed: "Menlo-Bold")
         title.text = page.title
         title.fontSize = frame.width < 48 ? 9 : (frame.width < 60 ? 10 : 12)
-        title.fontColor = .white
+        title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
         title.position = CGPoint(x: 0, y: 8)
@@ -4745,7 +4825,7 @@ final class GameScene: SKScene {
         let subtitle = SKLabelNode(fontNamed: "Menlo")
         subtitle.text = page.subtitle
         subtitle.fontSize = frame.width < 48 ? 5.5 : (frame.width < 60 ? 6 : 7)
-        subtitle.fontColor = UIColor(white: 0.88, alpha: 1.0)
+        subtitle.fontColor = HUDPalette.mutedText
         subtitle.verticalAlignmentMode = .center
         subtitle.horizontalAlignmentMode = .center
         subtitle.position = CGPoint(x: 0, y: -13)
@@ -4789,8 +4869,8 @@ final class GameScene: SKScene {
                 shape.lineWidth = 5.5
                 shape.glowWidth = 3
             } else {
-                shape.strokeColor = UIColor.black
-                shape.lineWidth = 4
+                shape.strokeColor = HUDPalette.panelDeep
+                shape.lineWidth = 2
                 shape.glowWidth = 0
             }
         }
@@ -4803,15 +4883,15 @@ final class GameScene: SKScene {
             let containsArmedAction = page.actions.contains { isHudActionArmed($0) }
             shape.fillColor = hudPageColor(page, active: isActive)
             shape.strokeColor = isActive || containsArmedAction
-                ? UIColor(red: 1.0, green: 0.82, blue: 0.28, alpha: 1.0)
-                : UIColor.black
-            shape.lineWidth = isActive ? 4 : (containsArmedAction ? 3.5 : 3)
+                ? HUDPalette.gold
+                : HUDPalette.panelDeep
+            shape.lineWidth = isActive ? 3.5 : (containsArmedAction ? 3 : 2)
             shape.glowWidth = containsArmedAction ? 2.5 : (isActive ? 1.2 : 0)
         }
     }
 
     private func hudPageColor(_ page: HudPage, active: Bool) -> UIColor {
-        let alpha: CGFloat = active ? 0.98 : 0.82
+        let alpha: CGFloat = active ? 0.98 : 0.86
         switch page {
         case .tactical:
             return UIColor(red: active ? 0.16 : 0.10, green: active ? 0.48 : 0.25, blue: active ? 0.32 : 0.22, alpha: alpha)

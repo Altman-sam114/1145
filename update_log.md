@@ -5903,3 +5903,31 @@
 
 - 固定 24 张 PNG、generic iOS build、launch/PID、JUnit、manifest、日志、ZIP 和 result bundle 只能证明本次实现及 CI 通知遮挡修复的构建、artifact 完整性、固定场景启动稳定性与截图无遮挡；不能证明真实触控、动态航向连续变化、全部 fog / sonar 转换、连续海战、实体死亡 / 重开 skirmish、全部 seed 或真机长期性能。
 - 本轮未运行本地 `xcodebuild`、Simulator、`simctl` 或玩法探针；除本条 `update_log.md` closure 外未修改 GameScene、README、flow、flowchart、test、workflow、prompt、project.pbxproj 或 `md/unity分析/`。
+
+### v5.34 / 战场 HUD 视觉指挥台重构
+
+日期：2026-09-26
+
+核心变更：
+
+- 以 `HUDPalette` 统一 SpriteKit HUD 的深色玻璃底、沙金任务强调、青色海空/地图信息和红橙告警色。
+- `layoutHUD()` 重排顶部资源条、消息胶囊、任务进度卡、部队状态卡、小地图、选择信息卡和底部 command dock；按钮与页签增加统一圆角、细描边和顶部高光，保持视觉 frame 与语义 hit frame 分离。
+- `HudPage` / `HudAction`、pending 高亮、生产/支援/AI/重开、选择、战斗、迷雾、小地图命中和所有玩法状态未改变；不引入外部素材或依赖。
+
+关键文件：
+
+- `DesertFrontline/GameScene.swift`
+- `README.md`
+- `md/flow/flow.md`
+- `md/flow/flowchart.md`
+- `md/test/test.md`
+- `md/prompt/v5（视觉指挥台）/v5.34（全面重构战场HUD视觉）.md`
+
+验证结果：
+
+- 本轮按用户要求未运行本地 Xcode、Simulator、simctl 或本地探针；push 后以最新 GitHub Actions generic iOS build、simulator launch 和 24 张 PNG 结果包验收。
+- 日志 closure 待 Agent C 核对本轮 commit 对应的 run、manifest、JUnit、xcodebuild.log、failure summary、xcresult 和所有 PNG 后补充。
+
+遗留事项：
+
+- 固定云端截图不能证明真实手指触控、任意窗口比例、动态长时间战斗、Reduce Motion 或真机性能；后续可继续从海空单位卡片、地图镜头和战斗特效中选择单一视觉增量。

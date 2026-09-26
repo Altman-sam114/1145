@@ -2,6 +2,8 @@
 
 Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shape of Desert Stormfront and the provided reference screenshot. It does not reuse original game art; all map tiles, units, buildings, HUD elements, fog, and effects are generated with SpriteKit shapes.
 
+- Tactical HUD visual system: a dark glass command console with a Blue Command resource strip, gold mission card and progress rail, cyan tactical map / selection cards, compact force-status readout, and a dedicated bottom command dock. The five single-row pages retain large, separated touch targets, page/action state highlighting, and existing command semantics while making the battlefield the visual focus.
+
 ## Current Features
 
 - iOS SwiftUI app shell with a full-screen SpriteKit scene that resizes to the live window and uses a black launch fallback behind the game view.
