@@ -4453,7 +4453,6 @@ final class GameScene: SKScene {
         messageLabel.horizontalAlignmentMode = .center
         messageLabel.verticalAlignmentMode = .center
         messageLabel.position = CGPoint(x: 0, y: halfH - 22)
-        hudNode.addChild(messageLabel)
 
         let messageRuleWidth = max(180, min(520, size.width - 40))
         let messageRule = SKShapeNode(rectOf: CGSize(width: messageRuleWidth, height: 22), cornerRadius: 11)
