@@ -431,3 +431,7 @@ du -sh /private/tmp/desert-frontline-c-review-<run_id>/
 ## v5.42 云端目视口径
 
 小地图底部应显示与 `cameraRig.xScale` 同源的倍率读数，并与北向标记、camera box、缩放按钮和地图 blip 保持可读。读数为静态 HUD 状态映射，不改变缩放或输入。
+
+## v5.43 云端探针限时
+
+模拟器截图 `simctl io` 使用 180 秒 watchdog，应用 launch 使用 120 秒，其他 simctl 命令保持 60 秒；用于区分慢 runner I/O 与应用启动失败。
