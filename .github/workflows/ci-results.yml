@@ -80,7 +80,9 @@ jobs:
 
       - name: iOS simulator launch probe
         id: simulator-launch
-        timeout-minutes: 25
+        # Keep the simulator stage below the job timeout so a hosted
+        # CoreSimulator migration cannot strand the whole results package.
+        timeout-minutes: 15
         continue-on-error: true
         shell: bash
         run: |
@@ -98,7 +100,7 @@ jobs:
             }
             rm -rf .derivedData-sim ci-results/simulator-screenshot.png ci-results/simulator-hud-build.png ci-results/simulator-hud-air.png ci-results/simulator-hud-naval.png ci-results/simulator-hud-support.png ci-results/simulator-command-move.png ci-results/simulator-command-attack-move.png ci-results/simulator-command-attack-target.png ci-results/simulator-land-combat.png ci-results/simulator-map-terrain.png ci-results/simulator-combat-ui.png ci-results/simulator-incoming-ui.png ci-results/simulator-naval-salvo.png ci-results/simulator-coastal-battery.png ci-results/simulator-carrier-strike.png ci-results/simulator-mobile-aa.png ci-results/simulator-fighter-strike.png ci-results/simulator-helicopter-salvo.png ci-results/simulator-damage-state.png ci-results/simulator-stop-command.png ci-results/simulator-target-cycle.png ci-results/simulator-selection-cycle.png ci-results/simulator-enemy-touch-assist.png ci-results/simulator-naval-damage.png ci-results/simulator-app.log
 
-            python3 ci/run_bounded.py 600 /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
+            python3 ci/run_bounded.py 420 /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
               -project DesertFrontline.xcodeproj \
               -scheme DesertFrontline \
               -configuration Debug \
