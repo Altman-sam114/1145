@@ -4722,12 +4722,12 @@ final class GameScene: SKScene {
         hudNode.addChild(northLabel)
 
         let legendItems: [(String, UIColor)] = [
-            ("L", HUDPalette.gold),
-            ("A", UIColor(red: 0.35, green: 0.78, blue: 1.0, alpha: 1.0)),
-            ("S", UIColor(red: 0.42, green: 0.94, blue: 0.82, alpha: 1.0))
+            ("LAND", HUDPalette.gold),
+            ("AIR", UIColor(red: 0.35, green: 0.78, blue: 1.0, alpha: 1.0)),
+            ("SEA", UIColor(red: 0.42, green: 0.94, blue: 0.82, alpha: 1.0))
         ]
         for (index, item) in legendItems.enumerated() {
-            let x = frame.minX + 12 + CGFloat(index) * 28
+            let x = frame.minX + 12 + CGFloat(index) * 60
             let dot = SKShapeNode(circleOfRadius: 2.5)
             dot.fillColor = item.1
             dot.strokeColor = .clear

@@ -439,3 +439,7 @@ du -sh /private/tmp/desert-frontline-c-review-<run_id>/
 ## v5.44 云端目视口径
 
 小地图标题下显示 L/A/S 彩色域图例，不能遮挡地图、北向标识、camera box、缩放按钮或缩放读数。图例为静态 HUD 说明，不新增玩法状态。
+
+## v5.45 云端目视口径
+
+小地图图例显示 `LAND / AIR / SEA`，文字保持在地图标题区域内，不遮挡北向标记、camera box、缩放按钮或倍率读数。
