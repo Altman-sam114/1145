@@ -155,3 +155,7 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 ## v5.43 云端探针限时
 
 模拟器截图 `simctl io` 使用 180 秒 watchdog，应用 launch 使用 120 秒，其他 simctl 命令保持 60 秒；用于区分慢 runner I/O 与应用启动失败。
+
+## v5.44 云端目视口径
+
+小地图标题下显示 L/A/S 彩色域图例，不能遮挡地图、北向标识、camera box、缩放按钮或缩放读数。图例为静态 HUD 说明，不新增玩法状态。

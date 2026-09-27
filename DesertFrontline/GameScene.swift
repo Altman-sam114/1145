@@ -4721,6 +4721,29 @@ final class GameScene: SKScene {
         northLabel.position = CGPoint(x: frame.maxX - 17, y: frame.maxY - 25)
         hudNode.addChild(northLabel)
 
+        let legendItems: [(String, UIColor)] = [
+            ("L", HUDPalette.gold),
+            ("A", UIColor(red: 0.35, green: 0.78, blue: 1.0, alpha: 1.0)),
+            ("S", UIColor(red: 0.42, green: 0.94, blue: 0.82, alpha: 1.0))
+        ]
+        for (index, item) in legendItems.enumerated() {
+            let x = frame.minX + 12 + CGFloat(index) * 28
+            let dot = SKShapeNode(circleOfRadius: 2.5)
+            dot.fillColor = item.1
+            dot.strokeColor = .clear
+            dot.position = CGPoint(x: x, y: frame.maxY - 27)
+            hudNode.addChild(dot)
+
+            let label = SKLabelNode(fontNamed: "Menlo-Bold")
+            label.text = item.0
+            label.fontSize = 7
+            label.fontColor = item.1
+            label.horizontalAlignmentMode = .left
+            label.verticalAlignmentMode = .center
+            label.position = CGPoint(x: x + 5, y: frame.maxY - 27)
+            hudNode.addChild(label)
+        }
+
         minimapScaleLabel = SKLabelNode(fontNamed: "Menlo")
         minimapScaleLabel.fontSize = 7
         minimapScaleLabel.fontColor = HUDPalette.mutedText
