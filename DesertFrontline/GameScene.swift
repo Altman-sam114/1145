@@ -4695,6 +4695,40 @@ final class GameScene: SKScene {
         title.position = CGPoint(x: frame.minX + 10, y: frame.maxY - 13)
         hudNode.addChild(title)
 
+        let northCue = SKShapeNode(path: {
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: 0, y: -5))
+            path.addLine(to: CGPoint(x: 0, y: 6))
+            path.move(to: CGPoint(x: 0, y: 6))
+            path.addLine(to: CGPoint(x: -2.5, y: 2.5))
+            path.move(to: CGPoint(x: 0, y: 6))
+            path.addLine(to: CGPoint(x: 2.5, y: 2.5))
+            return path
+        }())
+        northCue.strokeColor = HUDPalette.cyan
+        northCue.lineWidth = 1.4
+        northCue.lineCap = .round
+        northCue.position = CGPoint(x: frame.maxX - 17, y: frame.maxY - 13)
+        hudNode.addChild(northCue)
+
+        let northLabel = SKLabelNode(fontNamed: "Menlo-Bold")
+        northLabel.text = "N"
+        northLabel.fontSize = 8
+        northLabel.fontColor = HUDPalette.cyan
+        northLabel.horizontalAlignmentMode = .center
+        northLabel.verticalAlignmentMode = .center
+        northLabel.position = CGPoint(x: frame.maxX - 17, y: frame.maxY - 25)
+        hudNode.addChild(northLabel)
+
+        let scaleLabel = SKLabelNode(fontNamed: "Menlo")
+        scaleLabel.text = "TACTICAL  /  TAP TO FOCUS"
+        scaleLabel.fontSize = 7
+        scaleLabel.fontColor = HUDPalette.mutedText
+        scaleLabel.horizontalAlignmentMode = .left
+        scaleLabel.verticalAlignmentMode = .center
+        scaleLabel.position = CGPoint(x: frame.minX + 10, y: frame.minY + 10)
+        hudNode.addChild(scaleLabel)
+
         for row in 0..<rows {
             for col in 0..<cols {
                 let tile = TileCoord(row: row, col: col)

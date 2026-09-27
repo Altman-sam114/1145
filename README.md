@@ -143,3 +143,7 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 ## v5.39 云端超时与失败留证
 
 云端 build 由 ci/run_bounded.py 限制600秒，普通 simctl 限制60秒，每30秒打印进度。bootstatus 每次最多240秒，失败后对同一云端模拟器 shutdown/boot 再试一次；两次失败明确报告环境启动失败。构建步骤12分钟、模拟器步骤25分钟、整个job45分钟。失败/取消后 metadata 和 upload 使用 always 尽力保存结果；runner强制结束无法保证上传。JUnit tests 数量包含 skipped XCTest。保留24项截图/PID探针，不把静态截图当作动态玩法测试。本轮人工要求只做云端测试。
+
+## v5.41 云端目视口径
+
+小地图截图需显示右上北向箭头/N 标识与左下 `TACTICAL / TAP TO FOCUS` 提示；提示不遮挡地图 blip、camera box、缩放按钮或战区状态条。该节点仅为静态 HUD 视觉，不改变镜头和命令语义。
