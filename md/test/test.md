@@ -427,3 +427,7 @@ du -sh /private/tmp/desert-frontline-c-review-<run_id>/
 ## v5.41 云端目视口径
 
 小地图截图需显示右上北向箭头/N 标识与左下 `TACTICAL / TAP TO FOCUS` 提示；提示不遮挡地图 blip、camera box、缩放按钮或战区状态条。该节点仅为静态 HUD 视觉，不改变镜头和命令语义。
+
+## v5.42 云端目视口径
+
+小地图底部应显示与 `cameraRig.xScale` 同源的倍率读数，并与北向标记、camera box、缩放按钮和地图 blip 保持可读。读数为静态 HUD 状态映射，不改变缩放或输入。

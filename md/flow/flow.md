@@ -268,3 +268,5 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 云端验证执行层：build/simctl → 有限进程组 watchdog → 退出码或124超时 → 同设备有限启动恢复 → always metadata/upload；排队等待与App启动分别记录。
 
 小地图在标题旁显示静态北向提示和聚焦操作说明；均为 HUD 节点，不进入地图状态或输入分流。
+
+小地图底部缩放读数只读映射 cameraRig.xScale，随既有缩放和 updateMinimap 刷新。

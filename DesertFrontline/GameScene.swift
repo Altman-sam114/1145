@@ -1074,6 +1074,7 @@ final class GameScene: SKScene {
     private var minimapFrame = CGRect.zero
     private var minimapBlipsNode = SKNode()
     private var minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 36, height: 24), cornerRadius: 2)
+    private var minimapScaleLabel = SKLabelNode(fontNamed: "Menlo")
     private var zoomOutHitFrame = CGRect.zero
     private var zoomInHitFrame = CGRect.zero
 
@@ -4720,14 +4721,13 @@ final class GameScene: SKScene {
         northLabel.position = CGPoint(x: frame.maxX - 17, y: frame.maxY - 25)
         hudNode.addChild(northLabel)
 
-        let scaleLabel = SKLabelNode(fontNamed: "Menlo")
-        scaleLabel.text = "TACTICAL  /  TAP TO FOCUS"
-        scaleLabel.fontSize = 7
-        scaleLabel.fontColor = HUDPalette.mutedText
-        scaleLabel.horizontalAlignmentMode = .left
-        scaleLabel.verticalAlignmentMode = .center
-        scaleLabel.position = CGPoint(x: frame.minX + 10, y: frame.minY + 10)
-        hudNode.addChild(scaleLabel)
+        minimapScaleLabel = SKLabelNode(fontNamed: "Menlo")
+        minimapScaleLabel.fontSize = 7
+        minimapScaleLabel.fontColor = HUDPalette.mutedText
+        minimapScaleLabel.horizontalAlignmentMode = .left
+        minimapScaleLabel.verticalAlignmentMode = .center
+        minimapScaleLabel.position = CGPoint(x: frame.minX + 10, y: frame.minY + 10)
+        hudNode.addChild(minimapScaleLabel)
 
         for row in 0..<rows {
             for col in 0..<cols {
@@ -6584,6 +6584,7 @@ final class GameScene: SKScene {
     private func updateMinimap() {
         guard minimapFrame.width > 0 else { return }
         minimapBlipsNode.removeAllChildren()
+        minimapScaleLabel.text = String(format: "TACTICAL  /  %.1fx  /  TAP TO FOCUS", 1.0 / max(cameraRig.xScale, 0.01))
 
         for entity in entities.values where entity.isAlive {
             if entity.faction == .enemy && !isKnownToFaction(entity, observer: .player) {
