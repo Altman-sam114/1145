@@ -171,3 +171,7 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 ## v5.47 云端目视口径
 
 小地图 `−/+` 按钮上方显示 `ZOOM`，不遮挡按钮、倍率读数、camera box 或地图内容。
+
+## v5.48 云端目视口径
+
+THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，不遮挡小地图、标题或战区信息。

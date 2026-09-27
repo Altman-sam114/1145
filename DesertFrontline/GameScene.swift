@@ -4593,6 +4593,14 @@ final class GameScene: SKScene {
         theaterSubtitle.position = CGPoint(x: minimapFrame.minX + 10, y: minimapFrame.maxY + 19)
         hudNode.addChild(theaterSubtitle)
 
+        let liveDot = SKShapeNode(circleOfRadius: 3)
+        liveDot.fillColor = UIColor(red: 0.35, green: 0.96, blue: 0.58, alpha: 1.0)
+        liveDot.strokeColor = UIColor(red: 0.35, green: 0.96, blue: 0.58, alpha: 0.42)
+        liveDot.lineWidth = 2
+        liveDot.glowWidth = 1.5
+        liveDot.position = CGPoint(x: minimapFrame.maxX - 13, y: minimapFrame.maxY + 25)
+        hudNode.addChild(liveDot)
+
         let infoPanelTop = minimapFrame.minY - 12
         let infoPanelBottomLimit = commandBarTop + (compactHUD ? 72 : 38)
         let infoPanelHeight = max(104, min(compactHUD ? 124 : 152, infoPanelTop - infoPanelBottomLimit))
