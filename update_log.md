@@ -6002,3 +6002,11 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 ### v5.48 / 战区状态 LIVE 指示（待云端验收）
 
 在战区状态卡加入绿色 LIVE 指示点，强化地图连接状态的视觉可读性。
+
+### v5.49 / 命令栏导航与动作区视觉分隔
+
+日期：2026-09-27
+
+- 在底部单排命令栏的页签与上下文动作按钮之间增加低对比青色分隔线，强化 `TACT / BUILD / AIR / SEA / SUP` 导航与当前页命令的阅读层级。
+- 分隔线只属于 HUD 渲染，不改变按钮 hit frame、命令路由、pending 状态、迷雾或战斗逻辑。
+- 本轮等待 GitHub Actions generic iOS build、模拟器启动探针和 24 张截图 artifact 验收。

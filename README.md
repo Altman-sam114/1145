@@ -175,3 +175,5 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 ## v5.48 云端目视口径
 
 THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，不遮挡小地图、标题或战区信息。
+
+The command dock visually separates the five navigation pages from the context-sensitive actions while preserving the same one-tap hit areas and command routing.

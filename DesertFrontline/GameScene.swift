@@ -4672,6 +4672,18 @@ final class GameScene: SKScene {
             hudNode.addChild(makeHudPageTab(page: page, frame: frame))
             x += pageHitWidth + hitGap
         }
+        // Keep navigation visually separate from the context-sensitive command
+        // buttons. The divider is purely presentational; hit frames and action
+        // routing remain unchanged.
+        if let firstPage = pages.last, let pageFrame = hudPageFrames[firstPage] {
+            let dividerX = (pageFrame.maxX + x) / 2
+            let divider = SKShapeNode(rectOf: CGSize(width: 2, height: commandButtonHeight - 16), cornerRadius: 1)
+            divider.fillColor = HUDPalette.cyan.withAlphaComponent(0.42)
+            divider.strokeColor = .clear
+            divider.position = CGPoint(x: dividerX, y: y)
+            divider.zPosition = 2
+            hudNode.addChild(divider)
+        }
         for action in actions {
             let hitFrame = CGRect(x: x, y: hitY, width: actionHitWidth, height: hitHeight)
             let frame = CGRect(
