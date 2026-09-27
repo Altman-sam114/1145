@@ -278,3 +278,5 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 小地图域图例使用 LAND/AIR/SEA 文本解释既有 blip 色彩，仍为静态 HUD。
 
 小地图倍率栏同时提示 PINCH 与 TAP FOCUS，仍只读映射既有输入能力。
+
+小地图缩放按钮上方显示 ZOOM 静态标签，输入仍复用既有 adjustCameraZoom。

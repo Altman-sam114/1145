@@ -4554,6 +4554,15 @@ final class GameScene: SKScene {
         addZoomButton(frame: zoomOutHitFrame, title: "−")
         addZoomButton(frame: zoomInHitFrame, title: "+")
 
+        let zoomHint = SKLabelNode(fontNamed: "Menlo-Bold")
+        zoomHint.text = "ZOOM"
+        zoomHint.fontSize = 7
+        zoomHint.fontColor = HUDPalette.mutedText
+        zoomHint.horizontalAlignmentMode = .center
+        zoomHint.verticalAlignmentMode = .center
+        zoomHint.position = CGPoint(x: (zoomOutHitFrame.midX + zoomInHitFrame.midX) / 2, y: zoomY + 23)
+        hudNode.addChild(zoomHint)
+
         // A quiet theater label gives the map a clear reading order: the player
         // can identify the current operating sector before reading the blips.
         let theaterPanel = SKShapeNode(

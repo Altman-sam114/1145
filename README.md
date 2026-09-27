@@ -167,3 +167,7 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 ## v5.46 云端目视口径
 
 小地图倍率栏显示 `PINCH • TAP FOCUS`，文字不溢出 minimap、不遮挡缩放按钮或 camera box；仅为操作提示。
+
+## v5.47 云端目视口径
+
+小地图 `−/+` 按钮上方显示 `ZOOM`，不遮挡按钮、倍率读数、camera box 或地图内容。
