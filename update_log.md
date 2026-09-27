@@ -63,6 +63,17 @@
 - 修复JUnit tests总数未包含skipped XCTest；保持24项截图探针。
 - 本轮仅云端测试；尚未获得修复版本的云端artifact，不计为验收通过。UI全面重构仍为后续目标。
 
+### v5.40 / watchdog 进程组清理修复
+
+日期：2026-09-27。
+
+- 修复 v5.39 在 macOS runner 清理已退出子进程时的 `PermissionError`，超时命令现在仍返回 124，并尽力清理进程组。
+- 云端 run `36281321252`，commit `c7d8a256027fdab6c64b07dbe04396c0c969741e`，`staticChecksOutcome=success`、`projectLintOutcome=success`、`buildOutcome=success`、`simulatorLaunchOutcome=success`。
+- artifact `desert-frontline-ci-v5.40-main-c7d8a256027f-run36281321252-attempt1` 已下载到 `/private/tmp/desert-frontline-c-review-36281321252/`；manifest、JUnit、构建日志、启动日志和 24 张 PNG 已核对。
+- 百度搜索返回安全验证页；改用 Apple App Store Search API 获取 `Desert Stormfront (RTS)` 官方公开描述与截图 URL，确认复刻基线包含沙漠/石油、陆海空/潜艇、战争迷雾、AI 难度、随机地图、单指移动攻击与基地/船厂/机场/油田布局。参考战场截图已查看，作为后续 UI 复刻依据。
+
+遗留：当前仅云端固定窗口截图证明布局与启动，不能替代真机触控或长时间性能；下一轮可继续做一个有限 UI 视觉增量后再走同一云端门槛。
+
 ## 历史记录
 
 ### 初始可玩原型
