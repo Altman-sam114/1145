@@ -186,6 +186,17 @@ jobs:
               fi
               sleep "${wait_seconds}"
               xcrun simctl io "${sim_udid}" screenshot "${screenshot_path}"
+              # Some hosted simulator runtimes save a landscape app inside a
+              # portrait canvas. Normalize the artifact so visual review sees
+              # the same landscape tactical layout as the player.
+              if command -v sips >/dev/null 2>&1 && [[ -f "${screenshot_path}" ]]; then
+                dimensions="$(sips -g pixelWidth -g pixelHeight "${screenshot_path}" 2>/dev/null | awk '/pixelWidth/ {w=$2} /pixelHeight/ {h=$2} END {print w, h}')"
+                read -r width height <<< "${dimensions}"
+                if [[ "${width:-0}" =~ ^[0-9]+$ && "${height:-0}" =~ ^[0-9]+$ && "${height}" -gt "${width}" ]]; then
+                  sips --rotate 90 "${screenshot_path}" >/dev/null
+                  echo "Normalized portrait screenshot ${screenshot_path} (${width}x${height}) to landscape."
+                fi
+              fi
               if ! kill -0 "${app_pid}" 2>/dev/null; then
                 echo "DesertFrontline ${page} HUD process ${app_pid} exited during the launch probe."
                 exit 1
