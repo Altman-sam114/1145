@@ -20,14 +20,17 @@ def main():
     def stop_group():
         try:
             os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            return
+        except (ProcessLookupError, PermissionError):
+            pass
         time.sleep(2)
         try:
             os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
+        except (ProcessLookupError, PermissionError):
             pass
-        process.wait()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            return
 
     def cancelled(signum, frame):
         print(f"[watchdog] cancelled {label}; signal={signum}", file=sys.stderr, flush=True)
