@@ -6607,7 +6607,7 @@ final class GameScene: SKScene {
     private func updateMinimap() {
         guard minimapFrame.width > 0 else { return }
         minimapBlipsNode.removeAllChildren()
-        minimapScaleLabel.text = String(format: "TACTICAL  /  %.1fx  /  TAP TO FOCUS", 1.0 / max(cameraRig.xScale, 0.01))
+        minimapScaleLabel.text = String(format: "TACTICAL  /  %.1fx  /  PINCH  •  TAP FOCUS", 1.0 / max(cameraRig.xScale, 0.01))
 
         for entity in entities.values where entity.isAlive {
             if entity.faction == .enemy && !isKnownToFaction(entity, observer: .player) {

@@ -163,3 +163,7 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 ## v5.45 云端目视口径
 
 小地图图例显示 `LAND / AIR / SEA`，文字保持在地图标题区域内，不遮挡北向标记、camera box、缩放按钮或倍率读数。
+
+## v5.46 云端目视口径
+
+小地图倍率栏显示 `PINCH • TAP FOCUS`，文字不溢出 minimap、不遮挡缩放按钮或 camera box；仅为操作提示。
