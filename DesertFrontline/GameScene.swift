@@ -4659,6 +4659,16 @@ final class GameScene: SKScene {
         commandDockRule.position = CGPoint(x: 0, y: y + commandBarHeight / 2 + 5)
         hudNode.addChild(commandDockRule)
 
+        let commandDeckHint = SKLabelNode(fontNamed: "Menlo-Bold")
+        commandDeckHint.text = "COMMAND DECK  •  TAP TO ISSUE ORDERS"
+        commandDeckHint.fontSize = compactHUD ? 7 : 8
+        commandDeckHint.fontColor = HUDPalette.mutedText.withAlphaComponent(0.92)
+        commandDeckHint.horizontalAlignmentMode = .center
+        commandDeckHint.verticalAlignmentMode = .center
+        commandDeckHint.position = CGPoint(x: 0, y: y + commandBarHeight / 2 + 14)
+        commandDeckHint.zPosition = 3
+        hudNode.addChild(commandDeckHint)
+
         for page in pages {
             let hitFrame = CGRect(x: x, y: hitY, width: pageHitWidth, height: hitHeight)
             let frame = CGRect(
