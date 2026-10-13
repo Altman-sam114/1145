@@ -106,7 +106,9 @@ flowchart TD
   Implement --> Commit["main commit\nsubject: 版本号: 简要说明"]
   Commit --> Push["git push origin main\n触发云端验证"]
   Push --> Actions["GitHub Actions ci-results\n静态检查、plutil、generic iOS build"]
-  Actions --> Artifact["未加密 CI 结果包\nmanifest、JUnit、xcodebuild.log、failure summary、xcresult"]
+  Actions --> Probe["单一24项清单 / 唯一云端设备\n1080秒工作deadline + 最多90秒诊断清理 < 21分钟step\n同设备有限boot/prewarm，进程组取消清理"]
+  Probe --> Integrity["原子probe summary / 完整性双重门槛\n24次launch、PID存活、有效横屏PNG / SHA\n失败也保留已完成与未运行项"]
+  Integrity --> Artifact["always 未加密 CI 结果包\nmanifest、JUnit、build/launch日志、failure summary、xcresult\nprobe summary、云端负路径结果、24 PNG"]
   Artifact --> AgentC["Agent C\ngh auth login 后下载最新 run 结果包"]
   AgentC --> Verify["核对 origin/main 最新 commit\nrun id、run attempt、artifact、日志"]
   Verify --> Gate{"验收是否通过"}
@@ -177,3 +179,5 @@ flowchart TD
 ### 云端超时留证（v5.39）
 
 读图补充：云端 build/simctl 先经过限时 watchdog；bootstatus 超时后同设备最多重试一次；成功进入24项截图探针，失败也进入 always 元数据与上传阶段。
+
+v5.53 读图补充：generic build 独立 600 秒；模拟器所有命令 / 等待共享总工作 deadline，每个阶段输出开始 / 结束 / 耗时与心跳；finally 有界采集日志并只关闭所选设备。权威清单同时驱动执行、summary 与 manifest，结构化 summary 和全部 PNG 必须通过 runner 与 metadata 两次完整性核对。强制取消 / 销毁 runner 仍可能阻止留证。

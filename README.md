@@ -142,7 +142,7 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 
 ## v5.39 云端超时与失败留证
 
-云端 build 由 ci/run_bounded.py 限制600秒，普通 simctl 限制60秒，每30秒打印进度。bootstatus 每次最多240秒，失败后对同一云端模拟器 shutdown/boot 再试一次；两次失败明确报告环境启动失败。构建步骤12分钟、模拟器步骤25分钟、整个job45分钟。失败/取消后 metadata 和 upload 使用 always 尽力保存结果；runner强制结束无法保证上传。JUnit tests 数量包含 skipped XCTest。保留24项截图/PID探针，不把静态截图当作动态玩法测试。本轮人工要求只做云端测试。
+云端 generic build 由 `ci/run_bounded.py` 限制 600 秒；模拟器由 `ci/simulator_probe.py` 共享 1080 秒 monotonic 工作预算，另预留至多 90 秒诊断 / 同设备 shutdown，内层 1170 秒小于 step 21 分钟硬限时。generic build step 12 分钟、job 45 分钟，metadata / upload 各预留 3 / 5 分钟。单命令保持 simulator build 420 秒、bootstatus 240 秒最多两次、launch 120 秒、截图 180 秒、其他 simctl 60 秒，实际限时还会受剩余总预算约束并预留进程组终止时间。所有等待每 30 秒输出心跳。失败 / SIGTERM / SIGINT 后尽力原子保存进度、采集有界诊断、只关闭本 run 选定的唯一设备；metadata / upload 使用 always，runner 强制销毁仍可能无法上传。保留首次成功预热 90 秒通知消退、5 秒稳定等待和全部 24 次原场景独立截图 / PID 探针，不把静态截图当作动态玩法测试。
 
 ## v5.41 云端目视口径
 
@@ -177,3 +177,10 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，不遮挡小地图、标题或战区信息。
 
 The command dock visually separates the five navigation pages from the context-sensitive actions while preserving the same one-tap hit areas and command routing.
+
+## v5.53 Cloud Probe Reliability
+
+- `ci/probes.json` is the authoritative list of the same 24 capture scenes, names, waits and output PNGs. Launch, progress reporting and artifact paths derive from that list; prewarm is separate.
+- CI records installed iOS runtimes and chooses the latest available runtime between the built app deployment target and the selected simulator SDK, then sorts iPhones by name/UDID. There is no assumed faster older runtime, runtime download, extra device creation or device switching during retries.
+- Each stage atomically updates `simulator-probe-summary.json`: run/attempt/commit/version, selected runtime/device, budgets, timing, failure stage, last completed probe, per-probe status/PID/liveness and PNG byte count/dimensions/SHA-256. Only 24 complete independent launches with live PIDs and valid landscape PNG data pass the gate; metadata rechecks the same evidence. CRC/scanline validation cannot determine whether the rendered scene is visually correct, so Agent C still reviews all screenshots.
+- Cloud-only standard-library regressions cover watchdog cancellation, deadline propagation, incomplete/duplicate results, invalid PNGs, dead PIDs and failure-summary preservation. No local build, simulator operation or regression execution is part of this round. This maintenance is not a full UI reconstruction or a gameplay/performance certification.

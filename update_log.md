@@ -76,6 +76,19 @@
 
 ## 历史记录
 
+### v5.53 / 云端探针预算与完整性加固（待云端验收）
+
+日期：2026-10-13。
+
+- 真实诊断基线为 v5.51 run `36309267351` success：generic build 41 秒、simulator SDK build 44.4 秒、bootstatus 221.5 秒、首次 prewarm launch 115.3 秒；模拟器步骤 14 分 50 秒距旧 15 分钟硬限时只有约 10 秒。该证据说明 hosted boot / 首次启动和预算脆弱，不证明 Swift 编译卡死。
+- 用单用途 `ci/simulator_probe.py` 替换长内联 shell，工作共享 1080 秒 monotonic 总预算，诊断 / 所选设备 shutdown 最多另 90 秒，step 21 分钟；generic build 仍 600 秒，job 45 分钟，metadata / upload 保留 3 / 5 分钟。保持顺序执行，不宣称并行提速；保留全部预热和渲染等待。
+- 新增权威 24 项 `ci/probes.json`，原场景 / 名称 / 顺序不变；按可用 runtime 版本、部署目标 / SDK 约束与 iPhone name / UDID 排序选择唯一云端设备，不创建、下载或在重试时切换。
+- 增加逐阶段原子 `simulator-probe-summary.json`、PNG CRC / scanline / 横屏 / SHA 与两次 PID 活跃完整性门槛、失败和未运行项区分；metadata 在生成 manifest / JUnit 前二次核验，缺图 / 缺 summary 不能假绿。watchdog 由 runner 直接调用管理唯一子进程组，取消先清理命令、再有界诊断 / shutdown。
+- 新增仅云端标准库 scheduler / summary / 完整性负路径回归，watchdog 增加 SIGTERM 后代清理证据；README、test、flow / flowchart 同步。测试结果、generic build 和全部 24 PNG 必须在本轮 push 后由 Agent C 下载最新 artifact 核实；此条尚不宣称通过。
+- 继承本地既有 v5.52 `8df6eb4` 的 10 行命令栏操作引导，未修改其 Swift 内容；用户 Team ID、未跟踪 v5.23-v5.33 prompts 与 `md/unity分析/` 原样保留。本机不运行 Xcode、Simulator、simctl 或任何回归，仅静态语法 / AST / diff 检查。
+
+遗留：云端固定 capture 和 CI 失败处理不等于动态玩法、多尺寸、真实触控或真机性能认证；全面 UI / 模型 / 陆海空体验重构仍是后续轮次，未宣称完全复刻或总目标完成。
+
 ### 初始可玩原型
 
 日期：2026-06-28 前

@@ -91,6 +91,19 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 
 ## 3. 云端重验证
 
+### v5.53 调度与完整性门槛
+
+- 本轮本机只允许 `git diff --check`、暂存 diff 检查、YAML / Python AST / shell 语法检查；禁止本机 build、Simulator、simctl、watchdog 或 scheduler 测试，也不得本机伪造 `GITHUB_ACTIONS=true`。全部回归由 Actions 执行。
+- `ci/probes.json` 是唯一 24 项权威清单，包含 ID、page、marker、focus、原等待时间和 PNG basename；顺序、场景和输出名与既有 24 次探针一致。预热单独统计，正式 launch 不重试、不以替代图补数。
+- `ci/simulator_probe.py` 顺序执行 simulator build、可解释设备选择、boot、install、prewarm 和 24 项 capture；本轮没有并行 boot/build 的加速承诺。共享 monotonic 工作 deadline 1080 秒，所有命令与等待都扣除同一预算，另用最多 90 秒有界收尾，合计 1170 秒 < step 1260 秒。generic build 独立 600 秒 / step 12 分钟；job 45 分钟；静态测试 / lint 最多 2 / 1 分钟，metadata / upload 最多 3 / 5 分钟。
+- 模拟器编译最多 420 秒、bootstatus 每次 240 秒最多两次、launch 每次 120 秒、截图 180 秒、其他 simctl 60 秒、sips 30 秒；每次命令额外在剩余预算内留 2 秒用于 TERM/KILL/reap。boot / prewarm 重试检查剩余预算，不能靠重试重置总 deadline。预热保留 90 秒通知消退、5 秒稳定等待，首次截图 8 秒、其余 4 秒，等待每 30 秒打印心跳。
+- 选择策略：记录 Xcode / simulator SDK、全部已安装 runtime；仅候选 `isAvailable` 的 iOS runtime / iPhone，版本须在构建后 app `MinimumOSVersion` 与所选 SDK 之间，runtime 按新到旧、设备按 name / UDID 升序排序。未有稳定旧 runtime 的证据，因此不凭猜测选旧版本；不下载、不新建、不在重试时更换设备。
+- `simulator-probe-summary.json` 每个阶段 / 探针原子落盘，记录 commit / run / attempt / version / branch、设备 / runtime / 选择理由、工作与收尾预算 / 耗时、阶段 start / end / exit、prewarm、当前阶段、失败原因、最后成功 probe、expected / completed / failed / notRun / running 计数和每项 PID / launch 次数 / launch 后与截图后存活 / PNG 大小、尺寸、SHA-256。缺失 summary 时 metadata 只能补失败记录，不能推断 success。
+- 每个截图必须通过完整 PNG chunk CRC、RGB/RGBA 8-bit 非交错结构、解压 scanline / filter / 数据长度校验，竖图经有界 sips 旋转为横屏后再校验；PID 两次活跃检查、24 项一一对应、无重复 ID / path、无额外截图同时满足才允许成功。`ci/package_results.py` 在上传前重验身份、prewarm、全部 24 PNG 和 summary；JUnit 有 5 个 CI testcase 加 1 个准确 skipped 的 XCTest，计数与实际节点一致。
+- `ci/check_watchdog.py` 仅 Actions 检查成功、非零、超时、后代清理、SIGTERM 后代清理；`ci/check_probe_runner.py` 仅 Actions 使用 fake commands 与标准库 unittest 检查 24 完整结果、缺项、重复 ID / path、空 / 坏 / 截断 PNG、缺图、dead PID、真实短命令超时、deadline 传递 / 耗尽、失败 summary、runtime 确定排序和被篡改图像证据。其日志进入 `static-checks.log`，结构化 `ci-regression-results.json` 进入 artifact；失败会阻止最终 CI 通过。
+- 调度器直接持有一个子命令进程组，不套另一层 watchdog session；取消先终止所属命令组，再记录失败并按有界 finally 采集 app log / device state、仅 shutdown 选定设备。重复取消在收尾时忽略，不扩大为全局 shutdown。收尾警告不覆盖原始失败；强制销毁 runner / GitHub 硬取消仍可能阻止上传。
+- artifact 增加 `probes.json`、`simulator-probe-summary.json`、`simulator-build.log`、`simulator-runtimes.json`、`simulator-boot-state.json` 和 `ci-regression-results.json`，与 manifest / JUnit / generic build / 原 24 PNG 一并验收。C 必须核对最新 SHA / run / attempt 以及全部 PNG 目视，结构通过不代表无白屏、真实触控、动态玩法、多尺寸或真机长期性能。
+
 ### 触发条件
 
 `.github/workflows/ci-results.yml` 在以下情况运行：
@@ -422,7 +435,7 @@ du -sh /private/tmp/desert-frontline-c-review-<run_id>/
 
 ## v5.39 云端超时与失败留证
 
-云端 build 由 ci/run_bounded.py 限制600秒，普通 simctl 限制60秒，每30秒打印进度。bootstatus 每次最多240秒，失败后对同一云端模拟器 shutdown/boot 再试一次；两次失败明确报告环境启动失败。构建步骤12分钟、模拟器步骤25分钟、整个job45分钟。失败/取消后 metadata 和 upload 使用 always 尽力保存结果；runner强制结束无法保证上传。JUnit tests 数量包含 skipped XCTest。保留24项截图/PID探针，不把静态截图当作动态玩法测试。本轮人工要求只做云端测试。
+云端 generic build 由 `ci/run_bounded.py` 限制 600 秒；模拟器由 `ci/simulator_probe.py` 共享 1080 秒 monotonic 工作预算，另预留至多 90 秒诊断 / 同设备 shutdown，内层 1170 秒小于 step 21 分钟硬限时。generic build step 12 分钟、job 45 分钟，metadata / upload 各预留 3 / 5 分钟。单命令保持 simulator build 420 秒、bootstatus 240 秒最多两次、launch 120 秒、截图 180 秒、其他 simctl 60 秒，实际限时还会受剩余总预算约束并预留进程组终止时间。所有等待每 30 秒输出心跳。失败 / SIGTERM / SIGINT 后尽力原子保存进度、采集有界诊断、只关闭本 run 选定的唯一设备；metadata / upload 使用 always，runner 强制销毁仍可能无法上传。保留首次成功预热 90 秒通知消退、5 秒稳定等待和全部 24 次原场景独立截图 / PID 探针，不把静态截图当作动态玩法测试。
 
 ## v5.41 云端目视口径
 
