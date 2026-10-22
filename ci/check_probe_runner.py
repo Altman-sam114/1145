@@ -16,6 +16,7 @@ import uuid
 import zlib
 
 from simulator_probe import (HUD_CHECKS, HUD_FIXTURES, HUD_PAGES, Runner, ProbeFailure, SceneFailure,
+                             BOOT_POLICY, boot_monitor_semantics, boot_reserve, boot_wait_classification, validate_boot,
                              INSTALL_CAP, INSTALL_POLICY, INSTALL_RECOVERY_CAP, cli_receipt_complete, install_reserve,
                              load_probes, png_info, select_device, validate_hud_contract, validate_installation,
                              validate_results, validate_scene_evidence)
@@ -27,6 +28,19 @@ from package_results import main as package_results
 
 NORMALIZATION_EVIDENCE = []
 WATCHDOG_RECEIPT_EVIDENCE = []
+BOOT_HELP = "Monitor the boot status of a device.\nUsage: simctl bootstatus <device> [-b]\n\n  -b  Boot the device if it isn't already booted.\n"
+
+
+def boot_wait_text(udid, status=2):
+    tail = ("\tWaiting on Data Migration\n\t\tReason:Running plugin unit.fixture.migrator\n\t\tMigration Elapsed:03:49 seconds\n"
+            if status == 2 else "\tWaiting on System App\n")
+    return (f"Monitoring boot status for Synthetic iPhone ({udid}).\n"
+            f"[2026-10-22 19:02:00 +0000] Status={status}, isTerminal=NO, Elapsed=04:00.\n{tail}\n")
+
+
+def boot_state_text(device):
+    return json.dumps({"devices": {device["runtime"]["identifier"]: [
+        {"udid": device["udid"], "dataPath": device["dataPath"], "state": "Booted", "isAvailable": True}]}})
 
 
 def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, sealed=False):
@@ -84,6 +98,54 @@ def unit_cli_receipt(code=0, cap=INSTALL_CAP, timeout=False):
                 kill={"status": "already_gone" if stopped else "not_needed"},
                 cleanupOutcome="success" if stopped else "not_needed", cleanupElapsedSeconds=0.5 if stopped else 0,
                 elapsedSeconds=cap + 0.5 if timeout else 0.6 if stopped else 0.1)
+
+
+def boot_fixture(runner, continuation=False):
+    """Explicitly synthetic schema-only boot chain; no CLI or device was executed."""
+    for key in ("branch", "commitSha", "runId", "runAttempt", "version"):
+        if not runner.summary.get(key):
+            runner.summary[key] = f"unit-fixture-{key}"
+    runner.summary["selectedDevice"] = runner.device
+    device, budget = runner.device, runner.summary["workBudgetSeconds"]
+    evidence = dict(schemaVersion=1, policy=BOOT_POLICY, status="success", commands=[], admissions=[],
+                    identity={key: runner.summary[key] for key in ("branch", "commitSha", "runId", "runAttempt", "version")},
+                    selectedDevice={"udid": device["udid"], "runtimeIdentifier": device["runtime"]["identifier"],
+                                    "dataPath": device["dataPath"]}, deadlineAfterSeconds=budget,
+                    monitorSemantics=boot_monitor_semantics(BOOT_HELP))
+    stages, elapsed = [], 0
+    for role in (["help", "initial", "wait:1", "state", "wait:2"] if continuation else ["help", "initial", "wait:1"]):
+        cap = 10 if role in ("help", "state") else 60 if role == "initial" else 240
+        timeout = role == "wait:1" and continuation
+        code, duration = (124, cap + 0.5) if timeout else (0, 0.1)
+        args = (["help", "bootstatus"] if role == "help" else ["boot", device["udid"]] if role == "initial" else
+                ["list", "devices", "--json"] if role == "state" else ["bootstatus", device["udid"]])
+        text = (BOOT_HELP if role == "help" else boot_wait_text(device["udid"]) if timeout else
+                boot_state_text(device) if role == "state" else "")
+        log = f"boot-{role.replace(':', '-')}.log"
+        (runner.directory / log).write_text(text)
+        admission = dict(phase=f"boot-admission:{role}", remainingSeconds=budget - elapsed, requestedCapSeconds=cap,
+                         maxCapSeconds=min(cap, budget - elapsed - 559), installReserveSeconds=557,
+                         cliCleanupReserveSeconds=2, allowed=True)
+        record = dict(role=role, argv=["/usr/bin/xcrun", "simctl", *args], admission=admission,
+                      requestedCapSeconds=cap, effectiveCapSeconds=cap, startedAfterSeconds=elapsed,
+                      endedAfterSeconds=elapsed + duration, elapsedSeconds=duration,
+                      remainingStartSeconds=budget - elapsed, remainingEndSeconds=budget - elapsed - duration,
+                      status="failure" if timeout else "success", exitCode=code, process=unit_cli_receipt(code, cap, timeout),
+                      output={"path": log, "bytes": len(text.encode()), "sha256": hashlib.sha256(text.encode()).hexdigest()})
+        if role == "initial": record["classification"] = "booted"
+        if timeout:
+            record.update(classification=boot_wait_classification(record, text, device["udid"]), continuationDecision="continue")
+        elif role.startswith("wait:"):
+            record.update(classification="ready", continuationDecision="completed" if continuation else "not_needed")
+        if role == "state":
+            record["selectedState"] = dict(evidence["selectedDevice"], state="Booted", isAvailable=True)
+        evidence["commands"].append(record)
+        evidence["admissions"].append(admission)
+        stages += [dict(name=f"boot-admission:{role}", status="success", exitCode=0),
+                   dict(name=f"boot-{role}", status=record["status"], exitCode=code)]
+        elapsed += duration
+    runner.summary["boot"] = evidence
+    runner.summary["stages"] = stages + [stage for stage in runner.summary["stages"] if not stage["name"].startswith("boot")]
 
 
 def installation_fixture(runner):
@@ -212,7 +274,8 @@ class FakeRunner(Runner):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.device = {"udid": "fake-cloud-unit-test-only"}
+        self.device = {"udid": "fake-cloud-unit-test-only", "runtime": {"identifier": "synthetic.runtime.only"},
+                       "dataPath": "/synthetic/device/data"}
 
     def launch(self, name, definition):
         self.current_definition = definition
@@ -237,6 +300,7 @@ class FakeRunner(Runner):
             Path(args[-1]).write_bytes(png_bytes(color))
 
     def work(self):
+        boot_fixture(self)
         installation_fixture(self)
         hud_fixture(self)
         for index, definition in enumerate(self.probes):
@@ -639,6 +703,309 @@ class InstallationTests(unittest.TestCase):
                 self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
 
 
+class BootRunner(Runner):
+    """Production boot/command code with a fake monotonic clock and owned-CLI receipts."""
+    def __init__(self, directory, clock, outcomes, budget=1080):
+        super().__init__(directory, budget)
+        self.clock, self.outcomes, self.calls = clock, list(outcomes), []
+        self.device = {"udid": "boot-unit-device-only", "runtime": {"identifier": "synthetic.runtime.only"},
+                       "dataPath": "/synthetic/boot-device/data"}
+        self.summary["selectedDevice"] = self.device
+        for key in ("branch", "commitSha", "runId", "runAttempt", "version"):
+            self.summary[key] = f"unit-fixture-{key}"
+
+    def bounded(self, command, seconds, *, stdout, receipt, **kwargs):
+        self.calls.append((command, seconds))
+        outcome = self.outcomes.pop(0)
+        code, timeout = outcome.get("code", 0), outcome.get("timeout", False)
+        duration = outcome.get("duration", seconds + 0.5 if timeout else 0.6 if outcome.get("cancelled") else 0.1)
+        self.clock[0] += duration
+        process = unit_cli_receipt(code if timeout or outcome.get("cancelled") else 0, seconds, timeout)
+        process.update(exitCode=code, returnCode=process["returnCode"] if timeout or outcome.get("cancelled") else code,
+                       elapsedSeconds=duration)
+        receipt.update(process)
+        receipt.update(outcome.get("receipt", {}))
+        stdout.write(outcome.get("text", "").encode())
+        if outcome.get("exception"):
+            raise outcome["exception"]
+        return code
+
+
+class BootTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.directory, self.clock = Path(self.temp.name), [0]
+        self.timer = patch("simulator_probe.time.monotonic", side_effect=lambda: self.clock[0])
+        self.timer.start()
+        self.addCleanup(self.timer.stop)
+
+    def runner(self, outcomes=None, budget=1080):
+        return BootRunner(self.directory, self.clock, outcomes if outcomes is not None else [{"text": BOOT_HELP}, {}, {}], budget)
+
+    def boot(self, runner):
+        with patch("simulator_probe.run_bounded", side_effect=runner.bounded):
+            runner.boot_device()
+
+    def continued(self, status=2, budget=1080, state=None, second=None):
+        runner = self.runner([], budget)
+        runner.outcomes = [{"text": BOOT_HELP}, {},
+                           {"code": 124, "timeout": True, "text": boot_wait_text(runner.device["udid"], status)},
+                           state if state is not None else {"text": boot_state_text(runner.device)},
+                           second if second is not None else {}]
+        return runner
+
+    def assert_failed(self, runner):
+        with self.assertRaises(ProbeFailure):
+            self.boot(runner)
+        saved = json.loads((self.directory / "simulator-probe-summary.json").read_text())
+        self.assertNotEqual(saved["boot"]["status"], "success")
+        with self.assertRaises(ProbeFailure):
+            validate_boot(saved, runner.probes, self.directory)
+        return saved["boot"]
+
+    def package(self, runner):
+        runner.save()
+        environment = {key: runner.summary[field] for key, field in (
+            ("CI_VERSION", "version"), ("GITHUB_REF_NAME", "branch"), ("GITHUB_SHA", "commitSha"),
+            ("GITHUB_RUN_ID", "runId"), ("GITHUB_RUN_ATTEMPT", "runAttempt"))}
+        environment.update(WORKFLOW_NAME="synthetic boot fixture", GITHUB_OUTPUT=str(self.directory / "outputs"),
+                           STATIC_OUTCOME="success", PROJECT_LINT_OUTCOME="success", BUILD_OUTCOME="success",
+                           SIMULATOR_LAUNCH_OUTCOME="success")
+        with patch.dict(os.environ, environment), patch("package_results.Path", side_effect=lambda path:
+                self.directory if path == "ci-results" else Path(path)):
+            package_results()
+        return json.loads((self.directory / "ci-artifact-manifest.json").read_text())
+
+    def test_boot_help_supported_semantics_not_whole_string(self):
+        for help_text in (BOOT_HELP, "Additional version banner\n" + BOOT_HELP + "Other documentation\n",
+                          BOOT_HELP.replace("Boot the device if it isn't already booted.", "If the device is not booted, boot it.")):
+            with self.subTest(help_text=help_text):
+                runner = self.runner([{"text": help_text}, {}, {}])
+                self.boot(runner)
+                validate_boot(runner.summary, runner.probes, self.directory)
+                self.assertTrue(runner.summary["boot"]["monitorSemantics"]["monitorOnlyWithoutOption"])
+
+    def test_boot_help_unknown_or_failed_stops_before_initial_boot(self):
+        for outcome in ({"text": "bootstatus [-b]"}, {"text": BOOT_HELP.replace("Boot the device", "Maybe boot the device")},
+                        {"text": BOOT_HELP + "Without -b it still boots the device.\n"},
+                        {"text": BOOT_HELP, "code": 7}, {"text": BOOT_HELP, "receipt": {"reaped": False}}):
+            with self.subTest(outcome=outcome):
+                runner = self.runner([outcome])
+                self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 1)
+
+    def test_boot_first_success_has_one_boot_and_monitor_without_auto_boot(self):
+        runner = self.runner()
+        deadline = runner.deadline
+        self.boot(runner)
+        validate_boot(runner.summary, runner.probes, self.directory)
+        self.assertEqual([call[0][2:] for call in runner.calls], [["help", "bootstatus"], ["boot", runner.device["udid"]],
+                                                               ["bootstatus", runner.device["udid"]]])
+        self.assertEqual([call[1] for call in runner.calls], [10, 60, 240])
+        self.assertEqual(runner.deadline, deadline)
+
+    def test_boot_exact_already_booted_normal_high_exit_is_not_signal(self):
+        diagnostic = ("An error was encountered processing the command (domain=com.apple.CoreSimulator.SimError, code=405):\n"
+                      "Unable to boot device in current state: Booted\n")
+        runner = self.runner([{"text": BOOT_HELP}, {"code": 405, "text": diagnostic}, {}])
+        self.boot(runner)
+        validate_boot(runner.summary, runner.probes, self.directory)
+        self.assertEqual(runner.summary["boot"]["commands"][1]["classification"], "already_booted")
+
+    def test_boot_unknown_permanent_or_timeout_initial_failure_does_not_monitor(self):
+        for outcome in ({"code": 7, "text": "booted? maybe"}, {"code": 7, "text": "No such device"},
+                        {"code": 7, "text": "Unable to boot device in current state: Shutdown"},
+                        {"code": 7, "text": "Permission denied\nUnable to boot device in current state: Booted"},
+                        {"code": 124, "timeout": True}, {"code": 0, "receipt": {"reaped": False}}):
+            with self.subTest(outcome=outcome):
+                runner = self.runner([{"text": BOOT_HELP}, outcome])
+                self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 2)
+
+    def test_boot_migration_or_system_app_timeout_continues_same_device_once(self):
+        for status in (2, 4):
+            with self.subTest(status=status):
+                runner = self.continued(status)
+                self.boot(runner)
+                validate_boot(runner.summary, runner.probes, self.directory)
+                self.assertEqual([call[0][2] for call in runner.calls], ["help", "boot", "bootstatus", "list", "bootstatus"])
+                waits = [call[0] for call in runner.calls if call[0][2] == "bootstatus"]
+                self.assertEqual(waits, [["/usr/bin/xcrun", "simctl", "bootstatus", runner.device["udid"]]] * 2)
+                self.assertEqual(runner.summary["boot"]["commands"][2]["continuationDecision"], "continue")
+
+    def test_boot_exit124_or_incomplete_cleanup_never_queries_state(self):
+        outcomes = [{"code": 124}, {"code": 124, "timeout": True, "receipt": {"reaped": False}},
+                    {"code": 124, "timeout": True, "receipt": {"term": {"status": "error", "error": "EPERM"}}},
+                    {"code": 124, "timeout": True, "receipt": {"kill": {"status": "error", "error": "EPERM"}}},
+                    {"code": 124, "timeout": True, "receipt": {"cleanupOutcome": "failure"}},
+                    {"code": 0, "receipt": {"returnCode": -9}}]
+        for outcome in outcomes:
+            with self.subTest(outcome=outcome):
+                runner = self.continued()
+                runner.outcomes[2] = dict(outcome, text=boot_wait_text(runner.device["udid"]))
+                self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 3)
+
+    def test_boot_cancel_or_exception_saves_receipt_and_stops_immediately(self):
+        for position in range(5):
+            with self.subTest(position=position):
+                runner = self.continued()
+                runner.outcomes[position] = {"code": 143, "cancelled": True}
+                evidence = self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), position + 1)
+                self.assertEqual(evidence["status"], "cancelled")
+                self.assertEqual(evidence["commands"][-1]["process"]["trigger"], "cancelled")
+        runner = self.runner([{"code": 130, "cancelled": True, "exception": KeyboardInterrupt()}])
+        with patch("simulator_probe.run_bounded", side_effect=runner.bounded), self.assertRaises(KeyboardInterrupt):
+            runner.boot_device()
+        self.assertEqual(json.loads((self.directory / "simulator-probe-summary.json").read_text())["boot"]["status"], "cancelled")
+
+    def test_boot_unknown_partial_terminal_or_error_last_status_stops(self):
+        runner = self.continued()
+        known = boot_wait_text(runner.device["udid"])
+        for text in ("", known.rstrip(), known + "Unknown trailing output\n", known + "[partial] Status=4, isTerminal=\n",
+                     known.replace("Status=2", "Status=3"), known.replace("isTerminal=NO", "isTerminal=YES"),
+                     known + "Fatal error: invalid runtime\n", known.replace("Waiting on Data Migration", "Waiting on System App"),
+                     known.replace(runner.device["udid"], "another-device"),
+                     known + "[2026-10-22 19:03:00 +0000] Status=3, isTerminal=NO, Elapsed=04:10.\nUnknown wait\n"):
+            with self.subTest(text=text):
+                runner = self.continued()
+                runner.outcomes[2]["text"] = text
+                self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 3)
+
+    def test_boot_fresh_state_missing_duplicate_changed_or_not_booted_stops(self):
+        for mutation in ("missing", "duplicate", "runtime", "udid", "dataPath", "Shutdown", "Booting", "unavailable", "bad-json"):
+            with self.subTest(mutation=mutation):
+                runner = self.continued()
+                state = json.loads(boot_state_text(runner.device))
+                entries = state["devices"][runner.device["runtime"]["identifier"]]
+                if mutation == "missing": entries.clear()
+                elif mutation == "duplicate": entries.append(dict(entries[0]))
+                elif mutation == "runtime": state["devices"] = {"another.runtime": entries}
+                elif mutation in ("udid", "dataPath"): entries[0][mutation] = "changed"
+                elif mutation == "unavailable": entries[0]["isAvailable"] = False
+                elif mutation in ("Shutdown", "Booting"): entries[0]["state"] = mutation
+                runner.outcomes[3]["text"] = "{" if mutation == "bad-json" else json.dumps(state)
+                self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 4)
+
+    def test_boot_fresh_state_timeout_or_unconfirmed_receipt_never_continues(self):
+        for state in ({"code": 124, "timeout": True}, {"receipt": {"reaped": False}}, {"code": 7}):
+            with self.subTest(state=state):
+                runner = self.continued(state=state)
+                self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 4)
+
+    def test_boot_second_failure_has_no_third_wait_or_restart(self):
+        for second in ({"code": 124, "timeout": True}, {"code": 7}, {"receipt": {"reaped": False}}):
+            with self.subTest(second=second):
+                runner = self.continued(second=second)
+                second["text"] = boot_wait_text(runner.device["udid"])
+                evidence = self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 5)
+                self.assertEqual(evidence["commands"][-1]["continuationDecision"], "attempt_limit")
+                self.assertEqual([call[0][2] for call in runner.calls].count("boot"), 1)
+                self.assertFalse(any(call[0][2] in ("shutdown", "reboot") for call in runner.calls))
+
+    def test_boot_state_elapsed_recomputes_dynamic_cap_without_reset(self):
+        runner = self.continued(budget=900)
+        runner.outcomes[3]["duration"] = 8
+        deadline = runner.deadline
+        self.boot(runner)
+        validate_boot(runner.summary, runner.probes, self.directory)
+        state, final = runner.summary["boot"]["commands"][3:]
+        self.assertEqual(state["requestedCapSeconds"], 10)
+        self.assertLess(final["effectiveCapSeconds"], 240)
+        self.assertAlmostEqual(final["effectiveCapSeconds"], final["remainingStartSeconds"] - 557 - 2)
+        self.assertAlmostEqual(final["remainingStartSeconds"], state["remainingEndSeconds"])
+        self.assertEqual(runner.deadline, deadline)
+
+    def test_boot_initial_or_later_budget_insufficient_does_not_dispatch(self):
+        for budget, duration, calls in ((558, None, 0), (559.05, 0.1, 1)):
+            with self.subTest(budget=budget):
+                runner = self.runner(budget=budget)
+                if duration is not None: runner.outcomes[0]["duration"] = duration
+                evidence = self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), calls)
+                self.assertFalse(evidence["admissions"][-1]["allowed"])
+                self.assertIn("budget_insufficient", evidence["stopReason"])
+
+    def test_boot_state_overrun_rechecks_budget_before_second_wait(self):
+        runner = self.continued(budget=800)
+        runner.outcomes[3]["duration"] = 0.5
+        evidence = self.assert_failed(runner)
+        self.assertEqual(len(runner.calls), 4)
+        self.assertLess(evidence["commands"][-1]["effectiveCapSeconds"], 1)
+        self.assertEqual(evidence["admissions"][-1]["phase"], "boot-admission:wait:2")
+        self.assertFalse(evidence["admissions"][-1]["allowed"])
+
+    def test_boot_command_reserves_install_and_cleanup_exactly_once(self):
+        runner = self.runner([{}], budget=600)
+        receipt = {}
+        with patch("simulator_probe.run_bounded", side_effect=runner.bounded):
+            runner.command("reserved-command-fixture", ["fake"], cap=240, reserve=boot_reserve(runner.probes), receipt=receipt)
+        self.assertEqual(runner.calls[0][1], 41)
+        self.assertEqual(receipt["limitSeconds"], 41)
+
+    def test_boot_success_still_requires_original_install_admission(self):
+        runner = self.runner()
+        self.boot(runner)
+        self.clock[0] = runner.deadline - 556.9
+        runner.summary["installation"] = {"admissions": []}
+        with self.assertRaises(ProbeFailure):
+            runner._install_admission("install-admission:1")
+        self.assertEqual(runner.summary["installation"]["admissions"][0]["requiredSeconds"], 557)
+        self.assertEqual(len(runner.calls), 3)
+
+    def test_boot_metadata_independent_of_missing_install_scene_and_hud(self):
+        runner = self.runner()
+        self.boot(runner)
+        manifest = self.package(runner)
+        self.assertEqual(manifest["simulatorBootOutcome"], "success")
+        self.assertEqual(manifest["simulatorInstallOutcome"], "failure")
+        self.assertEqual(manifest["sceneReadinessOutcome"], "failure")
+        self.assertEqual(manifest["hudLayoutContractOutcome"], "failure")
+        self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+
+    def test_boot_gate_rejects_invalid_chain_even_with_complete_hud_and_24_pngs(self):
+        for mutation in ("missing", "failed", "identity", "device", "auto-boot", "order", "extra", "help", "receipt",
+                         "output", "limit", "reserve", "clock", "signal", "state-missing", "state-changed", "decision"):
+            with self.subTest(mutation=mutation):
+                runner = FakeRunner(self.directory)
+                runner.work()
+                boot_fixture(runner, continuation=True)
+                validate_results(runner.probes, runner.summary, self.directory)
+                evidence = runner.summary["boot"]
+                first, state = evidence["commands"][2:4]
+                if mutation == "missing": del runner.summary["boot"]
+                elif mutation == "failed": evidence["status"] = "failure"
+                elif mutation == "identity": evidence["identity"]["commitSha"] = "stale"
+                elif mutation == "device": evidence["selectedDevice"]["udid"] = "another-device"
+                elif mutation == "auto-boot": evidence["commands"][-1]["argv"].append("-b")
+                elif mutation == "order": evidence["commands"][2:4] = [state, first]
+                elif mutation == "extra": evidence["commands"].append(dict(first))
+                elif mutation == "help": evidence["monitorSemantics"]["monitorOnlyWithoutOption"] = False
+                elif mutation == "receipt": first["process"]["reaped"] = False
+                elif mutation == "output": (self.directory / first["output"]["path"]).write_text("tampered")
+                elif mutation == "limit": first["effectiveCapSeconds"] = 241
+                elif mutation == "reserve": first["admission"]["installReserveSeconds"] = 556
+                elif mutation == "clock": first["remainingStartSeconds"] += 10
+                elif mutation == "signal": evidence["commands"][-1]["process"]["returnCode"] = -9
+                elif mutation == "state-missing": del state["selectedState"]
+                elif mutation == "state-changed": state["selectedState"]["state"] = "Shutdown"
+                elif mutation == "decision": first["continuationDecision"] = "restart"
+                with self.assertRaises(ProbeFailure):
+                    validate_results(runner.probes, runner.summary, self.directory)
+                runner.summary.update(status="success", integrityOutcome="success")
+                manifest = self.package(runner)
+                self.assertEqual(manifest["simulatorBootOutcome"], "failure")
+                self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+                self.assertEqual(manifest["hudLayoutContractOutcome"], "success")
+                self.assertEqual(manifest["sceneReadinessOutcome"], "success")
+
+
 class WatchdogReceiptTests(unittest.TestCase):
     def test_real_normal_exit_receipt(self):
         receipt = {}
@@ -952,6 +1319,7 @@ if __name__ == "__main__":
     for case, name, execution in (
             (ProbeTests, "scheduler-and-evidence", "fake simulator commands; real short timeout command"),
             (InstallationTests, "bounded-install-policy", "fake clock and simulator commands; production install policy/gate"),
+            (BootTests, "same-device-boot-continuation", "fake clock/CLI receipts; production boot/command/deadline and metadata gates; no simulator"),
             (WatchdogReceiptTests, "cli-process-receipts", "real short CLI normal exit and timeout; no simulator"),
             (SceneEvidenceTests, "scene-readiness-protocol", "synthetic protocol/path/hash fixtures and fake clock; no Swift layout or simulator"),
             (NormalizationTests, "screenshot-normalization", "real sips portrait rotation; no simulator")):
@@ -963,7 +1331,7 @@ if __name__ == "__main__":
     success = all(result["success"] for result in results)
     Path("ci-results").mkdir(exist_ok=True)
     Path("ci-results/ci-regression-results.json").write_text(json.dumps({
-        "suite": "CI scheduler, bounded install, CLI receipts, HUD/image evidence and real sips normalization (no simulator)",
+        "suite": "CI scheduler, same-device boot, bounded install, CLI receipts, HUD/image evidence and real sips normalization (no simulator)",
         **{key: sum(result[key] for result in results) for key in ("tests", "failures", "errors", "skipped")},
         "suites": results, "normalizationFixtures": NORMALIZATION_EVIDENCE, "watchdogReceipts": WATCHDOG_RECEIPT_EVIDENCE,
         "success": success, "commitSha": os.environ.get("GITHUB_SHA"),

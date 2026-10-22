@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from simulator_probe import (load_probes, validate_hud_contract, validate_installation,
+from simulator_probe import (load_probes, validate_boot, validate_hud_contract, validate_installation,
                              validate_results, validate_scene_evidence)
 
 
@@ -23,6 +23,8 @@ def main():
     hud_error = "HUD contract or runner summary unavailable"
     install_integrity = "failure"
     install_error = "Install evidence or runner summary unavailable"
+    boot_integrity = "failure"
+    boot_error = "Boot evidence or runner summary unavailable"
     scene_integrity = "failure"
     scene_error = "Scene readiness or runner summary unavailable"
     integrity_error = ""
@@ -31,6 +33,11 @@ def main():
         summary = json.loads((results / "simulator-probe-summary.json").read_text())
         if any(summary.get(key) != value for key, value in identity.items()):
             raise ValueError("Probe summary identity does not match this run/attempt/commit/version")
+        try:
+            validate_boot(summary, probes, results)
+            boot_integrity, boot_error = "success", ""
+        except Exception as error:
+            boot_error = str(error)
         try:
             validate_installation(summary, probes, results)
             install_integrity, install_error = "success", ""
@@ -46,8 +53,8 @@ def main():
             hud_integrity, hud_error = "success", ""
         except Exception as error:
             hud_error = str(error)
-        if any(outcome != "success" for outcome in (install_integrity, scene_integrity, hud_integrity)):
-            raise ValueError("; ".join(error for error in (install_error, scene_error, hud_error) if error))
+        if any(outcome != "success" for outcome in (boot_integrity, install_integrity, scene_integrity, hud_integrity)):
+            raise ValueError("; ".join(error for error in (boot_error, install_error, scene_error, hud_error) if error))
         if summary.get("status") != "success" or summary.get("integrityOutcome") != "success":
             raise ValueError(summary.get("error", "Probe runner did not complete its integrity gate"))
         if summary.get("counts") != {"expected": 24, "completed": 24, "failed": 0, "notRun": 0, "running": 0}:
@@ -75,6 +82,7 @@ def main():
         ("hud-layout-contract", hud_integrity, "hud-layout-contract.json"),
         ("simulator-install", install_integrity, "simulator-probe-summary.json"),
         ("scene-readiness", scene_integrity, "simulator-probe-summary.json"),
+        ("simulator-boot", boot_integrity, "simulator-probe-summary.json"),
     ]
     suite = ET.Element("testsuite", name="DesertFrontlineCI", tests=str(len(checks) + 1),
                        failures=str(sum(outcome != "success" for _, outcome, _ in checks)), skipped="1")
@@ -89,6 +97,11 @@ def main():
                "simulator-runtimes.json", "simulator-boot-state.json", "simulator-probe-summary.json",
                "ci-regression-results.json", "probes.json", "hud-layout-contract.json", "simulator-launch-help.log"] + [probe["png"] for probe in probes]
     installation = summary.get("installation", {})
+    boot = summary.get("boot", {})
+    for record in boot.get("commands", []):
+        path = record.get("output", {}).get("path")
+        if path and Path(path).name == path:
+            reports.append(path)
     for record in installation.get("attempts", []) + ([installation["recovery"]] if installation.get("recovery") else []):
         path = record.get("output", {}).get("path")
         if path and Path(path).name == path:
@@ -107,6 +120,7 @@ def main():
                     failureSummaryPath="ci-results/ci-failure-summary.md", probeSummaryPath="ci-results/simulator-probe-summary.json",
                     hudLayoutContractPath="ci-results/hud-layout-contract.json", hudLayoutContractOutcome=hud_integrity,
                     simulatorInstallOutcome=install_integrity,
+                    simulatorBootOutcome=boot_integrity,
                     sceneReadinessOutcome=scene_integrity,
                     staticChecksOutcome=checks[0][1], projectLintOutcome=checks[1][1], buildOutcome=checks[2][1],
                     simulatorLaunchOutcome=simulator_outcome, simulatorStepOutcome=simulator_step_outcome,
@@ -120,6 +134,8 @@ def main():
               f"- Failure stage: {summary.get('failureStage', 'none')}",
               f"- Last completed probe: {summary.get('lastCompletedProbe', 'none')}",
               f"- Probe counts: {summary.get('counts', 'unavailable')}",
+              f"- Boot: {boot_integrity}; {boot_error or 'same-device monitor-only bootstatus, normal final exit0, CLI receipts and reserved deadline verified'}",
+              f"- Boot last stage: {boot.get('lastStage', 'none')}; stop reason: {boot.get('stopReason', 'none')}",
               f"- Installation: {install_integrity}; {install_error or 'bounded same-device attempts, successful exit0 and CLI receipts verified'}",
               f"- Install stop reason: {installation.get('stopReason', 'none')}",
               f"- HUD contract: {hud_integrity}; {hud_error or '25 Swift production frame/route cases; state restored; prewarm producer verified'}",
@@ -127,6 +143,17 @@ def main():
               f"- Integrity detail: {integrity_error or '24 complete launches, live PIDs, raw/rotation evidence, landscape PNGs and current HUD contract'}",
               "- XCTest: skipped (no XCTest target exists)",
               "- Forced runner destruction/GitHub cancellation can prevent final evidence upload."]
+    lines += [f"- Boot {record.get('role', 'unknown')}: status={record.get('status', 'unknown')} "
+              f"exit={record.get('exitCode', 'unavailable')} elapsed={record.get('elapsedSeconds', 'unavailable')}s "
+              f"requested/effective cap={record.get('requestedCapSeconds', 'unavailable')}/{record.get('effectiveCapSeconds', 'unavailable')}s "
+              f"remaining={record.get('remainingStartSeconds', 'unavailable')}->{record.get('remainingEndSeconds', 'unavailable')}s "
+              f"classification={record.get('classification', 'none')} continuation={record.get('continuationDecision', 'none')} "
+              f"selectedState={record.get('selectedState', 'none')} output={record.get('output', {})}"
+              for record in boot.get("commands", [])]
+    lines += [f"- Boot admission {record.get('phase', 'unknown')}: allowed={record.get('allowed')} "
+              f"remaining={record.get('remainingSeconds')}s cap={record.get('maxCapSeconds')}s "
+              f"install/CLI reserves={record.get('installReserveSeconds')}/{record.get('cliCleanupReserveSeconds')}s"
+              for record in boot.get("admissions", [])]
     lines += [f"- Scene {scene.get('probeID', 'unknown')}: nonce={scene.get('nonce', 'unknown')} pid={scene.get('pid', 'unavailable')} "
               f"status={scene.get('status', 'unknown')} lastStage={scene.get('lastStage', 'unavailable')} "
               f"sealed={scene.get('sealed', False)} stdout={scene.get('stdout', {})} stderr={scene.get('stderr', {})}"

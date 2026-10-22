@@ -179,7 +179,7 @@ flowchart TD
 
 ### 云端超时留证（v5.39）
 
-读图补充：云端 build/simctl 先经过限时 watchdog；bootstatus 超时后同设备最多重试一次；成功进入24项截图探针，失败也进入 always 元数据与上传阶段。
+读图补充：云端 build/simctl 先经过限时 watchdog；首轮bootstatus只有符合已知等待、完整回执、fresh同设备状态与预算条件才续等一次，中间不shutdown/reboot；成功进入安装与24项截图探针，失败也进入 always 元数据与上传阶段。
 
 v5.53 读图补充：generic build 独立 600 秒；模拟器所有命令 / 等待共享总工作 deadline，每个阶段输出开始 / 结束 / 耗时与心跳；finally 有界采集日志并只关闭所选设备。权威清单同时驱动执行、summary 与 manifest，结构化 summary 和全部 PNG 必须通过 runner 与 metadata 两次完整性核对。强制取消 / 销毁 runner 仍可能阻止留证。
 
@@ -221,7 +221,7 @@ flowchart TD
   Image --> Unique{前五不同页PNG无重复SHA}
   Unique -- 否 --> Stop
   Unique -- 是 --> Seal[截图PID后再核latest ready / 冻结snapshot与hash]
-  Seal --> Metadata[runner与metadata分别复核 / sceneReadinessOutcome / JUnit9含1跳过]
+  Seal --> Metadata[runner与metadata分别复核 / sceneReadinessOutcome / JUnit10含1跳过]
   Metadata --> Review[C下载最新未加密ZIP / 全部24官方图目视]
   Stop --> Metadata
 ```
@@ -248,6 +248,31 @@ flowchart TD
   Install2 -- 失败或回执不完整 --> Fail
   Install2 -- 正常exit0且回执完整 --> Prewarm
   Prewarm --> Gate[runner与metadata复核安装身份预算分类输出回执 / HUD25与24PNG]
-  Gate --> Artifact[manifest simulatorInstallOutcome与sceneReadinessOutcome / JUnit9含1跳过 / 未加密ZIP]
+  Gate --> Artifact[manifest boot install scene独立outcome / JUnit10含1跳过 / 未加密ZIP]
   Fail --> Artifact
+```
+
+### 保留同设备迁移进度的启动续等
+
+读图说明：一次help必须明确支持不带-b的纯监控语义，之后只有一次初始boot。首轮真实watchdog超时且最后为已知非terminal等待，CLI收尾完整后才查一次fresh状态；Booted只是续等条件，不替代最终bootstatus正常exit0。每条命令从原deadline重算并留下557s安装保留和本次CLI2s，预算或证据不够准确失败，不延长预算、不暗中再boot；原安装恢复不充当第三次启动等待。
+
+```mermaid
+flowchart TD
+  Help[云端一次help cap10 / 原文与真实回执] --> Semantics{明确monitor与-b自动boot语义}
+  Semantics -- 否 --> Fail[finally保存boot证据 / 只清理所选设备 / 未加密结果包]
+  Semantics -- 是 --> Boot[一次初始boot cap60 / 正常exit0或精确already-Booted]
+  Boot -- 未确认成功或取消 --> Fail
+  Boot -- 合格 --> Wait1[同UDID bootstatus无-b / cap最多240 / 重算remaining减557减2]
+  Wait1 -- 正常exit0与完整回执 --> Ready[原安装557准入 / HUD25与全部24图]
+  Wait1 -- 非成功 --> Eligible{真实watchdog124 / 收尾完整 / 最后已知迁移或System App等待}
+  Eligible -- 否 --> Fail
+  Eligible -- 是 --> State[一次fresh list devices JSON cap10 / 扣原deadline]
+  State --> Same{唯一同UDID runtime dataPath / available且Booted}
+  Same -- 否或预算不足 --> Fail
+  Same -- 是 --> Wait2[再次重算cap / 同UDID纯监控 / 无中间shutdown或boot]
+  Wait2 -- 非正常成功 --> Fail
+  Wait2 -- 正常exit0与完整回执 --> Ready
+  Ready --> Gate[runner与metadata分别验证boot链 / simulatorBootOutcome / JUnit10含1跳过]
+  Fail --> Gate
+  Gate --> Review[C核对最新官方ZIP回执状态输出预算 / 全部24正式原图]
 ```

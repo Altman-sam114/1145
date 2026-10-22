@@ -6080,7 +6080,7 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - 18/24完成，damage-state launch在实际cap57.424s超时62.737s，后5项not_run；work1082.250s/cleanup68.640s/总1150.890s。C逐张看官方18图：14张无HUD，只有naval-salvo/coastal-battery/carrier-strike/fighter-strike有新HUD；前8个air-focus图同SHA，land-combat/combat-ui/incoming-ui同SHA，总9种SHA，跨focus镜头有变化。不能断言18图或整个App全冻结，也不能把PID和有效PNG当就绪。
 - 原51回归50pass/1fail，独立5项watchdog通过。真实timeout fixture TERM sent后leader=-15，KILL EPERM，cleanup=failure，生产validator准确拒绝；JUnit8case/4failure/1准确XCTest skip。app log与device-state均0byte，三项cleanup均124，不能称无崩溃或设备已关闭。v5.55/v5.56均不计成功，尚无新HUD视觉验收通过，X退回B聚焦场景/直接留证与fixture意图，不进入地图升级。
 
-### v5.57 / 场景就绪与云端直接留证修复（待最新云端验收）
+### v5.57 / 场景就绪与云端直接留证修复（C不通过：启动后安装预算准入不足）
 
 日期：2026-10-22
 
@@ -6091,3 +6091,17 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - 原1080s工作/90s收尾/21m step/45m job、v5.56安装策略、24定义/顺序/独立launch、90s通知与5ssettle、8s/4s最小等待、HUD25生产同源/九类/恢复、PID/raw270/final链全部保留。正式就绪窗口从launch返回起最多30s且共享原deadline，不追加launch；失败后余项not_run。
 - 真实timeout fixture改为忽略TERM、先输出armed、cap2s后真实KILL/reap，保留EPERM与收尾不明拒绝。原51方法名和独立5项watchdog保留，新增13项协议/路径/hash/metadata/早停/fake-clock负例，AST声明64项；正常JUnit9case含1个真实XCTest skip，manifest新增sceneReadinessOutcome。实际数量/结果待本轮Actions，不预填通过。
 - 关键文件：GameView.swift、GameScene.swift、ci/scene_evidence.py、ci/simulator_probe.py、ci/package_results.py、ci/check_probe_runner.py及README/flow/flowchart/test/本轮提示词。只做本机AST/文本与diff静态检查，不运行测试/build/sips/模拟器；用户两行Team ID和既有未跟踪资料排除提交。C须下载最新官方ZIP核对trace/两帧/HUD25与全部24张正式图；未知根因、选项/路径环境支持与视觉结果仍待云端证据，不另做状态空提交。
+- C已独立核对main `93045f74343311bc8b93ea20a03e052c04372818`、run `39835681113` attempt1 completed/failure；官方artifact ID `12451416596`，`desert-frontline-ci-v5.57-main-93045f743433-run39835681113-attempt1`，未加密ZIP 79,557 bytes/22 entries/CRC通过，API digest/SHA256 `e14708f0fdce1e4b60bc66874b310fcc3c678d9dad14ed4049d63d93ce7b037a`，缓存 `/private/tmp/desert-frontline-c-review-39835681113/` 保留。
+- 两build成功（generic64.2s、sim SDK70.156s）、64回归和独立5项watchdog通过；真实timeout fixture已armed、TERM/KILL sent、leader=-9/reaped，耗时2.573917s。首bootstatus240.696s超时，最后为Status2/非terminal Data Migration/CoreLocationMigrator；主动shutdown7.573s、再次boot9.751s、第二bootstatus195.137s后成功。install-admission:1余量537.151810s低于557s，差19.848190s；attempts空，未执行install/prewarm/App/help launch/trace/HUD25，24项not_run/0PNG，不是scene断言失败或Swift编译卡死，也不能证明v5.57运行修复或v5.55视觉。
+- work543.427s/cleanup74.494s/总617.921s；app log/device-state诊断均124且0byte，最终所选设备shutdown exit0。JUnit9case/5failure/1准确XCTest skip；API continue-on-error的绿色conclusion不替代真实outcome。C退回启动预算修复，v5.55至v5.57均不计成功，不进入地图/模型升级。
+
+### v5.58 / 保留迁移进度的同设备启动续等（待最新云端验收）
+
+日期：2026-10-22
+
+- 仅调整CI启动重试，不改Swift/HUD/地图/单位/玩法。单次云端cap10s保存bootstatus help及真实回执，严格确认monitor与-b选项语义；正式至多两次等待均不带-b，仅一次初始boot，中间无shutdown/reboot。正常初始exit0或精确already-Booted真实正常非零才可监控，不把正退出码数值本身当信号。
+- 只有首轮真实watchdog124、owned CLI完整TERM/KILL/reap且无错误、最后完整非terminal迁移/System App等待，才单次cap10s查询fresh所选runtime/唯一UDID/available/Booted/dataPath后续等。未知/永久/取消/收尾不明/坏状态、第二次失败立即停止；不支持或不明help fail closed。Booted不等于ready，最终仍须正常bootstatus exit0；CLI回收不保证系统迁移进展或所有服务已停。
+- 每条启动命令实际cap重新受`remaining-557-2`限制，557完整安装保留和本CLI2s分别保留、只扣一次；state后再算续等cap，不重置deadline、不扩1080/90s与step/job时限。原安装557/617准入/恢复、24定义/顺序/全部等待、prewarm90+5、v5.57 scene/HUD25/PID/raw270/final门槛及watchdog保持；调度/收尾超出保留仍准确失败。
+- boot schema1/policy记录绑定run/SHA/attempt/version与同设备身份的commands/admissions、实际argv/原文hash/CLI回执、最后等待分类、fresh状态、monotonic起止/remaining/requested/effective cap，finally原子落盘。runner/metadata独立验证boot，manifest新增simulatorBootOutcome，JUnit10case含1准确XCTest skip，失败摘要显示实际决策和预算，不用后续完整HUD/24PNG覆盖坏boot。
+- 保留64方法名和独立5项watchdog、真实armed2s fixture，新增19项fake-clock/CLI启动策略及gate方法，AST声明总83。仅本机AST/文本/diff检查，未执行任何本机测试/CI脚本/build/设备命令；实际执行及App/HUD25/24正式PNG仍待最新Actions和C下载验收，不预写通过或另造状态空commit。
+- 关键文件：ci/simulator_probe.py、ci/package_results.py、ci/check_probe_runner.py及README/flow/flowchart/test/本轮提示词。用户Team ID两行及既有未跟踪资料保留排除。收益仅为不主动打断同设备启动、减少重启命令；17.324s历史命令成本小于19.848190s缺口，help/state还增加开销，是否更快/保住准入及视觉正确只能由本轮官方artifact判定，不称根治或完全复刻。

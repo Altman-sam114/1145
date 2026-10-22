@@ -32,6 +32,8 @@ INSTALL_COMMAND_RESERVE = 180
 INSTALL_PREWARM_RESERVE = 95
 INSTALL_CLEANUP_RESERVE = 2
 INSTALL_POLICY = "same-device-install-180-once-v1"
+BOOT_POLICY = "same-device-boot-continuation-v1"
+BOOT_OUTPUT_LIMIT = 1024 * 1024
 
 
 class ProbeFailure(Exception):
@@ -111,6 +113,186 @@ def install_retry_reason(code, diagnostic, receipt):
 
 def install_reserve(probes):
     return INSTALL_PREWARM_RESERVE + sum(probe["wait"] for probe in probes) + INSTALL_COMMAND_RESERVE
+
+
+def boot_reserve(probes):
+    return INSTALL_CAP + INSTALL_CLEANUP_RESERVE + install_reserve(probes)
+
+
+def boot_monitor_semantics(text):
+    # Accept documented option semantics, not a version-specific copy of the whole help.
+    normalized = " ".join(text.split())
+    monitor = re.search(r"Monitor the boot status of a device\.", normalized)
+    option = re.search(r"(?:^|\s)-b\s+(Boot the device if it (?:isn't|is not) (?:already )?booted\.|"
+                       r"If the device (?:isn't|is not) (?:already )?booted, boot it\.)", normalized)
+    if (not monitor or not option or not re.search(r"Usage: simctl bootstatus <device> \[-b\]", normalized)
+            or re.search(r"\b(error|failed|unsupported)\b|(?:by default|without -b)[^.]*\bboot(?:s|ing)? the device", normalized, re.I)):
+        raise ProbeFailure("bootstatus help does not explicitly support monitoring without auto-boot")
+    return {"monitorOnlyWithoutOption": True, "autoBootOption": "-b",
+            "monitorDescription": monitor.group(0), "optionDescription": option.group(1)}
+
+
+def boot_normal_exit(record, code=None):
+    process = record.get("process", {})
+    actual = record.get("exitCode")
+    return (type(actual) is int and actual >= 0 and (code is None or actual == code)
+            and cli_receipt_complete(process) and process.get("trigger") == "exit"
+            and process.get("returnCode") == actual and process.get("exitCode") == actual)
+
+
+def boot_initial_reason(record, text):
+    if not boot_normal_exit(record):
+        return "cli_exit_or_cleanup_unconfirmed"
+    if record["exitCode"] == 0:
+        return "booted"
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    allowed_header = "An error was encountered processing the command (domain=com.apple.CoreSimulator.SimError, code=405):"
+    if lines in (["Unable to boot device in current state: Booted"],
+                 [allowed_header, "Unable to boot device in current state: Booted"]):
+        return "already_booted"
+    return "permanent_or_unknown_boot_error"
+
+
+def boot_wait_classification(record, text, udid):
+    result = {"eligible": False, "reason": "not_watchdog_timeout"}
+    process = record.get("process", {})
+    if (not cli_receipt_complete(process) or process.get("exitCode") != record.get("exitCode")):
+        return dict(result, reason="cli_cleanup_unconfirmed")
+    if record.get("exitCode") != 124 or process.get("trigger") != "timeout":
+        return result
+    if re.search(r"\b(error|failed|failure|fatal|exception|invalid|unavailable)\b|permission denied|unable to", text, re.I):
+        return dict(result, reason="permanent_or_unknown_diagnostic")
+    if (not text.endswith("\n") or "\ufffd" in text or "\x00" in text
+            or len(re.findall(rf"(?m)^Monitoring boot status for [^\r\n]+ \({re.escape(udid)}\)\.$", text)) != 1):
+        return dict(result, reason="unknown_or_incomplete_boot_output")
+    statuses = list(re.finditer(r"(?m)^\[[^\]\r\n]+\] Status=(\d+), isTerminal=(YES|NO), Elapsed=([\d:]+)\.\s*$", text))
+    if not statuses or len(statuses) != text.count("Status="):
+        return dict(result, reason="unknown_or_incomplete_boot_status")
+    last = statuses[-1]
+    result.update(lastStatus=int(last.group(1)), isTerminal=last.group(2) == "YES", elapsed=last.group(3))
+    tail = [line.strip() for line in text[last.end():].splitlines() if line.strip()]
+    if result["isTerminal"]:
+        return dict(result, reason="terminal_without_successful_exit")
+    if result["lastStatus"] == 2 and len(tail) == 3 and tail[0] == "Waiting on Data Migration":
+        migration = re.fullmatch(r"Migration Elapsed:([\d:]+) seconds", tail[2])
+        if tail[1].startswith("Reason:") and tail[1][len("Reason:"):].strip() and migration:
+            return dict(result, eligible=True, reason="data_migration_wait", waitReason=tail[1][len("Reason:"):],
+                        migrationElapsed=migration.group(1))
+    if result["lastStatus"] == 4 and tail == ["Waiting on System App"]:
+        return dict(result, eligible=True, reason="system_app_wait", waitReason=tail[0])
+    return dict(result, reason="unknown_or_incomplete_last_wait")
+
+
+def boot_selected_state(text, device):
+    runtime = device["runtime"]["identifier"]
+    payload = json.loads(text)
+    devices = payload.get("devices") if isinstance(payload, dict) else None
+    entries = devices.get(runtime) if isinstance(devices, dict) else None
+    if not isinstance(entries, list) or any(not isinstance(entry, dict) for entry in entries):
+        raise ProbeFailure("Fresh device JSON has no valid selected-runtime device list")
+    matches = [entry for entry in entries if entry.get("udid") == device["udid"]]
+    if (len(matches) != 1 or matches[0].get("isAvailable") is not True or matches[0].get("state") != "Booted"
+            or matches[0].get("dataPath") != device.get("dataPath") or not device.get("dataPath")):
+        raise ProbeFailure("Fresh selected-device state is missing, ambiguous, changed or not Booted")
+    return {"runtimeIdentifier": runtime, **{key: matches[0][key] for key in ("udid", "dataPath", "state", "isAvailable")}}
+
+
+def boot_output(record, directory):
+    evidence = record.get("output", {})
+    path = evidence.get("path")
+    if (not isinstance(path, str) or Path(path).name != path or type(evidence.get("bytes")) is not int
+            or evidence["bytes"] < 0 or not re.fullmatch(r"[0-9a-f]{64}", evidence.get("sha256", ""))):
+        raise ProbeFailure("Boot command output basename missing/invalid")
+    source = directory / path
+    if source.is_symlink() or not source.is_file() or source.stat().st_size > BOOT_OUTPUT_LIMIT:
+        raise ProbeFailure("Boot command output missing, symlink or oversized")
+    data = source.read_bytes()
+    if len(data) != evidence.get("bytes") or hashlib.sha256(data).hexdigest() != evidence.get("sha256"):
+        raise ProbeFailure("Boot command output evidence mismatch")
+    return data.decode("utf-8", errors="strict")
+
+
+def validate_boot(summary, probes, directory):
+    evidence = summary.get("boot", {})
+    device = summary.get("selectedDevice", {})
+    identity = {key: summary.get(key) for key in ("branch", "commitSha", "runId", "runAttempt", "version")}
+    reserve = boot_reserve(probes)
+    selected = {"udid": device.get("udid"), "runtimeIdentifier": device.get("runtime", {}).get("identifier"),
+                "dataPath": device.get("dataPath")}
+    if (evidence.get("schemaVersion") != 1 or evidence.get("policy") != BOOT_POLICY or evidence.get("status") != "success"
+            or not all(identity.values()) or evidence.get("identity") != identity or not all(selected.values())
+            or evidence.get("selectedDevice") != selected or evidence.get("deadlineAfterSeconds") != summary.get("workBudgetSeconds")):
+        raise ProbeFailure("Successful current-run same-device boot evidence missing/invalid")
+    commands = evidence.get("commands", [])
+    roles = [record.get("role") for record in commands]
+    if roles not in (["help", "initial", "wait:1"], ["help", "initial", "wait:1", "state", "wait:2"]):
+        raise ProbeFailure("Boot command order/count is invalid")
+    if evidence.get("admissions") != [record.get("admission") for record in commands]:
+        raise ProbeFailure("Boot admission chronology mismatch")
+    boot_stages = [stage for stage in summary.get("stages", []) if stage.get("name", "").startswith("boot")]
+    expected_stages = [name for role in roles for name in (f"boot-admission:{role}", f"boot-{role}")]
+    if [stage.get("name") for stage in boot_stages] != expected_stages:
+        raise ProbeFailure("Unexpected boot/shutdown stage or missing boot stage evidence")
+
+    def number(value):
+        return type(value) in (int, float) and math.isfinite(value) and value >= 0
+
+    previous = None
+    texts = {}
+    for index, record in enumerate(commands):
+        role = record["role"]
+        cap = 10 if role in ("help", "state") else 60 if role == "initial" else 240
+        args = (["help", "bootstatus"] if role == "help" else ["boot", device["udid"]] if role == "initial" else
+                ["list", "devices", "--json"] if role == "state" else ["bootstatus", device["udid"]])
+        admission = record.get("admission", {})
+        process = record.get("process", {})
+        if (record.get("argv") != ["/usr/bin/xcrun", "simctl", *args]
+                or record.get("requestedCapSeconds") != cap or admission.get("requestedCapSeconds") != cap
+                or admission.get("phase") != f"boot-admission:{role}" or admission.get("allowed") is not True
+                or admission.get("installReserveSeconds") != reserve or admission.get("cliCleanupReserveSeconds") != 2
+                or not number(admission.get("remainingSeconds")) or not number(admission.get("maxCapSeconds"))
+                or admission["maxCapSeconds"] <= 0
+                or abs(admission["maxCapSeconds"] - min(cap, admission["remainingSeconds"] - reserve - 2)) > 0.01
+                or not all(number(record.get(key)) for key in ("startedAfterSeconds", "endedAfterSeconds", "elapsedSeconds",
+                           "remainingStartSeconds", "remainingEndSeconds", "effectiveCapSeconds"))
+                or record["remainingStartSeconds"] > admission["remainingSeconds"] + 0.01
+                or record["remainingEndSeconds"] < reserve or record["effectiveCapSeconds"] <= 0
+                or record["effectiveCapSeconds"] > min(cap, record["remainingStartSeconds"] - reserve - 2) + 0.01
+                or record["effectiveCapSeconds"] != process.get("limitSeconds") or not cli_receipt_complete(process)
+                or process.get("exitCode") != record.get("exitCode")
+                or record.get("status") != ("success" if record.get("exitCode") == 0 else "failure")
+                or abs(record["endedAfterSeconds"] - record["startedAfterSeconds"] - record["elapsedSeconds"]) > 0.01
+                or abs(record["remainingStartSeconds"] - record["remainingEndSeconds"] - record["elapsedSeconds"]) > 0.01
+                or abs(record["remainingStartSeconds"] + record["startedAfterSeconds"] - evidence["deadlineAfterSeconds"]) > 0.01
+                or abs(record["remainingEndSeconds"] + record["endedAfterSeconds"] - evidence["deadlineAfterSeconds"]) > 0.01
+                or process["elapsedSeconds"] > record["elapsedSeconds"] + 0.01
+                or (previous is not None and (record["startedAfterSeconds"] < previous["endedAfterSeconds"]
+                    or admission["remainingSeconds"] > previous["remainingEndSeconds"] + 0.01))):
+            raise ProbeFailure(f"Boot command/receipt/deadline evidence inconsistent: {role}")
+        if (boot_stages[index * 2].get("status") != "success" or boot_stages[index * 2 + 1].get("status") != record["status"]
+                or boot_stages[index * 2 + 1].get("exitCode") != record["exitCode"]
+                or record.get("output", {}).get("path") != f"boot-{role.replace(':', '-')}.log"):
+            raise ProbeFailure(f"Boot stage/output identity mismatch: {role}")
+        texts[role] = boot_output(record, directory)
+        previous = record
+    if not boot_normal_exit(commands[0], 0) or evidence.get("monitorSemantics") != boot_monitor_semantics(texts["help"]):
+        raise ProbeFailure("Boot monitor-only help evidence invalid")
+    reason = boot_initial_reason(commands[1], texts["initial"])
+    if reason not in ("booted", "already_booted") or commands[1].get("classification") != reason:
+        raise ProbeFailure("Initial boot was not successful or exactly already Booted")
+    if not boot_normal_exit(commands[-1], 0) or commands[-1].get("classification") != "ready":
+        raise ProbeFailure("Final bootstatus did not normally exit0")
+    if len(commands) == 5:
+        first, state = commands[2:4]
+        classification = boot_wait_classification(first, texts["wait:1"], device["udid"])
+        if (not classification["eligible"] or first.get("classification") != classification
+                or first.get("continuationDecision") != "continue" or not boot_normal_exit(state, 0)
+                or state.get("selectedState") != boot_selected_state(texts["state"], device)
+                or commands[-1].get("continuationDecision") != "completed"):
+            raise ProbeFailure("Boot continuation timeout/fresh-state chain invalid")
+    elif commands[-1].get("continuationDecision") != "not_needed":
+        raise ProbeFailure("Unexpected boot continuation decision on first success")
+    return evidence
 
 
 def validate_installation(summary, probes, directory=None):
@@ -364,6 +546,7 @@ def validate_hud_contract(summary, directory):
 
 
 def validate_results(probes, summary, directory):
+    validate_boot(summary, probes, directory)
     validate_installation(summary, probes, directory)
     validate_scene_evidence(probes, summary, directory)
     validate_hud_contract(summary, directory)
@@ -477,10 +660,10 @@ class Runner:
             print(f"[stage] END {name}; status={record['status']}; elapsed={record['elapsedSeconds']}s", flush=True)
             self.save()
 
-    def command(self, name, command, cap=60, env=None, log=None, receipt=None):
+    def command(self, name, command, cap=60, env=None, log=None, receipt=None, reserve=0, raw_log=False):
         with self.stage(name):
             # Reserve group TERM/KILL/reap time inside the shared stage budget.
-            seconds = min(cap, self.remaining(2) - 2)
+            seconds = min(cap, self.remaining(reserve + 2) - reserve - 2)
             with tempfile.TemporaryFile() as output:
                 try:
                     arguments = {"stdout": output, "env": env}
@@ -489,9 +672,13 @@ class Runner:
                     code = run_bounded(command, seconds, **arguments)
                 finally:
                     output.seek(0)
-                    text = output.read().decode("utf-8", errors="replace")
+                    data = output.read()
+                    text = data.decode("utf-8", errors="replace")
                     if log:
-                        (self.directory / log).write_text(text)
+                        if raw_log:
+                            (self.directory / log).write_bytes(data)
+                        else:
+                            (self.directory / log).write_text(text)
                     print(text, end="" if text.endswith("\n") else "\n", flush=True)
             if code:
                 raise ProbeFailure(f"{name} exited {code}", code, diagnostic=text)
@@ -499,6 +686,104 @@ class Runner:
 
     def simctl(self, name, *arguments, cap=60, **kwargs):
         return self.command(name, ["/usr/bin/xcrun", "simctl", *arguments], cap=cap, **kwargs)
+
+    def _boot_command(self, role, arguments, cap):
+        evidence = self.summary["boot"]
+        reserve = boot_reserve(self.probes)
+        phase = f"boot-admission:{role}"
+        with self.stage(phase):
+            remaining = self.deadline - time.monotonic()
+            maximum = min(cap, remaining - reserve - 2)
+            admission = dict(phase=phase, remainingSeconds=round(remaining, 6), requestedCapSeconds=cap,
+                             maxCapSeconds=round(max(maximum, 0), 6), installReserveSeconds=reserve,
+                             cliCleanupReserveSeconds=2, allowed=maximum > 0)
+            evidence["admissions"].append(admission)
+            if not admission["allowed"]:
+                raise ProbeFailure(f"boot budget_insufficient at {role}: remaining={remaining:.3f}s reserve={reserve}+2s", 124)
+        started = time.monotonic()
+        record = dict(role=role, argv=["/usr/bin/xcrun", "simctl", *arguments], status="running", admission=admission,
+                      requestedCapSeconds=cap, startedAfterSeconds=round(started - self.started, 6),
+                      remainingStartSeconds=round(self.deadline - started, 6), process={})
+        evidence["commands"].append(record)
+        log = f"boot-{role.replace(':', '-')}.log"
+        try:
+            self.simctl(f"boot-{role}", *arguments, cap=cap, log=log, receipt=record["process"], reserve=reserve, raw_log=True)
+            record.update(status="success", exitCode=0)
+        except BaseException as error:
+            process = record["process"]
+            code = getattr(error, "code", 130 if isinstance(error, KeyboardInterrupt) else 1)
+            return_code = process.get("returnCode")
+            cancelled = (isinstance(error, KeyboardInterrupt) or process.get("trigger") in ("cancelled", "exception")
+                         or (process.get("trigger") == "exit" and type(return_code) is int and return_code < 0)
+                         or (process.get("trigger") != "exit" and type(code) is int and code >= 128))
+            record.update(status="cancelled" if cancelled else "failure", error=str(error),
+                          exitCode=code)
+            if cancelled or not isinstance(error, ProbeFailure):
+                raise
+        finally:
+            ended = time.monotonic()
+            record.update(endedAfterSeconds=round(ended - self.started, 6), elapsedSeconds=round(ended - started, 6),
+                          remainingEndSeconds=round(self.deadline - ended, 6),
+                          effectiveCapSeconds=record["process"].get("limitSeconds"))
+            path = self.directory / log
+            if path.exists():
+                data = path.read_bytes()
+                record["output"] = {"path": log, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+            print(f"[boot] {role} status={record['status']} exit={record.get('exitCode')} elapsed={record['elapsedSeconds']}s "
+                  f"cap={record['effectiveCapSeconds']}s remaining={record['remainingEndSeconds']}s", flush=True)
+            self.save()
+        return record
+
+    def boot_device(self):
+        device = self.device
+        evidence = dict(schemaVersion=1, policy=BOOT_POLICY, status="running", commands=[], admissions=[],
+                        identity={key: self.summary[key] for key in ("branch", "commitSha", "runId", "runAttempt", "version")},
+                        selectedDevice={"udid": device["udid"], "runtimeIdentifier": device["runtime"]["identifier"],
+                                        "dataPath": device["dataPath"]},
+                        deadlineAfterSeconds=self.deadline - self.started)
+        self.summary["boot"] = evidence
+        try:
+            help_record = self._boot_command("help", ["help", "bootstatus"], 10)
+            if not boot_normal_exit(help_record, 0):
+                raise ProbeFailure("bootstatus help did not normally exit0 with a complete CLI receipt")
+            evidence["monitorSemantics"] = boot_monitor_semantics(boot_output(help_record, self.directory))
+            initial = self._boot_command("initial", ["boot", device["udid"]], 60)
+            initial["classification"] = boot_initial_reason(initial, boot_output(initial, self.directory))
+            if initial["classification"] not in ("booted", "already_booted"):
+                raise ProbeFailure(f"Initial boot rejected: {initial['classification']}", initial.get("exitCode") or 1)
+            for number in (1, 2):
+                record = self._boot_command(f"wait:{number}", ["bootstatus", device["udid"]], 240)
+                if boot_normal_exit(record, 0):
+                    record.update(classification="ready", continuationDecision="not_needed" if number == 1 else "completed")
+                    evidence["status"] = "success"
+                    return
+                classification = boot_wait_classification(record, boot_output(record, self.directory), device["udid"])
+                record.update(classification=classification, continuationDecision="attempt_limit" if number == 2 else "not_eligible")
+                if number == 2 or not classification["eligible"]:
+                    raise ProbeFailure(f"bootstatus {number} rejected: {classification['reason']}", record.get("exitCode") or 1)
+                record["continuationDecision"] = "checking_state"
+                state = self._boot_command("state", ["list", "devices", "--json"], 10)
+                if not boot_normal_exit(state, 0):
+                    record["continuationDecision"] = "state_failed"
+                    raise ProbeFailure("Fresh selected-device state command failed", state.get("exitCode") or 1)
+                try:
+                    state["selectedState"] = boot_selected_state(boot_output(state, self.directory), device)
+                except (ValueError, KeyError, TypeError, ProbeFailure) as error:
+                    record["continuationDecision"] = "state_failed"
+                    raise ProbeFailure(f"Fresh selected-device state rejected: {error}") from error
+                record["continuationDecision"] = "continue"
+        except BaseException as error:
+            code = getattr(error, "code", 130 if isinstance(error, KeyboardInterrupt) else 1)
+            cancelled = (isinstance(error, KeyboardInterrupt)
+                         or any(record.get("status") == "cancelled" for record in evidence["commands"])
+                         or (type(code) is int and code >= 128 and (not evidence["commands"]
+                             or not boot_normal_exit(evidence["commands"][-1], code))))
+            evidence.update(status="cancelled" if cancelled else "failure", stopReason=str(error),
+                            lastStage=self.summary["currentStage"])
+            raise
+        finally:
+            evidence["lastStage"] = self.summary["currentStage"]
+            self.save()
 
     def _install_admission(self, phase, recovery=False):
         with self.stage(phase):
@@ -773,23 +1058,7 @@ class Runner:
                 raise SceneFailure("Selected device has no authoritative dataPath")
             print(json.dumps(self.device, indent=2), flush=True)
         udid = self.device["udid"]
-        for attempt in range(1, 3):
-            if attempt > 1:
-                self.remaining(240 + 120 + 95 + sum(p["wait"] for p in self.probes))
-            try:
-                self.simctl(f"boot:{attempt}", "boot", udid)
-            except ProbeFailure as error:
-                if error.code >= 128:
-                    raise
-                # Already-booted devices report nonzero; bootstatus is authoritative.
-                print(f"[boot] boot command: {error}; checking bootstatus", flush=True)
-            try:
-                self.simctl(f"bootstatus:{attempt}", "bootstatus", udid, "-b", cap=240)
-                break
-            except ProbeFailure as error:
-                if attempt == 2 or error.code >= 128:
-                    raise
-                self.simctl("boot-retry-shutdown", "shutdown", udid)
+        self.boot_device()
         self.install_app(app)
         help_text = self.simctl("launch-output-options", "help", "launch", cap=10, log="simulator-launch-help.log")
         if not all(option in help_text for option in ("--stdout", "--stderr")):

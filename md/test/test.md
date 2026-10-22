@@ -146,6 +146,16 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - 保留原51个测试方法名和独立5项watchdog；真实timeout子进程显式忽略SIGTERM并flush `armed`，cap2s后要求真实TERM/KILL sent、leader return=-SIGKILL且reaped/receipt完整，未arm或EPERM不跳过、不伪绿。新增13个synthetic协议/路径/hash/早停/fake-clock方法，AST声明总64；不复制Swift布局，不是设备证据。所有实际数量/结果待Actions的`ci-regression-results.json`与日志，本机未运行。
 - manifest新增`sceneReadinessOutcome`，正常JUnit9case含1个skipped XCTest；失败摘要列probe/nonce/PID/lastStage和trace路径/hash。C必须下载本轮最新SHA/run/attempt未加密artifact并核对全部64声明方法的实际结果、独立5项watchdog、安装/直接trace/两帧/HUD25/24独立PNG与全部图像；若早停，只能结论失败与具体最后阶段，不借旧artifact补数或声称根因已证实。
 
+### v5.58 同设备启动续等、保留与独立boot gate
+
+- v5.57 C实际不通过：run `39835681113` attempt1 / main `93045f74343311bc8b93ea20a03e052c04372818`，generic64.2s与sim SDK70.156s成功，64回归及独立5项watchdog通过，真实2s fixture已armed并TERM/KILL sent、leader=-9/reaped。首bootstatus240.696s仍为Data Migration，shutdown7.573s/boot9.751s后二次195.137s成功；install-admission余量537.151810s不足557s，未执行install，prewarm空/24项not_run/0PNG。不能写成scene断言失败或App卡死；仅去掉17.324s命令成本也不足补19.848190s缺口。
+- 启动先且仅云端一次cap10s help保存原文/真实receipt，必须明确monitor及-b自动boot选项语义；不整段匹配help，不支持/不清楚/失败或回执不全则停止。至多一次初始boot与两次`bootstatus <same UDID>`，正式两次均无-b/自动boot选项，首boot正常exit0或精确already-Booted正常错误；不能按正退出码>=128就推断信号。CLI实际取消/异常/负returnCode立即停止，未知/永久诊断不绕路。
+- 只有首bootstatus真实watchdog124、receipt完整且TERM/KILL/reap无错误、最后完整状态为非terminal Data Migration(Status2)/System App(Status4)及匹配等待文本，才查一次cap10s fresh `list devices --json`；仅选定runtime唯一同UDID、available=true、Booted且dataPath未变可再等一次。空/损坏/未知/末尾部分状态、混入错误、正常CLI自己exit124、EPERM/unreaped、查询失败/缺失/重复/跨身份或非Booted均停止；无中间shutdown/reboot、无第三次/兜底。OS Booted不是ready，最终必须bootstatus真实正常exit0。
+- help/state/boot/wait各由原共享deadline动态限制，actual cap最多为`min(requested, remaining-557-2)`；requested为10/10/60/240。command层发命令前重算并只扣一次本CLI2s，state后重算第二wait，cap非正不发命令并记录budget_insufficient。原安装557/617准入、60s恢复、1080/90s及step/job时限、prewarm90+5、24定义/顺序/8或4s等待、场景/HUD25/PNG/PID链全部冻结；调度或收尾超过保留仍由原安装准入准确失败，不补时间。
+- boot schema1/policy `same-device-boot-continuation-v1`包含identity/selectedDevice/deadline、顺序commands与admissions，每条真实argv、monotonic起止/elapsed/remaining、requested/effective cap、557/2保留、exit/status/receipt和独立输出basename/bytes/SHA。只保存观察到的最后等待与fresh选定状态；CLI回执不证明系统服务或所有后代已停。成功/失败/取消/未发命令都finally原子保存，runner与metadata复核相同boot链，boot失败不能被完整HUD/24PNG覆盖；manifest新增simulatorBootOutcome，正常JUnit10case含1准确XCTest skip，失败摘要展开boot阶段、分类/决策、state、cap/余量/准入。
+- 保留原64方法名及独立5项watchdog、真实armed2s超时与exit0 fixture；新增19个BootTests声明方法，总83（34调度/HUD/image、12安装、19启动、2真实CLI、13场景、3规范化）。新分支使用fake单调钟/CLI/明确synthetic回执与JSON，不运行真实240s sleep，不复制Swift布局或为测试绕正式validator。覆盖help fail closed、无-b argv、alreadyBooted高正退出码/取消、两类等待续等、失败分类/cleanup、fresh状态负例、第二失败不重启、预算不足不发/状态后cap重算/不重置deadline、安装仍557、metadata独立与完整24PNG不能覆盖坏boot。AST声明不等于执行通过；只在Actions执行并核对ci-regression-results.json实际结果，本机不运行任何CI脚本/测试/build/sips/simctl。
+- C下载最新main/SHA/run/attempt官方未加密ZIP并保留，核对API digest/CRC、双build、83声明方法实际结果和独立5项watchdog、boot help/所有原始输出/真实receipt/fresh状态/实际cap与时序、安装与v5.57全部scene/HUD25/24正式图。真实快路径成功可验收但必须说明续等分支没有本run设备覆盖，不制造超时或额外重跑补覆盖；若仍未进入App，只能失败缺证，不借旧图或旧报告通过。视觉仍逐张审全部24原图，不能由CPU/hash或API绿色step替代。
+
 ### 触发条件
 
 `.github/workflows/ci-results.yml` 在以下情况运行：
@@ -266,7 +276,7 @@ desert-frontline-ci-${version}-${branch_slug}-${short_sha}-run${run_id}-attempt$
 - staticChecksOutcome
 - buildOutcome
 - simulatorLaunchOutcome
-- sceneReadinessOutcome / simulatorInstallOutcome / hudLayoutContractOutcome / probeIntegrityOutcome
+- simulatorBootOutcome / sceneReadinessOutcome / simulatorInstallOutcome / hudLayoutContractOutcome / probeIntegrityOutcome
 - testOutcome
 - projectSpecificReports
 
