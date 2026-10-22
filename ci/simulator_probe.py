@@ -17,6 +17,9 @@ import zlib
 from run_bounded import run_bounded
 
 
+NORMALIZATION_POLICY = "hosted-portrait-270-native-landscape-0-v1"
+
+
 class ProbeFailure(Exception):
     def __init__(self, message, code=1):
         super().__init__(message)
@@ -88,6 +91,28 @@ def png_info(path):
             "sha256": hashlib.sha256(data).hexdigest()}
 
 
+def validate_normalization(record):
+    raw, image = record.get("rawImage"), record.get("image")
+    for info in (raw, image):
+        if (not isinstance(info, dict) or set(info) != {"bytes", "width", "height", "sha256"}
+                or any(type(info[key]) is not int or info[key] <= 0 for key in ("bytes", "width", "height"))
+                or not isinstance(info["sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", info["sha256"])):
+            raise ProbeFailure("Missing/invalid raw or normalized image evidence")
+    if record.get("normalizationPolicy") != NORMALIZATION_POLICY:
+        raise ProbeFailure("Missing/incorrect image normalization policy")
+    angle = record.get("rotationDegrees")
+    if type(angle) is not int:
+        raise ProbeFailure("Missing image rotation evidence")
+    if raw["height"] > raw["width"]:
+        if angle != 270 or (image["width"], image["height"]) != (raw["height"], raw["width"]):
+            raise ProbeFailure("Portrait image must use 270-degree rotation and swapped dimensions")
+    elif raw["width"] > raw["height"]:
+        if angle != 0 or raw != image:
+            raise ProbeFailure("Native landscape image must remain unchanged")
+    else:
+        raise ProbeFailure("Square screenshot cannot establish landscape normalization")
+
+
 def validate_results(probes, summary, directory):
     records = summary.get("probes", [])
     if len(records) != len(probes):
@@ -103,6 +128,7 @@ def validate_results(probes, summary, directory):
         actual = png_info(directory / expected["png"])
         if actual != record.get("image") or actual["width"] <= actual["height"]:
             raise ProbeFailure(f"PNG evidence mismatch/not landscape: {expected['id']}")
+        validate_normalization(record)
     if len(list(directory.glob("simulator-*.png"))) != len(probes):
         raise ProbeFailure("Missing/extra simulator PNG files")
 
@@ -151,7 +177,7 @@ class Runner:
         self.device = None
         self.bundle = None
         self.summary = {
-            "schemaVersion": 1, "version": os.environ.get("CI_VERSION", "unknown"),
+            "schemaVersion": 2, "version": os.environ.get("CI_VERSION", "unknown"),
             "commitSha": os.environ.get("GITHUB_SHA", ""), "runId": os.environ.get("GITHUB_RUN_ID", ""),
             "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""), "branch": os.environ.get("GITHUB_REF_NAME", ""),
             "workBudgetSeconds": budget, "cleanupBudgetSeconds": 90, "stepHardLimitSeconds": 1260,
@@ -238,6 +264,22 @@ class Runner:
             raise ProbeFailure(f"{name} did not return one live app PID")
         return int(matches[0])
 
+    def normalize_screenshot(self, name, path, record):
+        with self.stage(f"{name}:png-check"):
+            record["rawImage"] = png_info(path)
+            record["normalizationPolicy"] = NORMALIZATION_POLICY
+            width, height = record["rawImage"]["width"], record["rawImage"]["height"]
+            if width == height:
+                raise ProbeFailure("Square screenshot cannot establish landscape normalization")
+            record["rotationDegrees"] = 270 if height > width else 0
+        if record["rotationDegrees"]:
+            # This policy follows reviewed hosted captures; C still checks actual UI direction.
+            self.command(f"{name}:landscape", ["/usr/bin/sips", "--rotate", "270", str(path)], cap=30)
+        with self.stage(f"{name}:normalized-image-check"):
+            record["image"] = png_info(path)
+            validate_normalization(record)
+            self.remaining()
+
     def capture(self, definition, index):
         record = self.summary["probes"][index]
         started = time.monotonic()
@@ -252,12 +294,8 @@ class Runner:
             self.wait(f"probe:{definition['id']}:render", definition["wait"])
             path = self.directory / definition["png"]
             self.simctl(f"probe:{definition['id']}:screenshot", "io", self.device["udid"], "screenshot", str(path), cap=180)
-            with self.stage(f"probe:{definition['id']}:png-check"):
-                image = png_info(path)
-            if image["height"] > image["width"]:
-                self.command(f"probe:{definition['id']}:landscape", ["/usr/bin/sips", "--rotate", "90", str(path)], cap=30)
+            self.normalize_screenshot(f"probe:{definition['id']}", path, record)
             with self.stage(f"probe:{definition['id']}:pid-image-check"):
-                record["image"] = png_info(path)
                 record["aliveAfterScreenshot"] = alive(record["pid"])
                 if not record["aliveAfterScreenshot"] or record["image"]["width"] <= record["image"]["height"]:
                     raise ProbeFailure("App exited after capture or PNG is not landscape")

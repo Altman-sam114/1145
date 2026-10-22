@@ -104,6 +104,16 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - 调度器直接持有一个子命令进程组，不套另一层 watchdog session；取消先终止所属命令组，再记录失败并按有界 finally 采集 app log / device state、仅 shutdown 选定设备。重复取消在收尾时忽略，不扩大为全局 shutdown。收尾警告不覆盖原始失败；强制销毁 runner / GitHub 硬取消仍可能阻止上传。
 - artifact 增加 `probes.json`、`simulator-probe-summary.json`、`simulator-build.log`、`simulator-runtimes.json`、`simulator-boot-state.json` 和 `ci-regression-results.json`，与 manifest / JUnit / generic build / 原 24 PNG 一并验收。C 必须核对最新 SHA / run / attempt 以及全部 PNG 目视，结构通过不代表无白屏、真实触控、动态玩法、多尺寸或真机长期性能。
 
+### v5.54 截图朝向与 HUD 遮挡门槛
+
+- 本机仍只允许 AST/YAML/语法和 diff 等静态检查，不运行 sips、CI 回归、游戏、build 或任何模拟器操作；不伪造 `GITHUB_ACTIONS=true`。
+- `Runner.normalize_screenshot(...)` 是实际 capture 和云端角点回归的共享入口：portrait 源图有界调用真实 `sips --rotate 270`，native landscape 不调用旋转并保持文件 SHA 不变，正方形明确失败。保持原 24 项、设备选择和所有预算/等待。
+- summary schemaVersion 2 的每项增加 `rawImage`（旋转前 bytes/width/height/sha256）、`rotationDegrees`、`normalizationPolicy`，最终 `image` 保留规范化后同一元数据。raw PNG 不重复上传，raw hash 是原地修改前的现场记录，不得称为 artifact 内原始文件可重算证据。
+- runner 与 metadata 共用校验要求原始元数据完整、portrait 角度为 270 且最终宽高互换、native landscape 角度为 0 且元数据完全一致；缺项/错角/错尺寸/最终图 SHA 不符均失败。结构校验不能自动证明 App 的真实文字朝向。
+- `ci/check_probe_runner.py` 保留原 16 项调度/完整性测试并增加 raw/角度/policy/尺寸/未旋转原图一致性负路径；独立 normalization suite 使用标准库生成 2x3 不对称 RGB fixture，经真实云端 sips 后用小型 PNG 反过滤解码核对完整 3x2 像素位置（`A B / C D / E F -> B D F / A C E`），另证实 native landscape 不执行命令、SHA/像素不变和 square 被拒绝。日志及 `ci-regression-results.json` 分开记录各 suite、真实 sips fixture 元数据/期望/实际像素及真实用例结果。
+- HUD 根 z=10000，超过 fogLayer 300 加每格 `1000 + zPosition(center)` 的当前约 1411.8 上界，也高于当前地图/实体/效果子树；不改 fog alpha、认知集合或潜艇链路。C 必须目视全部 24 官方 PNG 无需额外旋转、文字正向、命令栏在底部，TACT/BUILD、THEATER/minimap、选择卡不再被 fog 黑三角覆盖，战场未知区仍有迷雾。不得用本地旋转审阅副本代替官方 PNG。
+- 270 策略仅由已审阅 hosted iPhone 17 / iOS 26.5 证据支持，不代表任意未来 runtime 自动识别；固定 capture 不代表多尺寸、触控或动态玩法认证。v5.53 CI 技术项通过但 C 整体不通过；v5.54 须用本轮最新 main/run/attempt 官方 ZIP 与 24 图重新验收，未完成前只能记录待验收。
+
 ### 触发条件
 
 `.github/workflows/ci-results.yml` 在以下情况运行：

@@ -79,7 +79,7 @@ def main():
               f"- Failure stage: {summary.get('failureStage', 'none')}",
               f"- Last completed probe: {summary.get('lastCompletedProbe', 'none')}",
               f"- Probe counts: {summary.get('counts', 'unavailable')}",
-              f"- Integrity detail: {integrity_error or '24 complete launches, live PIDs and valid landscape PNGs'}",
+              f"- Integrity detail: {integrity_error or '24 complete launches, live PIDs, raw/rotation evidence and valid landscape PNGs'}",
               "- XCTest: skipped (no XCTest target exists)",
               "- Forced runner destruction/GitHub cancellation can prevent final evidence upload."]
     (results / "ci-failure-summary.md").write_text("\n".join(lines) + "\n")

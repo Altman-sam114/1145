@@ -14,11 +14,67 @@ import zlib
 from simulator_probe import Runner, ProbeFailure, load_probes, png_info, select_device, validate_results
 
 
+NORMALIZATION_EVIDENCE = []
+
+
 def png_bytes():
     def chunk(kind, data):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
     return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 2, 1, 8, 6, 0, 0, 0))
             + chunk(b"IDAT", zlib.compress(b"\x00" + b"\x80\x90\xa0\xff" * 2)) + chunk(b"IEND", b""))
+
+
+def rgb_fixture(width, height):
+    colors = [(255, 0, 0), (0, 255, 0), (255, 0, 255), (0, 255, 255), (0, 0, 255), (255, 255, 0)]
+    pixels = b"".join(bytes(color) for color in colors)
+    scanlines = b"".join(b"\x00" + pixels[row * width * 3:(row + 1) * width * 3] for row in range(height))
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(scanlines)) + chunk(b"IEND", b""))
+
+
+def fixture_pixels(path):
+    """Decode only the tiny RGB/RGBA regression fixture, including sips PNG filters."""
+    info = png_info(path)
+    if info["width"] * info["height"] > 64:
+        raise ValueError("Not a tiny normalization fixture")
+    data = path.read_bytes()
+    channels = {2: 3, 6: 4}[data[25]]
+    offset, compressed = 8, bytearray()
+    while offset < len(data):
+        length = struct.unpack_from(">I", data, offset)[0]
+        if data[offset + 4:offset + 8] == b"IDAT":
+            compressed.extend(data[offset + 8:offset + 8 + length])
+        offset += length + 12
+    scanlines = zlib.decompress(compressed)
+    stride = info["width"] * channels
+    previous, rows = bytearray(stride), []
+    for y in range(info["height"]):
+        start = y * (stride + 1)
+        filtering = scanlines[start]
+        row = bytearray(scanlines[start + 1:start + stride + 1])
+        for x in range(stride):
+            left = row[x - channels] if x >= channels else 0
+            up = previous[x]
+            upper_left = previous[x - channels] if x >= channels else 0
+            if filtering == 1:
+                predictor = left
+            elif filtering == 2:
+                predictor = up
+            elif filtering == 3:
+                predictor = (left + up) // 2
+            elif filtering == 4:
+                estimate = left + up - upper_left
+                predictor = min((left, up, upper_left), key=lambda value: abs(value - estimate))
+            else:
+                predictor = 0
+            row[x] = (row[x] + predictor) & 255
+        rows.append([tuple(row[x:x + 3]) for x in range(0, stride, channels)])
+        previous = row
+    return rows
 
 
 class FakeRunner(Runner):
@@ -178,17 +234,117 @@ class ProbeTests(unittest.TestCase):
         with self.assertRaises(ProbeFailure):
             validate_results(self.probes, runner.summary, self.directory)
 
+    def test_missing_raw_image_evidence(self):
+        runner = self.complete()
+        del runner.summary["probes"][0]["rawImage"]
+        with self.assertRaises(ProbeFailure):
+            validate_results(self.probes, runner.summary, self.directory)
+
+    def test_missing_rotation_evidence(self):
+        runner = self.complete()
+        del runner.summary["probes"][0]["rotationDegrees"]
+        with self.assertRaises(ProbeFailure):
+            validate_results(self.probes, runner.summary, self.directory)
+
+    def test_wrong_rotation_evidence(self):
+        runner = self.complete()
+        runner.summary["probes"][0]["rotationDegrees"] = 90
+        with self.assertRaises(ProbeFailure):
+            validate_results(self.probes, runner.summary, self.directory)
+
+    def test_wrong_normalization_policy(self):
+        runner = self.complete()
+        runner.summary["probes"][0]["normalizationPolicy"] = "unknown"
+        with self.assertRaises(ProbeFailure):
+            validate_results(self.probes, runner.summary, self.directory)
+
+    def test_raw_dimensions_mismatch(self):
+        runner = self.complete()
+        record = runner.summary["probes"][0]
+        record["rawImage"].update(width=1, height=3)
+        record["rotationDegrees"] = 270
+        with self.assertRaises(ProbeFailure):
+            validate_results(self.probes, runner.summary, self.directory)
+
+    def test_native_landscape_raw_changed(self):
+        runner = self.complete()
+        runner.summary["probes"][0]["rawImage"]["bytes"] += 1
+        with self.assertRaises(ProbeFailure):
+            validate_results(self.probes, runner.summary, self.directory)
+
+    def test_raw_hash_invalid(self):
+        runner = self.complete()
+        runner.summary["probes"][0]["rawImage"]["sha256"] = "wrong"
+        with self.assertRaises(ProbeFailure):
+            validate_results(self.probes, runner.summary, self.directory)
+
+
+class NormalizationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.directory = Path(self.temp.name)
+        self.runner = Runner(self.directory)
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_portrait_real_sips_270_corner_positions(self):
+        path = self.directory / "portrait-fixture.png"
+        path.write_bytes(rgb_fixture(2, 3))
+        raw = png_info(path)
+        record = {}
+        self.runner.normalize_screenshot("fixture:portrait", path, record)
+        # Independent expectation: clockwise 270 maps A B / C D / E F to B D F / A C E.
+        expected = [[(0, 255, 0), (0, 255, 255), (255, 255, 0)],
+                    [(255, 0, 0), (255, 0, 255), (0, 0, 255)]]
+        actual = fixture_pixels(path)
+        self.assertEqual(actual, expected)
+        self.assertEqual(record["rawImage"], raw)
+        self.assertEqual(record["rotationDegrees"], 270)
+        self.assertEqual((record["image"]["width"], record["image"]["height"]), (3, 2))
+        NORMALIZATION_EVIDENCE.append(dict(case="portrait-real-sips", **record,
+                                           expectedPixels=expected, actualPixels=actual))
+
+    def test_native_landscape_is_unchanged(self):
+        path = self.directory / "landscape-fixture.png"
+        path.write_bytes(rgb_fixture(3, 2))
+        raw, pixels = png_info(path), fixture_pixels(path)
+        record = {}
+        with patch.object(self.runner, "command") as command:
+            self.runner.normalize_screenshot("fixture:landscape", path, record)
+        command.assert_not_called()
+        self.assertEqual(record["rotationDegrees"], 0)
+        self.assertEqual(record["rawImage"], raw)
+        self.assertEqual(record["image"], raw)
+        self.assertEqual(fixture_pixels(path), pixels)
+        NORMALIZATION_EVIDENCE.append(dict(case="native-landscape-no-command", **record))
+
+    def test_square_is_rejected(self):
+        path = self.directory / "square-fixture.png"
+        path.write_bytes(rgb_fixture(1, 1))
+        with self.assertRaises(ProbeFailure):
+            self.runner.normalize_screenshot("fixture:square", path, {})
+
 
 if __name__ == "__main__":
     if os.environ.get("GITHUB_ACTIONS") != "true":
         raise SystemExit("Cloud-only regression; do not run locally")
-    suite = unittest.defaultTestLoader.loadTestsFromTestCase(ProbeTests)
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    results = []
+    for case, name, execution in (
+            (ProbeTests, "scheduler-and-evidence", "fake simulator commands; real short timeout command"),
+            (NormalizationTests, "screenshot-normalization", "real sips portrait rotation; no simulator")):
+        print(f"Cloud regression suite: {name} ({execution})", flush=True)
+        result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(case))
+        results.append({"name": name, "execution": execution, "tests": result.testsRun,
+                        "failures": len(result.failures), "errors": len(result.errors),
+                        "skipped": len(result.skipped), "success": result.wasSuccessful()})
+    success = all(result["success"] for result in results)
     Path("ci-results").mkdir(exist_ok=True)
     Path("ci-results/ci-regression-results.json").write_text(json.dumps({
-        "suite": "CI probe scheduler (fake commands; no simulator)", "tests": result.testsRun,
-        "failures": len(result.failures), "errors": len(result.errors), "skipped": len(result.skipped),
-        "success": result.wasSuccessful(), "commitSha": os.environ.get("GITHUB_SHA"),
+        "suite": "CI scheduler, image evidence and real sips normalization (no simulator)",
+        **{key: sum(result[key] for result in results) for key in ("tests", "failures", "errors", "skipped")},
+        "suites": results, "normalizationFixtures": NORMALIZATION_EVIDENCE,
+        "success": success, "commitSha": os.environ.get("GITHUB_SHA"),
         "runId": os.environ.get("GITHUB_RUN_ID"), "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
     }, indent=2) + "\n")
-    sys.exit(0 if result.wasSuccessful() else 1)
+    sys.exit(0 if success else 1)

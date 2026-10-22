@@ -76,7 +76,7 @@
 
 ## 历史记录
 
-### v5.53 / 云端探针预算与完整性加固（待云端验收）
+### v5.53 / 云端探针预算与完整性加固（CI 技术项通过，C 整体不通过）
 
 日期：2026-10-13。
 
@@ -87,7 +87,24 @@
 - 新增仅云端标准库 scheduler / summary / 完整性负路径回归，watchdog 增加 SIGTERM 后代清理证据；README、test、flow / flowchart 同步。测试结果、generic build 和全部 24 PNG 必须在本轮 push 后由 Agent C 下载最新 artifact 核实；此条尚不宣称通过。
 - 继承本地既有 v5.52 `8df6eb4` 的 10 行命令栏操作引导，未修改其 Swift 内容；用户 Team ID、未跟踪 v5.23-v5.33 prompts 与 `md/unity分析/` 原样保留。本机不运行 Xcode、Simulator、simctl 或任何回归，仅静态语法 / AST / diff 检查。
 
+Agent C 复核（2026-10-22）：
+
+- 实现 SHA `073e36b9651c7bc8468d421f508affa8b8330ec2`，与本地/远端 main、run `38344527525` attempt 1 的 head 和 manifest/summary 一致。run completed/success；generic build 35.8 秒，simulator SDK build 30.684 秒，bootstatus 97.018 秒，prewarm launch 69.710 秒；模拟器 step 10 分 26 秒，不支持“Swift 编译卡死”的判断。
+- 官方 artifact ID `11788428415`，名称 `desert-frontline-ci-v5.53-main-073e36b9651c-run38344527525-attempt1`，ZIP 30,176,286 字节，SHA-256 `bfc62128b82e9533b0b22adb1b5ea7a68339181889fd3838b850e2e8adaabe23` 与 API digest 一致；缓存 `/private/tmp/desert-frontline-c-review-38344527525/` 保留。JUnit 6/0fail/1skip、watchdog 5 案例、scheduler 16 测试及 24 图 CRC/scanline/SHA/双 PID 证据通过。
+- C 目视全部 24 官方原图发现整体倒置 180 度；固定 `sips --rotate 90` 的 portrait 规范化方向错误，宽高门槛未识别。另有 fog 黑三角盖住 TACT/BUILD、THEATER、小地图和部分选择卡：fog 累计约 1300--1411.8，高于 HUD 1000。两项是实际可读性阻塞，Agent X 退回追加修复，不计成功轮次，不继续 HUD 扩展。
+
 遗留：云端固定 capture 和 CI 失败处理不等于动态玩法、多尺寸、真实触控或真机性能认证；全面 UI / 模型 / 陆海空体验重构仍是后续轮次，未宣称完全复刻或总目标完成。
+
+### v5.54 / 云端截图朝向与 HUD 遮挡修复（待云端验收）
+
+日期：2026-10-22。
+
+- 只修复 C 退回的两项阻塞：`GameScene.didMove(to:)` 将 HUD 根 z 提至 10000，保留内部布局/触控与 world/fog 认知和 alpha；`Runner.normalize_screenshot(...)` 对已获证据的 hosted portrait canvas 有界旋转 270 度，native landscape 不改文件、square 明确失败。
+- summary schemaVersion 2 每项增加旋转前 `rawImage` bytes/尺寸/SHA、`rotationDegrees`、`normalizationPolicy`，最终 `image` 沿用原字段；runner 与 metadata 共同验证完整性。raw PNG 原地规范化，不默认再上传 24 份重复图，原始 hash 仅为旋转前现场记录。
+- `ci/check_probe_runner.py` 增加仅云端真实 sips 不对称 RGB 像素位置回归、native landscape 不执行旋转且 SHA/像素不变、square 拒绝与 raw/角度/policy/尺寸等负路径；结构化结果分开列出 scheduler/evidence 和 normalization suites。原 24 正式探针、设备选择、预算/预热等待、watchdog 和 XCTest skipped 事实不变。
+- 关键文件为 `DesertFrontline/GameScene.swift`、`ci/simulator_probe.py`、`ci/check_probe_runner.py`、`ci/package_results.py`、v5.54 提示词与 README/test/flow/flowchart；本机只做 AST/YAML/diff 静态检查，不运行任何 build、Simulator、simctl、sips 或回归。结果须由本轮 main push 后的新 run 官方 ZIP、云端回归及 C 全部 24 图目视确认，目前不宣称通过。
+
+遗留：270 度策略不是任意 runtime 自动方向识别，C 正向/遮挡目视门槛仍必须保留；资源/任务/消息挤压、异形屏安全区和五页导航/动作真正拆分留给后续有限 HUD 重排，未在本轮解决。
 
 ### 初始可玩原型
 

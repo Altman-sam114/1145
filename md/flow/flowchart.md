@@ -107,7 +107,8 @@ flowchart TD
   Commit --> Push["git push origin main\n触发云端验证"]
   Push --> Actions["GitHub Actions ci-results\n静态检查、plutil、generic iOS build"]
   Actions --> Probe["单一24项清单 / 唯一云端设备\n1080秒工作deadline + 最多90秒诊断清理 < 21分钟step\n同设备有限boot/prewarm，进程组取消清理"]
-  Probe --> Integrity["原子probe summary / 完整性双重门槛\n24次launch、PID存活、有效横屏PNG / SHA\n失败也保留已完成与未运行项"]
+  Probe --> Normalize["截图方向留证\nrawImage bytes/尺寸/SHA -> portrait 270 / native landscape 0\nsquare失败；记录角度/policy/最终image"]
+  Normalize --> Integrity["原子probe summary / 完整性双重门槛\n24次launch、PID存活、raw/旋转/final证据\n失败也保留已完成与未运行项"]
   Integrity --> Artifact["always 未加密 CI 结果包\nmanifest、JUnit、build/launch日志、failure summary、xcresult\nprobe summary、云端负路径结果、24 PNG"]
   Artifact --> AgentC["Agent C\ngh auth login 后下载最新 run 结果包"]
   AgentC --> Verify["核对 origin/main 最新 commit\nrun id、run attempt、artifact、日志"]
@@ -181,3 +182,5 @@ flowchart TD
 读图补充：云端 build/simctl 先经过限时 watchdog；bootstatus 超时后同设备最多重试一次；成功进入24项截图探针，失败也进入 always 元数据与上传阶段。
 
 v5.53 读图补充：generic build 独立 600 秒；模拟器所有命令 / 等待共享总工作 deadline，每个阶段输出开始 / 结束 / 耗时与心跳；finally 有界采集日志并只关闭所选设备。权威清单同时驱动执行、summary 与 manifest，结构化 summary 和全部 PNG 必须通过 runner 与 metadata 两次完整性核对。强制取消 / 销毁 runner 仍可能阻止留证。
+
+v5.54 读图补充：HUD 根 z=10000，高于 world/fog 累计深度（当前 fog 最大约 1411.8），不改迷雾认知或透明度。云端通过与 capture 相同的规范化入口运行真实 sips 不对称 RGB 角点回归，summary schemaVersion 2 保留旋转前元数据、角度和最终图像；raw PNG 原地规范化，不重复上传。当前 portrait 270 度策略来自已审阅 hosted 证据，不是自动方向识别；C 必须查看新 run 全部 24 官方 PNG，确认正向且无 fog 盖住 HUD，不能用宽高或本地旋转副本代替。

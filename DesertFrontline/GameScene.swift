@@ -1142,7 +1142,8 @@ final class GameScene: SKScene {
         entityLayer.zPosition = 100
         effectsLayer.zPosition = 190
         fogLayer.zPosition = 300
-        hudNode.zPosition = 1000
+        // Fog tiles add another 1000 locally; keep the entire HUD above world content.
+        hudNode.zPosition = 10000
 
         buildTerrain()
         drawMap()
