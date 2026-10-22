@@ -6121,7 +6121,7 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - C核对最新main `6d98f5b76c5eddef2f4fe4aa446b0c62ce48ee1f`、run `39845000713` attempt1 completed/failure；官方artifact ID `12455790304`，`desert-frontline-ci-v5.59-main-6d98f5b76c5e-run39845000713-attempt1`，未加密ZIP95,839 bytes/25 entries/CRC通过，API digest/SHA256 `461dd72c8c1fa0986670b55cba4b6ca029fc16f55916adcf6a9e7c9b7b376610`，缓存 `/private/tmp/desert-frontline-c-review-39845000713/` 保留。
 - 两build成功（generic watchdog41.8s、sim SDK32.802s），87实际方法和5watchdog通过；真实help442byte/正常receipt已过，一次boot正常exit0，wait1超时240.744873s/外层240.933053s，TERM sent、KILL真实EPERM、leader=-15/reaped，cleanup=failure准确阻止续等。末原文Status2/非terminal CoreLocationMigrator，迁移03:56，余797.410136s，不是help或557预算问题；未查fresh state/第二wait/安装/App，24not_run/0PNG，无scene/HUD25。work282.642/cleanup14.657/总297.299s，所选设备最终shutdown exit0；JUnit10case/6failure/1准确skip。不能断言zombie根因或系统服务已停；C只读无提交，不计成功。
 
-### v5.60 / CLI回收后只读组消失证据（待最新云端验收）
+### v5.60 / CLI回收后只读组消失证据（C不通过：中间fresh状态RPC超时）
 
 日期：2026-10-22
 
@@ -6130,3 +6130,18 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - 保留原87方法完整源码和独立5watchdog，新增8方法AST声明95：无注入真实TERM-normal/同组TERM忽略child、注入KILL错误但真实查询、query取消/正常wait后输出异常、fake查询/未reap等负例与metadata窄证据篡改。真实fixture先ready再绑定自有Popen计时，以stdout EOF/信号顺序留证；注入与synthetic明确分层。所有实际执行待Actions，只做本机AST/文本/diff静态检查，不运行本机测试/CI脚本/build/设备工具。
 - 关键文件：ci/run_bounded.py、ci/simulator_probe.py仅cli_receipt_complete及errno导入、ci/check_probe_runner.py、README/flow/flowchart/test和本轮提示词。boot help/调度/分类/state/caps/557/617/deadline/install/scene/HUD25/Swift/24探针/workflow均冻结，用户Team ID和既有未跟踪资料保留排除。
 - 本轮仍须最新官方ZIP全链与24原图由C独立验收，不把新回执、单测或旧图当App/视觉通过；真实原生EPERM与续等若未发生明确仅相应fixture覆盖。不称根治云端卡死或总目标完成。
+- C核对最新main `820dcac741495b25a181456cb696dcef8284bdff`、run `39849692612` attempt1 completed/failure；官方artifact ID `12457755281`，名称 `desert-frontline-ci-v5.60-main-820dcac74149-run39849692612-attempt1`，未加密ZIP99,827 bytes/26 entries/CRC通过，API digest/SHA256 `406289fbd10f7cc76abfa22bd1a2bbdb0942c7942256e1c443296639dca9cc22`，缓存 `/private/tmp/desert-frontline-c-review-39849692612/` 保留。C只读无提交，不计成功轮次。
+- generic watchdog34.1s与sim SDK阶段38.721s成功，95个不同实际方法逐项日志/报告及5watchdog通过。无注入TERM-normal fixture及生产wait1/state均真实出现KILL EPERM后reap/-15与signal0 ESRCH，新窄终态已实际覆盖；同组忽略TERM child走原TERM/KILL sent成功链。显式错误注入/真实query和synthetic负例另标，不把这些回执说成KILL成功、zombie根因或系统服务已停。
+- help442-byte/正常receipt已过，一次boot正常exit0；wait1 cap240s超时，CLI240.869365s/外层241.883055s、cleanup0.718803s，末Status4/isTerminalNO/Elapsed04:01、System App，分类eligible，余789.498054s。fresh list cap10s超时，CLI10.756445s/外层14.729584s、cleanup0.709018s、0-byte输出，余761.367230s，准确state_failed/boot-state，不是预算不足或Swift编译卡死。后诊断list0.810s成功/Booted不能倒填此前fresh gate。
+- 未发wait2/install/launch help/prewarm，没有App PID/directtrace/snapshot/两帧/fixture/HUD25，24not_run/0PNG；88-byte app诊断不是无崩溃证明。work318.696/cleanup16.105/总334.801s，最终所选设备shutdown正常exit0；JUnit10case/6failure/1准确XCTest skip，C整体不通过，视觉与总目标未完成。
+
+### v5.61 / 同设备纯监控直接续等（待最新云端验收）
+
+日期：2026-10-22
+
+- X审核A安全评估后授权：只移除两次monitor之间的fresh list RPC，不延长10s/cap或补造Booted。官方已核help明确默认monitor到完成且可在boot前安全调用、-b才auto-boot；正式两次仍无-b/-c/-d。承认失去一次runtime/dataPath/available/Booted fresh观测，初选身份不是续等实时状态；后诊断不倒填，不承诺迁移或第二monitor更快。
+- boot schema1/policy改为`same-device-monitor-continuation-v2`，只允help/initial/wait1或再接wait2的3/4角色。仍一次initial boot；只有首wait真实watchdog124、完整owned-group receipt及已知非terminal Migration/System App末wait才直接申请wait2；原deadline在dispatch前重算完整557+2，预算不足只留denied admission，不制造第二command。最终仍须真实正常exit0，取消/未知/收尾不明/第二失败即停，无重启或第三wait。
+- runner/metadata保留身份、阶段/admission、argv、输出bytes/SHA、回执/分类/决策、cap/时序独立核验；拒绝旧policy、state角色/多余RPC及boot根/command伪造selectedState。删除已无调用的boot_selected_state和测试boot_state_text、去掉失效摘要展示；初始设备选择与最终diagnostic list/shutdown保持，不另建gate或框架。
+- 按提示词重写9方法、1项receipt测试仅fixture受影响，声明仍95（34/12/24/9/13/3），旧fresh JSON gate明确取消而非虚称覆盖。新负例覆盖旧policy/5角色/中间list/伪造观测/身份、完成文本但非正常receipt，fake clock模拟wait1后开销验证动态cap/准入拒绝；其余86方法完整源码及独立5watchdog保留，含post-reap方法的19负例。真实与注入标记不改，执行结果待Actions。
+- 冻结run_bounded及receipt/help/分类/执行预算helper、所有Swift/工程、安装557/617/恢复、1080/90与全部cap/step/job、prewarm90+5、24定义/顺序/等待、scene/snapshot/两帧/fixture/HUD25/PNG/双PID和workflow。只做本机AST/文本/hash/diff静态检查，未导入或执行CI脚本/测试/build/sips/游戏/设备命令；用户Team ID及原未跟踪资料排除保留。
+- 关键文件：ci/simulator_probe.py、ci/check_probe_runner.py、ci/package_results.py仅摘要展示、README/flow/flowchart/test、本文与v5.61提示词。须一次main有效commit/push后，由C下载最新官方未加密ZIP核对双build、95实际方法/5watchdog、完整boot/install/App/scene/HUD25/24原图并目视；快路径通过不等于真实wait2覆盖，缺证仍不通过。不称UI已验收、全面复刻或总目标完成。

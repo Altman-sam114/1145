@@ -146,7 +146,9 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - 保留原51个测试方法名和独立5项watchdog；真实timeout子进程显式忽略SIGTERM并flush `armed`，cap2s后要求真实TERM/KILL sent、leader return=-SIGKILL且reaped/receipt完整，未arm或EPERM不跳过、不伪绿。新增13个synthetic协议/路径/hash/早停/fake-clock方法，AST声明总64；不复制Swift布局，不是设备证据。所有实际数量/结果待Actions的`ci-regression-results.json`与日志，本机未运行。
 - manifest新增`sceneReadinessOutcome`，正常JUnit9case含1个skipped XCTest；失败摘要列probe/nonce/PID/lastStage和trace路径/hash。C必须下载本轮最新SHA/run/attempt未加密artifact并核对全部64声明方法的实际结果、独立5项watchdog、安装/直接trace/两帧/HUD25/24独立PNG与全部图像；若早停，只能结论失败与具体最后阶段，不借旧artifact补数或声称根因已证实。
 
-### v5.58 同设备启动续等、保留与独立boot gate
+### v5.58 同设备启动续等、保留与独立boot gate（历史策略）
+
+以下保留v5.58历史设计和证据；当前v5.61只替换其中的中间fresh-state前置，现行续等要求见v5.61小节。
 
 - v5.57 C实际不通过：run `39835681113` attempt1 / main `93045f74343311bc8b93ea20a03e052c04372818`，generic64.2s与sim SDK70.156s成功，64回归及独立5项watchdog通过，真实2s fixture已armed并TERM/KILL sent、leader=-9/reaped。首bootstatus240.696s仍为Data Migration，shutdown7.573s/boot9.751s后二次195.137s成功；install-admission余量537.151810s不足557s，未执行install，prewarm空/24项not_run/0PNG。不能写成scene断言失败或App卡死；仅去掉17.324s命令成本也不足补19.848190s缺口。
 - 启动先且仅云端一次cap10s help保存原文/真实receipt，必须明确monitor及-b自动boot选项语义；不整段匹配help，不支持/不清楚/失败或回执不全则停止。至多一次初始boot与两次`bootstatus <same UDID>`，正式两次均无-b/自动boot选项，首boot正常exit0或精确already-Booted正常错误；不能按正退出码>=128就推断信号。CLI实际取消/异常/负returnCode立即停止，未知/永久诊断不绕路。
@@ -172,6 +174,18 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - schema1新增窄终态group_absent_after_reap，仅在TERM真实sent、KILL保留error/数值EPERM/原诊断、wait已reap且return=-SIGTERM后，一次真实signal0查询得到ESRCH。postReapGroupCheck绑定原PGID、signal0、after-reap、absent、数值errno与诊断。原success不变，查询返回0/EPERM/EINTR/未知、缺失/跨PGID/伪造/额外错误、未reap及身份不明全部失败；不重发信号/轮询/增加预算。Darwin kill(2)的signal0无信号发送、ESRCH不存在语义是设计依据，不是hosted根因证明。此前v5.56/v5.58“EPERM拒绝”指没有这一独立窄证据的错误，原错误本身仍不视为信号成功。
 - 原87方法完整源码和独立5watchdog保留，新增8方法，AST声明95（34调度、12安装、24启动、9回执、13场景、3规范化）。真实短fixture先ready并记录PID/PGID，再把自身拥有的真实Popen绑定到生产wrapper计短timeout；无注入TERM-normal及TERM忽略child仍KILL用例以stdout EOF确认所有fixture writer终止，保留原armed/-9。结构化watchdogReceipts记录层级、ready/信号时已有returncode、实际回执；KILL EPERM注入+真实query、query取消注入与正常真实wait后输出异常单独标记，不冒充原生EPERM。fake进程/query负例与19种metadata篡改是synthetic，完整HUD/24PNG不覆盖坏receipt。仅云端执行，实际数量/结果待新run。
 - C仍下载最新官方未加密ZIP，核对API digest/CRC/身份、双build、95声明对应实际日志及5watchdog、真实CLI层级与回执、真实boot/安装/全部prewarm/scene/snapshot/两帧/fixture/HUD25/24原图，逐张目视。原生EPERM未发生就明确新终态设备覆盖未发生；只有首次bootstatus成功则续等仍仅synthetic覆盖，任何早停准确不通过。
+
+v5.60实际C复核：run `39849692612` attempt1 / main `820dcac741495b25a181456cb696dcef8284bdff` completed/failure；双build、95不同实际方法与独立5watchdog均通过。无注入TERM fixture和生产wait1/state命令真实出现KILL EPERM后reap/-15与signal0 ESRCH，窄receipt合法，不再是v5.59收尾不明阻塞。wait1 cap240s/外层241.883055s、末Status4非terminal System App、余789.498054s；fresh state cap10s/外层14.729584s仍超时、0-byte输出、余761.367230s，准确state_failed/boot-state。没有wait2/install/App/trace/HUD25，24not_run/0PNG；后诊断Booted不能补此前fresh gate。JUnit10/6fail/1准确skip，C不通过，不称迁移根因已明或视觉已验收。
+
+### v5.61 无中间状态RPC的同设备纯监控续等
+
+- 当前boot schema1/policy为`same-device-monitor-continuation-v2`，成功序列只有help/initial/wait1或再接wait2的3/4角色；实际argv严格help bootstatus、一次boot同UDID、至多两次bootstatus同UDID，无-b/-c/-d。初始选择list、最后诊断list及shutdown保留；只是去掉中间cap10s fresh RPC，删除无调用的boot_selected_state/boot_state_text，不把死parser的孤立测试当生产覆盖。
+- 官方help默认monitor到完成且-b才auto-boot，明确可在boot前安全monitor；每run仍保留并校验实时help和正常receipt。首wait只有真实watchdog124、完整CLI清理、末完整非terminal Migration/System App才eligible；直接申请wait2，现场按原deadline重算`min(240, remaining-557-2)`。continue只是允许申请，不代表已dispatch；准入不足仅留denied admission、实际3条command并准确失败。最终只有完整receipt的真实正常exit0才可安装，取消/异常/未知/不完整或第二失败仍停，绝无中间重启或第三wait。
+- 减少一次runtime/dataPath/available/Booted fresh观测是明确的政策边界，初选selectedDevice不代表此刻状态。当前validator拒绝旧policy、state role/多余RPC、boot根或command的selectedState；不能伪造Booted、从后时刻diagnostic补观察或用完整HUD/24图覆盖坏boot。新policy保持原身份、阶段/admission、argv、输出hash/receipt/cap/时序重验；没有更快或必成功的保证。
+- 保持95个声明方法（34/12/24/9/13/3）与独立5watchdog。9项必要方法重写、1项fixture影响逐条见v5.61 Agent A提示词；重命名对应为`...never_queries_state`→`test_boot_exit124_or_incomplete_cleanup_never_continues`、`...fresh_state_missing_duplicate_changed_or_not_booted_stops`→`test_boot_continuation_rejects_legacy_state_policy_and_forged_observations`、`...fresh_state_timeout_or_unconfirmed_receipt_never_continues`→`test_boot_second_monitor_requires_real_normal_exit0_not_state_or_text`、`...state_elapsed_recomputes_dynamic_cap_without_reset`→`test_boot_post_wait_elapsed_recomputes_dynamic_cap_without_reset`、`...state_overrun_rechecks_budget_before_second_wait`→`test_boot_post_wait_overhead_exhausts_reserve_before_second_dispatch`。旧fresh JSON九类不再被宣称为生产gate，改由旧policy/角色/伪造观测/初选身份变更拒绝覆盖；完成文本不替代normal exit0。
+- 同名4方法分别保留两类wait下的精确4条argv、按新4角色取消留证、第二失败次数上限、完整synthetic HUD/24图不能覆盖坏boot的负例；fake clock通过测试局部wrapper模拟wait1返回后的8s/1s调度开销，证明动态cap/不重置deadline及reserve不足不dispatch，不新增生产sleep/hook。其余非BootTests71方法及BootTests14方法完整源码不变；第10项post-reap方法正文/19个负例不变，只由新4-role fixture承接。真实短CLI、原生/注入标记与五watchdog不改。
+- 全部实际执行仍仅Actions：本机只AST/文本/hash/diff，不导入或运行CI脚本、回归、build/sips/游戏/设备命令，不伪造GITHUB_ACTIONS。原557/617安装、1080/90预算/所有caps/step/job、prewarm90+5、24定义/顺序/全部等待、scene/snapshot/两帧/fixture/HUD25/PNG/双PID均保持。AST声明不等于95项通过，实际数量/结果待本次run。
+- C必须核对最新main/SHA/run/attempt官方未加密ZIP/API digest/CRC、manifest/JUnit/双build/95实际日志及5watchdog、新3/4-role真实链/所有原始输出与receipt/时序/保留、安装/launch help/prewarm/直接trace/snapshot/两帧/fixture/HUD25与24正式原图并逐张目视。真实wait2若发生如实记录；若wait1直接成功，只覆盖本run快路径，不称真实续等已测。不制造超时、额外rerun或借旧图补证；任何App早停准确不通过。本版本当前待云端及C验收，不称全面重构或总目标完成。
 
 ### 触发条件
 

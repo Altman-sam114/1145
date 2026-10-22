@@ -270,9 +270,9 @@ flowchart TD
   Absent --> Receipt[既有cli_receipt_complete窄证据链 / runner与metadata]
 ```
 
-### 保留同设备迁移进度的启动续等
+### 同设备纯监控直接续等（v5.61）
 
-读图说明：一次help必须有明确默认monitor-until-complete正文和唯一条件-b说明，不依赖标题或精确[-b]可选列表，支持已留证[-bcd]；缺失/含糊/矛盾仍拒绝，正式argv无-b/-c/-d。之后只有一次初始boot。首轮真实watchdog超时且最后为已知非terminal等待，CLI收尾完整后才查一次fresh状态；Booted只是续等条件，不替代最终bootstatus正常exit0。每条命令从原deadline重算并留下557s安装保留和本次CLI2s，预算或证据不够准确失败，不延长预算、不暗中再boot；原安装恢复不充当第三次启动等待。
+读图说明：一次help必须有明确默认monitor-until-complete正文和唯一条件-b说明，不依赖标题或精确[-b]可选列表，支持已留证[-bcd]；缺失/含糊/矛盾仍拒绝，正式argv无-b/-c/-d。之后只有一次初始boot。首轮真实watchdog超时、完整CLI收尾且最后为已知非terminal等待，才直接申请同UDID第二monitor；没有中间fresh list或selectedState，明确失去该时刻runtime/dataPath/available/Booted观察，初选身份不是实时状态。接口允许boot前监控且无-b不自动boot，最终只有真实正常exit0才就绪。每条命令从原deadline重算557s安装保留和本CLI2s，预算或证据不够准确失败，不延长预算、不暗中再boot；原安装恢复不充当第三次启动等待。
 
 ```mermaid
 flowchart TD
@@ -284,13 +284,13 @@ flowchart TD
   Wait1 -- 正常exit0与完整回执 --> Ready[原安装557准入 / HUD25与全部24图]
   Wait1 -- 非成功 --> Eligible{真实watchdog124 / 收尾完整 / 最后已知迁移或System App等待}
   Eligible -- 否 --> Fail
-  Eligible -- 是 --> State[一次fresh list devices JSON cap10 / 扣原deadline]
-  State --> Same{唯一同UDID runtime dataPath / available且Booted}
-  Same -- 否或预算不足 --> Fail
-  Same -- 是 --> Wait2[再次重算cap / 同UDID纯监控 / 无中间shutdown或boot]
+  Eligible -- 是 --> Admission[原deadline重算remaining减557减2 / 不查fresh状态]
+  Admission --> Budget{实际cap大于0}
+  Budget -- 否 --> Fail
+  Budget -- 是 --> Wait2[同UDID第二次纯监控 / cap最多240 / 无中间shutdown或boot]
   Wait2 -- 非正常成功 --> Fail
   Wait2 -- 正常exit0与完整回执 --> Ready
-  Ready --> Gate[runner与metadata分别验证boot链 / simulatorBootOutcome / JUnit10含1跳过]
+  Ready --> Gate[新policy仅3或4角色 / runner与metadata验证 / simulatorBootOutcome / JUnit10含1跳过]
   Fail --> Gate
   Gate --> Review[C核对最新官方ZIP回执状态输出预算 / 全部24正式原图]
 ```

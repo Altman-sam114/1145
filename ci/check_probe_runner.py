@@ -49,11 +49,6 @@ def boot_wait_text(udid, status=2):
             f"[2026-10-22 19:02:00 +0000] Status={status}, isTerminal=NO, Elapsed=04:00.\n{tail}\n")
 
 
-def boot_state_text(device):
-    return json.dumps({"devices": {device["runtime"]["identifier"]: [
-        {"udid": device["udid"], "dataPath": device["dataPath"], "state": "Booted", "isAvailable": True}]}})
-
-
 def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, sealed=False):
     """Synthetic protocol records, not executed Swift, device geometry or GPU evidence."""
     for key in ("commitSha", "runId", "runAttempt", "version"):
@@ -124,14 +119,13 @@ def boot_fixture(runner, continuation=False):
                                     "dataPath": device["dataPath"]}, deadlineAfterSeconds=budget,
                     monitorSemantics=boot_monitor_semantics(BOOT_HELP))
     stages, elapsed = [], 0
-    for role in (["help", "initial", "wait:1", "state", "wait:2"] if continuation else ["help", "initial", "wait:1"]):
-        cap = 10 if role in ("help", "state") else 60 if role == "initial" else 240
+    for role in (["help", "initial", "wait:1", "wait:2"] if continuation else ["help", "initial", "wait:1"]):
+        cap = 10 if role == "help" else 60 if role == "initial" else 240
         timeout = role == "wait:1" and continuation
         code, duration = (124, cap + 0.5) if timeout else (0, 0.1)
         args = (["help", "bootstatus"] if role == "help" else ["boot", device["udid"]] if role == "initial" else
-                ["list", "devices", "--json"] if role == "state" else ["bootstatus", device["udid"]])
-        text = (BOOT_HELP if role == "help" else boot_wait_text(device["udid"]) if timeout else
-                boot_state_text(device) if role == "state" else "")
+                ["bootstatus", device["udid"]])
+        text = BOOT_HELP if role == "help" else boot_wait_text(device["udid"]) if timeout else ""
         log = f"boot-{role.replace(':', '-')}.log"
         (runner.directory / log).write_text(text)
         admission = dict(phase=f"boot-admission:{role}", remainingSeconds=budget - elapsed, requestedCapSeconds=cap,
@@ -148,8 +142,6 @@ def boot_fixture(runner, continuation=False):
             record.update(classification=boot_wait_classification(record, text, device["udid"]), continuationDecision="continue")
         elif role.startswith("wait:"):
             record.update(classification="ready", continuationDecision="completed" if continuation else "not_needed")
-        if role == "state":
-            record["selectedState"] = dict(evidence["selectedDevice"], state="Booted", isAvailable=True)
         evidence["commands"].append(record)
         evidence["admissions"].append(admission)
         stages += [dict(name=f"boot-admission:{role}", status="success", exitCode=0),
@@ -758,11 +750,10 @@ class BootTests(unittest.TestCase):
         with patch("simulator_probe.run_bounded", side_effect=runner.bounded):
             runner.boot_device()
 
-    def continued(self, status=2, budget=1080, state=None, second=None):
+    def continued(self, status=2, budget=1080, second=None):
         runner = self.runner([], budget)
         runner.outcomes = [{"text": BOOT_HELP}, {},
                            {"code": 124, "timeout": True, "text": boot_wait_text(runner.device["udid"], status)},
-                           state if state is not None else {"text": boot_state_text(runner.device)},
                            second if second is not None else {}]
         return runner
 
@@ -970,12 +961,12 @@ class BootTests(unittest.TestCase):
                 runner = self.continued(status)
                 self.boot(runner)
                 validate_boot(runner.summary, runner.probes, self.directory)
-                self.assertEqual([call[0][2] for call in runner.calls], ["help", "boot", "bootstatus", "list", "bootstatus"])
+                self.assertEqual([call[0][2] for call in runner.calls], ["help", "boot", "bootstatus", "bootstatus"])
                 waits = [call[0] for call in runner.calls if call[0][2] == "bootstatus"]
                 self.assertEqual(waits, [["/usr/bin/xcrun", "simctl", "bootstatus", runner.device["udid"]]] * 2)
                 self.assertEqual(runner.summary["boot"]["commands"][2]["continuationDecision"], "continue")
 
-    def test_boot_exit124_or_incomplete_cleanup_never_queries_state(self):
+    def test_boot_exit124_or_incomplete_cleanup_never_continues(self):
         outcomes = [{"code": 124}, {"code": 124, "timeout": True, "receipt": {"reaped": False}},
                     {"code": 124, "timeout": True, "receipt": {"term": {"status": "error", "error": "EPERM"}}},
                     {"code": 124, "timeout": True, "receipt": {"kill": {"status": "error", "error": "EPERM"}}},
@@ -989,7 +980,7 @@ class BootTests(unittest.TestCase):
                 self.assertEqual(len(runner.calls), 3)
 
     def test_boot_cancel_or_exception_saves_receipt_and_stops_immediately(self):
-        for position in range(5):
+        for position in range(4):
             with self.subTest(position=position):
                 runner = self.continued()
                 runner.outcomes[position] = {"code": 143, "cancelled": True}
@@ -1016,28 +1007,58 @@ class BootTests(unittest.TestCase):
                 self.assert_failed(runner)
                 self.assertEqual(len(runner.calls), 3)
 
-    def test_boot_fresh_state_missing_duplicate_changed_or_not_booted_stops(self):
-        for mutation in ("missing", "duplicate", "runtime", "udid", "dataPath", "Shutdown", "Booting", "unavailable", "bad-json"):
+    def test_boot_continuation_rejects_legacy_state_policy_and_forged_observations(self):
+        # No fresh-state observation exists in this synthetic current-policy chain.
+        for mutation in ("old-policy", "legacy-five-role", "new-policy-state-role", "state-list-argv",
+                         "root-state", "command-state", "udid", "runtimeIdentifier", "dataPath"):
             with self.subTest(mutation=mutation):
-                runner = self.continued()
-                state = json.loads(boot_state_text(runner.device))
-                entries = state["devices"][runner.device["runtime"]["identifier"]]
-                if mutation == "missing": entries.clear()
-                elif mutation == "duplicate": entries.append(dict(entries[0]))
-                elif mutation == "runtime": state["devices"] = {"another.runtime": entries}
-                elif mutation in ("udid", "dataPath"): entries[0][mutation] = "changed"
-                elif mutation == "unavailable": entries[0]["isAvailable"] = False
-                elif mutation in ("Shutdown", "Booting"): entries[0]["state"] = mutation
-                runner.outcomes[3]["text"] = "{" if mutation == "bad-json" else json.dumps(state)
-                self.assert_failed(runner)
-                self.assertEqual(len(runner.calls), 4)
+                runner = FakeRunner(self.directory)
+                runner.work()
+                boot_fixture(runner, continuation=True)
+                evidence = runner.summary["boot"]
+                validate_boot(runner.summary, runner.probes, self.directory)
+                self.assertEqual(evidence["policy"], "same-device-monitor-continuation-v2")
+                self.assertEqual([record["role"] for record in evidence["commands"]], ["help", "initial", "wait:1", "wait:2"])
+                self.assertNotIn("selectedState", evidence)
+                self.assertFalse(any("selectedState" in record for record in evidence["commands"]))
+                self.assertFalse((self.directory / "boot-state.log").exists())
+                if mutation in ("old-policy", "legacy-five-role"):
+                    evidence["policy"] = "same-device-boot-continuation-v1"
+                if mutation in ("legacy-five-role", "new-policy-state-role"):
+                    state = dict(evidence["commands"][-1], role="state", argv=["/usr/bin/xcrun", "simctl", "list", "devices", "--json"])
+                    evidence["commands"].insert(3, state)
+                elif mutation == "state-list-argv":
+                    evidence["commands"][-1]["argv"] = ["/usr/bin/xcrun", "simctl", "list", "devices", "--json"]
+                elif mutation == "root-state": evidence["selectedState"] = {"syntheticForbiddenObservation": True}
+                elif mutation == "command-state": evidence["commands"][-1]["selectedState"] = {"syntheticForbiddenObservation": True}
+                elif mutation in ("udid", "runtimeIdentifier", "dataPath"): evidence["selectedDevice"][mutation] = "changed"
+                with self.assertRaises(ProbeFailure):
+                    validate_boot(runner.summary, runner.probes, self.directory)
+                with self.assertRaises(ProbeFailure):
+                    validate_results(runner.probes, runner.summary, self.directory)
+                runner.summary.update(status="success", integrityOutcome="success")
+                manifest = self.package(runner)
+                self.assertEqual(manifest["simulatorBootOutcome"], "failure")
+                self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+                self.assertEqual(manifest["sceneReadinessOutcome"], "success")
+                self.assertEqual(manifest["hudLayoutContractOutcome"], "success")
 
-    def test_boot_fresh_state_timeout_or_unconfirmed_receipt_never_continues(self):
-        for state in ({"code": 124, "timeout": True}, {"receipt": {"reaped": False}}, {"code": 7}):
-            with self.subTest(state=state):
-                runner = self.continued(state=state)
+    def test_boot_second_monitor_requires_real_normal_exit0_not_state_or_text(self):
+        runner = self.continued()
+        self.boot(runner)
+        validate_boot(runner.summary, runner.probes, self.directory)
+        self.assertEqual([record["role"] for record in runner.summary["boot"]["commands"]], ["help", "initial", "wait:1", "wait:2"])
+        self.assertFalse(any("selectedState" in record for record in runner.summary["boot"]["commands"]))
+        self.assertFalse((self.directory / "boot-state.log").exists())
+        for outcome in ({"code": 124}, {"code": 143, "cancelled": True},
+                        {"code": 143, "cancelled": True, "receipt": {"trigger": "exception"}},
+                        {"code": 137, "receipt": {"returnCode": -9}}, {"receipt": {"reaped": False}}):
+            with self.subTest(outcome=outcome):
+                # Completion text cannot substitute for a normal exit0 receipt.
+                runner = self.continued(second=dict(outcome, text="Synthetic completion text; not an exit receipt.\n"))
                 self.assert_failed(runner)
                 self.assertEqual(len(runner.calls), 4)
+                self.assertEqual(self.package(runner)["simulatorBootOutcome"], "failure")
 
     def test_boot_second_failure_has_no_third_wait_or_restart(self):
         for second in ({"code": 124, "timeout": True}, {"code": 7}, {"receipt": {"reaped": False}}):
@@ -1045,22 +1066,32 @@ class BootTests(unittest.TestCase):
                 runner = self.continued(second=second)
                 second["text"] = boot_wait_text(runner.device["udid"])
                 evidence = self.assert_failed(runner)
-                self.assertEqual(len(runner.calls), 5)
+                self.assertEqual(len(runner.calls), 4)
                 self.assertEqual(evidence["commands"][-1]["continuationDecision"], "attempt_limit")
                 self.assertEqual([call[0][2] for call in runner.calls].count("boot"), 1)
                 self.assertFalse(any(call[0][2] in ("shutdown", "reboot") for call in runner.calls))
 
-    def test_boot_state_elapsed_recomputes_dynamic_cap_without_reset(self):
+    def test_boot_post_wait_elapsed_recomputes_dynamic_cap_without_reset(self):
         runner = self.continued(budget=900)
-        runner.outcomes[3]["duration"] = 8
         deadline = runner.deadline
-        self.boot(runner)
+        command = runner._boot_command
+
+        def elapsed_after_wait(role, *arguments):
+            record = command(role, *arguments)
+            if role == "wait:1":
+                self.clock[0] += 8  # Synthetic dispatch/save overhead, not another RPC.
+            return record
+
+        with patch.object(runner, "_boot_command", side_effect=elapsed_after_wait):
+            self.boot(runner)
         validate_boot(runner.summary, runner.probes, self.directory)
-        state, final = runner.summary["boot"]["commands"][3:]
-        self.assertEqual(state["requestedCapSeconds"], 10)
+        first, final = runner.summary["boot"]["commands"][2:]
+        self.assertEqual(len(runner.calls), 4)
+        self.assertEqual(final["requestedCapSeconds"], 240)
         self.assertLess(final["effectiveCapSeconds"], 240)
-        self.assertAlmostEqual(final["effectiveCapSeconds"], final["remainingStartSeconds"] - 557 - 2)
-        self.assertAlmostEqual(final["remainingStartSeconds"], state["remainingEndSeconds"])
+        self.assertAlmostEqual(final["effectiveCapSeconds"], min(240, final["remainingStartSeconds"] - 557 - 2))
+        self.assertAlmostEqual(final["startedAfterSeconds"] - first["endedAfterSeconds"], 8)
+        self.assertAlmostEqual(final["remainingStartSeconds"], first["remainingEndSeconds"] - 8)
         self.assertEqual(runner.deadline, deadline)
 
     def test_boot_initial_or_later_budget_insufficient_does_not_dispatch(self):
@@ -1073,14 +1104,27 @@ class BootTests(unittest.TestCase):
                 self.assertFalse(evidence["admissions"][-1]["allowed"])
                 self.assertIn("budget_insufficient", evidence["stopReason"])
 
-    def test_boot_state_overrun_rechecks_budget_before_second_wait(self):
+    def test_boot_post_wait_overhead_exhausts_reserve_before_second_dispatch(self):
         runner = self.continued(budget=800)
-        runner.outcomes[3]["duration"] = 0.5
-        evidence = self.assert_failed(runner)
-        self.assertEqual(len(runner.calls), 4)
-        self.assertLess(evidence["commands"][-1]["effectiveCapSeconds"], 1)
+        deadline = runner.deadline
+        command = runner._boot_command
+
+        def elapsed_after_wait(role, *arguments):
+            record = command(role, *arguments)
+            if role == "wait:1":
+                self.clock[0] += 1  # Exhaust the remaining reserve before the next admission.
+            return record
+
+        with patch.object(runner, "_boot_command", side_effect=elapsed_after_wait):
+            evidence = self.assert_failed(runner)
+        self.assertEqual(len(runner.calls), 3)
+        self.assertEqual(len(evidence["commands"]), 3)
+        self.assertTrue(evidence["commands"][-1]["classification"]["eligible"])
+        self.assertEqual(evidence["commands"][-1]["continuationDecision"], "continue")
         self.assertEqual(evidence["admissions"][-1]["phase"], "boot-admission:wait:2")
         self.assertFalse(evidence["admissions"][-1]["allowed"])
+        self.assertIn("budget_insufficient", evidence["stopReason"])
+        self.assertEqual(runner.deadline, deadline)
 
     def test_boot_command_reserves_install_and_cleanup_exactly_once(self):
         runner = self.runner([{}], budget=600)
@@ -1111,21 +1155,23 @@ class BootTests(unittest.TestCase):
         self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
 
     def test_boot_gate_rejects_invalid_chain_even_with_complete_hud_and_24_pngs(self):
-        for mutation in ("missing", "failed", "identity", "device", "auto-boot", "order", "extra", "help", "receipt",
-                         "output", "limit", "reserve", "clock", "signal", "state-missing", "state-changed", "decision"):
+        for mutation in ("missing", "failed", "identity", "device", "auto-boot", "auto-cycle", "auto-detail", "order", "extra", "help", "receipt",
+                         "output", "limit", "reserve", "clock", "signal", "old-policy", "state-rpc", "forged-state", "wait2-device", "decision"):
             with self.subTest(mutation=mutation):
                 runner = FakeRunner(self.directory)
                 runner.work()
                 boot_fixture(runner, continuation=True)
                 validate_results(runner.probes, runner.summary, self.directory)
                 evidence = runner.summary["boot"]
-                first, state = evidence["commands"][2:4]
+                first, final = evidence["commands"][2:4]
                 if mutation == "missing": del runner.summary["boot"]
                 elif mutation == "failed": evidence["status"] = "failure"
                 elif mutation == "identity": evidence["identity"]["commitSha"] = "stale"
                 elif mutation == "device": evidence["selectedDevice"]["udid"] = "another-device"
                 elif mutation == "auto-boot": evidence["commands"][-1]["argv"].append("-b")
-                elif mutation == "order": evidence["commands"][2:4] = [state, first]
+                elif mutation == "auto-cycle": evidence["commands"][-1]["argv"].append("-c")
+                elif mutation == "auto-detail": evidence["commands"][-1]["argv"].append("-d")
+                elif mutation == "order": evidence["commands"][2:4] = [final, first]
                 elif mutation == "extra": evidence["commands"].append(dict(first))
                 elif mutation == "help": evidence["monitorSemantics"]["monitorOnlyWithoutOption"] = False
                 elif mutation == "receipt": first["process"]["reaped"] = False
@@ -1134,8 +1180,10 @@ class BootTests(unittest.TestCase):
                 elif mutation == "reserve": first["admission"]["installReserveSeconds"] = 556
                 elif mutation == "clock": first["remainingStartSeconds"] += 10
                 elif mutation == "signal": evidence["commands"][-1]["process"]["returnCode"] = -9
-                elif mutation == "state-missing": del state["selectedState"]
-                elif mutation == "state-changed": state["selectedState"]["state"] = "Shutdown"
+                elif mutation == "old-policy": evidence["policy"] = "same-device-boot-continuation-v1"
+                elif mutation == "state-rpc": evidence["commands"].insert(3, dict(final, role="state", argv=["/usr/bin/xcrun", "simctl", "list", "devices", "--json"]))
+                elif mutation == "forged-state": final["selectedState"] = {"syntheticForbiddenObservation": True}
+                elif mutation == "wait2-device": final["argv"][-1] = "another-device"
                 elif mutation == "decision": first["continuationDecision"] = "restart"
                 with self.assertRaises(ProbeFailure):
                     validate_results(runner.probes, runner.summary, self.directory)

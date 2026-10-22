@@ -148,7 +148,7 @@ def main():
               f"requested/effective cap={record.get('requestedCapSeconds', 'unavailable')}/{record.get('effectiveCapSeconds', 'unavailable')}s "
               f"remaining={record.get('remainingStartSeconds', 'unavailable')}->{record.get('remainingEndSeconds', 'unavailable')}s "
               f"classification={record.get('classification', 'none')} continuation={record.get('continuationDecision', 'none')} "
-              f"selectedState={record.get('selectedState', 'none')} output={record.get('output', {})}"
+              f"output={record.get('output', {})}"
               for record in boot.get("commands", [])]
     lines += [f"- Boot admission {record.get('phase', 'unknown')}: allowed={record.get('allowed')} "
               f"remaining={record.get('remainingSeconds')}s cap={record.get('maxCapSeconds')}s "

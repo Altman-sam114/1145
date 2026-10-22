@@ -33,7 +33,7 @@ INSTALL_COMMAND_RESERVE = 180
 INSTALL_PREWARM_RESERVE = 95
 INSTALL_CLEANUP_RESERVE = 2
 INSTALL_POLICY = "same-device-install-180-once-v1"
-BOOT_POLICY = "same-device-boot-continuation-v1"
+BOOT_POLICY = "same-device-monitor-continuation-v2"
 BOOT_OUTPUT_LIMIT = 1024 * 1024
 
 
@@ -207,20 +207,6 @@ def boot_wait_classification(record, text, udid):
     return dict(result, reason="unknown_or_incomplete_last_wait")
 
 
-def boot_selected_state(text, device):
-    runtime = device["runtime"]["identifier"]
-    payload = json.loads(text)
-    devices = payload.get("devices") if isinstance(payload, dict) else None
-    entries = devices.get(runtime) if isinstance(devices, dict) else None
-    if not isinstance(entries, list) or any(not isinstance(entry, dict) for entry in entries):
-        raise ProbeFailure("Fresh device JSON has no valid selected-runtime device list")
-    matches = [entry for entry in entries if entry.get("udid") == device["udid"]]
-    if (len(matches) != 1 or matches[0].get("isAvailable") is not True or matches[0].get("state") != "Booted"
-            or matches[0].get("dataPath") != device.get("dataPath") or not device.get("dataPath")):
-        raise ProbeFailure("Fresh selected-device state is missing, ambiguous, changed or not Booted")
-    return {"runtimeIdentifier": runtime, **{key: matches[0][key] for key in ("udid", "dataPath", "state", "isAvailable")}}
-
-
 def boot_output(record, directory):
     evidence = record.get("output", {})
     path = evidence.get("path")
@@ -249,8 +235,10 @@ def validate_boot(summary, probes, directory):
         raise ProbeFailure("Successful current-run same-device boot evidence missing/invalid")
     commands = evidence.get("commands", [])
     roles = [record.get("role") for record in commands]
-    if roles not in (["help", "initial", "wait:1"], ["help", "initial", "wait:1", "state", "wait:2"]):
+    if roles not in (["help", "initial", "wait:1"], ["help", "initial", "wait:1", "wait:2"]):
         raise ProbeFailure("Boot command order/count is invalid")
+    if "selectedState" in evidence or any("selectedState" in record for record in commands):
+        raise ProbeFailure("Monitor-only boot evidence cannot claim a fresh selected-device state")
     if evidence.get("admissions") != [record.get("admission") for record in commands]:
         raise ProbeFailure("Boot admission chronology mismatch")
     boot_stages = [stage for stage in summary.get("stages", []) if stage.get("name", "").startswith("boot")]
@@ -265,9 +253,9 @@ def validate_boot(summary, probes, directory):
     texts = {}
     for index, record in enumerate(commands):
         role = record["role"]
-        cap = 10 if role in ("help", "state") else 60 if role == "initial" else 240
+        cap = 10 if role == "help" else 60 if role == "initial" else 240
         args = (["help", "bootstatus"] if role == "help" else ["boot", device["udid"]] if role == "initial" else
-                ["list", "devices", "--json"] if role == "state" else ["bootstatus", device["udid"]])
+                ["bootstatus", device["udid"]])
         admission = record.get("admission", {})
         process = record.get("process", {})
         if (record.get("argv") != ["/usr/bin/xcrun", "simctl", *args]
@@ -306,14 +294,13 @@ def validate_boot(summary, probes, directory):
         raise ProbeFailure("Initial boot was not successful or exactly already Booted")
     if not boot_normal_exit(commands[-1], 0) or commands[-1].get("classification") != "ready":
         raise ProbeFailure("Final bootstatus did not normally exit0")
-    if len(commands) == 5:
-        first, state = commands[2:4]
+    if len(commands) == 4:
+        first = commands[2]
         classification = boot_wait_classification(first, texts["wait:1"], device["udid"])
         if (not classification["eligible"] or first.get("classification") != classification
-                or first.get("continuationDecision") != "continue" or not boot_normal_exit(state, 0)
-                or state.get("selectedState") != boot_selected_state(texts["state"], device)
+                or first.get("continuationDecision") != "continue"
                 or commands[-1].get("continuationDecision") != "completed"):
-            raise ProbeFailure("Boot continuation timeout/fresh-state chain invalid")
+            raise ProbeFailure("Boot monitor continuation timeout/decision chain invalid")
     elif commands[-1].get("continuationDecision") != "not_needed":
         raise ProbeFailure("Unexpected boot continuation decision on first success")
     return evidence
@@ -785,16 +772,7 @@ class Runner:
                 record.update(classification=classification, continuationDecision="attempt_limit" if number == 2 else "not_eligible")
                 if number == 2 or not classification["eligible"]:
                     raise ProbeFailure(f"bootstatus {number} rejected: {classification['reason']}", record.get("exitCode") or 1)
-                record["continuationDecision"] = "checking_state"
-                state = self._boot_command("state", ["list", "devices", "--json"], 10)
-                if not boot_normal_exit(state, 0):
-                    record["continuationDecision"] = "state_failed"
-                    raise ProbeFailure("Fresh selected-device state command failed", state.get("exitCode") or 1)
-                try:
-                    state["selectedState"] = boot_selected_state(boot_output(state, self.directory), device)
-                except (ValueError, KeyError, TypeError, ProbeFailure) as error:
-                    record["continuationDecision"] = "state_failed"
-                    raise ProbeFailure(f"Fresh selected-device state rejected: {error}") from error
+                # Reattach monitoring only; wait:2 still passes the original deadline admission.
                 record["continuationDecision"] = "continue"
         except BaseException as error:
             code = getattr(error, "code", 130 if isinstance(error, KeyboardInterrupt) else 1)
