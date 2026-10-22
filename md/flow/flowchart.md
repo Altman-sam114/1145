@@ -188,11 +188,12 @@ v5.54 读图补充：HUD 根 z=10000，高于 world/fog 累计深度（当前 fo
 
 ### 战场优先 HUD 与云端契约
 
-读图说明：窗口安全区和当前页共同生成生产布局。云端 prewarm 复用这套真实框与路由进行 25 组合检查并恢复现场；Python 只核对 JSON 结构/身份/完整性，最终证据仍包含原 24 张正式 PNG。
+读图说明：真实窗口几何先去重排队，初始化完整完成后在安全 update 点应用，布局非重入。云端 prewarm 复用生产框/路由完成25组合并恢复，fixture内部尺寸不当作外部请求；仅CI使用阶段trace与两帧生产状态就绪。Python不复算布局，固定PNG仍由C逐张看图。
 
 ```mermaid
 flowchart TD
-  Window[真实 UIWindow safeAreaInsets] --> SceneInsets[GameScene 尺寸与 inset]
+  Window[真实 UIWindow inset与SwiftUI尺寸] --> Pending[去重合并 / 外部几何排队]
+  Pending --> SceneInsets[初始化结束后update统一应用 / layout非重入]
   Page[当前 HudPage] --> Layout[HUDLayout 生产框与 route]
   SceneInsets --> Layout
   Layout --> Draw[左页轨 / 收口 dock / 紧凑顶栏 / 有界面板 / 分带小地图]
@@ -201,11 +202,28 @@ flowchart TD
   Touch --> Command[既有 page / action / zoom / map / world]
   Layout --> SwiftContract[现有 prewarm 内五尺寸乘五页检查]
   SwiftContract --> Restore[恢复实际场景与状态]
-  Restore --> JSON[hud-layout-contract.json 带 run SHA attempt PID]
-  JSON --> Read[共享 deadline 内有界 get_app_container 后直接读]
+  Restore --> JSON[Documents DesertCI nonce报告 / run SHA attempt PID probe nonce hash]
+  JSON --> Read[选定设备dataPath / 当前容器bundle metadata / 安全路径与hash]
   Read --> Gate[runner 与 metadata 独立复核 / manifest 与 JUnit gate]
   Read --> Capture[保留原24 launch PID PNG / 所有等待]
   Capture --> Gate
+```
+
+读图说明：直接trace不是系统log推断。每次launch独立nonce，真实初始化阶段、fixture事实和稳定两帧后才能截图；任何后续几何失效会否定旧ready。snapshot只冻结截图后的已验证字节，保留live日志供诊断，不把后续stderr追加当作snapshot篡改；原预算与最小等待不变。
+
+```mermaid
+flowchart TD
+  Launch[原prewarm或24项独立launch / 唯一nonce与stdout stderr] --> Stages[真实terrain map control units HUD fog fixture完成]
+  Stages --> Frames[生产实体 HUD文本 迷雾 相机 恢复检查 / didFinishUpdate稳定两帧]
+  Frames --> Ready{当前身份与latest ready有效}
+  Ready -- 否或窗口到期 --> Stop[准确失败 / 保存trace和已有图 / 后项not_run]
+  Ready -- 是 --> Image[保持90s或8s与4s最小等待 / 原PID raw270 final链]
+  Image --> Unique{前五不同页PNG无重复SHA}
+  Unique -- 否 --> Stop
+  Unique -- 是 --> Seal[截图PID后再核latest ready / 冻结snapshot与hash]
+  Seal --> Metadata[runner与metadata分别复核 / sceneReadinessOutcome / JUnit9含1跳过]
+  Metadata --> Review[C下载最新未加密ZIP / 全部24官方图目视]
+  Stop --> Metadata
 ```
 
 ### 同设备有界安装恢复
@@ -230,6 +248,6 @@ flowchart TD
   Install2 -- 失败或回执不完整 --> Fail
   Install2 -- 正常exit0且回执完整 --> Prewarm
   Prewarm --> Gate[runner与metadata复核安装身份预算分类输出回执 / HUD25与24PNG]
-  Gate --> Artifact[manifest simulatorInstallOutcome / JUnit8含1跳过 / 未加密ZIP]
+  Gate --> Artifact[manifest simulatorInstallOutcome与sceneReadinessOutcome / JUnit9含1跳过 / 未加密ZIP]
   Fail --> Artifact
 ```

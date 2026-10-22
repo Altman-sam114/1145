@@ -42,6 +42,8 @@ private struct WindowSafeAreaObserver: UIViewRepresentable {
 
     final class SafeAreaView: UIView {
         var onChange: ((UIEdgeInsets) -> Void)?
+        private var reportScheduled = false
+        private var lastReported: UIEdgeInsets?
         override func didMoveToWindow() {
             super.didMoveToWindow()
             reportInsets()
@@ -55,8 +57,15 @@ private struct WindowSafeAreaObserver: UIViewRepresentable {
             reportInsets()
         }
         func reportInsets() {
-            guard let window else { return }
-            onChange?(window.safeAreaInsets)
+            guard window != nil, !reportScheduled else { return }
+            reportScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.reportScheduled = false
+                guard let insets = self.window?.safeAreaInsets, insets != self.lastReported else { return }
+                self.lastReported = insets
+                self.onChange?(insets)
+            }
         }
     }
 }
@@ -73,7 +82,6 @@ final class SceneHolder: ObservableObject {
     }
 
     func resizeScene(to size: CGSize) {
-        guard size.width > 1, size.height > 1, scene.size != size else { return }
-        scene.size = size
+        scene.requestViewSize(size)
     }
 }

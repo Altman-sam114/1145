@@ -4,23 +4,74 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import plistlib
 import signal
 import struct
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
+import uuid
 import zlib
 
-from simulator_probe import (HUD_CHECKS, HUD_FIXTURES, HUD_PAGES, Runner, ProbeFailure,
+from simulator_probe import (HUD_CHECKS, HUD_FIXTURES, HUD_PAGES, Runner, ProbeFailure, SceneFailure,
                              INSTALL_CAP, INSTALL_POLICY, INSTALL_RECOVERY_CAP, cli_receipt_complete, install_reserve,
-                             load_probes, png_info, select_device, validate_hud_contract, validate_installation, validate_results)
+                             load_probes, png_info, select_device, validate_hud_contract, validate_installation,
+                             validate_results, validate_scene_evidence)
+from scene_evidence import (ACTIONS, CHECKS, STAGES, TRACE_LIMIT, file_evidence, latest_ready,
+                            read_hud_report, seal_scene, trace_records, validate_page_images, validate_scene)
 from run_bounded import run_bounded
 from package_results import main as package_results
 
 
 NORMALIZATION_EVIDENCE = []
 WATCHDOG_RECEIPT_EVIDENCE = []
+
+
+def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, sealed=False):
+    """Synthetic protocol records, not executed Swift, device geometry or GPU evidence."""
+    for key in ("commitSha", "runId", "runAttempt", "version"):
+        if not runner.summary.get(key):
+            runner.summary[key] = f"unit-fixture-{key}"
+    runner.summary["selectedDevice"] = runner.device
+    scene = dict(nonce=nonce or uuid.uuid4().hex, probeID=probe_id, pid=os.getpid(),
+                 status="running", launchedAtMonotonic=time.monotonic())
+    identity = {key: runner.summary[key] for key in ("commitSha", "runId", "runAttempt", "version")}
+    identity.update(schemaVersion=1, producer="GameScene.CIReadiness", pid=scene["pid"], probeID=probe_id,
+                    nonce=scene["nonce"], deviceUDID=runner.device["udid"])
+    records = []
+
+    def emit(stage, **extra):
+        sequence = len(records) + 1
+        records.append(dict(identity, stage=stage, sequence=sequence, uptimeSeconds=100 + sequence,
+                            elapsedSeconds=sequence, **extra))
+
+    for stage in sorted(STAGES):
+        emit(stage + "-end")
+    frames = [dict(number=1, time=1, revision=1), dict(number=2, time=2, revision=1)]
+    for frame in frames:
+        emit("stable-frame", frame=frame)
+    branch = (definition["marker"] if definition["marker"] not in
+              ("none", "move", "attack-move", "attack-target", "combat-ui", "incoming-ui") else
+              "coast-default" if definition["focus"] == "coast" else definition["focus"])
+    emit("ready", checks={key: True for key in CHECKS}, fixtureChecks={"syntheticSchemaOnly": True},
+         fixtureBranch=branch, completedStages=sorted(STAGES), frames=frames, geometryRevision=1,
+         page=definition["page"], marker=definition["marker"], focus=definition["focus"],
+         counts=dict(mapNodes=1, entities=1, playerUnits=1, visiblePlayerUnits=1, fogNodes=1,
+                     visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
+         sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
+         insets=dict(top=0, left=62, right=62, bottom=21), **(extra_ready or {}))
+    for channel in ("stdout", "stderr"):
+        path = runner.directory / f"scene-{scene['nonce']}-{channel}.live.log"
+        data = b"".join(b"DESERTCI " + json.dumps(item, sort_keys=True).encode() + b"\n" for item in records) if channel == "stdout" else b""
+        path.write_bytes(data)
+        scene[channel], _ = file_evidence(runner.directory, path.name)
+    scene.update(status="success", ready=records[-1], lastStage="ready")
+    if sealed:
+        seal_scene(runner.summary, scene, runner.directory, definition)
+        scene["sealedAtMonotonic"] = time.monotonic()
+    return scene
 
 
 def unit_cli_receipt(code=0, cap=INSTALL_CAP, timeout=False):
@@ -59,9 +110,11 @@ def hud_fixture(runner):
         if not runner.summary.get(key):
             runner.summary[key] = f"unit-fixture-{key}"
     pid = os.getpid()
-    runner.summary["prewarm"] = [{"status": "success", "pid": pid, "aliveAfterWait": True}]
+    nonce = uuid.uuid4().hex
+    runner.summary["prewarm"] = [{"attempt": 1, "status": "success", "pid": pid, "aliveAfterWait": True}]
     report = {key: runner.summary[key] for key in ("commitSha", "runId", "runAttempt", "version")}
-    report.update(schemaVersion=1, producer="GameScene.HUDLayout", pid=pid, status="success", stateRestored=True,
+    report.update(schemaVersion=1, producer="GameScene.HUDLayout", pid=pid, nonce=nonce, probeID="prewarm:1",
+                  status="success", stateRestored=True,
                   actualSize={"width": 874, "height": 402}, actualInsets={"top": 0, "left": 62, "bottom": 21, "right": 62}, matrix=[])
     for fixture, (width, height) in HUD_FIXTURES.items():
         insets = (report["actualInsets"] if fixture == "874x402" else
@@ -77,6 +130,9 @@ def hud_fixture(runner):
                 panels={key: rectangle for key in ("resources", "rail", "dock", "mission", "message", "selection", "minimap")},
                 controls=controls, panelArea=1, viewportArea=2, panelAreaFraction=0.5))
     write_hud_fixture(runner, report)
+    descriptor = dict(runner.summary["hudContract"], path=f"/synthetic/Documents/DesertCI/{nonce}/hud-layout-contract.json")
+    runner.summary["prewarm"][0]["scene"] = scene_fixture(runner, runner.probes[0], "prewarm:1", nonce=nonce,
+                                                        extra_ready={"hudReport": descriptor}, sealed=True)
 
 
 def write_hud_fixture(runner, report):
@@ -84,13 +140,18 @@ def write_hud_fixture(runner, report):
     (runner.directory / "hud-layout-contract.json").write_bytes(data)
     runner.summary["hudContract"] = {"path": "hud-layout-contract.json", "pid": os.getpid(), "status": "success",
                                      "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+    for warm in runner.summary.get("prewarm", []):
+        descriptor = warm.get("scene", {}).get("ready", {}).get("hudReport")
+        if descriptor is not None:
+            # Let each HUD negative exercise its own assertion, not a stale fixture hash.
+            descriptor.update(bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
 
 
-def png_bytes():
+def png_bytes(color=128):
     def chunk(kind, data):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
     return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 2, 1, 8, 6, 0, 0, 0))
-            + chunk(b"IDAT", zlib.compress(b"\x00" + b"\x80\x90\xa0\xff" * 2)) + chunk(b"IEND", b""))
+            + chunk(b"IDAT", zlib.compress(b"\x00" + bytes((color, 144, 160, 255)) * 2)) + chunk(b"IEND", b""))
 
 
 def rgb_fixture(width, height):
@@ -154,6 +215,8 @@ class FakeRunner(Runner):
         self.device = {"udid": "fake-cloud-unit-test-only"}
 
     def launch(self, name, definition):
+        self.current_definition = definition
+        self.last_scene = scene_fixture(self, definition, name.removesuffix(":launch"))
         if definition["id"] == self.fail_at:
             raise ProbeFailure("injected launch timeout", 124)
         return os.getpid()
@@ -161,9 +224,17 @@ class FakeRunner(Runner):
     def wait(self, name, seconds):
         self.remaining(seconds)
 
+    def wait_scene(self, record, definition, minimum, window=30):
+        self.remaining(minimum)
+        ready = latest_ready(trace_records(self.summary, record["scene"], self.directory), definition)
+        if ready is None:
+            raise SceneFailure("Synthetic scene is not ready")
+        record["scene"].update(status="success", ready=ready)
+
     def simctl(self, name, *args, **kwargs):
         if args[0] == "io":
-            Path(args[-1]).write_bytes(png_bytes())
+            color = list(ACTIONS).index(self.current_definition["page"]) + 120
+            Path(args[-1]).write_bytes(png_bytes(color))
 
     def work(self):
         installation_fixture(self)
@@ -579,12 +650,252 @@ class WatchdogReceiptTests(unittest.TestCase):
 
     def test_real_timeout_receipt(self):
         receipt = {}
-        self.assertEqual(run_bounded([sys.executable, "-c", "import time; time.sleep(30)"], 0.05, receipt=receipt), 124)
+        child = "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); print('armed', flush=True); time.sleep(30)"
+        with tempfile.TemporaryFile() as output:
+            self.assertEqual(run_bounded([sys.executable, "-c", child], 2, stdout=output, receipt=receipt), 124)
+            output.seek(0)
+            armed = output.read().decode().strip()
+        self.assertEqual(armed, "armed")
         self.assertTrue(cli_receipt_complete(receipt))
         self.assertEqual(receipt["trigger"], "timeout")
-        self.assertIn(receipt["term"]["status"], ("sent", "already_gone"))
-        self.assertIn(receipt["kill"]["status"], ("sent", "already_gone"))
-        WATCHDOG_RECEIPT_EVIDENCE.append(dict(case="real-timeout", **receipt))
+        self.assertEqual(receipt["term"]["status"], "sent")
+        self.assertEqual(receipt["kill"]["status"], "sent")
+        self.assertEqual(receipt["returnCode"], -signal.SIGKILL)
+        self.assertTrue(receipt["reaped"])
+        WATCHDOG_RECEIPT_EVIDENCE.append(dict(case="real-timeout-term-ignored", armed=armed, **receipt))
+
+
+class SceneEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.directory = Path(self.temp.name)
+        self.runner = FakeRunner(self.directory)
+        self.definition = self.runner.probes[0]
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            self.addCleanup(signal.signal, sig, signal.getsignal(sig))
+
+    def scene(self, sealed=False):
+        scene = scene_fixture(self.runner, self.definition, "probe:tactical", sealed=sealed)
+        return {"pid": scene["pid"], "status": "success", "scene": scene}
+
+    def records(self, scene):
+        return trace_records(self.runner.summary, scene, self.directory)
+
+    def rewrite(self, scene, records):
+        for index, item in enumerate(records):
+            item.update(sequence=index + 1, uptimeSeconds=101 + index, elapsedSeconds=index + 1)
+        data = b"".join(b"DESERTCI " + json.dumps(item, sort_keys=True).encode() + b"\n" for item in records)
+        path = self.directory / scene["stdout"]["path"]
+        path.write_bytes(data)
+        scene["stdout"], _ = file_evidence(self.directory, path.name)
+
+    def package(self, runner):
+        runner.save()
+        environment = {key: runner.summary[field] for key, field in (
+            ("CI_VERSION", "version"), ("GITHUB_REF_NAME", "branch"), ("GITHUB_SHA", "commitSha"),
+            ("GITHUB_RUN_ID", "runId"), ("GITHUB_RUN_ATTEMPT", "runAttempt"))}
+        environment.update(WORKFLOW_NAME="synthetic scene fixture", GITHUB_OUTPUT=str(self.directory / "outputs"),
+                           STATIC_OUTCOME="success", PROJECT_LINT_OUTCOME="success", BUILD_OUTCOME="success",
+                           SIMULATOR_LAUNCH_OUTCOME="success")
+        with patch.dict(os.environ, environment), patch("package_results.Path", side_effect=lambda path:
+                self.directory if path == "ci-results" else Path(path)):
+            package_results()
+        return json.loads((self.directory / "ci-artifact-manifest.json").read_text())
+
+    def test_scene_identity_fields_reject_stale_or_cross_launch(self):
+        for key in ("commitSha", "runId", "runAttempt", "version", "pid", "probeID", "nonce", "deviceUDID"):
+            with self.subTest(field=key):
+                scene = self.scene()["scene"]
+                records = self.records(scene)
+                records[0][key] = "stale-or-another-launch"
+                self.rewrite(scene, records)
+                with self.assertRaisesRegex(ValueError, "identity"):
+                    self.records(scene)
+
+    def test_scene_only_one_frame_is_not_ready(self):
+        scene = self.scene()["scene"]
+        records = self.records(scene)
+        records[-1]["frames"] = records[-1]["frames"][:1]
+        with self.assertRaisesRegex(ValueError, "stable frames"):
+            latest_ready(records, self.definition)
+
+    def test_scene_missing_stage_or_production_fact_rejects_ready(self):
+        for mutation in ("initialization", "fixture", "hud", "stage", "branch"):
+            with self.subTest(mutation=mutation):
+                scene = self.scene()["scene"]
+                records = self.records(scene)
+                if mutation == "stage":
+                    records = [item for item in records if item["stage"] != "fixture-end"]
+                elif mutation == "branch":
+                    records[-1]["fixtureBranch"] = "unexecuted-branch"
+                elif mutation == "fixture":
+                    records[-1]["fixtureChecks"]["syntheticSchemaOnly"] = False
+                else:
+                    records[-1]["checks"]["initialized" if mutation == "initialization" else mutation] = False
+                with self.assertRaisesRegex(ValueError, "production stages"):
+                    latest_ready(records, self.definition)
+
+    def test_scene_later_geometry_invalidates_ready_and_old_frames(self):
+        scene = self.scene()["scene"]
+        records = self.records(scene)
+        old_ready = records[-1]
+        records.append(dict(old_ready, stage="geometry-invalidated"))
+        self.assertIsNone(latest_ready(records, self.definition))
+        records.append(dict(old_ready))
+        with self.assertRaisesRegex(ValueError, "stable frames"):
+            latest_ready(records, self.definition)
+        self.rewrite(scene, records)
+        with self.assertRaises(ValueError):
+            seal_scene(self.runner.summary, scene, self.directory, self.definition)
+
+    def test_scene_corrupt_oversize_partial_or_wrong_file_rejected(self):
+        for mutation in ("json", "file-limit", "line-limit", "partial", "basename", "app-limit"):
+            with self.subTest(mutation=mutation):
+                scene = self.scene()["scene"]
+                path = self.directory / scene["stdout"]["path"]
+                if mutation == "partial":
+                    path.write_bytes(path.read_bytes().rstrip(b"\n"))
+                    self.assertIsNone(latest_ready(self.records(scene), self.definition))
+                    continue
+                if mutation == "json": path.write_bytes(b"DESERTCI {bad-json}\n")
+                elif mutation == "file-limit": path.write_bytes(b"x" * (TRACE_LIMIT + 1))
+                elif mutation == "line-limit": path.write_bytes(b"DESERTCI " + b"x" * 8192 + b"\n")
+                elif mutation == "basename": scene["stdout"]["path"] = "another-launch.log"
+                else:
+                    records = self.records(scene)
+                    records.append(dict(records[-1], stage="trace-limit-exceeded"))
+                    self.rewrite(scene, records)
+                with self.assertRaises((ValueError, FileNotFoundError)):
+                    self.records(scene)
+
+    def test_scene_snapshot_survives_later_stderr_but_not_tampering(self):
+        record = self.scene(sealed=True)
+        scene = record["scene"]
+        live = self.directory / scene["directFiles"]["stderr"]["path"]
+        live.write_bytes(b"benign termination diagnostic after the snapshot\n")
+        validate_scene(self.runner.summary, record, self.directory, self.definition, "probe:tactical")
+        (self.directory / scene["stderr"]["path"]).write_bytes(b"tampered snapshot\n")
+        with self.assertRaisesRegex(ValueError, "trace integrity"):
+            validate_scene(self.runner.summary, record, self.directory, self.definition, "probe:tactical")
+
+    def test_scene_snapshot_refuses_postcapture_new_ready(self):
+        scene = self.scene()["scene"]
+        records = self.records(scene)
+        records.append(dict(records[-1], stage="geometry-invalidated"))
+        new_frames = [dict(number=3, time=3, revision=2), dict(number=4, time=4, revision=2)]
+        records.extend(dict(records[0], stage="stable-frame", frame=frame) for frame in new_frames)
+        records.append(dict(scene["ready"], geometryRevision=2, frames=new_frames))
+        self.rewrite(scene, records)
+        self.assertIsNotNone(latest_ready(self.records(scene), self.definition))
+        with self.assertRaisesRegex(ValueError, "changed"):
+            seal_scene(self.runner.summary, scene, self.directory, self.definition)
+
+    def test_scene_report_current_bundle_nonce_path_and_hash(self):
+        for mutation in ("valid", "bundle", "nonce", "hash", "outside", "symlink", "oversize"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / "unit-device" / "data"
+                container = root / "Containers/Data/Application" / str(uuid.uuid4())
+                nonce, bundle = uuid.uuid4().hex, "unit.fixture.only"
+                source = container / "Documents/DesertCI" / nonce / "hud-layout-contract.json"
+                source.parent.mkdir(parents=True)
+                data = b'{"syntheticSchemaOnly":true}'
+                source.write_bytes(data)
+                metadata = container / ".com.apple.mobile_container_manager.metadata.plist"
+                metadata.write_bytes(plistlib.dumps({"MCMMetadataIdentifier": bundle}))
+                descriptor = dict(path=str(source), bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+                if mutation == "valid":
+                    self.assertEqual(read_hud_report(root, descriptor, nonce, bundle), data)
+                    continue
+                if mutation == "bundle": bundle = "another.bundle"
+                elif mutation == "nonce": nonce = uuid.uuid4().hex
+                elif mutation == "hash": descriptor["sha256"] = "0" * 64
+                elif mutation == "outside": root = Path(directory) / "other-device"
+                elif mutation == "oversize": source.write_bytes(b"x" * 1048577)
+                else:
+                    target = source.with_suffix(".real")
+                    source.rename(target)
+                    source.symlink_to(target)
+                with self.assertRaises((ValueError, FileNotFoundError)):
+                    read_hud_report(root, descriptor, nonce, bundle)
+
+    def test_scene_short_records_wrong_probe_and_nonce_reuse_metadata_red(self):
+        for mutation in ("short", "probe", "nonce"):
+            with self.subTest(mutation=mutation):
+                self.runner.work()
+                if mutation == "short": self.runner.summary["probes"].pop()
+                elif mutation == "nonce":
+                    self.runner.summary["probes"][1]["scene"]["nonce"] = self.runner.summary["probes"][0]["scene"]["nonce"]
+                else:
+                    scene = self.runner.summary["probes"][0]["scene"]
+                    records = self.records(scene)
+                    for item in records: item["probeID"] = "probe:wrong"
+                    scene["probeID"] = "probe:wrong"
+                    scene["ready"] = records[-1]
+                    self.rewrite(scene, records)
+                with self.assertRaises(ProbeFailure):
+                    validate_scene_evidence(self.runner.probes, self.runner.summary, self.directory)
+                self.runner.summary.update(status="success", integrityOutcome="success")
+                manifest = self.package(self.runner)
+                self.assertEqual(manifest["sceneReadinessOutcome"], "failure")
+                self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+                self.runner = FakeRunner(self.directory)
+
+    def test_scene_first_five_distinct_pages_pass_the_narrow_hash_gate(self):
+        self.runner.work()
+        validate_page_images(self.runner.summary["probes"])
+        self.assertEqual(len({item["image"]["sha256"] for item in self.runner.summary["probes"][:5]}), 5)
+        self.runner.summary.update(status="success", integrityOutcome="success")
+        manifest = self.package(self.runner)
+        self.assertEqual(manifest["sceneReadinessOutcome"], "success")
+        self.assertEqual(manifest["probeIntegrityOutcome"], "success")
+
+    def test_scene_duplicate_page_early_stops_preserving_png_and_trace(self):
+        original = self.runner.simctl
+        def repeated_page(name, *args, **kwargs):
+            original(name, *args, **kwargs)
+            if args[0] == "io": Path(args[-1]).write_bytes(png_bytes(120))
+        self.runner.simctl = repeated_page
+        self.assertEqual(self.runner.execute(), 1)
+        records = self.runner.summary["probes"]
+        self.assertEqual([item["status"] for item in records[:2]], ["success", "failure"])
+        self.assertTrue(all(item["status"] == "not_run" for item in records[2:]))
+        self.assertTrue((self.directory / records[1]["png"]).is_file())
+        self.assertTrue((self.directory / records[1]["scene"]["stdout"]["path"]).is_file())
+        self.assertIn("identical PNG", records[1]["error"])
+        self.assertEqual(self.package(self.runner)["sceneReadinessOutcome"], "failure")
+
+    def test_scene_readiness_failure_stops_before_screenshot_and_keeps_trace(self):
+        def not_ready(*args, **kwargs):
+            raise SceneFailure("injected missing initialization/frame readiness")
+        self.runner.wait_scene = not_ready
+        self.assertEqual(self.runner.execute(), 1)
+        records = self.runner.summary["probes"]
+        self.assertEqual(records[0]["status"], "failure")
+        self.assertTrue(all(item["status"] == "not_run" for item in records[1:]))
+        self.assertFalse((self.directory / records[0]["png"]).exists())
+        self.assertTrue((self.directory / records[0]["scene"]["stdout"]["path"]).is_file())
+
+    def test_scene_readiness_window_never_resets_shared_deadline(self):
+        clock = [0.0]
+        with patch("simulator_probe.time.monotonic", side_effect=lambda: clock[0]):
+            runner = Runner(self.directory, budget=20)
+            runner.device = self.runner.device
+            scene = scene_fixture(runner, self.definition, "probe:tactical")
+            records = trace_records(runner.summary, scene, self.directory)
+            self.rewrite(scene, [item for item in records if item["stage"] not in ("stable-frame", "ready")])
+            record = dict(pid=scene["pid"], scene=scene)
+            def minimum_wait(name, seconds):
+                runner.remaining(seconds)
+                clock[0] += seconds
+            runner.wait = minimum_wait
+            with patch("simulator_probe.time.sleep", side_effect=lambda seconds: clock.__setitem__(0, clock[0] + seconds)):
+                with self.assertRaisesRegex(SceneFailure, "readiness deadline"):
+                    runner.wait_scene(record, self.definition, 4, window=7)
+            self.assertEqual(clock[0], 7)
+            self.assertEqual(runner.deadline, 20)
+            self.assertEqual(scene["status"], "failure")
+            self.assertEqual(scene["lastStage"], "units-end")
 
 
 class NormalizationTests(unittest.TestCase):
@@ -642,6 +953,7 @@ if __name__ == "__main__":
             (ProbeTests, "scheduler-and-evidence", "fake simulator commands; real short timeout command"),
             (InstallationTests, "bounded-install-policy", "fake clock and simulator commands; production install policy/gate"),
             (WatchdogReceiptTests, "cli-process-receipts", "real short CLI normal exit and timeout; no simulator"),
+            (SceneEvidenceTests, "scene-readiness-protocol", "synthetic protocol/path/hash fixtures and fake clock; no Swift layout or simulator"),
             (NormalizationTests, "screenshot-normalization", "real sips portrait rotation; no simulator")):
         print(f"Cloud regression suite: {name} ({execution})", flush=True)
         result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(case))

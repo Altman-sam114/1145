@@ -13,9 +13,12 @@ import struct
 import sys
 import tempfile
 import time
+import uuid
 import zlib
 
 from run_bounded import run_bounded
+from scene_evidence import (file_evidence, latest_ready, read_hud_report, seal_scene, trace_records,
+                            validate_page_images, validate_scene)
 
 
 NORMALIZATION_POLICY = "hosted-portrait-270-native-landscape-0-v1"
@@ -36,6 +39,30 @@ class ProbeFailure(Exception):
         super().__init__(message)
         self.code = code
         self.diagnostic = diagnostic
+
+
+class SceneFailure(ProbeFailure):
+    pass
+
+
+def validate_scene_evidence(probes, summary, directory):
+    try:
+        warm = [record for record in summary.get("prewarm", []) if record.get("status") == "success"]
+        if len(warm) != 1:
+            raise ValueError("One successful prewarm scene required")
+        records = summary.get("probes", [])
+        if len(probes) != 24 or len(records) != 24:
+            raise ValueError("Scene readiness requires exactly the original 24 probe records")
+        launches = summary.get("prewarm", []) + records
+        nonces = [record.get("scene", {}).get("nonce") for record in launches]
+        if any(not nonce for nonce in nonces) or len(set(nonces)) != len(nonces):
+            raise ValueError("Every launch must have a distinct nonce")
+        validate_scene(summary, warm[0], directory, probes[0], f"prewarm:{warm[0]['attempt']}")
+        for definition, record in zip(probes, records):
+            validate_scene(summary, record, directory, definition, f"probe:{definition['id']}")
+        validate_page_images(records)
+    except (ValueError, KeyError, OSError, TypeError) as error:
+        raise SceneFailure(str(error)) from error
 
 
 def cli_receipt_complete(receipt):
@@ -281,6 +308,12 @@ def validate_hud_contract(summary, directory):
     if (type(report.get("pid")) is not int or report["pid"] <= 0
             or report["pid"] not in producers or evidence.get("pid") != report["pid"]):
         raise ProbeFailure("HUD contract producer is not the successful live prewarm PID")
+    producer = next(item for item in summary["prewarm"] if item.get("pid") == report["pid"])
+    if any(not producer.get("scene", {}).get(key) or report.get(key) != producer["scene"][key] for key in ("nonce", "probeID")):
+        raise ProbeFailure("HUD contract nonce/probe does not match the live prewarm")
+    descriptor = producer.get("scene", {}).get("ready", {}).get("hudReport", {})
+    if any(descriptor.get(key) != evidence.get(key) for key in ("bytes", "sha256")):
+        raise ProbeFailure("HUD artifact differs from the direct prewarm report descriptor")
     if report.get("status") != "success" or report.get("stateRestored") is not True:
         raise ProbeFailure("HUD contract failed or actual scene state was not restored")
 
@@ -332,6 +365,7 @@ def validate_hud_contract(summary, directory):
 
 def validate_results(probes, summary, directory):
     validate_installation(summary, probes, directory)
+    validate_scene_evidence(probes, summary, directory)
     validate_hud_contract(summary, directory)
     if summary.get("hudContract", {}).get("status") != "success":
         raise ProbeFailure("HUD contract collection/validation did not complete")
@@ -375,7 +409,7 @@ def select_device(runtimes, devices, minimum, sdk):
         raise ProbeFailure(f"No installed available iPhone runtime in deployment {minimum} ... SDK {sdk}")
     eligible.sort(key=lambda item: (tuple(-part for part in item[0]), item[1]["name"], item[1]["udid"]))
     _, device, runtime = eligible[0]
-    return {"udid": device["udid"], "name": device["name"], "runtime": runtime,
+    return {"udid": device["udid"], "name": device["name"], "runtime": runtime, "dataPath": device.get("dataPath"),
             "deploymentTarget": minimum, "simulatorSDK": sdk,
             "reason": "No proven stable-runtime preference; latest installed available iOS <= SDK and >= deployment target, then iPhone name/UDID ascending"}
 
@@ -569,35 +603,78 @@ class Runner:
                 print(f"[heartbeat] {name}; wait remaining={max(end-time.monotonic(), 0):.1f}s", flush=True)
 
     def launch(self, name, definition):
+        nonce = uuid.uuid4().hex
+        probe_id = name.removesuffix(":launch")
+        self.last_scene = {"nonce": nonce, "probeID": probe_id, "status": "running"}
+        for channel in ("stdout", "stderr"):
+            path = self.directory / f"scene-{nonce}-{channel}.live.log"
+            path.write_bytes(b"")
+            self.last_scene[channel] = {"path": path.name}
         env = dict(os.environ)
         env.update(SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE="1",
                    SIMCTL_CHILD_DESERT_CI_HUD_PAGE=definition["page"],
                    SIMCTL_CHILD_DESERT_CI_COMMAND_MARKER=definition["marker"],
                    SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=definition["focus"],
                    SIMCTL_CHILD_DESERT_CI_HUD_CONTRACT="1" if name.startswith("prewarm:") else "0",
+                   SIMCTL_CHILD_DESERT_CI_NONCE=nonce, SIMCTL_CHILD_DESERT_CI_PROBE_ID=probe_id,
+                   SIMCTL_CHILD_DESERT_CI_DEVICE_UDID=self.device["udid"],
                    SIMCTL_CHILD_DESERT_CI_COMMIT_SHA=self.summary["commitSha"],
                    SIMCTL_CHILD_DESERT_CI_RUN_ID=self.summary["runId"],
                    SIMCTL_CHILD_DESERT_CI_RUN_ATTEMPT=self.summary["runAttempt"],
                    SIMCTL_CHILD_DESERT_CI_VERSION=self.summary["version"])
-        output = self.simctl(name, "launch", "--terminate-running-process", self.device["udid"], self.bundle,
-                             cap=120, env=env)
+        try:
+            output = self.simctl(name, "launch", "--terminate-running-process",
+                                 f"--stdout={(self.directory / self.last_scene['stdout']['path']).resolve()}",
+                                 f"--stderr={(self.directory / self.last_scene['stderr']['path']).resolve()}",
+                                 self.device["udid"], self.bundle, cap=120, env=env)
+        finally:
+            for channel in ("stdout", "stderr"):
+                self.last_scene[channel], _ = file_evidence(self.directory, self.last_scene[channel]["path"])
         matches = re.findall(rf"^{re.escape(self.bundle)}:\s*(\d+)\s*$", output, re.MULTILINE)
         if len(matches) != 1 or not alive(int(matches[0])):
             raise ProbeFailure(f"{name} did not return one live app PID")
+        self.last_scene.update(pid=int(matches[0]), launchedAtMonotonic=time.monotonic())
         return int(matches[0])
 
+    def wait_scene(self, record, definition, minimum, window=30):
+        scene = record["scene"]
+        end = scene["launchedAtMonotonic"] + window
+        try:
+            self.wait(f"scene:{definition['id']}:minimum-wait", minimum)
+            with self.stage(f"scene:{definition['id']}:readiness"):
+                while True:
+                    self.remaining(2)
+                    previous_stage = scene.get("lastStage")
+                    records = trace_records(self.summary, scene, self.directory)
+                    last = records[-1]["stage"] if records else "no-direct-beacon"
+                    if previous_stage != last:
+                        scene["lastStage"] = last
+                        print(f"[scene] {scene['probeID']} nonce={scene['nonce']} last={last}", flush=True)
+                        self.save()
+                    ready = latest_ready(records, definition)
+                    if ready is not None:
+                        scene.update(status="success", ready=ready)
+                        return
+                    if time.monotonic() >= end:
+                        raise ValueError(f"Scene readiness deadline; last={last}")
+                    time.sleep(min(0.25, end - time.monotonic(), self.remaining(2) - 2))
+        except (ValueError, KeyError, OSError, TypeError, ProbeFailure) as error:
+            scene.update(status="failure", error=str(error))
+            if isinstance(error, ProbeFailure):
+                raise
+            raise SceneFailure(str(error)) from error
+        finally:
+            self.save()
+
     def collect_hud_contract(self, pid):
-        output = self.simctl("hud-contract-container", "get_app_container", self.device["udid"], self.bundle, "data", cap=15)
         with self.stage("hud-contract-read-and-validate"):
             self.remaining()
-            paths = [line.strip() for line in output.splitlines() if line.strip().startswith("/")]
-            if len(paths) != 1:
-                raise ProbeFailure("Expected exactly one app data container path")
-            container = paths[0]
-            source = Path(container) / "Documents" / "hud-layout-contract.json"
-            if not Path(container).is_absolute() or not 0 < source.stat().st_size <= 1_048_576:
-                raise ProbeFailure("HUD contract not produced by prewarm or too large")
-            data = source.read_bytes()
+            producer = next(item for item in self.summary["prewarm"] if item.get("pid") == pid)
+            scene = producer["scene"]
+            root = Path(self.device["dataPath"])
+            if root.name != "data" or root.parent.name != self.device["udid"]:
+                raise SceneFailure("Selected device dataPath is not bound to its UDID")
+            data = read_hud_report(root, scene["ready"]["hudReport"], scene["nonce"], self.bundle)
             (self.directory / "hud-layout-contract.json").write_bytes(data)
             self.summary["hudContract"] = {"path": "hud-layout-contract.json", "pid": pid,
                                            "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "status": "collected"}
@@ -636,18 +713,33 @@ class Runner:
         self.save()
         try:
             record["launchCount"] = 1
-            record["pid"] = self.launch(f"probe:{definition['id']}:launch", definition)
+            self.last_scene = None
+            try:
+                record["pid"] = self.launch(f"probe:{definition['id']}:launch", definition)
+            finally:
+                if self.last_scene is not None:
+                    record["scene"] = self.last_scene
             record["aliveAfterLaunch"] = True
             self.save()
-            self.wait(f"probe:{definition['id']}:render", definition["wait"])
+            self.wait_scene(record, definition, definition["wait"])
             path = self.directory / definition["png"]
             self.simctl(f"probe:{definition['id']}:screenshot", "io", self.device["udid"], "screenshot", str(path), cap=180)
             self.normalize_screenshot(f"probe:{definition['id']}", path, record)
+            try:
+                validate_page_images(self.summary["probes"])
+                records = trace_records(self.summary, record["scene"], self.directory)
+                ready = latest_ready(records, definition)
+                if ready is None or ready != record["scene"]["ready"]:
+                    raise ValueError("Scene geometry invalidated before screenshot completed")
+            except ValueError as error:
+                raise SceneFailure(str(error)) from error
             with self.stage(f"probe:{definition['id']}:pid-image-check"):
                 record["aliveAfterScreenshot"] = alive(record["pid"])
                 if not record["aliveAfterScreenshot"] or record["image"]["width"] <= record["image"]["height"]:
                     raise ProbeFailure("App exited after capture or PNG is not landscape")
                 self.remaining()
+                seal_scene(self.summary, record["scene"], self.directory, definition)
+                record["scene"]["sealedAtMonotonic"] = time.monotonic()
             record["status"] = "success"
             self.summary["lastCompletedProbe"] = definition["id"]
             print(f"[probe] {index+1}/24 {definition['id']} SUCCESS pid={record['pid']} screenshot={definition['png']}", flush=True)
@@ -677,6 +769,8 @@ class Runner:
         with self.stage("device-selection"):
             self.device = select_device(runtimes, devices, info["MinimumOSVersion"], sdk)
             self.summary["selectedDevice"] = self.device
+            if not self.device.get("dataPath"):
+                raise SceneFailure("Selected device has no authoritative dataPath")
             print(json.dumps(self.device, indent=2), flush=True)
         udid = self.device["udid"]
         for attempt in range(1, 3):
@@ -697,15 +791,23 @@ class Runner:
                     raise
                 self.simctl("boot-retry-shutdown", "shutdown", udid)
         self.install_app(app)
+        help_text = self.simctl("launch-output-options", "help", "launch", cap=10, log="simulator-launch-help.log")
+        if not all(option in help_text for option in ("--stdout", "--stderr")):
+            raise SceneFailure("This Xcode lacks supported launch stdout/stderr file redirection")
         for attempt in range(1, 4):
             if attempt > 1:
                 self.remaining(120 + 95 + sum(p["wait"] for p in self.probes))
             record = {"attempt": attempt, "status": "running"}
             self.summary["prewarm"].append(record)
             try:
-                pid = self.launch(f"prewarm:{attempt}:launch", self.probes[0])
+                self.last_scene = None
+                try:
+                    pid = self.launch(f"prewarm:{attempt}:launch", self.probes[0])
+                finally:
+                    if self.last_scene is not None:
+                        record["scene"] = self.last_scene
                 record.update(pid=pid, aliveAfterLaunch=True)
-                self.wait(f"prewarm:{attempt}:notifications", 90)
+                self.wait_scene(record, self.probes[0], 90, window=90)
                 record["aliveAfterWait"] = alive(pid)
                 if not record["aliveAfterWait"]:
                     raise ProbeFailure("Prewarm PID exited before notification wait ended")
@@ -715,20 +817,15 @@ class Runner:
             except ProbeFailure as error:
                 record.update(status="failure", error=str(error))
                 self.save()
-                if attempt == 3 or error.code >= 128:
+                if attempt == 3 or error.code >= 128 or isinstance(error, SceneFailure):
                     raise
                 self.wait("prewarm-retry-wait", 20)
-        try:
-            self.collect_hud_contract(record["pid"])
-        except Exception as error:
-            if getattr(error, "code", 1) >= 128:
-                raise
-            self.summary.setdefault("hudContract", {}).update(status="failure", error=str(error))
-            print(f"[hud-contract] FAILURE retained for final gate: {error}", flush=True)
-            self.save()
-            self.remaining()
-            # Keep the original captures useful for review even when the contract is red.
+        self.collect_hud_contract(record["pid"])
         self.simctl("prewarm-terminate", "terminate", udid, self.bundle)
+        with self.stage("prewarm-trace-snapshot"):
+            self.remaining()
+            seal_scene(self.summary, record["scene"], self.directory, self.probes[0])
+            record["scene"]["sealedAtMonotonic"] = time.monotonic()
         self.wait("prewarm-settle", 5)
         for index, probe in enumerate(self.probes):
             self.capture(probe, index)

@@ -99,7 +99,7 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - 模拟器编译最多 420 秒、bootstatus 每次 240 秒最多两次、launch 每次 120 秒、截图 180 秒、sips 30 秒；v5.56 的 install 独立180秒、安装恢复就绪60秒，其余 simctl 60 秒。每次命令额外在剩余预算内留 2 秒用于 TERM/KILL/reap。boot / prewarm 重试检查剩余预算，不能靠重试重置总 deadline。预热保留 90 秒通知消退、5 秒稳定等待，首次截图 8 秒、其余 4 秒，等待每 30 秒打印心跳。
 - 选择策略：记录 Xcode / simulator SDK、全部已安装 runtime；仅候选 `isAvailable` 的 iOS runtime / iPhone，版本须在构建后 app `MinimumOSVersion` 与所选 SDK 之间，runtime 按新到旧、设备按 name / UDID 升序排序。未有稳定旧 runtime 的证据，因此不凭猜测选旧版本；不下载、不新建、不在重试时更换设备。
 - `simulator-probe-summary.json` 每个阶段 / 探针原子落盘，记录 commit / run / attempt / version / branch、设备 / runtime / 选择理由、工作与收尾预算 / 耗时、阶段 start / end / exit、prewarm、当前阶段、失败原因、最后成功 probe、expected / completed / failed / notRun / running 计数和每项 PID / launch 次数 / launch 后与截图后存活 / PNG 大小、尺寸、SHA-256。缺失 summary 时 metadata 只能补失败记录，不能推断 success。
-- 每个截图必须通过完整 PNG chunk CRC、RGB/RGBA 8-bit 非交错结构、解压 scanline / filter / 数据长度校验，竖图经有界 sips 旋转为横屏后再校验；PID 两次活跃检查、24 项一一对应、无重复 ID / path、无额外截图同时满足才允许成功。`ci/package_results.py` 在上传前重验身份、安装、prewarm、HUD契约、全部 24 PNG 和 summary；v5.56 的 JUnit 为7个CI testcase加1个准确skipped的XCTest，共8 case，计数与实际节点一致。
+- 每个截图必须通过完整 PNG chunk CRC、RGB/RGBA 8-bit 非交错结构、解压 scanline / filter / 数据长度校验，竖图经有界 sips 旋转为横屏后再校验；PID 两次活跃检查、24 项一一对应、无重复 ID / path、无额外截图同时满足才允许成功。`ci/package_results.py` 在上传前重验身份、安装、prewarm、场景就绪、HUD契约、全部 24 PNG 和 summary；v5.57 的 JUnit 为8个CI testcase加1个准确skipped的XCTest，共9 case，计数与实际节点一致。
 - `ci/check_watchdog.py` 仅 Actions 检查成功、非零、超时、后代清理、SIGTERM 后代清理；`ci/check_probe_runner.py` 仅 Actions 使用 fake commands 与标准库 unittest 检查 24 完整结果、缺项、重复 ID / path、空 / 坏 / 截断 PNG、缺图、dead PID、真实短命令超时、deadline 传递 / 耗尽、失败 summary、runtime 确定排序和被篡改图像证据。其日志进入 `static-checks.log`，结构化 `ci-regression-results.json` 进入 artifact；失败会阻止最终 CI 通过。
 - 调度器直接持有一个子命令进程组，不套另一层 watchdog session；取消先终止所属命令组，再记录失败并按有界 finally 采集 app log / device state、仅 shutdown 选定设备。重复取消在收尾时忽略，不扩大为全局 shutdown。收尾警告不覆盖原始失败；强制销毁 runner / GitHub 硬取消仍可能阻止上传。
 - artifact 增加 `probes.json`、`simulator-probe-summary.json`、`simulator-build.log`、`simulator-runtimes.json`、`simulator-boot-state.json` 和 `ci-regression-results.json`，与 manifest / JUnit / generic build / 原 24 PNG 一并验收。C 必须核对最新 SHA / run / attempt 以及全部 PNG 目视，结构通过不代表无白屏、真实触控、动态玩法、多尺寸或真机长期性能。
@@ -119,8 +119,8 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - 本轮仅云端编译/运行/测试，本机只允许 git diff、AST/YAML/文本静态检查。保留 24 项权威探针、等待、270/0 规范化、单一 hosted 设备和 1080s work / 90s cleanup / 1260s step hard limit，不增 launch/capture/device。
 - 成功 prewarm launch 通过环境传递 run/SHA/attempt/version 并仅开启一次 Swift 契约；场景确认真实 UIWindow inset、实际 SpriteView 尺寸和横屏后，用生产 `HUDLayout` 与 `consumeHUDTouch/handleHudPage` 检查五尺寸乘五页：667×375 零 inset；852×393 左右59、底21；874×402 使用实际设备 inset；1024×768、1366×1024 零 inset。
 - 每组合九类检查：`controls` 最少44pt/安全框/互斥；`containers` 顶层互斥和子槽归属；`bands` 小地图三带/44pt缩放；`routing` page/action/zoom/map/inert/world；`pending` 静态卡/rail与dock gap不改状态及模式互斥；`pageState` 实际切页保留选择/队列/pending；`roundTrip` 生产地图正逆投影；`labels` 长文字与实际行有界；`rebuild` 节点数稳定且无旧页命中。四类 pending 模式及空态分布在每个尺寸的五页场景，不执行生产/战斗动作。
-- 输出 App Documents/hud-layout-contract.json，含 schema1、producer=GameScene.HUDLayout、run/SHA/attempt/version/PID、实际尺寸/inset、25个组合的生产框/检查/失败/面板面积与视口比例、实际场景恢复结果。检查后恢复尺寸/inset、页、选择、队列、pending、相机、消息和触摸起点；正式 24 launch 禁用契约，不带合成状态。
-- prewarm既有90秒等待后，在同一 deadline 内以15秒cap调用 get_app_container 并直接读取最多1MiB报告；复制正式JSON并记录bytes/SHA256/PID。Python不复算几何，只复核生产来源、完整25组合/九类断言、fixture元数据、身份/PID、恢复标识及文件哈希；contract语义失败保留报告和失败记录，尚有预算时继续原24图，最终gate必失败，不能以截图通过覆盖。
+- 输出 App `Documents/DesertCI/<nonce>/hud-layout-contract.json`，含 schema1、producer=GameScene.HUDLayout、run/SHA/attempt/version/PID/probe/nonce、实际尺寸/inset、25个组合的生产框/检查/失败/面板面积与视口比例、实际场景恢复结果。检查后恢复尺寸/inset、页、选择、队列、pending、相机、消息和触摸起点；正式 24 launch 禁用契约，不带合成状态。
+- v5.57替代原15s `get_app_container` 依赖：prewarm90秒后从绑定当前launch的直接ready描述符安全读取最多1MiB报告，根来自所选设备dataPath，并核对该容器自身metadata的bundleId、普通文件/非symlink、固定Documents nonce路径及bytes/SHA。Python不复算几何，只复核生产来源、完整25组合/九类断言、fixture元数据、身份/PID/nonce、恢复和hash；报告或场景就绪失败留证早停，不继续整轮坏图，不能以截图覆盖红门槛。
 - runner与metadata分别复核，报告进入 manifest 的 hudLayoutContractPath/outcome、projectSpecificReports、JUnit和失败摘要。JUnit新增 hud-layout-contract，正常结构为7 case / 0 failure / 1 skipped XCTest；失败缺报仍留证。新增11个schema/身份/缺报/篡改/漏断言/未恢复/未完成采集负例，保留26项既有回归，实际结果以云端 ci-regression-results.json 为准；schema单测使用明确标记的synthetic fixture，不是另一个布局或真实模拟器证据。
 - C独立检查最新未加密ZIP、全部24张正式PNG和契约身份/25组合：左五页轨和当前动作dock、36pt资源条、任务/消息、限宽选择队列、分带地图、费用/来源与armed/disabled状态可读，原陆海空/迷雾无回退。用panelAreaFraction客观复核占屏，不因无重叠就宣称战场面积已改善。几何路由契约不等于真实触摸、多尺寸截图、动态战斗或真机性能认证。
 - 性能风险继续保留：v5.54 work 1065.448/1080s仅余14.552s；慢点在hosted boot与截图I/O，不能说编译已持续快速稳定。本轮不放宽超时掩盖问题。
@@ -134,6 +134,17 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - summary的installation schema1/policy带UDID、bundle/App、admissions、1至2条attempt及可选recovery，每项保存cap、elapsed、remaining、分类/决策、CLI回执与独立输出文件bytes/SHA。失败/取消finally原子落盘；未记录真实成功不进入prewarm。runner和metadata分别验证同设备身份、时序/预算/分类/回执/输出完整性；缺失、失败或跨设备记录即使HUD/24PNG完整也为红，manifest有simulatorInstallOutcome，JUnit新增simulator-install。
 - 云端回归保留原37项，新增12个安装策略/负例方法（含恢复后再次预算不足、TERM/KILL/reap错误、取消和metadata红等subtests）、2个真实短CLI exit/timeout回执方法，AST声明总数51（34调度/HUD/image、12安装、2回执、3真实sips规范化）。独立5项watchdog检查保持；所有实际执行数量/结果必须以最新run日志和ci-regression-results.json为准，未在本机运行。fake clock/command与synthetic installation/HUD fixture仅为schema单测，不是正式模拟器证据。
 - C必须下载最新main/SHA/run/attempt的官方未加密ZIP，核对安装attempt/recovery原始输出、实际receipt、manifest/JUnit/日志、所有回归、prewarm绑定PID的HUD25矩阵及全部24张正向PNG；继续按实际panelAreaFraction和图像判断占屏与可读性。安装门槛通过本身不代表v5.55视觉通过、完全复刻或真实触摸/连续战斗/真机性能认证。
+
+### v5.57 场景就绪、直接trace与早停
+
+- v5.56真实C结论不通过：两build成功且install一次exit0耗时38.339s，prewarm90.203s后PID活跃；`get_app_container`超时，18/24完成，14张无HUD且前8图同SHA。不能由PID/有效PNG推断语义就绪，也不能断言所有probe或整个App冻结。真实timeout回归TERM后退出并遇KILL EPERM而失败，不吞掉收尾错误。
+- SwiftUI尺寸/真实UIWindow inset去重合并后排队，仅在初始化完整后的update入口应用；layoutHUD局部非重入，HUD25内部尺寸不入外部队列，真实外部变化保留到恢复。仅CI的直接beacon包含schema1、SHA/run/attempt/version、真实PID/probe/独立32hex nonce/UDID、递增sequence及实际uptime/elapsed；常规游戏无CI输出。
+- terrain/map/control-points/units/HUD/fog/fixture/initialization阶段确已结束，实际map树、live实体、七面板/五页/当前全部动作和文本、fog、分支关键实体/命令与相机、HUD25恢复满足后，至少两个不同didFinishUpdate帧共享稳定geometry revision才可ready。后续真实几何/HUD重建立即失效旧ready；缺初始化、缺一帧、失败fixture或旧帧不能冒充通过。该CPU证据不证明GPU画面正确。
+- 每次launch用独立stdout/stderr重定向文件，云端共享deadline内cap10s保存help核对选项；beacon行最多8KiB、每通道trace最多256KiB，超限/损坏/错误身份拒绝，不静默截断成功。prewarm沿用90s窗口，随后5ssettle；正式保留8s/4s最小等待，从launch返回起最多30s就绪窗口，全部仍扣1080s，不因beacon重置deadline。
+- prewarm终止后、正式截图及PID检查后冻结实际已读trace snapshot（`scene-<nonce>-stdout/stderr.log`），保留直接活文件（`.live.log`）诊断。冻结前latest ready须仍等于取证时ready，后续几何失效/新ready不能被偷偷接受；snapshot有bytes/SHA，后续正常live stderr追加不改变其证据边界，snapshot自身篡改仍失败。runner与metadata分别要求一个成功prewarm、恰好24项与期望probeID、唯一nonce、稳定两帧、生产事实、快照完整性和HUD25描述符/正式JSON一致。
+- 前五项是五个不同HUD页；保存PNG及final SHA后如与已完成前五页重复，当前图/trace保留、当前失败、后项not_run，metadata独立红。只检查前五页，不要求24全unique，不把唯一hash当视觉通过。不额外launch、截图或放宽预算，原24定义/顺序/全部最小等待/安装策略/PID/raw270/final和HUD25九类门槛保持。
+- 保留原51个测试方法名和独立5项watchdog；真实timeout子进程显式忽略SIGTERM并flush `armed`，cap2s后要求真实TERM/KILL sent、leader return=-SIGKILL且reaped/receipt完整，未arm或EPERM不跳过、不伪绿。新增13个synthetic协议/路径/hash/早停/fake-clock方法，AST声明总64；不复制Swift布局，不是设备证据。所有实际数量/结果待Actions的`ci-regression-results.json`与日志，本机未运行。
+- manifest新增`sceneReadinessOutcome`，正常JUnit9case含1个skipped XCTest；失败摘要列probe/nonce/PID/lastStage和trace路径/hash。C必须下载本轮最新SHA/run/attempt未加密artifact并核对全部64声明方法的实际结果、独立5项watchdog、安装/直接trace/两帧/HUD25/24独立PNG与全部图像；若早停，只能结论失败与具体最后阶段，不借旧artifact补数或声称根因已证实。
 
 ### 触发条件
 
@@ -255,6 +266,7 @@ desert-frontline-ci-${version}-${branch_slug}-${short_sha}-run${run_id}-attempt$
 - staticChecksOutcome
 - buildOutcome
 - simulatorLaunchOutcome
+- sceneReadinessOutcome / simulatorInstallOutcome / hudLayoutContractOutcome / probeIntegrityOutcome
 - testOutcome
 - projectSpecificReports
 

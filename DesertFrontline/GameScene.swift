@@ -1,3 +1,4 @@
+import CryptoKit
 import SpriteKit
 import UIKit
 
@@ -1188,6 +1189,29 @@ final class GameScene: SKScene {
     private var boundedHUDLabels: [(node: SKLabelNode, frame: CGRect, fontSize: CGFloat)] = []
     private var didWriteHUDContract = false
     private var hudContractStableWindow: (size: CGSize, insets: UIEdgeInsets, since: TimeInterval)?
+    private var sceneInitializationComplete = false
+    private var requestedViewSize: CGSize?
+    private var requestedWindowInsets: UIEdgeInsets?
+    private let geometryRequestLock = NSLock()
+    private var hudGeometryDirty = false
+    private var isApplyingHUDGeometry = false
+    private var isWritingHUDContract = false
+    private var isLayingOutHUD = false
+    private var hudGeometryRevision = 0
+    private var ciSequence = 0
+    private let ciStartedUptime = ProcessInfo.processInfo.systemUptime
+    private var ciTraceBytes = 0
+    private var ciTraceStopped = false
+    private var ciCompletedStages: Set<String> = []
+    private var ciFixtureBranch = ""
+    private var ciFixtureCamera: CGPoint?
+    private var ciFrameNumber = 0
+    private var ciReadyFrames: [[String: Any]] = []
+    private var ciStableGeometry: String?
+    private var ciReadyWritten = false
+    private var ciHUDReport: [String: Any]?
+    private var ciHUDRestored = false
+    private var ciLastReadinessFailure = ""
     private var minimapFrame = CGRect.zero
     private var minimapBlipsNode = SKNode()
     private var minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 36, height: 24), cornerRadius: 2)
@@ -1233,6 +1257,7 @@ final class GameScene: SKScene {
     private let isCICaptureMode = ProcessInfo.processInfo.environment["DESERT_CI_CAPTURE_MODE"] == "1"
 
     override func didMove(to view: SKView) {
+        ciBeacon("initialization-start")
         backgroundColor = UIColor(white: 0.04, alpha: 1.0)
         view.isMultipleTouchEnabled = true
         if let window = view.window {
@@ -1266,15 +1291,30 @@ final class GameScene: SKScene {
         // Fog tiles add another 1000 locally; keep the entire HUD above world content.
         hudNode.zPosition = 10000
 
+        ciBeacon("terrain-start")
         buildTerrain()
+        ciEndStage("terrain")
+        ciBeacon("map-start")
         drawMap()
+        ciEndStage("map")
+        ciBeacon("control-points-start")
         spawnControlPoints()
+        ciEndStage("control-points")
+        ciBeacon("units-start")
         spawnInitialForces()
+        ciEndStage("units")
         layoutHUD()
+        ciBeacon("fog-start")
         updateFog(force: true)
+        ciEndStage("fog")
+        ciBeacon("fixture-start")
         prepareCICaptureScene()
+        if isCICaptureMode { ciFixtureCamera = cameraRig.position }
+        ciEndStage("fixture")
         updateHUD()
         showMessage("Capture oil and flags, secure the coast, build combined forces, destroy the enemy HQ.", color: .white)
+        sceneInitializationComplete = true
+        ciEndStage("initialization")
     }
 
     private func initialCameraPosition() -> CGPoint {
@@ -1292,21 +1332,54 @@ final class GameScene: SKScene {
 
     override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
-        guard !terrain.isEmpty else { return }
-        cameraRig.position = clampCamera(cameraRig.position)
-        layoutHUD()
+        // Contract fixture sizes are not external geometry requests.
+        guard !isWritingHUDContract, !isApplyingHUDGeometry else { return }
+        hudGeometryDirty = true
+        ciInvalidateReady("size-changed")
     }
 
     func updateWindowSafeAreaInsets(_ insets: UIEdgeInsets) {
-        hasWindowSafeArea = true
-        guard windowSafeAreaInsets != insets else { return }
-        windowSafeAreaInsets = insets
-        guard !terrain.isEmpty else { return }
+        geometryRequestLock.lock()
+        requestedWindowInsets = insets
+        geometryRequestLock.unlock()
+        if insets != windowSafeAreaInsets { ciInvalidateReady("window-insets-requested") }
+    }
+
+    func requestViewSize(_ size: CGSize) {
+        guard size.width > 1, size.height > 1 else { return }
+        geometryRequestLock.lock()
+        requestedViewSize = size
+        geometryRequestLock.unlock()
+        if size != self.size { ciInvalidateReady("view-size-requested") }
+    }
+
+    private func applyRequestedHUDGeometry() {
+        guard sceneInitializationComplete, !isWritingHUDContract, !isLayingOutHUD else { return }
+        geometryRequestLock.lock()
+        let externalSize = requestedViewSize
+        let externalInsets = requestedWindowInsets
+        requestedViewSize = nil
+        requestedWindowInsets = nil
+        geometryRequestLock.unlock()
+        isApplyingHUDGeometry = true
+        defer { isApplyingHUDGeometry = false }
+        if let requested = externalSize {
+            if size != requested { size = requested; hudGeometryDirty = true }
+        }
+        if let requested = externalInsets {
+            hasWindowSafeArea = true
+            if windowSafeAreaInsets != requested { windowSafeAreaInsets = requested; hudGeometryDirty = true }
+        }
+        guard hudGeometryDirty else { return }
+        hudGeometryDirty = false
+        cameraRig.position = clampCamera(cameraRig.position)
         layoutHUD()
-        updateHUD()
+        ciBeacon("geometry-applied", extra: ["revision": hudGeometryRevision])
     }
 
     override func update(_ currentTime: TimeInterval) {
+        guard sceneInitializationComplete else { return }
+        applyRequestedHUDGeometry()
         if isCICaptureMode {
             lastUpdateTime = currentTime
             updateHUD()
@@ -1342,6 +1415,174 @@ final class GameScene: SKScene {
         updateMissionProgress()
         updateVictoryState()
         updateHUD()
+    }
+
+    private func ciEndStage(_ name: String) {
+        guard isCICaptureMode else { return }
+        ciCompletedStages.insert(name)
+        ciBeacon(name + "-end")
+    }
+
+    private func ciInvalidateReady(_ reason: String) {
+        guard isCICaptureMode else { return }
+        ciReadyWritten = false
+        ciReadyFrames.removeAll()
+        ciStableGeometry = nil
+        ciBeacon("geometry-invalidated", extra: ["reason": reason])
+    }
+
+    private func ciFixtureChecks(marker: String) -> [String: Bool] {
+        let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive && $0.node.parent === entityLayer }
+        func count(_ kind: EntityKind, _ faction: Faction) -> Int {
+            entities.values.filter { $0.isAlive && $0.kind == kind && $0.faction == faction && $0.node.parent === entityLayer }.count
+        }
+        func chosen(_ kind: EntityKind) -> Bool { selected.contains { $0.kind == kind } }
+        func attacks(_ kind: EntityKind, _ targetKind: EntityKind) -> Bool {
+            selected.contains { unit in
+                guard unit.kind == kind, let target = unit.attackTarget else { return false }
+                return target.isAlive && target.kind == targetKind && isKnownToFaction(target, observer: .player)
+            }
+        }
+        switch ciFixtureBranch {
+        case "air":
+            var checks = ["aircraft": count(.fighter, .player) >= 2 && count(.fighter, .enemy) >= 2 && chosen(.helicopter),
+                          "fighterTarget": attacks(.fighter, .fighter)]
+            if ["move", "attack-move", "attack-target"].contains(marker) {
+                checks["commandNode"] = effectsLayer.childNode(withName: "ci:marker:\(marker)") != nil
+            }
+            return checks
+        case "land":
+            var checks = ["combinedArms": chosen(.tank) && chosen(.humvee) && chosen(.artillery) && chosen(.mechanic)]
+            if marker == "combat-ui" {
+                checks["sharedTarget"] = selected.filter { $0.attackTarget?.kind == .tank }.count >= 4
+            } else if marker == "incoming-ui" {
+                checks["incoming"] = entities.values.filter { unit in unit.attackTarget.map { selectedIDs.contains($0.id) } ?? false }.count >= 4
+                checks["criticalTank"] = selected.contains { $0.kind == .tank && $0.hp / $0.kind.maxHP < 0.35 }
+            }
+            return checks
+        case "coast-default": return ["navy": count(.battleship, .player) > 0 && count(.carrier, .player) > 0 && count(.shipyard, .player) > 0]
+        case "naval-salvo": return ["battleshipTarget": attacks(.battleship, .battleship)]
+        case "coastal-battery": return ["batteryTarget": attacks(.coastalBattery, .battleship)]
+        case "carrier-strike": return ["carrierTarget": attacks(.carrier, .battleship)]
+        case "fighter-strike": return ["fighterTarget": attacks(.fighter, .coastalBattery)]
+        case "helicopter-salvo": return ["helicopterTarget": attacks(.helicopter, .tank)]
+        case "mobile-aa": return ["aaTarget": attacks(.aaTruck, .fighter)]
+        case "naval-damage": return ["sonarContact": attacks(.battleship, .submarine), "criticalBattleship": selected.contains { $0.kind == .battleship && $0.hp / $0.kind.maxHP < 0.35 }]
+        case "damage-state": return ["threeDomains": chosen(.tank) && chosen(.fighter) && chosen(.battleship), "damaged": selected.count == 3 && selected.allSatisfy { $0.hp / $0.kind.maxHP < 0.62 }]
+        case "stop-command": return ["fourUnits": selected.count == 4 && chosen(.carrier), "idle": selected.allSatisfy { $0.destination == nil && $0.attackTarget == nil && $0.attackMoveDestination == nil && $0.holdPosition == nil }]
+        case "target-cycle": return ["targetedGroup": selected.count >= 4 && selected.allSatisfy { $0.attackTarget != nil }]
+        case "selection-cycle": return ["cluster": count(.humvee, .player) > 0 && count(.tank, .player) > 0 && count(.artillery, .player) > 0, "singleSelection": selected.count == 1 && selected[0].holdPosition != nil]
+        case "enemy-touch-assist": return ["twoAA": selected.count == 2 && selected.allSatisfy { $0.kind == .aaTruck }, "sharedFighter": attacks(.aaTruck, .fighter) && Set(selected.compactMap { $0.attackTarget?.id }).count == 1]
+        default: return ["knownBranch": false]
+        }
+    }
+
+    private func ciBeacon(_ stage: String, extra: [String: Any] = [:]) {
+        guard isCICaptureMode, !ciTraceStopped else { return }
+        let environment = ProcessInfo.processInfo.environment
+        ciSequence += 1
+        var report: [String: Any] = [
+            "schemaVersion": 1, "producer": "GameScene.CIReadiness", "stage": stage, "sequence": ciSequence,
+            "uptimeSeconds": ProcessInfo.processInfo.systemUptime,
+            "elapsedSeconds": ProcessInfo.processInfo.systemUptime - ciStartedUptime,
+            "pid": ProcessInfo.processInfo.processIdentifier, "commitSha": environment["DESERT_CI_COMMIT_SHA"] ?? "",
+            "runId": environment["DESERT_CI_RUN_ID"] ?? "", "runAttempt": environment["DESERT_CI_RUN_ATTEMPT"] ?? "",
+            "version": environment["DESERT_CI_VERSION"] ?? "", "probeID": environment["DESERT_CI_PROBE_ID"] ?? "",
+            "nonce": environment["DESERT_CI_NONCE"] ?? "", "deviceUDID": environment["DESERT_CI_DEVICE_UDID"] ?? ""
+        ]
+        report.merge(extra) { _, new in new }
+        guard var data = try? JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]) else { return }
+        if data.count >= 8000 || ciTraceBytes + data.count + 10 > 260096 {
+            for key in extra.keys { report.removeValue(forKey: key) }
+            report["stage"] = "trace-limit-exceeded"
+            guard let terminal = try? JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]),
+                  terminal.count < 2048 else { return }
+            data = terminal
+            ciTraceStopped = true
+        }
+        var line = Data("DESERTCI ".utf8)
+        line.append(data)
+        line.append(10)
+        ciTraceBytes += line.count
+        try? FileHandle.standardOutput.write(contentsOf: line)
+    }
+
+    override func didFinishUpdate() {
+        super.didFinishUpdate()
+        guard isCICaptureMode, !ciReadyWritten else { return }
+        ciFrameNumber += 1
+        guard let view, let window = view.window, let layout = hudLayout else { return }
+        geometryRequestLock.lock()
+        let pendingGeometry = requestedViewSize != nil || requestedWindowInsets != nil
+        geometryRequestLock.unlock()
+        let environment = ProcessInfo.processInfo.environment
+        let expectedPage = environment["DESERT_CI_HUD_PAGE"] ?? ""
+        let marker = environment["DESERT_CI_COMMAND_MARKER"] ?? ""
+        let focus = environment["DESERT_CI_CAMERA_FOCUS"] ?? ""
+        let fixtureChecks = ciFixtureChecks(marker: marker)
+        let requiredStages: Set<String> = ["terrain", "map", "control-points", "units", "hud", "fog", "fixture", "initialization"]
+        let attached = entities.values.filter { $0.isAlive && $0.node.parent === entityLayer }
+        let playerUnits = attached.filter { $0.faction == .player && !$0.kind.isStructure }
+        let visiblePlayerUnits = playerUnits.filter { !$0.node.isHidden && $0.node.alpha > 0 }
+        let panelNames = Set(hudNode.children.compactMap(\.name).filter { $0.hasPrefix("hud-panel:") })
+        let controlsHaveText = (Array(hudButtonShapes.values) + Array(hudPageShapes.values)).allSatisfy { shape in
+            guard let parent = shape.parent, parent.parent === hudNode, !parent.isHidden else { return false }
+            let labels = parent.children.compactMap { $0 as? SKLabelNode }
+            return labels.count == 2 && labels.allSatisfy { !($0.text?.isEmpty ?? true) && !$0.isHidden }
+        }
+        let geometry = "\(size)|\(windowSafeAreaInsets)|\(hudGeometryRevision)"
+        let checks: [String: Bool] = [
+            "initialized": sceneInitializationComplete && requiredStages.isSubset(of: ciCompletedStages),
+            "geometry": !pendingGeometry && !hudGeometryDirty && !isLayingOutHUD && !isWritingHUDContract &&
+                hasWindowSafeArea && size.width > size.height && abs(view.bounds.width - size.width) < 1 &&
+                abs(view.bounds.height - size.height) < 1 && window.safeAreaInsets == windowSafeAreaInsets,
+            "map": terrain.count == rows && mapNode.children.count >= rows * cols,
+            "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count,
+            "hud": hudNode.parent === cameraRig && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
+                hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
+                moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty,
+            "fog": !fogLayer.children.isEmpty && !visibleTiles.isEmpty && !exploredTiles.isEmpty,
+            "fixture": !ciFixtureBranch.isEmpty && hudPage.rawValue == expectedPage && fixtureChecks.values.allSatisfy({ $0 }) &&
+                ciFixtureCamera.map({ cameraRig.position.distance(to: clampCamera($0)) < 1 }) == true,
+            "contractRestored": environment["DESERT_CI_HUD_CONTRACT"] != "1" || (ciHUDReport != nil && ciHUDRestored)
+        ]
+        guard checks.values.allSatisfy({ $0 }) else {
+            let failure = checks.keys.sorted().map { "\($0)=\(checks[$0]!)" }.joined(separator: ",")
+            if failure != ciLastReadinessFailure {
+                ciLastReadinessFailure = failure
+                ciBeacon("readiness-pending", extra: ["checks": checks, "fixtureChecks": fixtureChecks, "fixtureBranch": ciFixtureBranch])
+            }
+            ciReadyFrames.removeAll()
+            ciStableGeometry = nil
+            return
+        }
+        if ciStableGeometry != geometry { ciReadyFrames.removeAll(); ciStableGeometry = geometry }
+        let frame: [String: Any] = ["number": ciFrameNumber, "time": lastUpdateTime, "revision": hudGeometryRevision]
+        ciReadyFrames.append(frame)
+        ciBeacon("stable-frame", extra: ["frame": frame])
+        guard ciReadyFrames.count == 2 else { return }
+        var readiness: [String: Any] = [
+            "checks": checks, "frames": ciReadyFrames, "geometryRevision": hudGeometryRevision,
+            "page": hudPage.rawValue, "marker": marker, "focus": focus,
+            "fixtureBranch": ciFixtureBranch, "completedStages": ciCompletedStages.sorted(),
+            "fixtureChecks": fixtureChecks,
+            "selectedEntities": selectedIDs.sorted().compactMap { id -> [String: Any]? in
+                guard let entity = entities[id] else { return nil }
+                return ["id": id, "kind": entity.kind.shortCode, "hpFraction": entity.hp / entity.kind.maxHP,
+                        "targetKind": entity.attackTarget?.kind.shortCode ?? "", "targetID": entity.attackTarget?.id ?? 0]
+            },
+            "sceneSize": ["width": size.width, "height": size.height],
+            "viewSize": ["width": view.bounds.width, "height": view.bounds.height],
+            "insets": ["top": windowSafeAreaInsets.top, "left": windowSafeAreaInsets.left, "bottom": windowSafeAreaInsets.bottom, "right": windowSafeAreaInsets.right],
+            "camera": ["x": cameraRig.position.x, "y": cameraRig.position.y, "scale": cameraRig.xScale],
+            "counts": ["mapNodes": mapNode.children.count, "entities": attached.count, "playerUnits": playerUnits.count,
+                       "visiblePlayerUnits": visiblePlayerUnits.count, "panels": panelNames.count, "pages": layout.pages.count,
+                       "actions": hudButtonShapes.count, "fogNodes": fogLayer.children.count, "visibleTiles": visibleTiles.count,
+                       "selected": selectedIDs.count, "effectNodes": effectsLayer.children.count]
+        ]
+        if let ciHUDReport { readiness["hudReport"] = ciHUDReport }
+        ciBeacon("ready", extra: readiness)
+        ciReadyWritten = true
     }
 
     private func buildTerrain() {
@@ -4490,6 +4731,11 @@ final class GameScene: SKScene {
     }
 
     private func layoutHUD() {
+        guard !isLayingOutHUD else { hudGeometryDirty = true; return }
+        if !isWritingHUDContract { ciInvalidateReady("hud-rebuild") }
+        isLayingOutHUD = true
+        defer { isLayingOutHUD = false; hudGeometryRevision += 1 }
+        if !isWritingHUDContract { ciBeacon("hud-start") }
         let lastMessage = (messageLabel.text, messageLabel.fontColor, messageLabel.alpha)
         hudNode.removeAllChildren()
         hudButtonFrames.removeAll()
@@ -4562,6 +4808,7 @@ final class GameScene: SKScene {
             hudNode.addChild(makeButton(action: action, frame: layout.actions[action]!))
         }
         refreshHudButtonStyles()
+        if !isWritingHUDContract { ciEndStage("hud") }
     }
 
     private func makeHUDLabel(slot: String, font: String = "Menlo", size fontSize: CGFloat,
@@ -4611,6 +4858,9 @@ final class GameScene: SKScene {
             return
         }
         didWriteHUDContract = true
+        isWritingHUDContract = true
+        ciBeacon("hud-contract-start")
+        defer { isWritingHUDContract = false }
         let actualSize = size
         let actualInsets = windowSafeAreaInsets
         let actualPage = hudPage
@@ -4783,24 +5033,36 @@ final class GameScene: SKScene {
         isUsingMinimap = actualTouch.4
         let restored = fingerprint() == originalState && size == actualSize && hudPage == actualPage &&
             windowSafeAreaInsets == actualInsets && cameraRig.position == actualCamera.0
+        ciInvalidateReady("contract-restored")
         let passed = restored && matrix.allSatisfy { $0["status"] as? String == "success" }
         let report: [String: Any] = [
             "schemaVersion": 1, "producer": "GameScene.HUDLayout", "status": passed ? "success" : "failure",
             "commitSha": environment["DESERT_CI_COMMIT_SHA"] ?? "", "runId": environment["DESERT_CI_RUN_ID"] ?? "",
             "runAttempt": environment["DESERT_CI_RUN_ATTEMPT"] ?? "", "version": environment["DESERT_CI_VERSION"] ?? "",
             "pid": ProcessInfo.processInfo.processIdentifier, "actualSize": ["width": actualSize.width, "height": actualSize.height],
+            "probeID": environment["DESERT_CI_PROBE_ID"] ?? "", "nonce": environment["DESERT_CI_NONCE"] ?? "",
             "actualInsets": insetJSON(actualInsets), "matrix": matrix, "stateRestored": restored,
             "limitations": "Production frame/route checks, not real touch injection or multi-size screenshot certification"
         ]
         do {
-            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("hud-layout-contract.json")
-            try JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]).write(to: url, options: .atomic)
+            let nonce = environment["DESERT_CI_NONCE"] ?? ""
+            guard nonce.count == 32, nonce.allSatisfy({ $0.isHexDigit }) else { return }
+            let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("DesertCI").appendingPathComponent(nonce)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let url = folder.appendingPathComponent("hud-layout-contract.json")
+            let data = try JSONSerialization.data(withJSONObject: report, options: [.sortedKeys])
+            try data.write(to: url, options: .atomic)
+            ciHUDRestored = restored
+            ciHUDReport = ["path": url.path, "bytes": data.count, "sha256": SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()]
+            ciBeacon("hud-contract-written", extra: ["report": ciHUDReport!, "stateRestored": restored, "status": passed ? "success" : "failure"])
         } catch {
-            print("HUD contract write failed: \(error)")
+            ciBeacon("hud-contract-failure", extra: ["error": String(describing: error)])
         }
     }
 
     private func addMinimap(frame: CGRect) {
+        if !isWritingHUDContract { ciBeacon("minimap-start") }
         let title = makeHUDLabel(slot: "mapTitle", font: "AvenirNextCondensed-DemiBold", size: 10, color: HUDPalette.gold)
         title.text = "SECTOR  /  N"
         let legend = makeHUDLabel(slot: "mapLegend", size: 8, color: HUDPalette.mutedText)
@@ -4837,6 +5099,7 @@ final class GameScene: SKScene {
         minimapScaleLabel = makeHUDLabel(slot: "mapScale", size: 8, color: HUDPalette.mutedText)
         addZoomButton(frame: zoomOutHitFrame, title: "-")
         addZoomButton(frame: zoomInHitFrame, title: "+")
+        if !isWritingHUDContract { ciBeacon("minimap-end") }
     }
 
     private func addZoomButton(frame: CGRect, title: String) {
@@ -9249,65 +9512,80 @@ final class GameScene: SKScene {
         guard isCICaptureMode else { return }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "enemy-touch-assist" {
             prepareCIEnemyTouchAssistCaptureScene()
+            ciFixtureBranch = "enemy-touch-assist"
             return
         }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "selection-cycle" {
             prepareCISelectionCycleCaptureScene()
+            ciFixtureBranch = "selection-cycle"
             return
         }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "target-cycle" {
             prepareCITargetCycleCaptureScene()
+            ciFixtureBranch = "target-cycle"
             return
         }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "stop-command" {
             prepareCIStopCommandCaptureScene()
+            ciFixtureBranch = "stop-command"
             return
         }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "damage-state" {
             prepareCIDamageStateCaptureScene()
+            ciFixtureBranch = "damage-state"
             return
         }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "helicopter-salvo" {
             prepareCIHelicopterSalvoCaptureScene()
+            ciFixtureBranch = "helicopter-salvo"
             return
         }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "fighter-strike" {
             prepareCIFighterStrikeCaptureScene()
+            ciFixtureBranch = "fighter-strike"
             return
         }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "mobile-aa" {
             prepareCIMobileAACaptureScene()
+            ciFixtureBranch = "mobile-aa"
             return
         }
         if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "land" {
             prepareCILandCaptureScene()
+            ciFixtureBranch = "land"
             return
         }
         if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "air" {
             prepareCIAirCaptureScene()
+            ciFixtureBranch = "air"
             return
         }
 
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "coastal-battery" {
             prepareCICoastalBatteryCaptureScene()
+            ciFixtureBranch = "coastal-battery"
             return
         }
 
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "carrier-strike" {
             prepareCICarrierStrikeCaptureScene()
+            ciFixtureBranch = "carrier-strike"
             return
         }
 
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "naval-salvo" {
             prepareCINavalSalvoCaptureScene()
+            ciFixtureBranch = "naval-salvo"
             return
         }
 
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "naval-damage" {
             prepareCINavalDamageCaptureScene()
+            ciFixtureBranch = "naval-damage"
             return
         }
 
+        ciFixtureBranch = "coast-default"
         let playerNavy = entities.values
             .filter { $0.faction == .player && $0.kind.domain == .naval && $0.isAlive }
             .sorted { $0.id < $1.id }
@@ -13127,6 +13405,7 @@ final class GameScene: SKScene {
     private func showMoveMarker(at point: CGPoint, persistent: Bool = false) {
         let color = UIColor(red: 0.24, green: 1.0, blue: 0.62, alpha: 1.0)
         let node = SKNode()
+        if isCICaptureMode && persistent { node.name = "ci:marker:move" }
         node.position = point
         node.zPosition = 264
 
@@ -13163,6 +13442,7 @@ final class GameScene: SKScene {
     private func showAttackMoveMarker(at point: CGPoint, persistent: Bool = false) {
         let color = UIColor(red: 1.0, green: 0.58, blue: 0.20, alpha: 1.0)
         let node = SKNode()
+        if isCICaptureMode && persistent { node.name = "ci:marker:attack-move" }
         node.position = point
         node.zPosition = 266
 
@@ -13205,6 +13485,7 @@ final class GameScene: SKScene {
         let width = max(64, min(112, footprint * 1.55))
         let height = max(34, width * 0.52)
         let node = SKNode()
+        if isCICaptureMode && persistent { node.name = "ci:marker:attack-target" }
         node.position = point
         node.zPosition = worldCombatAttackMarkerZ
 

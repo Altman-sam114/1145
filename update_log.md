@@ -6066,7 +6066,7 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - generic build48.1s、sim SDK build36.488s成功，37项回归和独立5项watchdog检查通过；bootstatus首240.740s超时，同设备第二次96.910s成功。install在work t396.661s开始，原60s cap耗时60.619s返回124，工作余量683.339降至622.720s，并非1080s总预算耗尽或编译卡死。work457.296s、cleanup8.184s、总465.479s，所选设备shutdown成功。
 - prewarm=[]、24项not_run、0正式PNG、无HUD报告；JUnit7case/3failure/1skip，不能判为HUD断言失败，也无视觉通过结论。API的continue-on-error step conclusion为success，metadata真实outcome为failure且最终gate红。旧watchdog有TERM/KILL/wait尝试但无实际结构化回执，不能称系统安装服务/全部子进程已清理。C已退B聚焦安装可靠性，不继续地图升级。
 
-### v5.56 / 云端安装限时与单设备有界恢复（待最新云端验收）
+### v5.56 / 云端安装限时与单设备有界恢复（C不通过：语义画面异常与回执fixture失败）
 
 日期：2026-10-22
 
@@ -6075,4 +6075,19 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - run_bounded新增兼容可选实际receipt；installation schema1保存身份、预算准入、attempt/recovery、正常exit0或失败/取消、TERM/KILL发送结果与leader reap、耗时及独立输出bytes/SHA。finally原子留证，runner/metadata分别要求成功安装并复核自洽性，manifest与JUnit单列安装（8case含1真实跳过XCTest）；CLI回执不等于系统服务或所有后代已停止。
 - 保留原37项与独立5项watchdog，新增12个安装策略方法及2个真实短CLI回执方法，AST声明总数51；含fake时钟/命令、永久/未知/取消/收尾错误、两阶段预算不足、metadata不被HUD/PNG覆盖等负例。结构化fixtures均明确为synthetic schema而非模拟器证据。实际数量/结果待新run，不预填通过。
 - 关键文件：`ci/run_bounded.py`、`ci/simulator_probe.py`、`ci/check_probe_runner.py`、`ci/package_results.py`、README、flow/flowchart、test与v5.56提示词。仅做本机AST、文本与git diff --check，不运行本机测试/build/sips/模拟器，不改设备或服务。用户两行Team ID与既有未跟踪资料保留、排除提交。
-- 待C下载最新main/SHA/run/attempt官方未加密artifact，核对实际安装、CLI回执、所有回归、prewarm活PID绑定的HUD25与全部24正式PNG。v5.55视觉仍未验收，不因本轮CI代码或单测就宣布美观、占屏优化、完全复刻或总目标完成；下一步由C真实结果决定，不另做状态文档空提交。
+- C已核对main `258cfdede7577d029c9988abfc16bf0973f19e1f`、run `39820022963` attempt1 completed/failure。artifact ID `12445905723`，`desert-frontline-ci-v5.56-main-258cfdede757-run39820022963-attempt1`，未加密ZIP 12,769,953 bytes/41 entries、CRC通过，API digest/SHA256 `e96b0681a2f46c3f8c69f66d08284a80c6e87c68721e53cacde2aa3aca06e905`，缓存 `/private/tmp/desert-frontline-c-review-39820022963/` 保留。
+- generic build42.0s、sim SDK build37.149s成功；安装一次正常exit0，CLI37.750s/外层38.339s，余量706.135降至667.796s，无恢复/重试，不能再归因为install60s或Swift编译卡死。prewarm PID12254在90.203s后活跃；get_app_container cap15s超时16.016s使正式HUD报告未收集，不能推断App未写或HUD25断言失败。
+- 18/24完成，damage-state launch在实际cap57.424s超时62.737s，后5项not_run；work1082.250s/cleanup68.640s/总1150.890s。C逐张看官方18图：14张无HUD，只有naval-salvo/coastal-battery/carrier-strike/fighter-strike有新HUD；前8个air-focus图同SHA，land-combat/combat-ui/incoming-ui同SHA，总9种SHA，跨focus镜头有变化。不能断言18图或整个App全冻结，也不能把PID和有效PNG当就绪。
+- 原51回归50pass/1fail，独立5项watchdog通过。真实timeout fixture TERM sent后leader=-15，KILL EPERM，cleanup=failure，生产validator准确拒绝；JUnit8case/4failure/1准确XCTest skip。app log与device-state均0byte，三项cleanup均124，不能称无崩溃或设备已关闭。v5.55/v5.56均不计成功，尚无新HUD视觉验收通过，X退回B聚焦场景/直接留证与fixture意图，不进入地图升级。
+
+### v5.57 / 场景就绪与云端直接留证修复（待最新云端验收）
+
+日期：2026-10-22
+
+- 只做初始化/HUD生命周期局部保护、直接阶段trace、语义就绪与HUD25可靠读取、真实timeout fixture修正；不重做地图/单位/玩法，不宣称完全复刻。初始化期间因terrain非空就重建HUD是源码风险，不是已证明的v5.56根因。
+- SwiftUI尺寸与真实UIWindow inset合并去重排队，初始化结束后在update统一应用；layout非重入，HUD25内部尺寸不成为外部pending，恢复后再处理真实窗口变化。正常游戏不写CI trace/report。
+- 每次prewarm/正式launch独立nonce和直接stdout/stderr，绑定当前SHA/run/attempt/version/PID/probe/UDID及实际monotonic时间。真实生产阶段、地图实体/七面板五页动作文本/迷雾、分支实体与命令事实/相机、恢复检查和两个稳定didFinishUpdate帧构成ready；后续几何重建使旧ready失效。前5页final PNG同SHA即保留图/trace早停，不要求24全unique，也不把CPU证据或hash唯一当GPU视觉通过。
+- 报告写Documents固定nonce子目录，runner从当前所选设备dataPath读取，核对当前容器自身bundle metadata、非symlink/越界、最多1MiB、身份与bytes/SHA；不依赖get_app_container，不扫描其他容器。prewarm terminate后及各截图/PID后冻结latest-ready trace snapshot供metadata二验，直接live文件继续作为诊断；后续stderr正常追加不误伤snapshot，篡改/新几何/新ready不冒绿。
+- 原1080s工作/90s收尾/21m step/45m job、v5.56安装策略、24定义/顺序/独立launch、90s通知与5ssettle、8s/4s最小等待、HUD25生产同源/九类/恢复、PID/raw270/final链全部保留。正式就绪窗口从launch返回起最多30s且共享原deadline，不追加launch；失败后余项not_run。
+- 真实timeout fixture改为忽略TERM、先输出armed、cap2s后真实KILL/reap，保留EPERM与收尾不明拒绝。原51方法名和独立5项watchdog保留，新增13项协议/路径/hash/metadata/早停/fake-clock负例，AST声明64项；正常JUnit9case含1个真实XCTest skip，manifest新增sceneReadinessOutcome。实际数量/结果待本轮Actions，不预填通过。
+- 关键文件：GameView.swift、GameScene.swift、ci/scene_evidence.py、ci/simulator_probe.py、ci/package_results.py、ci/check_probe_runner.py及README/flow/flowchart/test/本轮提示词。只做本机AST/文本与diff静态检查，不运行测试/build/sips/模拟器；用户两行Team ID和既有未跟踪资料排除提交。C须下载最新官方ZIP核对trace/两帧/HUD25与全部24张正式图；未知根因、选项/路径环境支持与视觉结果仍待云端证据，不另做状态空提交。
