@@ -8,7 +8,7 @@ Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界�
 
 海军实体的 `navalWakeNode` 与选中艏向箭头都在实体配置阶段一次性预创建：Battleship / Carrier 依舰体尺度绘制艏部 V 形浅水冲洗、近 / 远段递减尾流、泡沫边与舰艉推进器扰流，Submarine 仅保留低透明扰动；移动时 `updateNavalWake` 用同一 `localWakeDirection` 与 `xScale` 镜像同时旋转尾流和箭头。选择刷新只让玩家选中、存活且可见的三类海军显示箭头；停止保留最后 rotation，取消选择、死亡、重开和 fog 隐藏继续复用实体父节点生命周期，不新增状态、每帧节点或第 25 次探针。读图：海军 movement direction 分流到既有 wake rotation 与 heading cue rotation，selection / alive / fog 门槛控制 cue 显隐。
 
-命令条保留视觉按钮尺寸与页面 / action 映射；当前可见页签和动作另有按固定顺序查询的、互不重叠且至少 44pt 的语义 hit frame。按钮间隙及两端安全范围只在命令条实际行内由 HUD inert guard 消费，不能穿透 minimap / 世界或清除 pending。 HUD 视觉层由 `HUDPalette` 统一深色玻璃面板、沙金任务卡、青色小地图/选择卡、红橙告警和底部 command dock；`layoutHUD()` 只创建渲染节点，`updateHUD()` 只刷新既有事实文本和状态，视觉重建不改变命令流。
+HUD 使用石墨灰/沙金的战场优先布局：左五页轨、底部当前动作收口 dock、36pt 顶栏、独立任务/消息、统一选择/队列与三带小地图。真实 UIWindow inset 经被动观察传到 GameScene；生产 `HUDLayout` 同时提供绘制框和单指 route。双指仍优先 pan/pinch；单指 page/action/zoom/map/inert/world 分流，静态卡和 rail/dock gap 消费触摸、不清 pending。切页不改玩法状态，重建先清旧节点/字典。小地图 crop、正逆换算与点击共享内容框；header/footer 不挤占内容带。
 
 Carrier 的甲板作业轨和安全/拦阻边线属于 `HealthVisual -> Render` 的实体静态模型子树：它们在 Carrier 创建时一次性挂入 `base`，不进入 `effectsLayer`，不增加玩法分支，并沿用实体移动、镜像、fog、死亡和 `SKRM` 生命周期。
 
@@ -184,3 +184,26 @@ flowchart TD
 v5.53 读图补充：generic build 独立 600 秒；模拟器所有命令 / 等待共享总工作 deadline，每个阶段输出开始 / 结束 / 耗时与心跳；finally 有界采集日志并只关闭所选设备。权威清单同时驱动执行、summary 与 manifest，结构化 summary 和全部 PNG 必须通过 runner 与 metadata 两次完整性核对。强制取消 / 销毁 runner 仍可能阻止留证。
 
 v5.54 读图补充：HUD 根 z=10000，高于 world/fog 累计深度（当前 fog 最大约 1411.8），不改迷雾认知或透明度。云端通过与 capture 相同的规范化入口运行真实 sips 不对称 RGB 角点回归，summary schemaVersion 2 保留旋转前元数据、角度和最终图像；raw PNG 原地规范化，不重复上传。当前 portrait 270 度策略来自已审阅 hosted 证据，不是自动方向识别；C 必须查看新 run 全部 24 官方 PNG，确认正向且无 fog 盖住 HUD，不能用宽高或本地旋转副本代替。
+
+
+### 战场优先 HUD 与云端契约
+
+读图说明：窗口安全区和当前页共同生成生产布局。云端 prewarm 复用这套真实框与路由进行 25 组合检查并恢复现场；Python 只核对 JSON 结构/身份/完整性，最终证据仍包含原 24 张正式 PNG。
+
+```mermaid
+flowchart TD
+  Window[真实 UIWindow safeAreaInsets] --> SceneInsets[GameScene 尺寸与 inset]
+  Page[当前 HudPage] --> Layout[HUDLayout 生产框与 route]
+  SceneInsets --> Layout
+  Layout --> Draw[左页轨 / 收口 dock / 紧凑顶栏 / 有界面板 / 分带小地图]
+  Layout --> Touch[双指优先后单指 route]
+  Touch --> Inert[静态卡与 gap inert / pending 不变]
+  Touch --> Command[既有 page / action / zoom / map / world]
+  Layout --> SwiftContract[现有 prewarm 内五尺寸乘五页检查]
+  SwiftContract --> Restore[恢复实际场景与状态]
+  Restore --> JSON[hud-layout-contract.json 带 run SHA attempt PID]
+  JSON --> Read[共享 deadline 内有界 get_app_container 后直接读]
+  Read --> Gate[runner 与 metadata 独立复核 / manifest 与 JUnit gate]
+  Read --> Capture[保留原24 launch PID PNG / 所有等待]
+  Capture --> Gate
+```

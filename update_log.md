@@ -6040,3 +6040,25 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - 在底部单排命令栏的页签与上下文动作按钮之间增加低对比青色分隔线，强化 `TACT / BUILD / AIR / SEA / SUP` 导航与当前页命令的阅读层级。
 - 分隔线只属于 HUD 渲染，不改变按钮 hit frame、命令路由、pending 状态、迷雾或战斗逻辑。
 - 本轮等待 GitHub Actions generic iOS build、模拟器启动探针和 24 张截图 artifact 验收。
+
+
+### v5.54 / 正向截图与 HUD 迷雾隔离正式验收
+
+日期：2026-10-22
+
+- 实现 main commit `29b43d674cee6c17f6535d61c2971c8dace91961`；v5.53 因正式截图倒置180度与 fog 遮 HUD 未通过 C，未计成功轮次。v5.54 把 HUD 根提升至 z10000，portrait 采用有界270度规范化、native landscape不变，并由同一入口执行真实sips角点回归。
+- C 已下载并独立核对最新 run `39802364105` attempt1：artifact `desert-frontline-ci-v5.54-main-29b43d674cee-run39802364105-attempt1`，ID `12438051136`，未加密ZIP 30,444,103 bytes、46 entries、CRC通过；SHA256/API digest `ad2f1bc1f2fff6c2dbc5ba8010b2835fd82f2b6733bd26d24b766f43f0b92305`。缓存保留在 `/private/tmp/desert-frontline-c-review-39802364105/`。
+- 身份/manifest/JUnit/log/xcresult、26项调度/证据/规范化回归、24项raw/角度/final PNG哈希与真实PID核对通过；全部正式PNG无需二次旋转，底部命令栏正向、HUD不再受fog遮挡，世界迷雾仍在。JUnit 6case / 0failure / 1真实跳过XCTest。独立5项watchdog检查通过。C结论通过，无C补代码提交。
+- generic build 39.1s、sim SDK build 33.623s；首bootstatus在240.656s超时，同一设备shutdown/retry后75.490s成功；prewarm launch7.510s/既有通知等待90.100s。attack-move截图109.670s、naval42.058s、mobile-AA39.709s；work1065.448/1080s仅余14.552s，cleanup28.109s，总1093.558s。未见cleanup warning；证据指向hosted启动/I/O抖动，不是已证实的编译卡死，也不代表流水线始终快速稳定。
+- 这份通过结论只覆盖v5.54该SHA/run，不替代下一版验收。没有在本机编译、运行或测试，也没有新增设备/外部依赖。
+
+### v5.55 / 战场优先 HUD 与安全区重排（待本轮云端验收）
+
+日期：2026-10-22
+
+- 将原先底部五页与动作同排、巨型金币/资源卡、THEATER/LIVE装饰重排为36pt顶栏、左五页轨、底部当前动作收口dock、有界任务/消息、统一选择/队列与右侧分带小地图。compact选择限宽340pt、大屏420pt，AIR/SEA不再留下全宽空dock；使用克制石墨灰/沙金与内置字体层级，不引入素材。
+- `GameView.swift` 被动读取真实UIWindow safeAreaInsets；`GameScene.swift` 的生产HUDLayout统一框、route与地图正逆投影，44pt交互目标和静态面板/rail/dock gap inert，保留双指优先、全部26动作、五页、费用/来源、队列、目标血条与pending高亮、z10000。未改经济/AI/移动/战斗/迷雾/潜艇规则或地图/单位模型。
+- 同一成功prewarm内运行生产同源Swift 25尺寸/页矩阵，恢复实际场景后输出hud-layout-contract.json。CI只做schema/身份/完整性验证而不复算几何；报告含实际窗口inset、生产框、九类断言与面板面积比例，并进入runner/metadata、manifest、JUnit和最终gate。缺失/失败留证并保持原24图与全部等待/预算；新增11项负例，不本机运行回归。
+- 关键文件：GameScene.swift、GameView.swift、ci/simulator_probe.py、ci/package_results.py、ci/check_probe_runner.py、README、flow/flowchart、test和本轮版本提示词。用户pbxproj两行Team ID与既有未跟踪内容未动、未提交。
+- 本机仅做Python AST与git diff --check等静态检查；本轮generic iOS build、实际25组合结果、24正式PNG与视觉效果待最新云端结果包由C验收，不提前写通过。契约不是多尺寸真实触摸/截图认证；hosted boot/I/O与14.552s历史余量风险仍在。
+- 这是总目标的首个实质界面空间重构增量，不是完全复刻或总目标完成。后续地图材质/海岸、单位模型及陆海空打击视觉仍需独立真正重做，不能用微装饰或本轮UI取代。

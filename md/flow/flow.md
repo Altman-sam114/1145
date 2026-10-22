@@ -92,7 +92,7 @@ Mechanic 实体另持有预创建的 `mechanicRepairEffectNode`，由阵营化�
 
 小地图下方的 `−` / `+` 是独立的 HUD 命中区域，调用 `adjustCameraZoom(by:)` 复用 `minCameraScale`、`maxCameraScale` 和 `clampCamera`，并刷新小地图 camera box；它们不属于 `HudAction`，不会穿透为世界点击或清理 pending 命令。
 
-底部命令条使用 `HudPage` 把 26 个 `HudAction` 分成五个单排页面：`TACT` 为选军、`G1` / `G2`、`HOLD`、`STOP`、`TGT`、`AMOV`、`RLY`、HQ；`BUILD` 为陆军生产和 `BASE`；`AIR` 为 HELI / JET；`SEA` 为 SHIP / SUB / CV；`SUP` 为四种支援、AI 难度和重开 skirmish。切页只重建 HUD，不清理选中单位、队列或 pending 命令；隐藏页面含 armed 动作时页签继续显示 stroke/glow，高亮语义仍来自原 pending 状态。当前可见页签与动作保留独立视觉 frame，并按固定页面 / 动作顺序查询互不重叠、至少 44pt 的语义 hit frame；命令条横向边界和按钮行内的 gap 由 HUD inert guard 消费，不穿透 minimap 或世界，也不清除 pending。 HUD 由 `HUDPalette` 统一为深色玻璃底、沙金任务强调、青色地图/选择信息和红橙告警；`layoutHUD()` 创建独立顶部资源条、任务卡、消息胶囊、状态卡、小地图、选择卡和底部 command dock，`updateHUD()` 仍只刷新既有文字与状态节点。视觉 frame 与语义 hit frame 继续分离，HUD 视觉重建不会增加或绕过任何命令状态。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射：TACT 九种战术命令，BUILD 六种陆军/建造，AIR 两种飞机，SEA 三种舰艇，SUP 六种支援/设置。`HUDLayout(size:insets:page:)` 是生产绘制、单指命中和云端契约的共同框来源；左侧五页竖轨常驻，底部 dock 按当前页动作总宽收口，顶部 36pt 资源条，任务/消息独立有界，选择/队列共用限宽容器，右侧小地图分 header/legend、裁剪内容、44pt zoom footer。`WindowSafeAreaObserver` 被动读取真实 UIWindow inset，经场景重建同一布局，不使用忽略安全区的 GeometryReader inset。`touchesBegan` 保持双指优先；单指进入同源 route（page/action/zoom/map/inert/world），所有静态面板、rail/dock 间隙与安全框外区域 inert，不穿透世界或清除 pending。切页只重建 HUD，保留选择、队列和互斥 pending；active/armed 用克制金色边线。`HUDPalette` 统一石墨灰/沙金，移除巨型金币、THEATER 与重复 LIVE 装饰；有界文本 fitting 仅影响显示。
 
 ### `AIDifficulty`
 
@@ -193,11 +193,13 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 
 ### HUD / 小地图
 
-- `hudNode` 根 z=10000，高于 world/map/entity/effects 与累计最高约 1411.8 的 fog tile（fogLayer 300 加 child 的 1000 与地图深度）；只提升 HUD 显示层，内部布局、触控和迷雾认知/alpha 不变。
+- `hudNode` 根 z=10000，高于 world/map/entity/effects 与累计最高约 1411.8 的 fog tile（fogLayer 300 加 child 的 1000 与地图深度）；HUD 布局/触控由同源 `HUDLayout` 决定，迷雾认知/alpha 不变。
 - HUD 每帧由 `updateHUD()` 汇总金钱、收入、队列、任务、兵力、AI 状态、选择信息和按钮状态。
 - `updateMinimap()` 仍按既有 `isKnownToFaction(...)` 过滤并重建 blip；海军菱形和空军三角额外挂载少量只读朝向齿，优先读取合法已知 `attackTarget`，再读取 `attackMoveDestination` / `destination` / `path.last`，无意图时回退 `node.xScale`。选中的 Blue 海空单位仅在合法已知目标或 `incomingThreatsByTargetID` 存在时显示短红色目标齿 / 琥珀来袭齿，不改变小地图点击、迷雾、命令、战斗或实体状态。
 - 选择信息面板仍由 `singleSelectionInfo(...)` / `groupSelectionInfo(...)` 提供事实 rows；`updateSelectionInfoPanel(...)` 只在写入四/五个单行 label 时集中执行海空高频 token 短码（如 `ASW`、`SON`、`Rld`、`RLY`、`GW`、`Esc`）和基于缓存面板宽度的有界字号 / 水平 fitting。该适配不改颜色索引、目标血条、HP / 目标 / 距离 / ready / incoming / Carrier deck 与 guard 状态，也不改变触控、战斗、声呐、迷雾或生产。
-- `layoutHUD()` 在横屏使用固定单排命令区，五个 `HudPage` 页签常驻，当前页最多 9 个动作；紧凑尺寸下页签宽 44、动作按可用宽度在 40...76 之间稳定布局，命令区高度由旧双排约 114 降为 54，当前 26 个动作仍且只出现于一个页面。`SKRM` 重开恢复 `TACT`；CI capture 可用 `DESERT_CI_HUD_PAGE` 只覆盖初始显示页，不改变普通启动默认值。
+- `layoutHUD()` 重建时清空节点、按钮/页框、样式与文本引用，按 `HUDLayout` 创建左五页轨与底部当前动作；交互宽高至少 44pt。compact 选择容器限宽 340pt、大屏 420pt；较少动作页的 dock 不保留全宽空卡。`SKRM` 恢复 TACT，`DESERT_CI_HUD_PAGE` 仅覆盖 capture 初始页。
+- 小地图地形、blip、相机框在同一 crop 下，`minimapFrame` 仅代表可点击内容带；投影与逆换算委托 `HUDLayout.mapPoint/worldPoint`，header/footer 不参与聚焦。
+- prewarm 唯一进程可通过 `DESERT_CI_HUD_CONTRACT=1` 运行同源 Swift 五尺寸乘五页契约，记录框/route/标签/重建、静态触摸与切页状态不变和面积比例；完成后恢复实际尺寸/inset、页、选择、队列、pending、相机、消息与触摸起点，写 Documents/hud-layout-contract.json。正式 24 capture launch 禁用此入口。报告仅是布局/路由契约，不是真实触摸或多尺寸截图认证。
 - AI 状态行默认用 `R# F# AI ...` 显示 Red 兵力、旗点和难度；Red routine 主攻波成功下发且至少一个 wave 单位对玩家已知后，难度位置会临时替换为最近可感知 wave 子集的 `Seen n Lx/Ax/Nx` 短构成摘要，用于提示玩家 Red 已暴露推进部队的混编规模和 CV / HEL / JET 参与情况，约 12 秒后恢复难度显示；`Seen n` 只代表玩家已知子集数量，不代表完整主攻波规模。
 - 任务面板在 `Secure Coast` 阶段显示 operational coastal asset 总进度，并用 `SY` / `SON` / `CB` 摘要显示玩家已完工 Shipyard、Sonar Buoy 和 Coastal Battery 数量；该摘要只来自玩家己方已完工存活建筑，不改变任务条件、奖励或 AI。
 - `G1` / `G2` subtitle 显示 `empty` 或当前 live 玩家机动单位数量；控制组只保存实体 ID，不保存单位快照、命令、位置或状态。

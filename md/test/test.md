@@ -112,7 +112,18 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - runner 与 metadata 共用校验要求原始元数据完整、portrait 角度为 270 且最终宽高互换、native landscape 角度为 0 且元数据完全一致；缺项/错角/错尺寸/最终图 SHA 不符均失败。结构校验不能自动证明 App 的真实文字朝向。
 - `ci/check_probe_runner.py` 保留原 16 项调度/完整性测试并增加 raw/角度/policy/尺寸/未旋转原图一致性负路径；独立 normalization suite 使用标准库生成 2x3 不对称 RGB fixture，经真实云端 sips 后用小型 PNG 反过滤解码核对完整 3x2 像素位置（`A B / C D / E F -> B D F / A C E`），另证实 native landscape 不执行命令、SHA/像素不变和 square 被拒绝。日志及 `ci-regression-results.json` 分开记录各 suite、真实 sips fixture 元数据/期望/实际像素及真实用例结果。
 - HUD 根 z=10000，超过 fogLayer 300 加每格 `1000 + zPosition(center)` 的当前约 1411.8 上界，也高于当前地图/实体/效果子树；不改 fog alpha、认知集合或潜艇链路。C 必须目视全部 24 官方 PNG 无需额外旋转、文字正向、命令栏在底部，TACT/BUILD、THEATER/minimap、选择卡不再被 fog 黑三角覆盖，战场未知区仍有迷雾。不得用本地旋转审阅副本代替官方 PNG。
-- 270 策略仅由已审阅 hosted iPhone 17 / iOS 26.5 证据支持，不代表任意未来 runtime 自动识别；固定 capture 不代表多尺寸、触控或动态玩法认证。v5.53 CI 技术项通过但 C 整体不通过；v5.54 须用本轮最新 main/run/attempt 官方 ZIP 与 24 图重新验收，未完成前只能记录待验收。
+- 270 策略仅由已审阅 hosted iPhone 17 / iOS 26.5 证据支持，不代表任意未来 runtime 自动识别；固定 capture 不代表多尺寸、触控或动态玩法认证。v5.53 CI 技术项通过但 C 整体不通过；v5.54 已由 C 下载 run `39802364105` attempt 1 的正式 ZIP、核对 26 项回归与全部 24 张正向 PNG 后通过（详见 update_log）。后续版本必须重新验收其最新 run，不能沿用这份通过结论。
+
+### v5.55 战场优先布局与同源云端契约
+
+- 本轮仅云端编译/运行/测试，本机只允许 git diff、AST/YAML/文本静态检查。保留 24 项权威探针、等待、270/0 规范化、单一 hosted 设备和 1080s work / 90s cleanup / 1260s step hard limit，不增 launch/capture/device。
+- 成功 prewarm launch 通过环境传递 run/SHA/attempt/version 并仅开启一次 Swift 契约；场景确认真实 UIWindow inset、实际 SpriteView 尺寸和横屏后，用生产 `HUDLayout` 与 `consumeHUDTouch/handleHudPage` 检查五尺寸乘五页：667×375 零 inset；852×393 左右59、底21；874×402 使用实际设备 inset；1024×768、1366×1024 零 inset。
+- 每组合九类检查：`controls` 最少44pt/安全框/互斥；`containers` 顶层互斥和子槽归属；`bands` 小地图三带/44pt缩放；`routing` page/action/zoom/map/inert/world；`pending` 静态卡/rail与dock gap不改状态及模式互斥；`pageState` 实际切页保留选择/队列/pending；`roundTrip` 生产地图正逆投影；`labels` 长文字与实际行有界；`rebuild` 节点数稳定且无旧页命中。四类 pending 模式及空态分布在每个尺寸的五页场景，不执行生产/战斗动作。
+- 输出 App Documents/hud-layout-contract.json，含 schema1、producer=GameScene.HUDLayout、run/SHA/attempt/version/PID、实际尺寸/inset、25个组合的生产框/检查/失败/面板面积与视口比例、实际场景恢复结果。检查后恢复尺寸/inset、页、选择、队列、pending、相机、消息和触摸起点；正式 24 launch 禁用契约，不带合成状态。
+- prewarm既有90秒等待后，在同一 deadline 内以15秒cap调用 get_app_container 并直接读取最多1MiB报告；复制正式JSON并记录bytes/SHA256/PID。Python不复算几何，只复核生产来源、完整25组合/九类断言、fixture元数据、身份/PID、恢复标识及文件哈希；contract语义失败保留报告和失败记录，尚有预算时继续原24图，最终gate必失败，不能以截图通过覆盖。
+- runner与metadata分别复核，报告进入 manifest 的 hudLayoutContractPath/outcome、projectSpecificReports、JUnit和失败摘要。JUnit新增 hud-layout-contract，正常结构为7 case / 0 failure / 1 skipped XCTest；失败缺报仍留证。新增11个schema/身份/缺报/篡改/漏断言/未恢复/未完成采集负例，保留26项既有回归，实际结果以云端 ci-regression-results.json 为准；schema单测使用明确标记的synthetic fixture，不是另一个布局或真实模拟器证据。
+- C独立检查最新未加密ZIP、全部24张正式PNG和契约身份/25组合：左五页轨和当前动作dock、36pt资源条、任务/消息、限宽选择队列、分带地图、费用/来源与armed/disabled状态可读，原陆海空/迷雾无回退。用panelAreaFraction客观复核占屏，不因无重叠就宣称战场面积已改善。几何路由契约不等于真实触摸、多尺寸截图、动态战斗或真机性能认证。
+- 性能风险继续保留：v5.54 work 1065.448/1080s仅余14.552s；慢点在hosted boot与截图I/O，不能说编译已持续快速稳定。本轮不放宽超时掩盖问题。
 
 ### 触发条件
 

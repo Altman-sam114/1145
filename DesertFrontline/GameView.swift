@@ -1,5 +1,6 @@
 import SpriteKit
 import SwiftUI
+import UIKit
 
 struct GameView: View {
     @StateObject private var holder = SceneHolder()
@@ -9,6 +10,9 @@ struct GameView: View {
             SpriteView(scene: holder.scene, preferredFramesPerSecond: 60)
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .background(Color.black)
+                .background(WindowSafeAreaObserver { insets in
+                    holder.scene.updateWindowSafeAreaInsets(insets)
+                })
                 .onAppear {
                     holder.resizeScene(to: proxy.size)
                 }
@@ -18,6 +22,42 @@ struct GameView: View {
         }
         .background(Color.black)
         .ignoresSafeArea()
+    }
+}
+
+private struct WindowSafeAreaObserver: UIViewRepresentable {
+    var onChange: (UIEdgeInsets) -> Void
+
+    func makeUIView(context: Context) -> SafeAreaView {
+        let view = SafeAreaView()
+        view.isUserInteractionEnabled = false
+        view.onChange = onChange
+        return view
+    }
+
+    func updateUIView(_ uiView: SafeAreaView, context: Context) {
+        uiView.onChange = onChange
+        uiView.reportInsets()
+    }
+
+    final class SafeAreaView: UIView {
+        var onChange: ((UIEdgeInsets) -> Void)?
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            reportInsets()
+        }
+        override func safeAreaInsetsDidChange() {
+            super.safeAreaInsetsDidChange()
+            reportInsets()
+        }
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            reportInsets()
+        }
+        func reportInsets() {
+            guard let window else { return }
+            onChange?(window.safeAreaInsets)
+        }
     }
 }
 

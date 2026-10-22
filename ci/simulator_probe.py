@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import plistlib
@@ -18,6 +19,10 @@ from run_bounded import run_bounded
 
 
 NORMALIZATION_POLICY = "hosted-portrait-270-native-landscape-0-v1"
+HUD_CHECKS = {"controls", "containers", "bands", "routing", "pending", "pageState", "roundTrip", "labels", "rebuild"}
+HUD_FIXTURES = {"667x375": (667, 375), "852x393": (852, 393), "874x402": (874, 402),
+                "1024x768": (1024, 768), "1366x1024": (1366, 1024)}
+HUD_PAGES = {"tactical", "build", "air", "naval", "support"}
 
 
 class ProbeFailure(Exception):
@@ -113,7 +118,80 @@ def validate_normalization(record):
         raise ProbeFailure("Square screenshot cannot establish landscape normalization")
 
 
+def validate_hud_contract(summary, directory):
+    """Validate Swift-produced evidence/identity, never duplicate HUD geometry in Python."""
+    path = directory / "hud-layout-contract.json"
+    if not 0 < path.stat().st_size <= 1_048_576:
+        raise ProbeFailure("HUD contract missing, empty or oversized")
+    data = path.read_bytes()
+    report = json.loads(data)
+    evidence = summary.get("hudContract", {})
+    if (evidence.get("path") != path.name or evidence.get("bytes") != len(data)
+            or evidence.get("sha256") != hashlib.sha256(data).hexdigest()):
+        raise ProbeFailure("HUD contract file integrity mismatch")
+    if report.get("schemaVersion") != 1 or report.get("producer") != "GameScene.HUDLayout":
+        raise ProbeFailure("HUD contract schema/production source mismatch")
+    for key in ("commitSha", "runId", "runAttempt", "version"):
+        if not summary.get(key) or report.get(key) != summary[key]:
+            raise ProbeFailure(f"HUD contract stale/missing identity: {key}")
+    producers = [item.get("pid") for item in summary.get("prewarm", [])
+                 if item.get("status") == "success" and item.get("aliveAfterWait") is True]
+    if (type(report.get("pid")) is not int or report["pid"] <= 0
+            or report["pid"] not in producers or evidence.get("pid") != report["pid"]):
+        raise ProbeFailure("HUD contract producer is not the successful live prewarm PID")
+    if report.get("status") != "success" or report.get("stateRestored") is not True:
+        raise ProbeFailure("HUD contract failed or actual scene state was not restored")
+
+    def finite_positive(value):
+        return type(value) in (int, float) and math.isfinite(value) and value > 0
+
+    def rectangle(value):
+        return (isinstance(value, dict) and set(value) == {"x", "y", "width", "height"}
+                and all(type(number) in (int, float) and math.isfinite(number) for number in value.values())
+                and value["width"] > 0 and value["height"] > 0)
+
+    actual = report.get("actualSize", {})
+    insets = report.get("actualInsets", {})
+    if (not all(finite_positive(actual.get(key)) for key in ("width", "height"))
+            or actual["width"] <= actual["height"]
+            or set(insets) != {"top", "left", "bottom", "right"}
+            or not all(type(value) in (int, float) and math.isfinite(value) and value >= 0 for value in insets.values())):
+        raise ProbeFailure("HUD contract actual window geometry missing/invalid")
+    matrix = report.get("matrix", [])
+    if len(matrix) != 25:
+        raise ProbeFailure("HUD contract must contain all 25 size/page combinations")
+    seen = set()
+    for item in matrix:
+        key = (item.get("fixture"), item.get("page"))
+        if key in seen or key[0] not in HUD_FIXTURES or key[1] not in HUD_PAGES:
+            raise ProbeFailure("HUD contract duplicate/unknown fixture/page")
+        seen.add(key)
+        width, height = HUD_FIXTURES[key[0]]
+        expected_insets = (insets if key[0] == "874x402" else
+                           {"top": 0, "left": 59, "bottom": 21, "right": 59} if key[0] == "852x393" else
+                           {"top": 0, "left": 0, "bottom": 0, "right": 0})
+        if item.get("size") != {"width": width, "height": height} or item.get("insets") != expected_insets:
+            raise ProbeFailure(f"HUD contract fixture metadata mismatch: {key}")
+        checks = item.get("checks", {})
+        if (set(checks) != HUD_CHECKS or any(value is not True for value in checks.values())
+                or item.get("status") != "success" or item.get("failures") != []):
+            raise ProbeFailure(f"HUD contract assertions failed/incomplete: {key}")
+        panels, controls = item.get("panels", {}), item.get("controls", {})
+        required_controls = {f"page:{page}" for page in HUD_PAGES} | {"zoomOut", "zoomIn", "map"}
+        if (set(panels) != {"resources", "rail", "dock", "mission", "message", "selection", "minimap"}
+                or not required_controls <= set(controls) or not any(key.startswith("action:") for key in controls)
+                or not rectangle(item.get("safeFrame"))
+                or not all(rectangle(value) for value in [*panels.values(), *controls.values()])
+                or not all(finite_positive(item.get(field)) for field in ("panelArea", "viewportArea", "panelAreaFraction"))
+                or item["panelAreaFraction"] >= 1):
+            raise ProbeFailure(f"HUD contract frame/area evidence incomplete: {key}")
+    return report
+
+
 def validate_results(probes, summary, directory):
+    validate_hud_contract(summary, directory)
+    if summary.get("hudContract", {}).get("status") != "success":
+        raise ProbeFailure("HUD contract collection/validation did not complete")
     records = summary.get("probes", [])
     if len(records) != len(probes):
         raise ProbeFailure("Missing/extra probe records")
@@ -256,13 +334,44 @@ class Runner:
         env.update(SIMCTL_CHILD_DESERT_CI_CAPTURE_MODE="1",
                    SIMCTL_CHILD_DESERT_CI_HUD_PAGE=definition["page"],
                    SIMCTL_CHILD_DESERT_CI_COMMAND_MARKER=definition["marker"],
-                   SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=definition["focus"])
+                   SIMCTL_CHILD_DESERT_CI_CAMERA_FOCUS=definition["focus"],
+                   SIMCTL_CHILD_DESERT_CI_HUD_CONTRACT="1" if name.startswith("prewarm:") else "0",
+                   SIMCTL_CHILD_DESERT_CI_COMMIT_SHA=self.summary["commitSha"],
+                   SIMCTL_CHILD_DESERT_CI_RUN_ID=self.summary["runId"],
+                   SIMCTL_CHILD_DESERT_CI_RUN_ATTEMPT=self.summary["runAttempt"],
+                   SIMCTL_CHILD_DESERT_CI_VERSION=self.summary["version"])
         output = self.simctl(name, "launch", "--terminate-running-process", self.device["udid"], self.bundle,
                              cap=120, env=env)
         matches = re.findall(rf"^{re.escape(self.bundle)}:\s*(\d+)\s*$", output, re.MULTILINE)
         if len(matches) != 1 or not alive(int(matches[0])):
             raise ProbeFailure(f"{name} did not return one live app PID")
         return int(matches[0])
+
+    def collect_hud_contract(self, pid):
+        output = self.simctl("hud-contract-container", "get_app_container", self.device["udid"], self.bundle, "data", cap=15)
+        with self.stage("hud-contract-read-and-validate"):
+            self.remaining()
+            paths = [line.strip() for line in output.splitlines() if line.strip().startswith("/")]
+            if len(paths) != 1:
+                raise ProbeFailure("Expected exactly one app data container path")
+            container = paths[0]
+            source = Path(container) / "Documents" / "hud-layout-contract.json"
+            if not Path(container).is_absolute() or not 0 < source.stat().st_size <= 1_048_576:
+                raise ProbeFailure("HUD contract not produced by prewarm or too large")
+            data = source.read_bytes()
+            (self.directory / "hud-layout-contract.json").write_bytes(data)
+            self.summary["hudContract"] = {"path": "hud-layout-contract.json", "pid": pid,
+                                           "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "status": "collected"}
+            try:
+                report = validate_hud_contract(self.summary, self.directory)
+                self.summary["hudContract"].update(status="success", cases=len(report["matrix"]), actualSize=report["actualSize"],
+                                                    actualInsets=report["actualInsets"])
+                self.remaining()
+            except BaseException as error:
+                self.summary["hudContract"].update(status="failure", error=str(error))
+                raise
+            finally:
+                self.save()
 
     def normalize_screenshot(self, name, path, record):
         with self.stage(f"{name}:png-check"):
@@ -369,6 +478,16 @@ class Runner:
                 if attempt == 3 or error.code >= 128:
                     raise
                 self.wait("prewarm-retry-wait", 20)
+        try:
+            self.collect_hud_contract(record["pid"])
+        except Exception as error:
+            if getattr(error, "code", 1) >= 128:
+                raise
+            self.summary.setdefault("hudContract", {}).update(status="failure", error=str(error))
+            print(f"[hud-contract] FAILURE retained for final gate: {error}", flush=True)
+            self.save()
+            self.remaining()
+            # Keep the original captures useful for review even when the contract is red.
         self.simctl("prewarm-terminate", "terminate", udid, self.bundle)
         self.wait("prewarm-settle", 5)
         for index, probe in enumerate(self.probes):

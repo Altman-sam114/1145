@@ -614,17 +614,128 @@ private enum HudPage: String, CaseIterable {
     }
 }
 
-/// Shared HUD palette: one restrained command-console language for every page.
-/// The colors are intentionally duplicated here instead of in gameplay state so
-/// a resize/rebuild never creates a second source of truth for the command flow.
+private enum HUDRoute: Equatable {
+    case page(HudPage), action(HudAction), zoomOut, zoomIn, map, inert, world
+}
+
+/// Production drawing, touch routing and the cloud contract share these frames.
+private struct HUDLayout {
+    let safe: CGRect
+    let compact: Bool
+    let panels: [String: CGRect]
+    let slots: [String: CGRect]
+    let pages: [HudPage: CGRect]
+    let actions: [HudAction: CGRect]
+
+    init(size: CGSize, insets: UIEdgeInsets, page: HudPage) {
+        let safe = CGRect(x: -size.width / 2 + insets.left + 6,
+                          y: -size.height / 2 + insets.bottom + 6,
+                          width: size.width - insets.left - insets.right - 12,
+                          height: size.height - insets.top - insets.bottom - 12)
+        self.safe = safe
+        let compact = safe.height < 500
+        self.compact = compact
+        let top = CGRect(x: safe.minX, y: safe.maxY - 36, width: safe.width, height: 36)
+        let actionGap: CGFloat = compact ? 4 : 6
+        let buttonWidth = min(compact ? 88 : 100, (safe.width - 12 - CGFloat(page.actions.count - 1) * actionGap) / CGFloat(page.actions.count))
+        let dockWidth = 12 + CGFloat(page.actions.count) * buttonWidth + CGFloat(page.actions.count - 1) * actionGap
+        let dock = CGRect(x: safe.minX, y: safe.minY, width: dockWidth, height: compact ? 64 : 76)
+        let railWidth: CGFloat = compact ? 56 : 66
+        let pageHeight: CGFloat = compact ? 44 : 50
+        let pageGap: CGFloat = compact ? 3 : 6
+        let railHeight = 10 + pageHeight * 5 + pageGap * 4
+        let rail = CGRect(x: safe.minX, y: top.minY - 6 - railHeight, width: railWidth, height: railHeight)
+        let mapWidth = min(196, max(156, safe.width * 0.22))
+        let mapHeight = min(126, max(84, safe.height * 0.24))
+        let mapPanel = CGRect(x: safe.maxX - mapWidth, y: top.minY - 6 - mapHeight - 88,
+                              width: mapWidth, height: mapHeight + 88)
+        let centerX = rail.maxX + 8
+        let centerWidth = mapPanel.minX - 8 - centerX
+        let mission = CGRect(x: centerX, y: top.minY - 60, width: min(460, centerWidth), height: 54)
+        let message = CGRect(x: centerX, y: mission.minY - 28, width: min(540, centerWidth), height: 22)
+        let selection = CGRect(x: centerX, y: dock.maxY + 6, width: min(compact ? 340 : 420, centerWidth), height: compact ? 112 : 140)
+        panels = ["resources": top, "rail": rail, "dock": dock, "mission": mission,
+                  "message": message, "selection": selection, "minimap": mapPanel]
+
+        let content = CGRect(x: mapPanel.minX + 6, y: mapPanel.minY + 56,
+                             width: mapWidth - 12, height: mapHeight)
+        let header = CGRect(x: mapPanel.minX + 6, y: content.maxY + 4, width: mapWidth - 12, height: 24)
+        let footer = CGRect(x: mapPanel.minX + 6, y: mapPanel.minY + 6, width: mapWidth - 12, height: 44)
+        let mapOut = CGRect(x: footer.maxX - 92, y: footer.minY, width: 44, height: 44)
+        let mapIn = CGRect(x: footer.maxX - 44, y: footer.minY, width: 44, height: 44)
+        let innerTop = top.insetBy(dx: 10, dy: 6)
+        let moneyWidth = innerTop.width * 0.16
+        let incomeWidth = innerTop.width * 0.30
+        let forcesWidth = innerTop.width * 0.15
+        var slots: [String: CGRect] = [
+            "map": content, "mapHeader": header, "mapFooter": footer,
+            "mapTitle": CGRect(x: header.minX, y: header.maxY - 12, width: header.width, height: 12),
+            "mapLegend": CGRect(x: header.minX, y: header.minY, width: header.width, height: 10),
+            "zoomOut": mapOut, "zoomIn": mapIn,
+            "mapScale": CGRect(x: footer.minX, y: footer.minY, width: max(20, mapOut.minX - footer.minX - 4), height: 44),
+            "money": CGRect(x: innerTop.minX, y: innerTop.minY, width: moneyWidth - 6, height: innerTop.height),
+            "income": CGRect(x: innerTop.minX + moneyWidth, y: innerTop.minY, width: incomeWidth - 6, height: innerTop.height),
+            "forces": CGRect(x: innerTop.minX + moneyWidth + incomeWidth, y: innerTop.minY, width: forcesWidth - 6, height: innerTop.height),
+            "ai": CGRect(x: innerTop.minX + moneyWidth + incomeWidth + forcesWidth, y: innerTop.minY,
+                         width: innerTop.width - moneyWidth - incomeWidth - forcesWidth, height: innerTop.height),
+            "missionTitle": CGRect(x: mission.minX + 10, y: mission.maxY - 19, width: mission.width - 20, height: 14),
+            "missionDetail": CGRect(x: mission.minX + 10, y: mission.minY + 15, width: mission.width - 20, height: 18),
+            "messageText": message.insetBy(dx: 8, dy: 3),
+            "selectionTitle": CGRect(x: selection.minX + 10, y: selection.maxY - 20, width: selection.width - 20, height: 16),
+            "selected": CGRect(x: selection.minX + 10, y: selection.maxY - 34, width: selection.width - 20, height: 12),
+            "queue": CGRect(x: selection.minX + 10, y: selection.minY + 11, width: selection.width - 20, height: 12)
+        ]
+        for index in 0..<(compact ? 4 : 5) {
+            slots["row\(index)"] = CGRect(x: selection.minX + 10,
+                y: selection.maxY - 49 - CGFloat(index) * (compact ? 13 : 16),
+                width: selection.width - 20, height: compact ? 12 : 14)
+        }
+        self.slots = slots
+        var pages: [HudPage: CGRect] = [:]
+        for (index, tab) in HudPage.allCases.enumerated() {
+            pages[tab] = CGRect(x: rail.minX + 5, y: rail.maxY - 5 - pageHeight - CGFloat(index) * (pageHeight + pageGap),
+                               width: rail.width - 10, height: pageHeight)
+        }
+        self.pages = pages
+        var actions: [HudAction: CGRect] = [:]
+        for (index, action) in page.actions.enumerated() {
+            actions[action] = CGRect(x: dock.minX + 6 + CGFloat(index) * (buttonWidth + actionGap),
+                                     y: dock.minY + 6, width: buttonWidth, height: dock.height - 12)
+        }
+        self.actions = actions
+    }
+
+    func route(at point: CGPoint) -> HUDRoute {
+        if let page = HudPage.allCases.first(where: { pages[$0]?.contains(point) == true }) { return .page(page) }
+        if let action = HudAction.allCases.first(where: { actions[$0]?.contains(point) == true }) { return .action(action) }
+        if slots["zoomOut"]!.contains(point) { return .zoomOut }
+        if slots["zoomIn"]!.contains(point) { return .zoomIn }
+        if slots["map"]!.contains(point) { return .map }
+        if !safe.contains(point) || panels.values.contains(where: { $0.contains(point) }) { return .inert }
+        return .world
+    }
+
+    func mapPoint(_ point: CGPoint, from bounds: CGRect) -> CGPoint {
+        let frame = slots["map"]!
+        return CGPoint(x: frame.minX + min(max((point.x - bounds.minX) / max(bounds.width, 1), 0), 1) * frame.width,
+                       y: frame.minY + min(max((point.y - bounds.minY) / max(bounds.height, 1), 0), 1) * frame.height)
+    }
+
+    func worldPoint(_ point: CGPoint, in bounds: CGRect) -> CGPoint {
+        let frame = slots["map"]!
+        return CGPoint(x: bounds.minX + min(max((point.x - frame.minX) / frame.width, 0), 1) * bounds.width,
+                       y: bounds.minY + min(max((point.y - frame.minY) / frame.height, 0), 1) * bounds.height)
+    }
+}
+
 private enum HUDPalette {
-    static let panel = UIColor(red: 0.035, green: 0.060, blue: 0.070, alpha: 0.94)
-    static let panelRaised = UIColor(red: 0.055, green: 0.085, blue: 0.092, alpha: 0.96)
-    static let panelDeep = UIColor(red: 0.018, green: 0.030, blue: 0.038, alpha: 0.97)
-    static let border = UIColor(red: 0.34, green: 0.62, blue: 0.64, alpha: 0.88)
-    static let borderSoft = UIColor(red: 0.44, green: 0.48, blue: 0.42, alpha: 0.72)
-    static let gold = UIColor(red: 0.96, green: 0.72, blue: 0.28, alpha: 1.0)
-    static let cyan = UIColor(red: 0.35, green: 0.90, blue: 0.86, alpha: 1.0)
+    static let panel = UIColor(red: 0.080, green: 0.090, blue: 0.087, alpha: 0.94)
+    static let panelRaised = UIColor(red: 0.13, green: 0.145, blue: 0.135, alpha: 0.97)
+    static let panelDeep = UIColor(red: 0.045, green: 0.052, blue: 0.049, alpha: 0.96)
+    static let border = UIColor(red: 0.44, green: 0.46, blue: 0.39, alpha: 0.65)
+    static let borderSoft = UIColor(red: 0.36, green: 0.39, blue: 0.35, alpha: 0.65)
+    static let gold = UIColor(red: 0.86, green: 0.74, blue: 0.47, alpha: 1.0)
+    static let cyan = UIColor(red: 0.55, green: 0.76, blue: 0.71, alpha: 1.0)
     static let warning = UIColor(red: 1.0, green: 0.42, blue: 0.27, alpha: 1.0)
     static let text = UIColor(red: 0.90, green: 0.94, blue: 0.91, alpha: 1.0)
     static let mutedText = UIColor(red: 0.62, green: 0.73, blue: 0.70, alpha: 1.0)
@@ -1071,6 +1182,12 @@ final class GameScene: SKScene {
     private var hudPageHitFrames: [HudPage: CGRect] = [:]
     private var hudPageShapes: [HudPage: SKShapeNode] = [:]
     private var hudCommandStripFrame = CGRect.zero
+    private var windowSafeAreaInsets = UIEdgeInsets.zero
+    private var hasWindowSafeArea = false
+    private var hudLayout: HUDLayout?
+    private var boundedHUDLabels: [(node: SKLabelNode, frame: CGRect, fontSize: CGFloat)] = []
+    private var didWriteHUDContract = false
+    private var hudContractStableWindow: (size: CGSize, insets: UIEdgeInsets, since: TimeInterval)?
     private var minimapFrame = CGRect.zero
     private var minimapBlipsNode = SKNode()
     private var minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 36, height: 24), cornerRadius: 2)
@@ -1118,6 +1235,10 @@ final class GameScene: SKScene {
     override func didMove(to view: SKView) {
         backgroundColor = UIColor(white: 0.04, alpha: 1.0)
         view.isMultipleTouchEnabled = true
+        if let window = view.window {
+            windowSafeAreaInsets = window.safeAreaInsets
+            hasWindowSafeArea = true
+        }
         if isCICaptureMode,
            let rawPage = ProcessInfo.processInfo.environment["DESERT_CI_HUD_PAGE"],
            let ciPage = HudPage(rawValue: rawPage) {
@@ -1176,10 +1297,20 @@ final class GameScene: SKScene {
         layoutHUD()
     }
 
+    func updateWindowSafeAreaInsets(_ insets: UIEdgeInsets) {
+        hasWindowSafeArea = true
+        guard windowSafeAreaInsets != insets else { return }
+        windowSafeAreaInsets = insets
+        guard !terrain.isEmpty else { return }
+        layoutHUD()
+        updateHUD()
+    }
+
     override func update(_ currentTime: TimeInterval) {
         if isCICaptureMode {
             lastUpdateTime = currentTime
             updateHUD()
+            writeHUDContractIfRequested(at: currentTime)
             return
         }
 
@@ -4359,6 +4490,7 @@ final class GameScene: SKScene {
     }
 
     private func layoutHUD() {
+        let lastMessage = (messageLabel.text, messageLabel.fontColor, messageLabel.alpha)
         hudNode.removeAllChildren()
         hudButtonFrames.removeAll()
         hudButtonHitFrames.removeAll()
@@ -4367,531 +4499,388 @@ final class GameScene: SKScene {
         hudPageFrames.removeAll()
         hudPageHitFrames.removeAll()
         hudPageShapes.removeAll()
-        hudCommandStripFrame = .zero
         selectionInfoRowLabels.removeAll()
+        boundedHUDLabels.removeAll()
+        missionProgressConnectors.removeAll()
+        missionProgressNodes.removeAll()
 
-        let halfW = size.width / 2
-        let halfH = size.height / 2
+        let layout = HUDLayout(size: size, insets: windowSafeAreaInsets, page: hudPage)
+        hudLayout = layout
+        hudCommandStripFrame = layout.panels["dock"]!
+        hudPageFrames = layout.pages
+        hudPageHitFrames = layout.pages
+        hudButtonFrames = layout.actions
+        hudButtonHitFrames = layout.actions
+        minimapFrame = layout.slots["map"]!
+        zoomOutHitFrame = layout.slots["zoomOut"]!
+        zoomInHitFrame = layout.slots["zoomIn"]!
 
-        let topPanel = SKShapeNode(rectOf: CGSize(width: 348, height: 82), cornerRadius: 14)
-        topPanel.fillColor = HUDPalette.panel
-        topPanel.strokeColor = HUDPalette.border
-        topPanel.lineWidth = 1.6
-        topPanel.position = CGPoint(x: -halfW + 194, y: halfH - 58)
-        hudNode.addChild(topPanel)
+        for key in ["resources", "rail", "dock", "mission", "message", "selection", "minimap"] {
+            let panel = SKShapeNode(rect: layout.panels[key]!, cornerRadius: key == "resources" ? 5 : 7)
+            panel.name = "hud-panel:\(key)"
+            panel.fillColor = key == "dock" || key == "rail" ? HUDPalette.panelDeep : HUDPalette.panel
+            panel.strokeColor = HUDPalette.borderSoft
+            panel.lineWidth = 0.75
+            hudNode.addChild(panel)
+        }
+        moneyLabel = makeHUDLabel(slot: "money", font: "AvenirNextCondensed-DemiBold", size: 20, color: HUDPalette.gold)
+        incomeLabel = makeHUDLabel(slot: "income", size: 10)
+        forcesLabel = makeHUDLabel(slot: "forces", size: 10, color: HUDPalette.cyan)
+        aiStatusLabel = makeHUDLabel(slot: "ai", size: 9, color: HUDPalette.mutedText)
+        missionTitleLabel = makeHUDLabel(slot: "missionTitle", font: "AvenirNextCondensed-DemiBold", size: 12, color: HUDPalette.gold)
+        missionDetailLabel = makeHUDLabel(slot: "missionDetail", size: 9)
+        messageLabel = makeHUDLabel(slot: "messageText", size: 10)
+        messageLabel.text = lastMessage.0
+        messageLabel.fontColor = lastMessage.1
+        messageLabel.alpha = lastMessage.2
+        selectedLabel = makeHUDLabel(slot: "selected", size: 9, color: HUDPalette.mutedText)
+        queueLabel = makeHUDLabel(slot: "queue", size: 9, color: HUDPalette.gold)
 
-        let topAccent = SKShapeNode(rectOf: CGSize(width: 4, height: 48), cornerRadius: 2)
-        topAccent.fillColor = HUDPalette.gold
-        topAccent.strokeColor = .clear
-        topAccent.position = CGPoint(x: -halfW + 29, y: halfH - 58)
-        hudNode.addChild(topAccent)
-
-        let commandTitle = SKLabelNode(fontNamed: "Menlo-Bold")
-        commandTitle.text = "DESERT FRONTLINE"
-        commandTitle.fontSize = 11
-        commandTitle.fontColor = HUDPalette.gold
-        commandTitle.horizontalAlignmentMode = .left
-        commandTitle.verticalAlignmentMode = .center
-        commandTitle.position = CGPoint(x: -halfW + 78, y: halfH - 27)
-        hudNode.addChild(commandTitle)
-
-        let commandSubtitle = SKLabelNode(fontNamed: "Menlo")
-        commandSubtitle.text = "BLUE COMMAND  /  LIVE OPS"
-        commandSubtitle.fontSize = 8
-        commandSubtitle.fontColor = HUDPalette.mutedText
-        commandSubtitle.horizontalAlignmentMode = .left
-        commandSubtitle.verticalAlignmentMode = .center
-        commandSubtitle.position = CGPoint(x: -halfW + 78, y: halfH - 41)
-        hudNode.addChild(commandSubtitle)
-
-        let coin = SKShapeNode(ellipseOf: CGSize(width: 36, height: 36))
-        coin.fillColor = HUDPalette.gold
-        coin.strokeColor = UIColor(red: 0.28, green: 0.22, blue: 0.08, alpha: 1.0)
-        coin.lineWidth = 2
-        coin.position = CGPoint(x: -halfW + 53, y: halfH - 65)
-        hudNode.addChild(coin)
-
-        moneyLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        moneyLabel.fontSize = 26
-        moneyLabel.fontColor = HUDPalette.text
-        moneyLabel.horizontalAlignmentMode = .left
-        moneyLabel.verticalAlignmentMode = .center
-        moneyLabel.position = CGPoint(x: -halfW + 78, y: halfH - 65)
-        hudNode.addChild(moneyLabel)
-
-        incomeLabel = SKLabelNode(fontNamed: "Menlo")
-        incomeLabel.fontSize = 10
-        incomeLabel.fontColor = UIColor(red: 0.46, green: 0.86, blue: 0.66, alpha: 1.0)
-        incomeLabel.horizontalAlignmentMode = .left
-        incomeLabel.verticalAlignmentMode = .center
-        incomeLabel.position = CGPoint(x: -halfW + 78, y: halfH - 80)
-        hudNode.addChild(incomeLabel)
-
-        let actions = hudPage.actions
-        let pages = HudPage.allCases
-        let compactHUD = size.width < 1180
-        let minimumCommandButtonWidth: CGFloat = compactHUD ? 40 : 48
-        let commandButtonHeight: CGFloat = compactHUD ? 54 : 68
-        let commandBarHeight = commandButtonHeight
-        let commandBarTop = -halfH + 18 + commandBarHeight
-
-        selectedLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        selectedLabel.fontSize = compactHUD ? 12 : 14
-        selectedLabel.fontColor = HUDPalette.text
-        selectedLabel.horizontalAlignmentMode = .left
-        selectedLabel.verticalAlignmentMode = .center
-        selectedLabel.position = CGPoint(x: -halfW + 28, y: commandBarTop + 34)
-        hudNode.addChild(selectedLabel)
-
-        queueLabel = SKLabelNode(fontNamed: "Menlo")
-        queueLabel.fontSize = compactHUD ? 10 : 12
-        queueLabel.fontColor = HUDPalette.gold
-        queueLabel.horizontalAlignmentMode = .left
-        queueLabel.verticalAlignmentMode = .center
-        queueLabel.position = CGPoint(x: -halfW + 28, y: commandBarTop + 14)
-        hudNode.addChild(queueLabel)
-
-        messageLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        messageLabel.fontSize = 13
-        messageLabel.fontColor = HUDPalette.text
-        messageLabel.horizontalAlignmentMode = .center
-        messageLabel.verticalAlignmentMode = .center
-        messageLabel.position = CGPoint(x: 0, y: halfH - 22)
-
-        let messageRuleWidth = max(180, min(520, size.width - 40))
-        let messageRule = SKShapeNode(rectOf: CGSize(width: messageRuleWidth, height: 22), cornerRadius: 11)
-        messageRule.fillColor = HUDPalette.panelDeep
-        messageRule.strokeColor = HUDPalette.borderSoft
-        messageRule.lineWidth = 1
-        messageRule.alpha = 0.80
-        messageRule.position = CGPoint(x: 0, y: halfH - 22)
-        hudNode.addChild(messageRule)
-        hudNode.addChild(messageLabel)
-
-        let missionPanelWidth = min(compactHUD ? 350 : 500, max(280, size.width - 590))
-        let missionPanelHeight: CGFloat = compactHUD ? 72 : 82
-        let missionPanelY = halfH - (compactHUD ? 112 : 116)
-        let missionPanel = SKShapeNode(rectOf: CGSize(width: missionPanelWidth, height: missionPanelHeight), cornerRadius: 12)
-        missionPanel.fillColor = HUDPalette.panelRaised
-        missionPanel.strokeColor = HUDPalette.gold.withAlphaComponent(0.72)
-        missionPanel.lineWidth = 1.6
-        missionPanel.position = CGPoint(x: 0, y: missionPanelY)
-        hudNode.addChild(missionPanel)
-
-        missionTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        missionTitleLabel.fontSize = compactHUD ? 11 : 13
-        missionTitleLabel.fontColor = HUDPalette.gold
-        missionTitleLabel.horizontalAlignmentMode = .left
-        missionTitleLabel.verticalAlignmentMode = .center
-        missionTitleLabel.position = CGPoint(x: -missionPanelWidth / 2 + 14, y: missionPanelY + 22)
-        hudNode.addChild(missionTitleLabel)
-
-        missionDetailLabel = SKLabelNode(fontNamed: "Menlo")
-        missionDetailLabel.fontSize = compactHUD ? 9 : 11
-        missionDetailLabel.fontColor = HUDPalette.text
-        missionDetailLabel.horizontalAlignmentMode = .left
-        missionDetailLabel.verticalAlignmentMode = .center
-        missionDetailLabel.position = CGPoint(x: -missionPanelWidth / 2 + 14, y: missionPanelY - 2)
-        hudNode.addChild(missionDetailLabel)
-
-        missionProgressConnectors = []
-        missionProgressNodes = []
-        let progressInset = compactHUD ? 16.0 : 18.0
-        let progressY = missionPanelY - missionPanelHeight / 2 + (compactHUD ? 10 : 11)
-        let progressStartX = -missionPanelWidth / 2 + progressInset
-        let progressEndX = missionPanelWidth / 2 - progressInset
-        let progressStep = (progressEndX - progressStartX) / CGFloat(max(1, MissionStage.allCases.count - 1))
+        let mission = layout.panels["mission"]!
+        let step = (mission.width - 24) / CGFloat(MissionStage.allCases.count - 1)
         for index in 0..<MissionStage.allCases.count {
-            let x = progressStartX + CGFloat(index) * progressStep
+            let x = mission.minX + 12 + CGFloat(index) * step
             if index < MissionStage.allCases.count - 1 {
-                let connector = SKShapeNode(rectOf: CGSize(width: max(6, progressStep - (compactHUD ? 9 : 11)), height: compactHUD ? 2 : 2.5), cornerRadius: 1)
-                connector.position = CGPoint(x: x + progressStep / 2, y: progressY)
-                connector.fillColor = UIColor(white: 0.34, alpha: 0.72)
-                connector.strokeColor = .clear
-                hudNode.addChild(connector)
-                missionProgressConnectors.append(connector)
+                let line = SKShapeNode(rectOf: CGSize(width: step - 6, height: 1.5), cornerRadius: 0.75)
+                line.position = CGPoint(x: x + step / 2, y: mission.minY + 7)
+                line.strokeColor = .clear
+                hudNode.addChild(line)
+                missionProgressConnectors.append(line)
             }
-            let node = SKShapeNode(circleOfRadius: compactHUD ? 4.2 : 4.8)
-            node.position = CGPoint(x: x, y: progressY)
-            node.fillColor = UIColor(white: 0.34, alpha: 0.78)
-            node.strokeColor = UIColor(white: 0.60, alpha: 0.52)
-            node.lineWidth = 1
-            hudNode.addChild(node)
-            missionProgressNodes.append(node)
+            let dot = SKShapeNode(circleOfRadius: 2.5)
+            dot.position = CGPoint(x: x, y: mission.minY + 7)
+            dot.lineWidth = 0.5
+            hudNode.addChild(dot)
+            missionProgressNodes.append(dot)
         }
-
-        let statusPanelY = min(commandBarTop + 80, halfH - 122)
-        let statusPanel = SKShapeNode(rectOf: CGSize(width: 254, height: 62), cornerRadius: 11)
-        statusPanel.fillColor = HUDPalette.panel
-        statusPanel.strokeColor = HUDPalette.borderSoft
-        statusPanel.lineWidth = 1.4
-        statusPanel.position = CGPoint(x: -halfW + 150, y: statusPanelY)
-        hudNode.addChild(statusPanel)
-
-        forcesLabel = SKLabelNode(fontNamed: "Menlo")
-        forcesLabel.fontSize = 12
-        forcesLabel.fontColor = HUDPalette.cyan
-        forcesLabel.horizontalAlignmentMode = .left
-        forcesLabel.verticalAlignmentMode = .center
-        forcesLabel.position = CGPoint(x: -halfW + 38, y: statusPanelY + 8)
-        hudNode.addChild(forcesLabel)
-
-        aiStatusLabel = SKLabelNode(fontNamed: "Menlo")
-        aiStatusLabel.fontSize = 12
-        aiStatusLabel.fontColor = UIColor(red: 1.0, green: 0.57, blue: 0.42, alpha: 1.0)
-        aiStatusLabel.horizontalAlignmentMode = .left
-        aiStatusLabel.verticalAlignmentMode = .center
-        aiStatusLabel.position = CGPoint(x: -halfW + 38, y: statusPanelY - 12)
-        hudNode.addChild(aiStatusLabel)
-
-        minimapFrame = CGRect(x: halfW - 250, y: halfH - 218, width: 222, height: 168)
         addMinimap(frame: minimapFrame)
-
-        let zoomButtonSize = CGSize(width: 34, height: 30)
-        let zoomY = minimapFrame.minY + 19
-        let zoomX = minimapFrame.maxX - zoomButtonSize.width * 2 - 20
-        zoomOutHitFrame = CGRect(x: zoomX, y: zoomY - zoomButtonSize.height / 2, width: zoomButtonSize.width, height: zoomButtonSize.height)
-        zoomInHitFrame = CGRect(x: zoomX + zoomButtonSize.width + 6, y: zoomY - zoomButtonSize.height / 2, width: zoomButtonSize.width, height: zoomButtonSize.height)
-        addZoomButton(frame: zoomOutHitFrame, title: "−")
-        addZoomButton(frame: zoomInHitFrame, title: "+")
-
-        let zoomHint = SKLabelNode(fontNamed: "Menlo-Bold")
-        zoomHint.text = "ZOOM"
-        zoomHint.fontSize = 7
-        zoomHint.fontColor = HUDPalette.mutedText
-        zoomHint.horizontalAlignmentMode = .center
-        zoomHint.verticalAlignmentMode = .center
-        zoomHint.position = CGPoint(x: (zoomOutHitFrame.midX + zoomInHitFrame.midX) / 2, y: zoomY + 23)
-        hudNode.addChild(zoomHint)
-
-        // A quiet theater label gives the map a clear reading order: the player
-        // can identify the current operating sector before reading the blips.
-        let theaterPanel = SKShapeNode(
-            rectOf: CGSize(width: minimapFrame.width, height: 38),
-            cornerRadius: 10
-        )
-        theaterPanel.fillColor = HUDPalette.panelRaised
-        theaterPanel.strokeColor = HUDPalette.cyan.withAlphaComponent(0.66)
-        theaterPanel.lineWidth = 1.2
-        theaterPanel.position = CGPoint(x: minimapFrame.midX, y: minimapFrame.maxY + 25)
-        hudNode.addChild(theaterPanel)
-
-        let theaterTitle = SKLabelNode(fontNamed: "Menlo-Bold")
-        theaterTitle.text = "THEATER  /  COASTAL SECTOR"
-        theaterTitle.fontSize = 9
-        theaterTitle.fontColor = HUDPalette.cyan
-        theaterTitle.horizontalAlignmentMode = .left
-        theaterTitle.verticalAlignmentMode = .center
-        theaterTitle.position = CGPoint(x: minimapFrame.minX + 10, y: minimapFrame.maxY + 31)
-        hudNode.addChild(theaterTitle)
-
-        let theaterSubtitle = SKLabelNode(fontNamed: "Menlo")
-        theaterSubtitle.text = "MAP LINK  •  FOG ACTIVE  •  LIVE"
-        theaterSubtitle.fontSize = 7
-        theaterSubtitle.fontColor = HUDPalette.mutedText
-        theaterSubtitle.horizontalAlignmentMode = .left
-        theaterSubtitle.verticalAlignmentMode = .center
-        theaterSubtitle.position = CGPoint(x: minimapFrame.minX + 10, y: minimapFrame.maxY + 19)
-        hudNode.addChild(theaterSubtitle)
-
-        let liveDot = SKShapeNode(circleOfRadius: 3)
-        liveDot.fillColor = UIColor(red: 0.35, green: 0.96, blue: 0.58, alpha: 1.0)
-        liveDot.strokeColor = UIColor(red: 0.35, green: 0.96, blue: 0.58, alpha: 0.42)
-        liveDot.lineWidth = 2
-        liveDot.glowWidth = 1.5
-        liveDot.position = CGPoint(x: minimapFrame.maxX - 13, y: minimapFrame.maxY + 25)
-        hudNode.addChild(liveDot)
-
-        let infoPanelTop = minimapFrame.minY - 12
-        let infoPanelBottomLimit = commandBarTop + (compactHUD ? 72 : 38)
-        let infoPanelHeight = max(104, min(compactHUD ? 124 : 152, infoPanelTop - infoPanelBottomLimit))
-        let infoPanelFrame = CGRect(
-            x: minimapFrame.minX,
-            y: infoPanelTop - infoPanelHeight,
-            width: minimapFrame.width,
-            height: infoPanelHeight
-        )
-        addSelectionInfoPanel(frame: infoPanelFrame, compact: compactHUD)
-
-        let visualGap: CGFloat = compactHUD ? 5 : 7
-        let availableWidth = size.width - 32
-        let pageButtonWidth: CGFloat = compactHUD ? 44 : 64
-        let elementCount = pages.count + actions.count
-        let gapWidth = CGFloat(max(0, elementCount - 1)) * visualGap
-        let actionWidth = min(
-            compactHUD ? 76 : 86,
-            (availableWidth - CGFloat(pages.count) * pageButtonWidth - gapWidth) / CGFloat(actions.count)
-        )
-        let buttonSize = CGSize(width: max(minimumCommandButtonWidth, actionWidth), height: commandButtonHeight)
-        let pageHitWidth = max(44, pageButtonWidth)
-        let actionHitWidth = max(44, buttonSize.width)
-        let hitContentWidth = CGFloat(pages.count) * pageHitWidth + CGFloat(actions.count) * actionHitWidth
-        let minimumHitGap: CGFloat = 1
-        let gapCapacityWidth = max(0, size.width - (compactHUD ? 8 : 32))
-        let hitGap = max(
-            minimumHitGap,
-            min(
-                visualGap,
-                (gapCapacityWidth - hitContentWidth) / CGFloat(max(1, elementCount - 1))
-            )
-        )
-        let totalWidth = hitContentWidth + CGFloat(max(0, elementCount - 1)) * hitGap
-        var x = -totalWidth / 2
-        let y = -halfH + 18 + commandButtonHeight / 2
-        let hitHeight: CGFloat = max(44, commandButtonHeight)
-        let hitY = y - hitHeight / 2
-
-        let commandDock = SKShapeNode(
-            rectOf: CGSize(width: totalWidth + 26, height: commandBarHeight + 16),
-            cornerRadius: 14
-        )
-        commandDock.fillColor = HUDPalette.panelDeep
-        commandDock.strokeColor = HUDPalette.border
-        commandDock.lineWidth = 1.5
-        commandDock.position = CGPoint(x: 0, y: y)
-        hudNode.addChild(commandDock)
-
-        let commandDockRule = SKShapeNode(
-            rectOf: CGSize(width: max(80, totalWidth - 24), height: 2),
-            cornerRadius: 1
-        )
-        commandDockRule.fillColor = HUDPalette.cyan.withAlphaComponent(0.56)
-        commandDockRule.strokeColor = .clear
-        commandDockRule.position = CGPoint(x: 0, y: y + commandBarHeight / 2 + 5)
-        hudNode.addChild(commandDockRule)
-
-        let commandDeckHint = SKLabelNode(fontNamed: "Menlo-Bold")
-        commandDeckHint.text = "COMMAND DECK  •  TAP TO ISSUE ORDERS"
-        commandDeckHint.fontSize = compactHUD ? 7 : 8
-        commandDeckHint.fontColor = HUDPalette.mutedText.withAlphaComponent(0.92)
-        commandDeckHint.horizontalAlignmentMode = .center
-        commandDeckHint.verticalAlignmentMode = .center
-        commandDeckHint.position = CGPoint(x: 0, y: y + commandBarHeight / 2 + 14)
-        commandDeckHint.zPosition = 3
-        hudNode.addChild(commandDeckHint)
-
-        for page in pages {
-            let hitFrame = CGRect(x: x, y: hitY, width: pageHitWidth, height: hitHeight)
-            let frame = CGRect(
-                x: x + (pageHitWidth - pageButtonWidth) / 2,
-                y: y - commandButtonHeight / 2,
-                width: pageButtonWidth,
-                height: commandButtonHeight
-            )
-            hudPageFrames[page] = frame
-            hudPageHitFrames[page] = hitFrame
-            hudNode.addChild(makeHudPageTab(page: page, frame: frame))
-            x += pageHitWidth + hitGap
+        addSelectionInfoPanel(frame: layout.panels["selection"]!, compact: layout.compact)
+        for page in HudPage.allCases {
+            hudNode.addChild(makeHudPageTab(page: page, frame: layout.pages[page]!))
         }
-        // Keep navigation visually separate from the context-sensitive command
-        // buttons. The divider is purely presentational; hit frames and action
-        // routing remain unchanged.
-        if let firstPage = pages.last, let pageFrame = hudPageFrames[firstPage] {
-            let dividerX = (pageFrame.maxX + x) / 2
-            let divider = SKShapeNode(rectOf: CGSize(width: 2, height: commandButtonHeight - 16), cornerRadius: 1)
-            divider.fillColor = HUDPalette.cyan.withAlphaComponent(0.42)
-            divider.strokeColor = .clear
-            divider.position = CGPoint(x: dividerX, y: y)
-            divider.zPosition = 2
-            hudNode.addChild(divider)
+        for action in hudPage.actions {
+            hudNode.addChild(makeButton(action: action, frame: layout.actions[action]!))
         }
-        for action in actions {
-            let hitFrame = CGRect(x: x, y: hitY, width: actionHitWidth, height: hitHeight)
-            let frame = CGRect(
-                x: x + (actionHitWidth - buttonSize.width) / 2,
-                y: y - commandButtonHeight / 2,
-                width: buttonSize.width,
-                height: commandButtonHeight
-            )
-            hudButtonFrames[action] = frame
-            hudButtonHitFrames[action] = hitFrame
-            hudNode.addChild(makeButton(action: action, frame: frame))
-            x += actionHitWidth + hitGap
-        }
-
-        let commandStripEdgeInset: CGFloat = compactHUD ? 4 : 6
-        hudCommandStripFrame = CGRect(
-            x: -totalWidth / 2 - commandStripEdgeInset,
-            y: -halfH + 18,
-            width: totalWidth + commandStripEdgeInset * 2,
-            height: commandBarHeight
-        )
-
         refreshHudButtonStyles()
     }
 
-    private func addMinimap(frame: CGRect) {
-        let panel = SKShapeNode(rect: frame, cornerRadius: 12)
-        panel.fillColor = HUDPalette.panelDeep
-        panel.strokeColor = HUDPalette.border
-        panel.lineWidth = 1.6
-        hudNode.addChild(panel)
+    private func makeHUDLabel(slot: String, font: String = "Menlo", size fontSize: CGFloat,
+                              color: UIColor = HUDPalette.text) -> SKLabelNode {
+        let frame = hudLayout!.slots[slot]!
+        let label = SKLabelNode(fontNamed: font)
+        label.name = "hud-text:\(slot)"
+        label.fontSize = fontSize
+        label.fontColor = color
+        label.horizontalAlignmentMode = .left
+        label.verticalAlignmentMode = .center
+        label.position = CGPoint(x: frame.minX, y: frame.midY)
+        hudNode.addChild(label)
+        boundedHUDLabels.append((label, frame, fontSize))
+        return label
+    }
 
-        let title = SKLabelNode(fontNamed: "Menlo-Bold")
-        title.text = "TACTICAL MAP  /  LIVE"
-        title.fontSize = 10
-        title.fontColor = HUDPalette.gold
-        title.horizontalAlignmentMode = .left
-        title.verticalAlignmentMode = .center
-        title.position = CGPoint(x: frame.minX + 10, y: frame.maxY - 13)
-        hudNode.addChild(title)
-
-        let northCue = SKShapeNode(path: {
-            let path = CGMutablePath()
-            path.move(to: CGPoint(x: 0, y: -5))
-            path.addLine(to: CGPoint(x: 0, y: 6))
-            path.move(to: CGPoint(x: 0, y: 6))
-            path.addLine(to: CGPoint(x: -2.5, y: 2.5))
-            path.move(to: CGPoint(x: 0, y: 6))
-            path.addLine(to: CGPoint(x: 2.5, y: 2.5))
-            return path
-        }())
-        northCue.strokeColor = HUDPalette.cyan
-        northCue.lineWidth = 1.4
-        northCue.lineCap = .round
-        northCue.position = CGPoint(x: frame.maxX - 17, y: frame.maxY - 13)
-        hudNode.addChild(northCue)
-
-        let northLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        northLabel.text = "N"
-        northLabel.fontSize = 8
-        northLabel.fontColor = HUDPalette.cyan
-        northLabel.horizontalAlignmentMode = .center
-        northLabel.verticalAlignmentMode = .center
-        northLabel.position = CGPoint(x: frame.maxX - 17, y: frame.maxY - 25)
-        hudNode.addChild(northLabel)
-
-        let legendItems: [(String, UIColor)] = [
-            ("LAND", HUDPalette.gold),
-            ("AIR", UIColor(red: 0.35, green: 0.78, blue: 1.0, alpha: 1.0)),
-            ("SEA", UIColor(red: 0.42, green: 0.94, blue: 0.82, alpha: 1.0))
-        ]
-        for (index, item) in legendItems.enumerated() {
-            let x = frame.minX + 12 + CGFloat(index) * 60
-            let dot = SKShapeNode(circleOfRadius: 2.5)
-            dot.fillColor = item.1
-            dot.strokeColor = .clear
-            dot.position = CGPoint(x: x, y: frame.maxY - 27)
-            hudNode.addChild(dot)
-
-            let label = SKLabelNode(fontNamed: "Menlo-Bold")
-            label.text = item.0
-            label.fontSize = 7
-            label.fontColor = item.1
-            label.horizontalAlignmentMode = .left
-            label.verticalAlignmentMode = .center
-            label.position = CGPoint(x: x + 5, y: frame.maxY - 27)
-            hudNode.addChild(label)
+    private func fitHUDLabels() {
+        for item in boundedHUDLabels {
+            let label = item.node
+            label.xScale = 1
+            label.fontSize = item.fontSize
+            guard label.frame.width > item.frame.width || label.frame.height > item.frame.height else { continue }
+            let ratio = min(item.frame.width / max(label.frame.width, 1), item.frame.height / max(label.frame.height, 1))
+            label.fontSize = max(min(8, item.fontSize), item.fontSize * ratio)
+            // Bound exceptional names/messages instead of crushing all type to unreadable scales.
+            if label.frame.width > item.frame.width {
+                var text = label.text ?? ""
+                while !text.isEmpty && label.frame.width > item.frame.width {
+                    text.removeLast()
+                    label.text = text + "..."
+                }
+            }
         }
+    }
 
-        minimapScaleLabel = SKLabelNode(fontNamed: "Menlo")
-        minimapScaleLabel.fontSize = 7
-        minimapScaleLabel.fontColor = HUDPalette.mutedText
-        minimapScaleLabel.horizontalAlignmentMode = .left
-        minimapScaleLabel.verticalAlignmentMode = .center
-        minimapScaleLabel.position = CGPoint(x: frame.minX + 10, y: frame.minY + 10)
-        hudNode.addChild(minimapScaleLabel)
+    private func writeHUDContractIfRequested(at time: TimeInterval) {
+        let environment = ProcessInfo.processInfo.environment
+        guard !didWriteHUDContract, environment["DESERT_CI_HUD_CONTRACT"] == "1",
+              hasWindowSafeArea, let view, let window = view.window,
+              window.safeAreaInsets == windowSafeAreaInsets, size.width > size.height,
+              abs(view.bounds.width - size.width) < 1, abs(view.bounds.height - size.height) < 1 else { return }
+        if let stable = hudContractStableWindow, stable.size == size, stable.insets == windowSafeAreaInsets {
+            guard time - stable.since >= 0.5 else { return }
+        } else {
+            hudContractStableWindow = (size, windowSafeAreaInsets, time)
+            return
+        }
+        didWriteHUDContract = true
+        let actualSize = size
+        let actualInsets = windowSafeAreaInsets
+        let actualPage = hudPage
+        let actualSelection = selectedIDs
+        let actualQueue = buildOrders
+        let actualPending = (pendingConstructionKind, pendingSupportPower, isSettingRallyPoint, isSettingAttackMove)
+        let actualCamera = (cameraRig.position, cameraRig.xScale, cameraRig.yScale)
+        let actualMessage = (messageLabel.text, messageLabel.fontColor, messageLabel.alpha)
+        let actualTouch = (touchStartScene, touchStartWorld, panStartCamera, isPanning, isUsingMinimap)
+        let fixtures: [(String, CGSize, UIEdgeInsets)] = [
+            ("667x375", CGSize(width: 667, height: 375), .zero),
+            ("852x393", CGSize(width: 852, height: 393), UIEdgeInsets(top: 0, left: 59, bottom: 21, right: 59)),
+            ("874x402", CGSize(width: 874, height: 402), actualInsets),
+            ("1024x768", CGSize(width: 1024, height: 768), .zero),
+            ("1366x1024", CGSize(width: 1366, height: 1024), .zero)
+        ]
+        let checkNames = ["controls", "containers", "bands", "routing", "pending", "pageState", "roundTrip", "labels", "rebuild"]
+        var matrix: [[String: Any]] = []
+        func rectJSON(_ frame: CGRect) -> [String: CGFloat] {
+            ["x": frame.minX, "y": frame.minY, "width": frame.width, "height": frame.height]
+        }
+        func insetJSON(_ insets: UIEdgeInsets) -> [String: CGFloat] {
+            ["top": insets.top, "left": insets.left, "bottom": insets.bottom, "right": insets.right]
+        }
+        func fingerprint() -> String {
+            let queue = buildOrders.map { "\($0.sourceID):\($0.kind.shortCode):\($0.faction.rawValue):\($0.remaining)" }.joined(separator: ",")
+            return "\(selectedIDs.sorted())|\(queue)|\(String(describing: pendingConstructionKind))|\(String(describing: pendingSupportPower))|\(isSettingRallyPoint)|\(isSettingAttackMove)"
+        }
+        func nodeCount(_ node: SKNode) -> Int {
+            1 + node.children.reduce(0) { $0 + nodeCount($1) }
+        }
+        let originalState = fingerprint()
+        for (fixtureID, fixtureSize, fixtureInsets) in fixtures {
+            for (pageIndex, page) in HudPage.allCases.enumerated() {
+                windowSafeAreaInsets = fixtureInsets
+                size = fixtureSize
+                hudPage = page
+                pendingConstructionKind = pageIndex == 1 ? .barracks : nil
+                pendingSupportPower = pageIndex == 4 ? .reconSweep : nil
+                isSettingRallyPoint = pageIndex == 2
+                isSettingAttackMove = pageIndex == 3
+                layoutHUD()
+                updateHUD()
+                let layout = hudLayout!
+                var checks = Dictionary(uniqueKeysWithValues: checkNames.map { ($0, true) })
+                var failures: [String] = []
+                func expect(_ condition: Bool, _ check: String, _ detail: String) {
+                    if !condition { checks[check] = false; failures.append("\(check):\(detail)") }
+                }
+                func disjoint(_ first: CGRect, _ second: CGRect) -> Bool {
+                    let overlap = first.intersection(second)
+                    return overlap.isNull || overlap.width * overlap.height < 0.01
+                }
+                var controls: [String: CGRect] = [:]
+                for (tab, frame) in layout.pages { controls["page:\(tab.rawValue)"] = frame }
+                for (action, frame) in layout.actions { controls["action:\(action.rawValue)"] = frame }
+                for key in ["zoomOut", "zoomIn", "map"] { controls[key] = layout.slots[key]! }
+                let orderedControls = controls.keys.sorted()
+                for (index, key) in orderedControls.enumerated() {
+                    let frame = controls[key]!
+                    expect(frame.width >= 44 && frame.height >= 44 && layout.safe.contains(frame), "controls", key)
+                    for other in orderedControls.dropFirst(index + 1) {
+                        expect(disjoint(frame, controls[other]!), "controls", "\(key)/\(other)")
+                    }
+                }
+                let panelKeys = layout.panels.keys.sorted()
+                for (index, key) in panelKeys.enumerated() {
+                    let frame = layout.panels[key]!
+                    expect(layout.safe.contains(frame), "containers", "safe/\(key)")
+                    for other in panelKeys.dropFirst(index + 1) {
+                        expect(disjoint(frame, layout.panels[other]!), "containers", "\(key)/\(other)")
+                    }
+                }
+                for frame in layout.pages.values { expect(layout.panels["rail"]!.contains(frame), "containers", "page") }
+                for frame in layout.actions.values { expect(layout.panels["dock"]!.contains(frame), "containers", "action") }
+                let mapBands = ["mapHeader", "map", "mapFooter"]
+                for (index, key) in mapBands.enumerated() {
+                    let frame = layout.slots[key]!
+                    expect(layout.panels["minimap"]!.contains(frame), "bands", key)
+                    for other in mapBands.dropFirst(index + 1) { expect(disjoint(frame, layout.slots[other]!), "bands", "\(key)/\(other)") }
+                }
+                for key in ["zoomOut", "zoomIn", "mapScale"] {
+                    expect(layout.slots["mapFooter"]!.contains(layout.slots[key]!), "bands", key)
+                }
+                for (key, frame) in layout.slots {
+                    let parent: String
+                    if key.hasPrefix("map") || key.hasPrefix("zoom") { parent = "minimap" }
+                    else if key.hasPrefix("mission") { parent = "mission" }
+                    else if key == "messageText" { parent = "message" }
+                    else if key == "selectionTitle" || key == "selected" || key == "queue" || key.hasPrefix("row") { parent = "selection" }
+                    else { parent = "resources" }
+                    expect(layout.panels[parent]!.contains(frame), "containers", key)
+                }
+                for (tab, frame) in layout.pages {
+                    expect(layout.route(at: CGPoint(x: frame.midX, y: frame.midY)) == .page(tab), "routing", tab.rawValue)
+                }
+                for (action, frame) in layout.actions {
+                    expect(layout.route(at: CGPoint(x: frame.midX, y: frame.midY)) == .action(action), "routing", action.rawValue)
+                }
+                for (key, route) in [("zoomOut", HUDRoute.zoomOut), ("zoomIn", .zoomIn), ("map", .map)] {
+                    let frame = layout.slots[key]!
+                    expect(layout.route(at: CGPoint(x: frame.midX, y: frame.midY)) == route, "routing", key)
+                }
+                let state = fingerprint()
+                for key in panelKeys {
+                    let frame = layout.panels[key]!
+                    let point = CGPoint(x: frame.minX + 2, y: frame.minY + 2)
+                    expect(layout.route(at: point) == .inert, "routing", "inert/\(key)")
+                    expect(consumeHUDTouch(at: point) && fingerprint() == state, "pending", key)
+                }
+                let world = CGPoint(x: layout.safe.midX, y: layout.panels["message"]!.minY - 10)
+                expect(layout.route(at: world) == .world && !consumeHUDTouch(at: world), "routing", "world")
+                let modeCount = [pendingConstructionKind != nil, pendingSupportPower != nil, isSettingRallyPoint, isSettingAttackMove].filter { $0 }.count
+                expect(modeCount == (pageIndex == 0 ? 0 : 1), "pending", "exclusive")
+                handleHudPage(HudPage.allCases[(pageIndex + 1) % HudPage.allCases.count])
+                handleHudPage(page)
+                expect(fingerprint() == state && hudPage == page, "pageState", "switch/restore")
+                for point in [CGPoint(x: worldBounds.minX, y: worldBounds.minY), CGPoint(x: worldBounds.maxX, y: worldBounds.maxY), CGPoint(x: worldBounds.midX, y: worldBounds.midY)] {
+                    let back = worldPoint(fromMinimap: minimapPoint(forWorldPoint: point))
+                    expect(back.distance(to: point) < 0.01, "roundTrip", "map/world")
+                }
+                let stress = String(repeating: "Long mission / aircraft / target / queue ", count: 8)
+                for label in [missionTitleLabel, missionDetailLabel, messageLabel, selectedLabel, queueLabel, selectionInfoTitleLabel] { label.text = stress }
+                fitHUDLabels()
+                for item in boundedHUDLabels where !(item.node.text?.isEmpty ?? true) {
+                    expect(item.frame.insetBy(dx: -0.5, dy: -0.5).contains(item.node.frame), "labels", item.node.name ?? "button")
+                }
+                for (index, row) in selectionInfoRowLabels.enumerated() where !(row.text?.isEmpty ?? true) {
+                    expect(layout.slots["row\(index)"]!.insetBy(dx: -0.5, dy: -0.5).contains(row.frame), "labels", "row\(index)")
+                }
+                updateHUD()
+                let count = nodeCount(hudNode)
+                layoutHUD()
+                updateHUD()
+                expect(count == nodeCount(hudNode), "rebuild", "node-count")
+                expect(Set(hudButtonHitFrames.keys) == Set(page.actions) && hudPageHitFrames.count == 5 && hudButtonShapes.count == page.actions.count,
+                       "rebuild", "stale-targets")
+                let panelArea = layout.panels.values.reduce(CGFloat.zero) { $0 + $1.width * $1.height }
+                matrix.append(["fixture": fixtureID, "page": page.rawValue,
+                               "size": ["width": fixtureSize.width, "height": fixtureSize.height],
+                               "insets": insetJSON(fixtureInsets), "safeFrame": rectJSON(layout.safe),
+                               "panels": layout.panels.mapValues(rectJSON), "controls": controls.mapValues(rectJSON),
+                               "panelArea": panelArea, "viewportArea": fixtureSize.width * fixtureSize.height,
+                               "panelAreaFraction": panelArea / (fixtureSize.width * fixtureSize.height),
+                               "checks": checks, "failures": failures, "status": failures.isEmpty ? "success" : "failure"])
+            }
+        }
+        selectedIDs = actualSelection
+        buildOrders = actualQueue
+        pendingConstructionKind = actualPending.0
+        pendingSupportPower = actualPending.1
+        isSettingRallyPoint = actualPending.2
+        isSettingAttackMove = actualPending.3
+        windowSafeAreaInsets = actualInsets
+        size = actualSize
+        hudPage = actualPage
+        cameraRig.position = actualCamera.0
+        cameraRig.xScale = actualCamera.1
+        cameraRig.yScale = actualCamera.2
+        layoutHUD()
+        updateHUD()
+        messageLabel.text = actualMessage.0
+        messageLabel.fontColor = actualMessage.1
+        messageLabel.alpha = actualMessage.2
+        fitHUDLabels()
+        touchStartScene = actualTouch.0
+        touchStartWorld = actualTouch.1
+        panStartCamera = actualTouch.2
+        isPanning = actualTouch.3
+        isUsingMinimap = actualTouch.4
+        let restored = fingerprint() == originalState && size == actualSize && hudPage == actualPage &&
+            windowSafeAreaInsets == actualInsets && cameraRig.position == actualCamera.0
+        let passed = restored && matrix.allSatisfy { $0["status"] as? String == "success" }
+        let report: [String: Any] = [
+            "schemaVersion": 1, "producer": "GameScene.HUDLayout", "status": passed ? "success" : "failure",
+            "commitSha": environment["DESERT_CI_COMMIT_SHA"] ?? "", "runId": environment["DESERT_CI_RUN_ID"] ?? "",
+            "runAttempt": environment["DESERT_CI_RUN_ATTEMPT"] ?? "", "version": environment["DESERT_CI_VERSION"] ?? "",
+            "pid": ProcessInfo.processInfo.processIdentifier, "actualSize": ["width": actualSize.width, "height": actualSize.height],
+            "actualInsets": insetJSON(actualInsets), "matrix": matrix, "stateRestored": restored,
+            "limitations": "Production frame/route checks, not real touch injection or multi-size screenshot certification"
+        ]
+        do {
+            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("hud-layout-contract.json")
+            try JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]).write(to: url, options: .atomic)
+        } catch {
+            print("HUD contract write failed: \(error)")
+        }
+    }
 
+    private func addMinimap(frame: CGRect) {
+        let title = makeHUDLabel(slot: "mapTitle", font: "AvenirNextCondensed-DemiBold", size: 10, color: HUDPalette.gold)
+        title.text = "SECTOR  /  N"
+        let legend = makeHUDLabel(slot: "mapLegend", size: 8, color: HUDPalette.mutedText)
+        legend.text = "LAND   AIR   SEA"
+
+        // Clip terrain, blips and camera footprint to the same clickable content band.
+        let crop = SKCropNode()
+        crop.maskNode = SKShapeNode(rect: frame)
+        (crop.maskNode as? SKShapeNode)?.fillColor = .white
+        (crop.maskNode as? SKShapeNode)?.strokeColor = .clear
+        hudNode.addChild(crop)
+        let mapBackground = SKShapeNode(rect: frame)
+        mapBackground.fillColor = HUDPalette.panelDeep
+        mapBackground.strokeColor = .clear
+        crop.addChild(mapBackground)
         for row in 0..<rows {
             for col in 0..<cols {
-                let tile = TileCoord(row: row, col: col)
-                let point = minimapPoint(forWorldPoint: tileCenter(tile))
-                let dot = SKShapeNode(rectOf: CGSize(width: 5, height: 4), cornerRadius: 0.6)
+                let point = minimapPoint(forWorldPoint: tileCenter(TileCoord(row: row, col: col)))
+                let dot = SKShapeNode(rectOf: CGSize(width: 4, height: 3), cornerRadius: 0.4)
                 dot.position = point
                 dot.fillColor = minimapTerrainColor(terrain[row][col])
                 dot.strokeColor = .clear
-                dot.alpha = terrain[row][col] == .water ? 0.85 : 0.68
-                hudNode.addChild(dot)
+                dot.alpha = 0.78
+                crop.addChild(dot)
             }
         }
-
         minimapBlipsNode = SKNode()
-        hudNode.addChild(minimapBlipsNode)
-
-        minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 40, height: 28), cornerRadius: 2)
-        minimapCameraBox.strokeColor = UIColor.white
-        minimapCameraBox.fillColor = UIColor.clear
-        minimapCameraBox.lineWidth = 2
-        hudNode.addChild(minimapCameraBox)
+        crop.addChild(minimapBlipsNode)
+        minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 40, height: 28), cornerRadius: 1)
+        minimapCameraBox.strokeColor = UIColor.white.withAlphaComponent(0.85)
+        minimapCameraBox.fillColor = .clear
+        minimapCameraBox.lineWidth = 1
+        crop.addChild(minimapCameraBox)
+        minimapScaleLabel = makeHUDLabel(slot: "mapScale", size: 8, color: HUDPalette.mutedText)
+        addZoomButton(frame: zoomOutHitFrame, title: "-")
+        addZoomButton(frame: zoomInHitFrame, title: "+")
     }
 
     private func addZoomButton(frame: CGRect, title: String) {
-        let button = SKShapeNode(rect: frame, cornerRadius: 8)
+        let button = SKShapeNode(rect: frame, cornerRadius: 5)
         button.name = "hud:zoom:\(title)"
         button.fillColor = HUDPalette.panelRaised
-        button.strokeColor = HUDPalette.cyan.withAlphaComponent(0.72)
-        button.lineWidth = 1.2
-        button.zPosition = 70
+        button.strokeColor = HUDPalette.border
+        button.lineWidth = 0.75
         hudNode.addChild(button)
-
-        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        let label = SKLabelNode(fontNamed: "AvenirNextCondensed-DemiBold")
         label.text = title
-        label.fontSize = 18
+        label.fontSize = 23
         label.fontColor = HUDPalette.text
         label.horizontalAlignmentMode = .center
         label.verticalAlignmentMode = .center
-        label.position = CGPoint(x: frame.midX, y: frame.midY - 1)
-        label.zPosition = 71
+        label.position = CGPoint(x: frame.midX, y: frame.midY)
         hudNode.addChild(label)
     }
 
     private func addSelectionInfoPanel(frame: CGRect, compact: Bool) {
-        let panel = SKShapeNode(rect: frame, cornerRadius: 12)
-        panel.fillColor = HUDPalette.panel
-        panel.strokeColor = HUDPalette.border
-        panel.lineWidth = 1.6
-        hudNode.addChild(panel)
-
-        selectionInfoRowAvailableWidth = max(0, frame.width - 20)
+        selectionInfoRowAvailableWidth = frame.width - 20
         selectionInfoRowBaseFontSize = compact ? 9 : 10
-
-        selectionInfoTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        selectionInfoTitleLabel.fontSize = compact ? 10 : 11
-        selectionInfoTitleLabel.fontColor = HUDPalette.cyan
-        selectionInfoTitleLabel.horizontalAlignmentMode = .left
-        selectionInfoTitleLabel.verticalAlignmentMode = .center
-        selectionInfoTitleLabel.position = CGPoint(x: frame.minX + 10, y: frame.maxY - 14)
-        hudNode.addChild(selectionInfoTitleLabel)
-
-        let rowCount = compact ? 4 : 5
-        let rowTopInset: CGFloat = compact ? 34 : 36
-        let rowGap: CGFloat = compact ? 16 : 20
-        for index in 0..<rowCount {
+        selectionInfoTitleLabel = makeHUDLabel(slot: "selectionTitle", font: "AvenirNextCondensed-DemiBold", size: 12, color: HUDPalette.gold)
+        for index in 0..<(compact ? 4 : 5) {
+            let rowFrame = hudLayout!.slots["row\(index)"]!
             let row = SKLabelNode(fontNamed: "Menlo")
-            row.fontSize = compact ? 9 : 10
-            row.fontColor = UIColor(white: 0.90, alpha: 1.0)
+            row.name = "hud-row:\(index)"
+            row.fontSize = selectionInfoRowBaseFontSize
+            row.fontColor = selectionInfoNeutralColor
             row.horizontalAlignmentMode = .left
             row.verticalAlignmentMode = .center
-            row.position = CGPoint(x: frame.minX + 10, y: frame.maxY - rowTopInset - CGFloat(index) * rowGap)
+            row.position = CGPoint(x: rowFrame.minX, y: rowFrame.midY)
             hudNode.addChild(row)
             selectionInfoRowLabels.append(row)
         }
-
-        selectionTargetHealthBarFrame = CGRect(
-            x: frame.minX + 10,
-            y: frame.minY + 7,
-            width: frame.width - 20,
-            height: 7
-        )
-        selectionTargetHealthBack = SKShapeNode(
-            rectOf: selectionTargetHealthBarFrame.size,
-            cornerRadius: 2
-        )
-        selectionTargetHealthBack.position = CGPoint(
-            x: selectionTargetHealthBarFrame.midX,
-            y: selectionTargetHealthBarFrame.midY
-        )
-        selectionTargetHealthBack.fillColor = UIColor.black.withAlphaComponent(0.72)
-        selectionTargetHealthBack.strokeColor = UIColor(red: 0.96, green: 0.34, blue: 0.22, alpha: 0.70)
-        selectionTargetHealthBack.lineWidth = 1.2
+        selectionTargetHealthBarFrame = CGRect(x: frame.minX + 10, y: frame.minY + 5, width: frame.width - 20, height: 3)
+        selectionTargetHealthBack = SKShapeNode(rectOf: selectionTargetHealthBarFrame.size, cornerRadius: 1)
+        selectionTargetHealthBack.position = CGPoint(x: selectionTargetHealthBarFrame.midX, y: selectionTargetHealthBarFrame.midY)
+        selectionTargetHealthBack.fillColor = HUDPalette.panelDeep
+        selectionTargetHealthBack.strokeColor = .clear
         selectionTargetHealthBack.isHidden = true
         hudNode.addChild(selectionTargetHealthBack)
-
-        selectionTargetHealthFill = SKShapeNode(
-            rectOf: selectionTargetHealthBarFrame.size,
-            cornerRadius: 1.5
-        )
-        selectionTargetHealthFill.fillColor = UIColor(red: 0.34, green: 0.92, blue: 0.30, alpha: 1.0)
+        selectionTargetHealthFill = SKShapeNode(rectOf: selectionTargetHealthBarFrame.size, cornerRadius: 1)
+        selectionTargetHealthFill.fillColor = HUDPalette.cyan
         selectionTargetHealthFill.strokeColor = .clear
         selectionTargetHealthFill.isHidden = true
         hudNode.addChild(selectionTargetHealthFill)
@@ -4916,39 +4905,32 @@ final class GameScene: SKScene {
         let node = SKNode()
         node.name = "hud:\(action.rawValue)"
         node.position = CGPoint(x: frame.midX, y: frame.midY)
-
-        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 10)
+        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 5)
         shape.fillColor = buttonColor(for: action)
-        shape.strokeColor = HUDPalette.panelDeep
-        shape.lineWidth = 2
+        shape.strokeColor = HUDPalette.borderSoft
+        shape.lineWidth = 0.75
         node.addChild(shape)
         hudButtonShapes[action] = shape
 
-        let topLine = SKShapeNode(rectOf: CGSize(width: max(12, frame.width - 14), height: 2), cornerRadius: 1)
-        topLine.fillColor = UIColor.white.withAlphaComponent(0.22)
-        topLine.strokeColor = .clear
-        topLine.position = CGPoint(x: 0, y: frame.height / 2 - 6)
-        node.addChild(topLine)
-
-        let title = SKLabelNode(fontNamed: "Menlo-Bold")
+        let title = SKLabelNode(fontNamed: "AvenirNextCondensed-DemiBold")
         title.text = action.title
-        title.fontSize = frame.width < 48 ? 10 : (frame.width < 62 ? 13 : 16)
+        title.fontSize = frame.width < 66 ? 14 : 17
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
-        title.position = CGPoint(x: 0, y: frame.height < 62 ? 9 : 12)
+        title.position = CGPoint(x: 0, y: 9)
         node.addChild(title)
-
+        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 4, y: 0, width: frame.width - 8, height: 22), title.fontSize))
         let subtitleLabel = SKLabelNode(fontNamed: "Menlo")
         subtitleLabel.text = subtitle(for: action)
-        subtitleLabel.fontSize = frame.width < 48 ? 6 : (frame.width < 62 ? 7 : 9)
+        subtitleLabel.fontSize = 8
         subtitleLabel.fontColor = HUDPalette.mutedText
         subtitleLabel.verticalAlignmentMode = .center
         subtitleLabel.horizontalAlignmentMode = .center
-        subtitleLabel.position = CGPoint(x: 0, y: frame.height < 62 ? -14 : -18)
+        subtitleLabel.position = CGPoint(x: 0, y: -13)
         node.addChild(subtitleLabel)
+        boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: -22, width: frame.width - 6, height: 18), 8))
         hudButtonSubtitleLabels[action] = subtitleLabel
-
         return node
     }
 
@@ -4956,37 +4938,30 @@ final class GameScene: SKScene {
         let node = SKNode()
         node.name = "hud-page:\(page.rawValue)"
         node.position = CGPoint(x: frame.midX, y: frame.midY)
-
-        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 10)
+        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 5)
         shape.fillColor = hudPageColor(page, active: page == hudPage)
-        shape.strokeColor = HUDPalette.panelDeep
-        shape.lineWidth = 2
+        shape.strokeColor = HUDPalette.borderSoft
+        shape.lineWidth = 0.75
         node.addChild(shape)
         hudPageShapes[page] = shape
-
-        let topLine = SKShapeNode(rectOf: CGSize(width: max(12, frame.width - 12), height: 2), cornerRadius: 1)
-        topLine.fillColor = UIColor.white.withAlphaComponent(0.22)
-        topLine.strokeColor = .clear
-        topLine.position = CGPoint(x: 0, y: frame.height / 2 - 6)
-        node.addChild(topLine)
-
-        let title = SKLabelNode(fontNamed: "Menlo-Bold")
+        let title = SKLabelNode(fontNamed: "AvenirNextCondensed-DemiBold")
         title.text = page.title
-        title.fontSize = frame.width < 48 ? 9 : (frame.width < 60 ? 10 : 12)
+        title.fontSize = 12
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
-        title.position = CGPoint(x: 0, y: 8)
+        title.position = CGPoint(x: 0, y: 6)
         node.addChild(title)
-
         let subtitle = SKLabelNode(fontNamed: "Menlo")
         subtitle.text = page.subtitle
-        subtitle.fontSize = frame.width < 48 ? 5.5 : (frame.width < 60 ? 6 : 7)
+        subtitle.fontSize = 8
         subtitle.fontColor = HUDPalette.mutedText
         subtitle.verticalAlignmentMode = .center
         subtitle.horizontalAlignmentMode = .center
-        subtitle.position = CGPoint(x: 0, y: -13)
+        subtitle.position = CGPoint(x: 0, y: -10)
         node.addChild(subtitle)
+        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 3, y: -2, width: frame.width - 6, height: 18), 12))
+        boundedHUDLabels.append((subtitle, CGRect(x: -frame.width / 2 + 3, y: -17, width: frame.width - 6, height: 12), 8))
         return node
     }
 
@@ -5015,19 +4990,19 @@ final class GameScene: SKScene {
 
             if action == .cycleTarget && isTargetCycleAvailable {
                 shape.strokeColor = UIColor(red: 1.0, green: 0.48, blue: 0.32, alpha: 1.0)
-                shape.lineWidth = 4.5
-                shape.glowWidth = 1.5
+                shape.lineWidth = 1.5
+                shape.glowWidth = 0
             } else if action == .stop && isStopOrderAvailable {
                 shape.strokeColor = UIColor(red: 1.0, green: 0.64, blue: 0.44, alpha: 1.0)
-                shape.lineWidth = 4.5
-                shape.glowWidth = 1.5
+                shape.lineWidth = 1.5
+                shape.glowWidth = 0
             } else if isHudActionArmed(action) {
                 shape.strokeColor = UIColor(red: 1.0, green: 0.84, blue: 0.26, alpha: 1.0)
-                shape.lineWidth = 5.5
-                shape.glowWidth = 3
-            } else {
-                shape.strokeColor = HUDPalette.panelDeep
                 shape.lineWidth = 2
+                shape.glowWidth = 0
+            } else {
+                shape.strokeColor = HUDPalette.borderSoft
+                shape.lineWidth = 0.75
                 shape.glowWidth = 0
             }
         }
@@ -5042,66 +5017,17 @@ final class GameScene: SKScene {
             shape.strokeColor = isActive || containsArmedAction
                 ? HUDPalette.gold
                 : HUDPalette.panelDeep
-            shape.lineWidth = isActive ? 3.5 : (containsArmedAction ? 3 : 2)
-            shape.glowWidth = containsArmedAction ? 2.5 : (isActive ? 1.2 : 0)
+            shape.lineWidth = isActive ? 1.75 : (containsArmedAction ? 1.5 : 0.75)
+            shape.glowWidth = 0
         }
     }
 
     private func hudPageColor(_ page: HudPage, active: Bool) -> UIColor {
-        let alpha: CGFloat = active ? 0.98 : 0.86
-        switch page {
-        case .tactical:
-            return UIColor(red: active ? 0.16 : 0.10, green: active ? 0.48 : 0.25, blue: active ? 0.32 : 0.22, alpha: alpha)
-        case .build:
-            return UIColor(red: active ? 0.58 : 0.27, green: active ? 0.43 : 0.27, blue: active ? 0.18 : 0.20, alpha: alpha)
-        case .air:
-            return UIColor(red: active ? 0.30 : 0.16, green: active ? 0.48 : 0.28, blue: active ? 0.66 : 0.36, alpha: alpha)
-        case .naval:
-            return UIColor(red: active ? 0.10 : 0.08, green: active ? 0.42 : 0.25, blue: active ? 0.56 : 0.32, alpha: alpha)
-        case .support:
-            return UIColor(red: active ? 0.40 : 0.20, green: active ? 0.36 : 0.25, blue: active ? 0.48 : 0.30, alpha: alpha)
-        }
+        active ? UIColor(red: 0.25, green: 0.26, blue: 0.20, alpha: 1) : HUDPalette.panelRaised
     }
 
     private func buttonColor(for action: HudAction) -> UIColor {
-        switch action {
-        case .selectArmy:
-            UIColor(red: 0.10, green: 0.62, blue: 0.25, alpha: 0.96)
-        case .controlGroup1, .controlGroup2:
-            UIColor(red: 0.24, green: 0.43, blue: 0.40, alpha: 0.96)
-        case .holdPosition:
-            UIColor(red: 0.30, green: 0.48, blue: 0.22, alpha: 0.96)
-        case .stop:
-            UIColor(red: 0.62, green: 0.20, blue: 0.14, alpha: 0.96)
-        case .cycleTarget:
-            UIColor(red: 0.66, green: 0.24, blue: 0.16, alpha: 0.96)
-        case .attackMove:
-            UIColor(red: 0.62, green: 0.34, blue: 0.18, alpha: 0.96)
-        case .buildHelicopter, .buildFighter:
-            UIColor(red: 0.36, green: 0.52, blue: 0.66, alpha: 0.96)
-        case .buildBattleship, .buildSubmarine, .buildCarrier:
-            UIColor(red: 0.12, green: 0.45, blue: 0.58, alpha: 0.96)
-        case .setRally:
-            UIColor(red: 0.18, green: 0.48, blue: 0.52, alpha: 0.96)
-        case .buildBase:
-            UIColor(red: 0.60, green: 0.48, blue: 0.24, alpha: 0.96)
-        case .reconSweep:
-            UIColor(red: 0.16, green: 0.44, blue: 0.62, alpha: 0.96)
-        case .fieldRepair:
-            UIColor(red: 0.12, green: 0.56, blue: 0.46, alpha: 0.96)
-        case .airStrike:
-            UIColor(red: 0.42, green: 0.48, blue: 0.62, alpha: 0.96)
-        case .navalBarrage:
-            UIColor(red: 0.08, green: 0.34, blue: 0.46, alpha: 0.96)
-        case .cycleAI:
-            UIColor(red: 0.58, green: 0.24, blue: 0.18, alpha: 0.96)
-        case .focusHQ:
-            UIColor(red: 0.50, green: 0.42, blue: 0.28, alpha: 0.96)
-        case .newSkirmish:
-            UIColor(red: 0.22, green: 0.22, blue: 0.24, alpha: 0.96)
-        default:
-            UIColor(red: 0.62, green: 0.57, blue: 0.47, alpha: 0.96)
-        }
+        isHudActionArmed(action) ? UIColor(red: 0.27, green: 0.25, blue: 0.16, alpha: 1) : HUDPalette.panelRaised
     }
 
     private func subtitle(for action: HudAction) -> String {
@@ -5248,8 +5174,8 @@ final class GameScene: SKScene {
     private func updateHUD() {
         let income = incomePerTick(for: .player)
         moneyLabel.text = "$\(playerMoney)"
-        incomeLabel.text = "+$\(income)/sec  Oil \(oilCount(for: .player))  Flags \(controlPointCount(for: .player))"
-        forcesLabel.text = "Blue \(mobileCount(for: .player)) units  Oil \(oilCount(for: .player))  Flags \(controlPointCount(for: .player))"
+        incomeLabel.text = "+$\(income)/s  OIL \(oilCount(for: .player))  FLAG \(controlPointCount(for: .player))"
+        forcesLabel.text = "BLUE \(mobileCount(for: .player))"
         let enemyStatus = currentEnemyAssaultWaveSummary() ?? "AI \(aiDifficulty.displayName)"
         aiStatusLabel.text = "R\(mobileCount(for: .enemy)) F\(controlPointCount(for: .enemy)) \(enemyStatus)"
         let missionStatus = missionStatusContent()
@@ -5324,6 +5250,7 @@ final class GameScene: SKScene {
         }
 
         updateMinimap()
+        fitHUDLabels()
     }
 
     private func mobileCount(for faction: Faction) -> Int {
@@ -6624,30 +6551,17 @@ final class GameScene: SKScene {
     }
 
     private func minimapPoint(forWorldPoint point: CGPoint) -> CGPoint {
-        guard worldBounds.width > 0 && worldBounds.height > 0 else {
-            return CGPoint(x: minimapFrame.midX, y: minimapFrame.midY)
-        }
-        let xRatio = (point.x - worldBounds.minX) / worldBounds.width
-        let yRatio = (point.y - worldBounds.minY) / worldBounds.height
-        return CGPoint(
-            x: minimapFrame.minX + min(max(xRatio, 0), 1) * minimapFrame.width,
-            y: minimapFrame.minY + min(max(yRatio, 0), 1) * minimapFrame.height
-        )
+        hudLayout?.mapPoint(point, from: worldBounds) ?? .zero
     }
 
     private func worldPoint(fromMinimap point: CGPoint) -> CGPoint {
-        let xRatio = min(max((point.x - minimapFrame.minX) / minimapFrame.width, 0), 1)
-        let yRatio = min(max((point.y - minimapFrame.minY) / minimapFrame.height, 0), 1)
-        return CGPoint(
-            x: worldBounds.minX + xRatio * worldBounds.width,
-            y: worldBounds.minY + yRatio * worldBounds.height
-        )
+        hudLayout?.worldPoint(point, in: worldBounds) ?? .zero
     }
 
     private func updateMinimap() {
         guard minimapFrame.width > 0 else { return }
         minimapBlipsNode.removeAllChildren()
-        minimapScaleLabel.text = String(format: "TACTICAL  /  %.1fx  /  PINCH  •  TAP FOCUS", 1.0 / max(cameraRig.xScale, 0.01))
+        minimapScaleLabel.text = String(format: "%.1fx", 1.0 / max(cameraRig.xScale, 0.01))
 
         for entity in entities.values where entity.isAlive {
             if entity.faction == .enemy && !isKnownToFaction(entity, observer: .player) {
@@ -6891,45 +6805,7 @@ final class GameScene: SKScene {
             beginPinchPan(with: activeTouches)
             return
         }
-        if let page = hudPage(at: uiPoint) {
-            handleHudPage(page)
-            touchStartScene = nil
-            touchStartWorld = nil
-            return
-        }
-        if zoomOutHitFrame.contains(uiPoint) {
-            adjustCameraZoom(by: 0.12)
-            touchStartScene = nil
-            touchStartWorld = nil
-            return
-        }
-        if zoomInHitFrame.contains(uiPoint) {
-            adjustCameraZoom(by: -0.12)
-            touchStartScene = nil
-            touchStartWorld = nil
-            return
-        }
-        if let action = hudAction(at: uiPoint) {
-            handleHudAction(action, tapCount: touch.tapCount)
-            touchStartScene = nil
-            touchStartWorld = nil
-            return
-        }
-        if hudCommandStripGap(at: uiPoint) {
-            touchStartScene = nil
-            touchStartWorld = nil
-            panStartCamera = nil
-            isPanning = false
-            isUsingMinimap = false
-            return
-        }
-        if minimapFrame.contains(uiPoint) {
-            isUsingMinimap = true
-            cameraRig.position = clampCamera(worldPoint(fromMinimap: uiPoint))
-            touchStartScene = nil
-            touchStartWorld = nil
-            return
-        }
+        if consumeHUDTouch(at: uiPoint, tapCount: touch.tapCount) { return }
 
         let scenePoint = touch.location(in: self)
         let worldPoint = touch.location(in: worldNode)
@@ -7118,10 +6994,25 @@ final class GameScene: SKScene {
         )
     }
 
-    private func hudAction(at point: CGPoint) -> HudAction? {
-        hudPage.actions.first { action in
-            hudButtonHitFrames[action]?.contains(point) == true
+    @discardableResult
+    private func consumeHUDTouch(at point: CGPoint, tapCount: Int = 1) -> Bool {
+        guard let route = hudLayout?.route(at: point), route != .world else { return false }
+        touchStartScene = nil
+        touchStartWorld = nil
+        panStartCamera = nil
+        isPanning = false
+        isUsingMinimap = false
+        switch route {
+        case .page(let page): handleHudPage(page)
+        case .action(let action): handleHudAction(action, tapCount: tapCount)
+        case .zoomOut: adjustCameraZoom(by: 0.12)
+        case .zoomIn: adjustCameraZoom(by: -0.12)
+        case .map:
+            isUsingMinimap = true
+            cameraRig.position = clampCamera(worldPoint(fromMinimap: point))
+        case .inert, .world: break
         }
+        return true
     }
 
     private func adjustCameraZoom(by delta: CGFloat) {
@@ -7132,17 +7023,6 @@ final class GameScene: SKScene {
         cameraRig.position = clampCamera(cameraRig.position)
         updateMinimap()
         showMessage(nextScale < previousScale ? "Zoom in" : "Zoom out", color: HUDPalette.cyan)
-    }
-
-    private func hudPage(at point: CGPoint) -> HudPage? {
-        HudPage.allCases.first { page in
-            hudPageHitFrames[page]?.contains(point) == true
-        }
-    }
-
-    private func hudCommandStripGap(at point: CGPoint) -> Bool {
-        guard hudCommandStripFrame.contains(point) else { return false }
-        return hudPage(at: point) == nil && hudAction(at: point) == nil
     }
 
     private func handleHudPage(_ page: HudPage) {
@@ -13237,6 +13117,7 @@ final class GameScene: SKScene {
 
     private func showMessage(_ text: String, color: UIColor) {
         messageLabel.text = text
+        fitHUDLabels()
         messageLabel.fontColor = color
         messageLabel.removeAllActions()
         messageLabel.alpha = 1

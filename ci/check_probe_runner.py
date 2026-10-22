@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Standard-library CI regressions; never boots or queries a simulator."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,10 +12,44 @@ import unittest
 from unittest.mock import patch
 import zlib
 
-from simulator_probe import Runner, ProbeFailure, load_probes, png_info, select_device, validate_results
+from simulator_probe import (HUD_CHECKS, HUD_FIXTURES, HUD_PAGES, Runner, ProbeFailure,
+                             load_probes, png_info, select_device, validate_hud_contract, validate_results)
 
 
 NORMALIZATION_EVIDENCE = []
+
+
+def hud_fixture(runner):
+    """Schema-only synthetic unit fixture; not a second layout or simulator evidence."""
+    for key in ("commitSha", "runId", "runAttempt", "version"):
+        if not runner.summary.get(key):
+            runner.summary[key] = f"unit-fixture-{key}"
+    pid = os.getpid()
+    runner.summary["prewarm"] = [{"status": "success", "pid": pid, "aliveAfterWait": True}]
+    report = {key: runner.summary[key] for key in ("commitSha", "runId", "runAttempt", "version")}
+    report.update(schemaVersion=1, producer="GameScene.HUDLayout", pid=pid, status="success", stateRestored=True,
+                  actualSize={"width": 874, "height": 402}, actualInsets={"top": 0, "left": 62, "bottom": 21, "right": 62}, matrix=[])
+    for fixture, (width, height) in HUD_FIXTURES.items():
+        insets = (report["actualInsets"] if fixture == "874x402" else
+                  {"top": 0, "left": 59, "bottom": 21, "right": 59} if fixture == "852x393" else
+                  {"top": 0, "left": 0, "bottom": 0, "right": 0})
+        for page in sorted(HUD_PAGES):
+            # Deliberate placeholders: Python validates schema, not these fake rectangles.
+            rectangle = {"x": 0, "y": 0, "width": 1, "height": 1}
+            controls = {f"page:{tab}": rectangle for tab in HUD_PAGES}
+            controls.update({key: rectangle for key in ("zoomOut", "zoomIn", "map", "action:unit-placeholder")})
+            report["matrix"].append(dict(fixture=fixture, page=page, size={"width": width, "height": height}, insets=insets,
+                checks={key: True for key in HUD_CHECKS}, failures=[], status="success", safeFrame=rectangle,
+                panels={key: rectangle for key in ("resources", "rail", "dock", "mission", "message", "selection", "minimap")},
+                controls=controls, panelArea=1, viewportArea=2, panelAreaFraction=0.5))
+    write_hud_fixture(runner, report)
+
+
+def write_hud_fixture(runner, report):
+    data = json.dumps(report, sort_keys=True).encode()
+    (runner.directory / "hud-layout-contract.json").write_bytes(data)
+    runner.summary["hudContract"] = {"path": "hud-layout-contract.json", "pid": os.getpid(), "status": "success",
+                                     "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
 
 
 def png_bytes():
@@ -97,6 +132,7 @@ class FakeRunner(Runner):
             Path(args[-1]).write_bytes(png_bytes())
 
     def work(self):
+        hud_fixture(self)
         for index, definition in enumerate(self.probes):
             self.capture(definition, index)
         validate_results(self.probes, self.summary, self.directory)
@@ -278,6 +314,56 @@ class ProbeTests(unittest.TestCase):
         with self.assertRaises(ProbeFailure):
             validate_results(self.probes, runner.summary, self.directory)
 
+    def mutate_hud(self, mutate):
+        runner = self.complete()
+        report = json.loads((self.directory / "hud-layout-contract.json").read_text())
+        mutate(report)
+        write_hud_fixture(runner, report)
+        with self.assertRaises(ProbeFailure):
+            validate_hud_contract(runner.summary, self.directory)
+
+    def test_hud_stale_identity(self):
+        self.mutate_hud(lambda report: report.update(runAttempt="old-attempt"))
+
+    def test_hud_wrong_producer(self):
+        self.mutate_hud(lambda report: report.update(producer="python-shadow-layout"))
+
+    def test_hud_wrong_pid(self):
+        self.mutate_hud(lambda report: report.update(pid=os.getpid() + 10000))
+
+    def test_hud_state_not_restored(self):
+        self.mutate_hud(lambda report: report.update(stateRestored=False))
+
+    def test_hud_missing_case(self):
+        self.mutate_hud(lambda report: report["matrix"].pop())
+
+    def test_hud_duplicate_case(self):
+        self.mutate_hud(lambda report: report["matrix"].__setitem__(-1, report["matrix"][0]))
+
+    def test_hud_failed_assertion_despite_pass_status(self):
+        self.mutate_hud(lambda report: report["matrix"][0]["checks"].update(routing=False))
+
+    def test_hud_missing_assertion(self):
+        self.mutate_hud(lambda report: report["matrix"][0]["checks"].pop("pending"))
+
+    def test_hud_missing_report(self):
+        runner = self.complete()
+        (self.directory / "hud-layout-contract.json").rename(self.directory / "missing-contract.json")
+        with self.assertRaises(FileNotFoundError):
+            validate_results(self.probes, runner.summary, self.directory)
+
+    def test_hud_tampered_file_hash(self):
+        runner = self.complete()
+        runner.summary["hudContract"]["sha256"] = "0" * 64
+        with self.assertRaises(ProbeFailure):
+            validate_results(self.probes, runner.summary, self.directory)
+
+    def test_hud_collection_not_validated(self):
+        runner = self.complete()
+        runner.summary["hudContract"]["status"] = "collected"
+        with self.assertRaises(ProbeFailure):
+            validate_results(self.probes, runner.summary, self.directory)
+
 
 class NormalizationTests(unittest.TestCase):
     def setUp(self):
@@ -341,7 +427,7 @@ if __name__ == "__main__":
     success = all(result["success"] for result in results)
     Path("ci-results").mkdir(exist_ok=True)
     Path("ci-results/ci-regression-results.json").write_text(json.dumps({
-        "suite": "CI scheduler, image evidence and real sips normalization (no simulator)",
+        "suite": "CI scheduler, HUD evidence schema, image evidence and real sips normalization (no simulator)",
         **{key: sum(result[key] for result in results) for key in ("tests", "failures", "errors", "skipped")},
         "suites": results, "normalizationFixtures": NORMALIZATION_EVIDENCE,
         "success": success, "commitSha": os.environ.get("GITHUB_SHA"),
