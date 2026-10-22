@@ -6135,7 +6135,7 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - help442-byte/正常receipt已过，一次boot正常exit0；wait1 cap240s超时，CLI240.869365s/外层241.883055s、cleanup0.718803s，末Status4/isTerminalNO/Elapsed04:01、System App，分类eligible，余789.498054s。fresh list cap10s超时，CLI10.756445s/外层14.729584s、cleanup0.709018s、0-byte输出，余761.367230s，准确state_failed/boot-state，不是预算不足或Swift编译卡死。后诊断list0.810s成功/Booted不能倒填此前fresh gate。
 - 未发wait2/install/launch help/prewarm，没有App PID/directtrace/snapshot/两帧/fixture/HUD25，24not_run/0PNG；88-byte app诊断不是无崩溃证明。work318.696/cleanup16.105/总334.801s，最终所选设备shutdown正常exit0；JUnit10case/6failure/1准确XCTest skip，C整体不通过，视觉与总目标未完成。
 
-### v5.61 / 同设备纯监控直接续等（待最新云端验收）
+### v5.61 / 同设备纯监控直接续等（C不通过：HUD25匿名标签越界）
 
 日期：2026-10-22
 
@@ -6145,3 +6145,22 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - 按提示词重写9方法、1项receipt测试仅fixture受影响，声明仍95（34/12/24/9/13/3），旧fresh JSON gate明确取消而非虚称覆盖。新负例覆盖旧policy/5角色/中间list/伪造观测/身份、完成文本但非正常receipt，fake clock模拟wait1后开销验证动态cap/准入拒绝；其余86方法完整源码及独立5watchdog保留，含post-reap方法的19负例。真实与注入标记不改，执行结果待Actions。
 - 冻结run_bounded及receipt/help/分类/执行预算helper、所有Swift/工程、安装557/617/恢复、1080/90与全部cap/step/job、prewarm90+5、24定义/顺序/等待、scene/snapshot/两帧/fixture/HUD25/PNG/双PID和workflow。只做本机AST/文本/hash/diff静态检查，未导入或执行CI脚本/测试/build/sips/游戏/设备命令；用户Team ID及原未跟踪资料排除保留。
 - 关键文件：ci/simulator_probe.py、ci/check_probe_runner.py、ci/package_results.py仅摘要展示、README/flow/flowchart/test、本文与v5.61提示词。须一次main有效commit/push后，由C下载最新官方未加密ZIP核对双build、95实际方法/5watchdog、完整boot/install/App/scene/HUD25/24原图并目视；快路径通过不等于真实wait2覆盖，缺证仍不通过。不称UI已验收、全面复刻或总目标完成。
+
+C复核：实现 `625e8fd65431ae2c8890cc4316c3a7eb783d8a0b` 与最新main、run `39853761823` attempt1及manifest/summary一致，run completed/failure。官方artifact ID `12460670020`，名称 `desert-frontline-ci-v5.61-main-625e8fd65431-run39853761823-attempt1`，ZIP107,036 bytes/32条目/CRC完整，SHA-256/API digest `8aac15cb1637504f5651a8e22197b9e7385e95980b9985c60bfe6828eaec99a0`；缓存 `/private/tmp/desert-frontline-c-review-39853761823/` 保留。
+
+- generic35.2s、sim SDK34.232s、95不同实际方法及独立5watchdog全部通过；真实首monitor正常exit0并完整回收，约121.875s CLI/124.097s外层，未执行wait2。一次install正常exit0约22.183s；prewarm1 launch超时，prewarm2成功，PID14500/独立nonce绑定trace，90s等待后仍存活，生产阶段和两稳定帧真实到达。只覆盖本run快路径，不以此次成功证明直接续等分支或启动提速。
+- 真实HUD报告44,132 bytes、SHA-256 `b7aeed3bd2d180a800e57e2dbc821db0b46179a8910ea4c6bdf8f69edcbd104f` 与prewarm描述符/身份一致；`stateRestored=true`，25组合恰好都只有`labels=false, failures=["labels:button"]`、其他八类true。C不通过，准确失败于hud-contract-read-and-validate；24正式项全not_run、0PNG，不能目视验收。匿名标签尚不能定位字体/设备/字形根因，也不是恢复失败或已证明编译卡死。
+- X只读该run直接trace：初始化end0.474s、HUD契约start2.387s→written8.337s约5.95s、ready8.999s；这是阶段elapsed边界，不把约96s launch RPC当作场景计算耗时。后续缺24正式场景导致完整性错误不证明真实nonce重复；未封存live stderr后追加不冒充snapshot篡改。UI整体重构、v5.55布局和小屏占屏仍未验收。
+
+### v5.62 / HUD标签边界与幂等拟合（待本轮云端/C验收）
+
+日期：2026-10-22
+
+- 按X批准的A提示词仅修注册HUD标签拟合：原文保留在`label.text`，native单行tail截尾，不建source/output缓存、不删字符；每次base字号/固定slot锚点重算，再按真实父局部bbox水平边/中心与垂直中心对齐。最多3次frame读取、2次字号调整和1次位置纠正；原font family/floor/slots/0.5容差/scale行为、26动作/5页/hit框不变。给动作/页签title/subtitle稳定唯一name，不再匿名button。
+- 同源HUD25保留25×9和原选择行/重建/状态检查，原labels类加入normal/long1/short/long2/restored/rebuilt各两次生产fit，比较完整source、真实bbox/position/font/scale、父/祖先坐标、可见性、精确幂等与base恢复，非空宽高必须finite且正；往返/重建按ID对比。实际窗口原态/恢复双fit并入原stateRestored，不残留压力文本。
+- X在B静态审阅期批准窄语义澄清并补入A提示词：stateRestored严格加入actual两阶段身份/source/appearance/parent/幂等与完整sameFit/reference恢复，不把baseline自身的bbox/包含/字号不合法误称恢复失败；actualLabelAudit所有失败仍独立使顶层passed/status及正式validator失败，原25×9/actual门槛、ciHUDRestored/ready和runner生命周期不变。不是放宽bbox换绿。
+- schema1报告局部增labelAudit/actualLabelAudit的完整阶段计数及最多8条可定位失败，64标签/16祖先上界、有效UTF-8前缀≤96 bytes及原文完整hash/bytes、完整失败/省略计数；保留1MiB报告与producer<8000/reader8192/trace总额，不往beacon塞快照。Python只验协议完整性，不复制字形/字体/几何。
+- 原95方法完整正文和独立5watchdog源码保留；hud_fixture仅增明确synthetic审计计数，新增2个必要schema/外层假绿负例方法，通过原validator/validate_results/metadata拒绝而不改变boot/install/scene门槛。静态声明97（36/12/24/9/13/3），不是已执行通过；双build、97+5、真实HUD25和全部24正向PNG须等本轮一次main push后的最新官方artifact与C逐张核对。
+- 关键文件：GameScene.swift局部fitter/标签name/一次性契约、ci/simulator_probe.py仅HUD validator、ci/check_probe_runner.py仅fixture/新增审计负例及必要README/flow/flowchart/test/本文与v5.62提示词。玩法/地图/模型/输入、生命周期、boot/receipt/安装/预算/等待、探针/规范化/watchdog/workflow均冻结；用户Team ID及旧未跟踪资料保留排除。本机仅Git/AST/文本/hash/diff，未导入或运行任何CI/测试/build/Swift编译/设备工具。
+
+遗留：native单行截尾实际bbox和渲染未获本轮云端证据；若不符准确失败交X，不偷换缓存/字体/几何或扩大预算。667×375 TACT约70.7% HUD占屏、整体UI美观/手感、地图/模型/陆海空深度及全面复刻仍未完成，标签合框不代表总目标完成。

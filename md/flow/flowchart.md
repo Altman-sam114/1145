@@ -188,7 +188,7 @@ v5.54 读图补充：HUD 根 z=10000，高于 world/fog 累计深度（当前 fo
 
 ### 战场优先 HUD 与云端契约
 
-读图说明：真实窗口几何先去重排队，初始化完整完成后在安全 update 点应用，布局非重入。云端 prewarm 复用生产框/路由完成25组合并恢复，fixture内部尺寸不当作外部请求；仅CI使用阶段trace与两帧生产状态就绪。Python不复算布局，固定PNG仍由C逐张看图。
+读图说明：真实窗口几何先去重排队，初始化完整完成后在安全 update 点应用，布局非重入。注册标签保留完整源文，用native单行截尾和固定锚点重算后的父局部实际bbox拟合，不更改slot/字号底线/容差。云端prewarm复用生产框/路由完成25组合，原labels类实测六阶段双fit及原态恢复，fixture内部尺寸不当作外部请求；actual身份/source/appearance/parent/幂等与完整sameFit恢复参与stateRestored，baseline本身不合法不误称恢复漂移，但其合法性仍独立使总报告失败，不改ready语义。仅CI保存有界快照/诊断，trace只带报告描述符。Python不复算布局/字体，固定PNG仍由C逐张看图；合框不证明小屏占屏已优化。
 
 ```mermaid
 flowchart TD
@@ -197,11 +197,13 @@ flowchart TD
   Page[当前 HudPage] --> Layout[HUDLayout 生产框与 route]
   SceneInsets --> Layout
   Layout --> Draw[左页轨 / 收口 dock / 紧凑顶栏 / 有界面板 / 分带小地图]
+  Draw --> Fit[完整text不写 / base与固定锚点重算 / native单行tail / 父局部实际bbox对齐]
   Layout --> Touch[双指优先后单指 route]
   Touch --> Inert[静态卡与 gap inert / pending 不变]
   Touch --> Command[既有 page / action / zoom / map / world]
   Layout --> SwiftContract[现有 prewarm 内五尺寸乘五页检查]
-  SwiftContract --> Restore[恢复实际场景与状态]
+  SwiftContract --> LabelAudit[原labels类 / 六阶段双fit / 正bbox 源文 幂等 base恢复 往返重建]
+  LabelAudit --> Restore[恢复实际场景与原文 / 实际窗口双fit并入stateRestored]
   Restore --> JSON[Documents DesertCI nonce报告 / run SHA attempt PID probe nonce hash]
   JSON --> Read[选定设备dataPath / 当前容器bundle metadata / 安全路径与hash]
   Read --> Gate[runner 与 metadata 独立复核 / manifest 与 JUnit gate]

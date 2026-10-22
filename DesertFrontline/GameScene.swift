@@ -4831,17 +4831,39 @@ final class GameScene: SKScene {
             let label = item.node
             label.xScale = 1
             label.fontSize = item.fontSize
-            guard label.frame.width > item.frame.width || label.frame.height > item.frame.height else { continue }
-            let ratio = min(item.frame.width / max(label.frame.width, 1), item.frame.height / max(label.frame.height, 1))
-            label.fontSize = max(min(8, item.fontSize), item.fontSize * ratio)
-            // Bound exceptional names/messages instead of crushing all type to unreadable scales.
-            if label.frame.width > item.frame.width {
-                var text = label.text ?? ""
-                while !text.isEmpty && label.frame.width > item.frame.width {
-                    text.removeLast()
-                    label.text = text + "..."
-                }
+            label.numberOfLines = 1
+            label.lineBreakMode = .byTruncatingTail
+            label.preferredMaxLayoutWidth = 0
+            let anchorX: CGFloat
+            switch label.horizontalAlignmentMode {
+            case .left: anchorX = item.frame.minX
+            case .right: anchorX = item.frame.maxX
+            default: anchorX = item.frame.midX
             }
+            // Reset the anchor, not the source text: repeated fits cannot accumulate offsets.
+            label.position = CGPoint(x: anchorX, y: item.frame.midY)
+            let floor = min(8, item.fontSize)
+            var bounds = label.frame
+            if bounds.width > item.frame.width || bounds.height > item.frame.height {
+                let ratio = min(item.frame.width / max(bounds.width, 1), item.frame.height / max(bounds.height, 1))
+                label.fontSize = max(floor, item.fontSize * ratio)
+            }
+            label.preferredMaxLayoutWidth = item.frame.width
+            bounds = label.frame
+            if bounds.height > item.frame.height && label.fontSize > floor {
+                label.fontSize = max(floor, label.fontSize * item.frame.height / bounds.height)
+                bounds = label.frame
+            }
+            guard !(label.text?.isEmpty ?? true) else { continue }
+            let offsetX: CGFloat
+            switch label.horizontalAlignmentMode {
+            case .left: offsetX = item.frame.minX - bounds.minX
+            case .right: offsetX = item.frame.maxX - bounds.maxX
+            default: offsetX = item.frame.midX - bounds.midX
+            }
+            // Both the assigned slot and SKLabelNode.frame are in this label's parent space.
+            label.position.x += offsetX
+            label.position.y += item.frame.midY - bounds.midY
         }
     }
 
@@ -4892,6 +4914,198 @@ final class GameScene: SKScene {
         func nodeCount(_ node: SKNode) -> Int {
             1 + node.children.reduce(0) { $0 + nodeCount($1) }
         }
+        struct LabelSnapshot {
+            let node: SKLabelNode
+            let parent: SKNode?
+            let id: String
+            let parentID: String
+            let ancestry: [String]
+            let parentState: [CGFloat]
+            let ancestryComplete: Bool
+            let source: String?
+            let fontName: String?
+            let fontSize: CGFloat
+            let baseFontSize: CGFloat
+            let slot: CGRect
+            let bounds: CGRect
+            let position: CGPoint
+            let scale: CGSize
+            let rotation: CGFloat
+            let alpha: CGFloat
+            let hidden: Bool
+            let visible: Bool
+            let color: UIColor?
+            let horizontal: Int
+            let vertical: Int
+            let lines: Int
+            let maxWidth: CGFloat
+            let lineBreak: Int
+        }
+        struct LabelAudit {
+            var phases: [[String: Any]] = []
+            var failureCount = 0
+            var details: [[String: Any]] = []
+        }
+        func labelSnapshots() -> [LabelSnapshot] {
+            boundedHUDLabels.prefix(64).map { item in
+                let label = item.node
+                var ancestry: [String] = []
+                var parentState: [CGFloat] = []
+                var ancestor = label.parent
+                var visible = !label.isHidden && label.alpha > 0
+                for _ in 0..<16 {
+                    guard let current = ancestor else { break }
+                    ancestry.append(current === hudNode ? "hud-root" : current.name ?? "unnamed")
+                    parentState += [current.position.x, current.position.y, current.xScale, current.yScale,
+                                    current.zRotation, current.alpha, current.isHidden ? 1 : 0]
+                    visible = visible && !current.isHidden && current.alpha > 0
+                    ancestor = current.parent
+                }
+                return LabelSnapshot(node: label, parent: label.parent, id: label.name ?? "",
+                    parentID: label.parent === hudNode ? "hud-root" : label.parent?.name ?? "",
+                    ancestry: ancestry, parentState: parentState, ancestryComplete: ancestor == nil,
+                    source: label.text, fontName: label.fontName, fontSize: label.fontSize, baseFontSize: item.fontSize,
+                    slot: item.frame, bounds: label.frame, position: label.position,
+                    scale: CGSize(width: label.xScale, height: label.yScale), rotation: label.zRotation,
+                    alpha: label.alpha, hidden: label.isHidden, visible: visible, color: label.fontColor,
+                    horizontal: label.horizontalAlignmentMode.rawValue, vertical: label.verticalAlignmentMode.rawValue,
+                    lines: label.numberOfLines, maxWidth: label.preferredMaxLayoutWidth, lineBreak: label.lineBreakMode.rawValue)
+            }
+        }
+        func sameParents(_ first: LabelSnapshot, _ second: LabelSnapshot, sameObject: Bool) -> Bool {
+            (!sameObject || first.parent === second.parent) && first.parentID == second.parentID &&
+                !first.parentID.isEmpty && first.ancestryComplete && second.ancestryComplete &&
+                first.ancestry == second.ancestry && first.parentState == second.parentState
+        }
+        func sameAppearance(_ first: LabelSnapshot, _ second: LabelSnapshot) -> Bool {
+            first.fontName == second.fontName && first.color == second.color && first.alpha == second.alpha &&
+                first.hidden == second.hidden && first.visible == second.visible && first.scale == second.scale &&
+                first.rotation == second.rotation && first.horizontal == second.horizontal && first.vertical == second.vertical
+        }
+        func sameFit(_ first: LabelSnapshot, _ second: LabelSnapshot, sameObject: Bool) -> Bool {
+            first.id == second.id && first.source == second.source && first.slot == second.slot &&
+                first.bounds == second.bounds && first.position == second.position && first.fontSize == second.fontSize &&
+                first.baseFontSize == second.baseFontSize && first.lines == second.lines && first.maxWidth == second.maxWidth &&
+                first.lineBreak == second.lineBreak && sameAppearance(first, second) && sameParents(first, second, sameObject: sameObject)
+        }
+        func labelJSON(_ value: LabelSnapshot) -> [String: Any] {
+            let source = Data((value.source ?? "").utf8)
+            let limit = min(96, source.count)
+            var prefix = ""
+            for length in stride(from: limit, through: max(0, limit - 3), by: -1) {
+                if let valid = String(data: source.prefix(length), encoding: .utf8) { prefix = valid; break }
+            }
+            func number(_ value: CGFloat) -> Any { value.isFinite ? Double(value) as Any : String(describing: value) }
+            func rectangle(_ value: CGRect) -> [String: Any] { rectJSON(value).mapValues(number) }
+            let sourceInfo: [String: Any] = ["isNil": value.source == nil, "prefix": prefix, "bytes": source.count,
+                "sha256": SHA256.hash(data: source).map { String(format: "%02x", $0) }.joined()]
+            return ["id": value.id, "parentID": value.parentID, "coordinateSpace": "label-parent-local",
+                    "source": sourceInfo,
+                    "fontName": value.fontName ?? "", "fontSize": number(value.fontSize), "baseFontSize": number(value.baseFontSize),
+                    "horizontalAlignment": value.horizontal, "expectedSlot": rectangle(value.slot), "actualBBox": rectangle(value.bounds),
+                    "position": [number(value.position.x), number(value.position.y)],
+                    "scale": [number(value.scale.width), number(value.scale.height)], "rotation": number(value.rotation),
+                    "alpha": number(value.alpha), "hidden": value.hidden, "visible": value.visible,
+                    "ancestry": value.ancestry, "parentState": value.parentState.map(number),
+                    "numberOfLines": value.lines, "preferredMaxLayoutWidth": number(value.maxWidth), "lineBreakMode": value.lineBreak]
+        }
+        func labelFailure(_ phase: String, _ reason: String, _ value: LabelSnapshot?,
+                          other: LabelSnapshot? = nil, audit: inout LabelAudit) {
+            audit.failureCount += 1
+            guard audit.details.count < 8 else { return }
+            var detail = value.map(labelJSON) ?? ["id": "registry", "coordinateSpace": "label-parent-local"]
+            detail["phase"] = phase
+            detail["reason"] = reason
+            if let other { detail["comparison"] = labelJSON(other) }
+            audit.details.append(detail)
+        }
+        func auditLabels(_ phase: String, reference: [LabelSnapshot]? = nil,
+                         sameParentObject: Bool = true, audit: inout LabelAudit) -> [LabelSnapshot] {
+            let startFailures = audit.failureCount
+            let before = labelSnapshots()
+            let ids = before.map(\.id)
+            let expectedIDs = HudPage.allCases.flatMap { page in
+                ["hud-text:page:\(page.rawValue):title", "hud-text:page:\(page.rawValue):subtitle"]
+            } + hudPage.actions.flatMap { action in
+                ["hud-text:action:\(action.rawValue):title", "hud-text:action:\(action.rawValue):subtitle"]
+            }
+            var registryValid = !before.isEmpty && boundedHUDLabels.count <= 64 && !ids.contains("") &&
+                Set(ids).count == ids.count && Set(expectedIDs).isSubset(of: Set(ids))
+            if !registryValid {
+                labelFailure(phase, "registry-identities", before.first, audit: &audit)
+            }
+            var eligible: Set<String> = []
+            if phase == "short" {
+                for item in boundedHUDLabels.prefix(64) {
+                    item.node.fontSize = item.fontSize
+                    item.node.preferredMaxLayoutWidth = 0
+                    let natural = item.node.frame
+                    if natural.width.isFinite && natural.height.isFinite && natural.width > 0 && natural.height > 0 &&
+                        natural.width <= item.frame.width && natural.height <= item.frame.height {
+                        eligible.insert(item.node.name ?? "")
+                    }
+                }
+                if eligible.isEmpty { labelFailure(phase, "no-base-font-eligible-label", before.first, audit: &audit) }
+            }
+            fitHUDLabels()
+            let first = labelSnapshots()
+            fitHUDLabels()
+            let second = labelSnapshots()
+            if first.map(\.id) != ids || second.map(\.id) != ids {
+                registryValid = false
+                labelFailure(phase, "registry-changed-during-fit", second.first, audit: &audit)
+            }
+            var counts = Dictionary(uniqueKeysWithValues: ["nonemptyCount", "visibleNonemptyCount", "positiveBoundsCount",
+                "containedCount", "finiteGeometryCount", "sourcePreservedCount", "idempotentCount", "parentPreservedCount",
+                "appearancePreservedCount", "fontRangeCount", "referenceMatchedCount", "baseRecoveredCount"].map { ($0, 0) })
+            for (index, value) in second.enumerated() {
+                guard index < before.count && index < first.count else { continue }
+                let input = before[index]
+                let nonempty = !(value.source?.isEmpty ?? true)
+                if nonempty { counts["nonemptyCount"]! += 1 }
+                if nonempty && value.visible { counts["visibleNonemptyCount"]! += 1 }
+                func check(_ condition: Bool, _ key: String, comparison: LabelSnapshot? = nil) {
+                    if condition { counts[key]! += 1 }
+                    else { labelFailure(phase, key, value, other: comparison, audit: &audit) }
+                }
+                let geometry = [value.bounds.minX, value.bounds.minY, value.bounds.width, value.bounds.height,
+                                value.position.x, value.position.y, value.scale.width, value.scale.height, value.rotation, value.fontSize]
+                check(geometry.allSatisfy(\.isFinite) && value.parentState.allSatisfy(\.isFinite), "finiteGeometryCount")
+                if nonempty {
+                    check(value.bounds.width > 0 && value.bounds.height > 0 && geometry.allSatisfy(\.isFinite), "positiveBoundsCount")
+                    check(value.slot.insetBy(dx: -0.5, dy: -0.5).contains(value.bounds), "containedCount")
+                }
+                check(input.source == first[index].source && input.source == value.source, "sourcePreservedCount", comparison: input)
+                check(first[index].node === value.node && sameFit(first[index], value, sameObject: true), "idempotentCount", comparison: first[index])
+                check(sameParents(input, value, sameObject: true), "parentPreservedCount", comparison: input)
+                check(sameAppearance(input, value), "appearancePreservedCount", comparison: input)
+                check(value.fontSize >= min(8, value.baseFontSize) && value.fontSize <= value.baseFontSize, "fontRangeCount")
+                if let reference {
+                    let previous = reference.first { $0.id == value.id }
+                    check(previous.map { sameFit($0, value, sameObject: sameParentObject) } ?? false, "referenceMatchedCount", comparison: previous)
+                }
+                if eligible.contains(value.id) { check(value.fontSize == value.baseFontSize, "baseRecoveredCount") }
+            }
+            if let reference, reference.count != second.count {
+                labelFailure(phase, "reference-count", second.first, other: reference.first, audit: &audit)
+            }
+            var summary: [String: Any] = counts.mapValues { $0 as Any }
+            summary.merge(["phase": phase, "fitPasses": 2, "registryValid": registryValid,
+                           "measuredCount": second.count, "baseEligibleCount": eligible.count,
+                           "referenceRequired": reference != nil, "failureCount": audit.failureCount - startFailures,
+                           "status": audit.failureCount == startFailures ? "success" : "failure"]) { _, new in new }
+            audit.phases.append(summary)
+            return second
+        }
+        func auditJSON(_ audit: LabelAudit, labels: [LabelSnapshot], registeredCount: Int) -> [String: Any] {
+            ["schemaVersion": 1, "coordinateSpace": "label-parent-local", "registeredCount": registeredCount,
+             "labelIDs": labels.map(\.id).sorted(), "phases": audit.phases, "failureCount": audit.failureCount,
+             "omittedFailureCount": audit.failureCount - audit.details.count, "details": audit.details,
+             "status": audit.failureCount == 0 ? "success" : "failure"]
+        }
+        var actualLabelAudit = LabelAudit()
+        let actualLabelCount = boundedHUDLabels.count
+        let actualLabels = auditLabels("actual-normal", audit: &actualLabelAudit)
         let originalState = fingerprint()
         for (fixtureID, fixtureSize, fixtureInsets) in fixtures {
             for (pageIndex, page) in HudPage.allCases.enumerated() {
@@ -4982,12 +5196,18 @@ final class GameScene: SKScene {
                     let back = worldPoint(fromMinimap: minimapPoint(forWorldPoint: point))
                     expect(back.distance(to: point) < 0.01, "roundTrip", "map/world")
                 }
+                var labelAudit = LabelAudit()
+                let labelCount = boundedHUDLabels.count
+                let normal = auditLabels("normal", audit: &labelAudit)
                 let stress = String(repeating: "Long mission / aircraft / target / queue ", count: 8)
-                for label in [missionTitleLabel, missionDetailLabel, messageLabel, selectedLabel, queueLabel, selectionInfoTitleLabel] { label.text = stress }
-                fitHUDLabels()
-                for item in boundedHUDLabels where !(item.node.text?.isEmpty ?? true) {
-                    expect(item.frame.insetBy(dx: -0.5, dy: -0.5).contains(item.node.frame), "labels", item.node.name ?? "button")
-                }
+                for item in boundedHUDLabels { item.node.text = stress }
+                let long = auditLabels("long1", audit: &labelAudit)
+                for item in boundedHUDLabels { item.node.text = "OK" }
+                _ = auditLabels("short", audit: &labelAudit)
+                for item in boundedHUDLabels { item.node.text = stress }
+                _ = auditLabels("long2", reference: long, audit: &labelAudit)
+                for value in normal { value.node.text = value.source }
+                _ = auditLabels("restored", reference: normal, audit: &labelAudit)
                 for (index, row) in selectionInfoRowLabels.enumerated() where !(row.text?.isEmpty ?? true) {
                     expect(layout.slots["row\(index)"]!.insetBy(dx: -0.5, dy: -0.5).contains(row.frame), "labels", "row\(index)")
                 }
@@ -4995,6 +5215,13 @@ final class GameScene: SKScene {
                 let count = nodeCount(hudNode)
                 layoutHUD()
                 updateHUD()
+                _ = auditLabels("rebuilt", reference: normal, sameParentObject: false, audit: &labelAudit)
+                for detail in labelAudit.details {
+                    expect(false, "labels", "\(detail["id"] ?? "registry")/\(detail["phase"] ?? "unknown")/\(detail["reason"] ?? "unknown")")
+                }
+                if labelAudit.failureCount > labelAudit.details.count {
+                    expect(false, "labels", "additional-failures=\(labelAudit.failureCount - labelAudit.details.count)")
+                }
                 expect(count == nodeCount(hudNode), "rebuild", "node-count")
                 expect(Set(hudButtonHitFrames.keys) == Set(page.actions) && hudPageHitFrames.count == 5 && hudButtonShapes.count == page.actions.count,
                        "rebuild", "stale-targets")
@@ -5005,6 +5232,7 @@ final class GameScene: SKScene {
                                "panels": layout.panels.mapValues(rectJSON), "controls": controls.mapValues(rectJSON),
                                "panelArea": panelArea, "viewportArea": fixtureSize.width * fixtureSize.height,
                                "panelAreaFraction": panelArea / (fixtureSize.width * fixtureSize.height),
+                               "labelAudit": auditJSON(labelAudit, labels: normal, registeredCount: labelCount),
                                "checks": checks, "failures": failures, "status": failures.isEmpty ? "success" : "failure"])
             }
         }
@@ -5025,16 +5253,25 @@ final class GameScene: SKScene {
         messageLabel.text = actualMessage.0
         messageLabel.fontColor = actualMessage.1
         messageLabel.alpha = actualMessage.2
-        fitHUDLabels()
+        _ = auditLabels("actual-restored", reference: actualLabels, sameParentObject: false, audit: &actualLabelAudit)
         touchStartScene = actualTouch.0
         touchStartWorld = actualTouch.1
         panStartCamera = actualTouch.2
         isPanning = actualTouch.3
         isUsingMinimap = actualTouch.4
+        // Restoration is equality to the original state; label legality still gates the report independently.
+        let restoreCounts = ["measuredCount", "sourcePreservedCount", "appearancePreservedCount", "parentPreservedCount", "idempotentCount"]
+        let restorePhaseNames = actualLabelAudit.phases.compactMap { $0["phase"] as? String }
+        let preserved = actualLabelAudit.phases.allSatisfy { phase in
+            phase["registryValid"] as? Bool == true && restoreCounts.allSatisfy { phase[$0] as? Int == actualLabelCount }
+        }
+        let labelsRestored = actualLabelCount > 0 && actualLabelCount <= 64 &&
+            restorePhaseNames == ["actual-normal", "actual-restored"] && preserved &&
+            actualLabelAudit.phases.last?["referenceMatchedCount"] as? Int == actualLabelCount
         let restored = fingerprint() == originalState && size == actualSize && hudPage == actualPage &&
-            windowSafeAreaInsets == actualInsets && cameraRig.position == actualCamera.0
+            windowSafeAreaInsets == actualInsets && cameraRig.position == actualCamera.0 && labelsRestored
         ciInvalidateReady("contract-restored")
-        let passed = restored && matrix.allSatisfy { $0["status"] as? String == "success" }
+        let passed = restored && actualLabelAudit.failureCount == 0 && matrix.allSatisfy { $0["status"] as? String == "success" }
         let report: [String: Any] = [
             "schemaVersion": 1, "producer": "GameScene.HUDLayout", "status": passed ? "success" : "failure",
             "commitSha": environment["DESERT_CI_COMMIT_SHA"] ?? "", "runId": environment["DESERT_CI_RUN_ID"] ?? "",
@@ -5042,6 +5279,7 @@ final class GameScene: SKScene {
             "pid": ProcessInfo.processInfo.processIdentifier, "actualSize": ["width": actualSize.width, "height": actualSize.height],
             "probeID": environment["DESERT_CI_PROBE_ID"] ?? "", "nonce": environment["DESERT_CI_NONCE"] ?? "",
             "actualInsets": insetJSON(actualInsets), "matrix": matrix, "stateRestored": restored,
+            "actualLabelAudit": auditJSON(actualLabelAudit, labels: actualLabels, registeredCount: actualLabelCount),
             "limitations": "Production frame/route checks, not real touch injection or multi-size screenshot certification"
         ]
         do {
@@ -5176,6 +5414,7 @@ final class GameScene: SKScene {
         hudButtonShapes[action] = shape
 
         let title = SKLabelNode(fontNamed: "AvenirNextCondensed-DemiBold")
+        title.name = "hud-text:action:\(action.rawValue):title"
         title.text = action.title
         title.fontSize = frame.width < 66 ? 14 : 17
         title.fontColor = HUDPalette.text
@@ -5185,6 +5424,7 @@ final class GameScene: SKScene {
         node.addChild(title)
         boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 4, y: 0, width: frame.width - 8, height: 22), title.fontSize))
         let subtitleLabel = SKLabelNode(fontNamed: "Menlo")
+        subtitleLabel.name = "hud-text:action:\(action.rawValue):subtitle"
         subtitleLabel.text = subtitle(for: action)
         subtitleLabel.fontSize = 8
         subtitleLabel.fontColor = HUDPalette.mutedText
@@ -5208,6 +5448,7 @@ final class GameScene: SKScene {
         node.addChild(shape)
         hudPageShapes[page] = shape
         let title = SKLabelNode(fontNamed: "AvenirNextCondensed-DemiBold")
+        title.name = "hud-text:page:\(page.rawValue):title"
         title.text = page.title
         title.fontSize = 12
         title.fontColor = HUDPalette.text
@@ -5216,6 +5457,7 @@ final class GameScene: SKScene {
         title.position = CGPoint(x: 0, y: 6)
         node.addChild(title)
         let subtitle = SKLabelNode(fontNamed: "Menlo")
+        subtitle.name = "hud-text:page:\(page.rawValue):subtitle"
         subtitle.text = page.subtitle
         subtitle.fontSize = 8
         subtitle.fontColor = HUDPalette.mutedText

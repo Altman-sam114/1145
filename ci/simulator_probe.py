@@ -518,6 +518,54 @@ def validate_hud_contract(summary, directory):
                 and all(type(number) in (int, float) and math.isfinite(number) for number in value.values())
                 and value["width"] > 0 and value["height"] > 0)
 
+    def label_audit(audit, phases, context, controls=None):
+        if (not isinstance(audit, dict) or type(audit.get("schemaVersion")) is not int or audit["schemaVersion"] != 1
+                or audit.get("coordinateSpace") != "label-parent-local" or audit.get("status") != "success"
+                or type(audit.get("failureCount")) is not int or audit["failureCount"] != 0
+                or type(audit.get("omittedFailureCount")) is not int or audit["omittedFailureCount"] != 0
+                or audit.get("details") != []):
+            raise ProbeFailure(f"HUD label audit missing/failed: {context}")
+        ids = audit.get("labelIDs")
+        if (not isinstance(ids, list) or not 0 < len(ids) <= 64
+                or any(not isinstance(value, str) or not value.startswith("hud-text:") or len(value) > 128 for value in ids)
+                or len(set(ids)) != len(ids) or type(audit.get("registeredCount")) is not int
+                or audit["registeredCount"] != len(ids)):
+            raise ProbeFailure(f"HUD label audit identities/count incomplete: {context}")
+        if controls is not None:
+            required = {f"hud-text:{control}:{part}" for control in controls
+                        if control.startswith(("page:", "action:")) for part in ("title", "subtitle")}
+            if not required <= set(ids):
+                raise ProbeFailure(f"HUD label audit omitted page/action text: {context}")
+        records = audit.get("phases")
+        if (not isinstance(records, list) or len(records) != len(phases)
+                or any(not isinstance(record, dict) for record in records)
+                or [record.get("phase") for record in records] != phases):
+            raise ProbeFailure(f"HUD label audit phases incomplete: {context}")
+        count_fields = ("measuredCount", "nonemptyCount", "visibleNonemptyCount", "positiveBoundsCount", "containedCount",
+                        "finiteGeometryCount", "sourcePreservedCount", "idempotentCount", "parentPreservedCount",
+                        "appearancePreservedCount", "fontRangeCount", "referenceMatchedCount", "baseEligibleCount", "baseRecoveredCount")
+        for record in records:
+            phase = record["phase"]
+            if (any(type(record.get(field)) is not int or not 0 <= record[field] <= len(ids) for field in count_fields)
+                    or type(record.get("fitPasses")) is not int or record["fitPasses"] != 2
+                    or type(record.get("failureCount")) is not int or record["failureCount"] != 0
+                    or record.get("registryValid") is not True or record.get("status") != "success"):
+                raise ProbeFailure(f"HUD label audit malformed/failed measurements: {context}/{phase}")
+            nonempty = record["nonemptyCount"]
+            referenced = phase in {"long2", "restored", "rebuilt", "actual-restored"}
+            if (record["measuredCount"] != len(ids) or record["visibleNonemptyCount"] > nonempty
+                    or record["positiveBoundsCount"] != nonempty or record["containedCount"] != nonempty
+                    or any(record[field] != len(ids) for field in ("finiteGeometryCount", "sourcePreservedCount", "idempotentCount",
+                                                                  "parentPreservedCount", "appearancePreservedCount", "fontRangeCount"))
+                    or record.get("referenceRequired") is not referenced
+                    or record["referenceMatchedCount"] != (len(ids) if referenced else 0)
+                    or (phase in {"long1", "short", "long2"} and nonempty != len(ids))):
+                raise ProbeFailure(f"HUD label audit assertions incomplete: {context}/{phase}")
+            eligible = record["baseEligibleCount"]
+            if ((phase == "short" and not 0 < eligible <= nonempty) or (phase != "short" and eligible != 0)
+                    or record["baseRecoveredCount"] != eligible):
+                raise ProbeFailure(f"HUD label audit base font recovery incomplete: {context}/{phase}")
+
     actual = report.get("actualSize", {})
     insets = report.get("actualInsets", {})
     if (not all(finite_positive(actual.get(key)) for key in ("width", "height"))
@@ -525,6 +573,7 @@ def validate_hud_contract(summary, directory):
             or set(insets) != {"top", "left", "bottom", "right"}
             or not all(type(value) in (int, float) and math.isfinite(value) and value >= 0 for value in insets.values())):
         raise ProbeFailure("HUD contract actual window geometry missing/invalid")
+    label_audit(report.get("actualLabelAudit"), ["actual-normal", "actual-restored"], "actual-window-restore")
     matrix = report.get("matrix", [])
     if len(matrix) != 25:
         raise ProbeFailure("HUD contract must contain all 25 size/page combinations")
@@ -553,6 +602,7 @@ def validate_hud_contract(summary, directory):
                 or not all(finite_positive(item.get(field)) for field in ("panelArea", "viewportArea", "panelAreaFraction"))
                 or item["panelAreaFraction"] >= 1):
             raise ProbeFailure(f"HUD contract frame/area evidence incomplete: {key}")
+        label_audit(item.get("labelAudit"), ["normal", "long1", "short", "long2", "restored", "rebuilt"], str(key), controls)
     return report
 
 

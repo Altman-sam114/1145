@@ -181,6 +181,24 @@ def hud_fixture(runner):
     report.update(schemaVersion=1, producer="GameScene.HUDLayout", pid=pid, nonce=nonce, probeID="prewarm:1",
                   status="success", stateRestored=True,
                   actualSize={"width": 874, "height": 402}, actualInsets={"top": 0, "left": 62, "bottom": 21, "right": 62}, matrix=[])
+
+    def label_audit(controls, phases):
+        # Count-only protocol placeholders, not Python glyph measurements or a font model.
+        ids = sorted({f"hud-text:{control}:{part}" for control in controls
+                      if control.startswith(("page:", "action:")) for part in ("title", "subtitle")} | {"hud-text:unit-placeholder"})
+        count = len(ids)
+        records = []
+        for phase in phases:
+            referenced = phase in {"long2", "restored", "rebuilt", "actual-restored"}
+            records.append(dict(phase=phase, fitPasses=2, registryValid=True, measuredCount=count, nonemptyCount=count, visibleNonemptyCount=count,
+                positiveBoundsCount=count, containedCount=count, finiteGeometryCount=count, sourcePreservedCount=count,
+                idempotentCount=count, parentPreservedCount=count, appearancePreservedCount=count, fontRangeCount=count,
+                referenceRequired=referenced, referenceMatchedCount=count if referenced else 0,
+                baseEligibleCount=count if phase == "short" else 0, baseRecoveredCount=count if phase == "short" else 0,
+                failureCount=0, status="success"))
+        return dict(schemaVersion=1, coordinateSpace="label-parent-local", registeredCount=count, labelIDs=ids, phases=records,
+                    failureCount=0, omittedFailureCount=0, details=[], status="success")
+
     for fixture, (width, height) in HUD_FIXTURES.items():
         insets = (report["actualInsets"] if fixture == "874x402" else
                   {"top": 0, "left": 59, "bottom": 21, "right": 59} if fixture == "852x393" else
@@ -193,7 +211,9 @@ def hud_fixture(runner):
             report["matrix"].append(dict(fixture=fixture, page=page, size={"width": width, "height": height}, insets=insets,
                 checks={key: True for key in HUD_CHECKS}, failures=[], status="success", safeFrame=rectangle,
                 panels={key: rectangle for key in ("resources", "rail", "dock", "mission", "message", "selection", "minimap")},
-                controls=controls, panelArea=1, viewportArea=2, panelAreaFraction=0.5))
+                controls=controls, panelArea=1, viewportArea=2, panelAreaFraction=0.5,
+                labelAudit=label_audit(controls, ["normal", "long1", "short", "long2", "restored", "rebuilt"])))
+    report["actualLabelAudit"] = label_audit(report["matrix"][0]["controls"], ["actual-normal", "actual-restored"])
     write_hud_fixture(runner, report)
     descriptor = dict(runner.summary["hudContract"], path=f"/synthetic/Documents/DesertCI/{nonce}/hud-layout-contract.json")
     runner.summary["prewarm"][0]["scene"] = scene_fixture(runner, runner.probes[0], "prewarm:1", nonce=nonce,
@@ -536,6 +556,87 @@ class ProbeTests(unittest.TestCase):
         runner.summary["hudContract"]["status"] = "collected"
         with self.assertRaises(ProbeFailure):
             validate_results(self.probes, runner.summary, self.directory)
+
+    def assert_hud_audit_rejected(self, mutation):
+        runner = self.complete()
+        report = json.loads((self.directory / "hud-layout-contract.json").read_text())
+        mutation(report)
+        self.assertEqual(report["status"], "success")
+        self.assertIs(report["stateRestored"], True)
+        self.assertTrue(all(all(row["checks"].values()) and row["failures"] == [] for row in report["matrix"]))
+        write_hud_fixture(runner, report)
+        warm = runner.summary["prewarm"][0]
+        descriptor = dict(runner.summary["hudContract"], path=warm["scene"]["ready"]["hudReport"]["path"])
+        warm["scene"] = scene_fixture(runner, runner.probes[0], "prewarm:1", nonce=warm["scene"]["nonce"],
+                                      extra_ready={"hudReport": descriptor}, sealed=True)
+        with self.assertRaisesRegex(ProbeFailure, "HUD label audit"):
+            validate_hud_contract(runner.summary, self.directory)
+        with self.assertRaisesRegex(ProbeFailure, "HUD label audit"):
+            validate_results(runner.probes, runner.summary, self.directory)
+        runner.summary.update(status="success", integrityOutcome="success")
+        runner.save()
+        environment = {key: runner.summary[field] for key, field in (
+            ("CI_VERSION", "version"), ("GITHUB_REF_NAME", "branch"), ("GITHUB_SHA", "commitSha"),
+            ("GITHUB_RUN_ID", "runId"), ("GITHUB_RUN_ATTEMPT", "runAttempt"))}
+        environment.update(WORKFLOW_NAME="synthetic HUD audit fixture", GITHUB_OUTPUT=str(self.directory / "outputs"),
+                           STATIC_OUTCOME="success", PROJECT_LINT_OUTCOME="success", BUILD_OUTCOME="success",
+                           SIMULATOR_LAUNCH_OUTCOME="success")
+        with patch.dict(os.environ, environment), patch("package_results.Path", side_effect=lambda path:
+                self.directory if path == "ci-results" else Path(path)):
+            package_results()
+        manifest = json.loads((self.directory / "ci-artifact-manifest.json").read_text())
+        self.assertEqual(manifest["hudLayoutContractOutcome"], "failure")
+        self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+        for key in ("simulatorBootOutcome", "simulatorInstallOutcome", "sceneReadinessOutcome"):
+            self.assertEqual(manifest[key], "success")
+
+    def test_hud_label_audit_missing_or_malformed_is_rejected(self):
+        mutations = {
+            "missing-matrix-audit": lambda report: report["matrix"][0].pop("labelAudit"),
+            "missing-actual-audit": lambda report: report.pop("actualLabelAudit"),
+            "bad-audit-type": lambda report: report["matrix"][0].update(labelAudit=[]),
+            "bad-schema-type": lambda report: report["matrix"][0]["labelAudit"].update(schemaVersion=True),
+            "wrong-coordinate-space": lambda report: report["matrix"][0]["labelAudit"].update(coordinateSpace="scene"),
+            "missing-phase": lambda report: report["matrix"][0]["labelAudit"]["phases"].pop(),
+            "duplicate-phase": lambda report: report["matrix"][0]["labelAudit"]["phases"][1].update(phase="normal"),
+            "duplicate-id": lambda report: report["matrix"][0]["labelAudit"]["labelIDs"].__setitem__(1, report["matrix"][0]["labelAudit"]["labelIDs"][0]),
+            "missing-action-label": lambda report: report["matrix"][0]["labelAudit"]["labelIDs"].__setitem__(0, "hud-text:omitted-action-placeholder"),
+            "bad-count": lambda report: report["matrix"][0]["labelAudit"]["phases"][0].update(measuredCount=-1),
+            "missing-count": lambda report: report["matrix"][0]["labelAudit"]["phases"][0].pop("sourcePreservedCount"),
+            "bool-count": lambda report: report["matrix"][0]["labelAudit"]["phases"][0].update(idempotentCount=True),
+            "registry-mismatch": lambda report: report["matrix"][0]["labelAudit"].update(registeredCount=64),
+            "oversized-registry": lambda report: report["matrix"][0]["labelAudit"].update(labelIDs=[f"hud-text:{index}" for index in range(65)], registeredCount=65),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(mutation=name):
+                self.assert_hud_audit_rejected(mutate)
+
+    def test_hud_label_audit_failed_or_incomplete_cannot_hide_behind_success(self):
+        mutations = {
+            "failed-audit": lambda report: report["matrix"][0]["labelAudit"].update(status="failure"),
+            "omitted-failures": lambda report: report["matrix"][0]["labelAudit"].update(failureCount=9, omittedFailureCount=9),
+            "unreported-details": lambda report: report["matrix"][0]["labelAudit"].update(details=[{"id": "synthetic-failure"}]),
+            "failed-phase": lambda report: report["matrix"][0]["labelAudit"]["phases"][0].update(status="failure"),
+            "invalid-registry": lambda report: report["actualLabelAudit"]["phases"][1].update(registryValid=False),
+            "incomplete-measurements": lambda report: report["matrix"][0]["labelAudit"]["phases"][0].update(measuredCount=0),
+            "source-rewritten": lambda report: report["matrix"][0]["labelAudit"]["phases"][1].update(sourcePreservedCount=0),
+            "non-idempotent": lambda report: report["matrix"][0]["labelAudit"]["phases"][1].update(idempotentCount=0),
+            "zero-bbox": lambda report: report["matrix"][0]["labelAudit"]["phases"][1].update(positiveBoundsCount=0),
+            "hidden-source": lambda report: report["matrix"][0]["labelAudit"]["phases"][1].update(appearancePreservedCount=0),
+            "parent-drift": lambda report: report["matrix"][0]["labelAudit"]["phases"][1].update(parentPreservedCount=0),
+            "lost-long-source": lambda report: report["matrix"][0]["labelAudit"]["phases"][3].update(referenceMatchedCount=0),
+            "no-base-eligible": lambda report: report["matrix"][0]["labelAudit"]["phases"][2].update(baseEligibleCount=0, baseRecoveredCount=0),
+            "stuck-small-font": lambda report: report["matrix"][0]["labelAudit"]["phases"][2].update(baseRecoveredCount=0),
+            "rebuild-drift": lambda report: report["matrix"][0]["labelAudit"]["phases"][5].update(referenceMatchedCount=0),
+            "actual-restore-drift": lambda report: report["actualLabelAudit"]["phases"][1].update(referenceMatchedCount=0),
+            "actual-nonfinite-geometry": lambda report: report["actualLabelAudit"]["phases"][0].update(finiteGeometryCount=0),
+            "actual-zero-bbox": lambda report: report["actualLabelAudit"]["phases"][0].update(positiveBoundsCount=0),
+            "actual-bounds-failure": lambda report: report["actualLabelAudit"]["phases"][0].update(containedCount=0),
+            "actual-font-range-failure": lambda report: report["actualLabelAudit"]["phases"][0].update(fontRangeCount=0),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(mutation=name):
+                self.assert_hud_audit_rejected(mutate)
 
 
 class InstallRunner(Runner):
