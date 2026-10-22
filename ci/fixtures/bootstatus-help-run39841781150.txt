@@ -1,0 +1,8 @@
+Checks device boot status.
+Usage: simctl bootstatus <device> [-bcd]
+	-b       Boot the device if it isn't already booted.
+	-d       Print data migration information, if it's available.
+	-c       Continuously monitor boot status through multiple boot/shutdown cycles.
+
+Monitors the specified device and prints boot status information until the device finishes booting. You can safely call this before you attempt to start booting the device.
+

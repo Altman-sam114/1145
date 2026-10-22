@@ -254,11 +254,11 @@ flowchart TD
 
 ### 保留同设备迁移进度的启动续等
 
-读图说明：一次help必须明确支持不带-b的纯监控语义，之后只有一次初始boot。首轮真实watchdog超时且最后为已知非terminal等待，CLI收尾完整后才查一次fresh状态；Booted只是续等条件，不替代最终bootstatus正常exit0。每条命令从原deadline重算并留下557s安装保留和本次CLI2s，预算或证据不够准确失败，不延长预算、不暗中再boot；原安装恢复不充当第三次启动等待。
+读图说明：一次help必须有明确默认monitor-until-complete正文和唯一条件-b说明，不依赖标题或精确[-b]可选列表，支持已留证[-bcd]；缺失/含糊/矛盾仍拒绝，正式argv无-b/-c/-d。之后只有一次初始boot。首轮真实watchdog超时且最后为已知非terminal等待，CLI收尾完整后才查一次fresh状态；Booted只是续等条件，不替代最终bootstatus正常exit0。每条命令从原deadline重算并留下557s安装保留和本次CLI2s，预算或证据不够准确失败，不延长预算、不暗中再boot；原安装恢复不充当第三次启动等待。
 
 ```mermaid
 flowchart TD
-  Help[云端一次help cap10 / 原文与真实回执] --> Semantics{明确monitor与-b自动boot语义}
+  Help[云端一次help cap10 / 原文与真实回执] --> Semantics{默认monitor至完成正文 / 唯一条件-b说明}
   Semantics -- 否 --> Fail[finally保存boot证据 / 只清理所选设备 / 未加密结果包]
   Semantics -- 是 --> Boot[一次初始boot cap60 / 正常exit0或精确already-Booted]
   Boot -- 未确认成功或取消 --> Fail

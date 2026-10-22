@@ -1,0 +1,2 @@
+# Preserve byte-exact official CLI output, including its final blank line.
+ci/fixtures/bootstatus-help-run39841781150.txt whitespace=-blank-at-eof

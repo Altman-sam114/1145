@@ -28,7 +28,15 @@ from package_results import main as package_results
 
 NORMALIZATION_EVIDENCE = []
 WATCHDOG_RECEIPT_EVIDENCE = []
-BOOT_HELP = "Monitor the boot status of a device.\nUsage: simctl bootstatus <device> [-b]\n\n  -b  Boot the device if it isn't already booted.\n"
+# Synthetic legacy formatting, not evidence of a real older Xcode interface.
+LEGACY_MINIMAL_BOOT_HELP = "Monitor the boot status of a device.\nUsage: simctl bootstatus <device> [-b]\n\n  -b  Boot the device if it isn't already booted.\n"
+BOOT_MONITOR_PARAGRAPH = "Monitors the specified device and prints boot status information until the device finishes booting."
+BOOT_HELP = LEGACY_MINIMAL_BOOT_HELP + "\n" + BOOT_MONITOR_PARAGRAPH + "\n"
+BOOT_HELP_FIXTURE = Path(__file__).with_name("fixtures") / "bootstatus-help-run39841781150.txt"
+# Historical official CLI input only; never copied into production run evidence.
+BOOT_HELP_SOURCE = {"runId": "39841781150", "runAttempt": 1, "artifactId": 12452729094,
+                    "commitSha": "ccdff57c5505840dadaf038b6176ca4a636c9c88", "path": "boot-help.log",
+                    "bytes": 442, "sha256": "1bb8a0fabb52cfad5e7cdb4e93b7f1b22bc643c8cb875d2f3fd15bf70085e5eb"}
 
 
 def boot_wait_text(udid, status=2):
@@ -794,6 +802,85 @@ class BootTests(unittest.TestCase):
                 runner = self.runner([outcome])
                 self.assert_failed(runner)
                 self.assertEqual(len(runner.calls), 1)
+
+    def official_help(self):
+        data = BOOT_HELP_FIXTURE.read_bytes()
+        self.assertEqual(len(data), BOOT_HELP_SOURCE["bytes"])
+        self.assertEqual(hashlib.sha256(data).hexdigest(), BOOT_HELP_SOURCE["sha256"])
+        return data.decode("utf-8")
+
+    def test_boot_help_official_raw_and_synthetic_whitespace_variants(self):
+        official = self.official_help()
+        # Only the first entry is unchanged official input; all variants are synthetic.
+        variants = (official, official.replace("\n", "\r\n"),
+                    official.replace("\t", "  ").replace("specified device and prints", "specified device\n    and\tprints"),
+                    official.replace("Checks device boot status.\n", ""),
+                    official.replace("Checks device boot status.", "A different title."),
+                    official.replace("[-bcd]", "[-b] [-c] [-d]").replace("-b       Boot", "-b\n    Boot"))
+        for text in variants:
+            with self.subTest(text=text):
+                runner = self.runner([{"text": text}, {}, {}])
+                self.boot(runner)
+                validate_boot(runner.summary, runner.probes, self.directory)
+                semantics = runner.summary["boot"]["monitorSemantics"]
+                self.assertEqual(semantics["monitorDescription"], BOOT_MONITOR_PARAGRAPH)
+                self.assertEqual(semantics["autoBootOption"], "-b")
+                self.assertEqual(runner.calls[-1][0][2:], ["bootstatus", runner.device["udid"]])
+
+    def test_boot_help_missing_default_or_conditional_semantics_stops(self):
+        official = self.official_help()
+        option = "Boot the device if it isn't already booted."
+        variants = (LEGACY_MINIMAL_BOOT_HELP, official.replace(BOOT_MONITOR_PARAGRAPH, ""),
+                    official.replace("\t-b       " + option + "\n", ""),
+                    official.replace(option, "Maybe boot the device if it isn't already booted."),
+                    official.replace(option, "Boot the device when needed."),
+                    official.replace(BOOT_MONITOR_PARAGRAPH, "Continuously monitor boot status through multiple cycles."),
+                    official.replace(BOOT_MONITOR_PARAGRAPH, "Never " + BOOT_MONITOR_PARAGRAPH))
+        for text in variants:
+            with self.subTest(text=text):
+                runner = self.runner([{"text": text}])
+                self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 1)
+                manifest = self.package(runner)
+                self.assertEqual(manifest["simulatorBootOutcome"], "failure")
+                self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+
+    def test_boot_help_contradictions_and_conflicting_option_definitions_stop(self):
+        official = self.official_help()
+        for extra in ("By default the device is automatically booted.", "The device boots automatically.",
+                      "Without -b it still boots the device.", "Always boot the device before monitoring.",
+                      "Boot the device unconditionally by default.", "The device auto-boots.",
+                      "-b Never boot the device.", "-b Maybe boot the device.",
+                      "-b Boot the device if it isn't already booted.", "Unsupported interface.", "Error: failed to query help."):
+            with self.subTest(extra=extra):
+                runner = self.runner([{"text": official + extra + "\n"}])
+                self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 1)
+
+    def test_boot_help_metadata_rechecks_current_output_not_historical_fixture(self):
+        # This entire HUD/24-PNG chain is synthetic schema evidence, never App output.
+        runner = FakeRunner(self.directory)
+        runner.work()
+        command = runner.summary["boot"]["commands"][0]
+        path = self.directory / command["output"]["path"]
+        official = self.official_help()
+        for text, expected in ((official, "success"), (official.replace(BOOT_MONITOR_PARAGRAPH, ""), "failure")):
+            with self.subTest(expected=expected):
+                data = text.encode()
+                path.write_bytes(data)
+                command["output"].update(bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+                if expected == "success":
+                    runner.summary["boot"]["monitorSemantics"] = boot_monitor_semantics(text)
+                    validate_results(runner.probes, runner.summary, self.directory)
+                else:
+                    with self.assertRaises(ProbeFailure):
+                        validate_results(runner.probes, runner.summary, self.directory)
+                runner.summary.update(status="success", integrityOutcome="success")
+                manifest = self.package(runner)
+                self.assertEqual(manifest["simulatorBootOutcome"], expected)
+                self.assertEqual(manifest["probeIntegrityOutcome"], expected)
+                self.assertEqual(manifest["sceneReadinessOutcome"], "success")
+                self.assertEqual(manifest["hudLayoutContractOutcome"], "success")
 
     def test_boot_first_success_has_one_boot_and_monitor_without_auto_boot(self):
         runner = self.runner()

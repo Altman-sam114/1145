@@ -120,16 +120,23 @@ def boot_reserve(probes):
 
 
 def boot_monitor_semantics(text):
-    # Accept documented option semantics, not a version-specific copy of the whole help.
+    # The default completion paragraph, not a title or -c description, proves monitoring.
     normalized = " ".join(text.split())
-    monitor = re.search(r"Monitor the boot status of a device\.", normalized)
-    option = re.search(r"(?:^|\s)-b\s+(Boot the device if it (?:isn't|is not) (?:already )?booted\.|"
-                       r"If the device (?:isn't|is not) (?:already )?booted, boot it\.)", normalized)
-    if (not monitor or not option or not re.search(r"Usage: simctl bootstatus <device> \[-b\]", normalized)
-            or re.search(r"\b(error|failed|unsupported)\b|(?:by default|without -b)[^.]*\bboot(?:s|ing)? the device", normalized, re.I)):
+    monitors = list(re.finditer(r"(?:^|(?<=\.))\s*(Monitors the specified device and prints boot status information "
+                                r"until the device finishes booting\.)", normalized, re.I))
+    options = list(re.finditer(r"(?:^|\s)-b\s+(Boot the device if it (?:isn't|is not) (?:already )?booted\.|"
+                              r"If the device (?:isn't|is not) (?:already )?booted, boot it\.)", normalized, re.I))
+    # Extra boot-default/automatic claims are not assumed to be safely option-scoped.
+    unsafe = any(re.search(r"\b(?:boot(?:s|ed|ing)?|auto[- ]?boot(?:s|ed|ing)?)\b", clause, re.I)
+                 and re.search(r"\b(?:automatically|unconditionally|always|by default|without\s+(?:the\s+)?-b|"
+                               r"auto[- ]?boot(?:s|ed|ing)?)\b", clause, re.I)
+                 for clause in re.split(r"[.!?]", normalized))
+    if (len(monitors) != 1 or len(options) != 1 or len(re.findall(r"(?<!\S)-b(?=\s|$)", normalized)) != 1
+            or not re.search(r"\bUsage: simctl bootstatus <device>(?=\s|$)", normalized)
+            or unsafe or re.search(r"\b(error|failed|unsupported)\b", normalized, re.I)):
         raise ProbeFailure("bootstatus help does not explicitly support monitoring without auto-boot")
     return {"monitorOnlyWithoutOption": True, "autoBootOption": "-b",
-            "monitorDescription": monitor.group(0), "optionDescription": option.group(1)}
+            "monitorDescription": monitors[0].group(1), "optionDescription": options[0].group(1)}
 
 
 def boot_normal_exit(record, code=None):

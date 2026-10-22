@@ -156,6 +156,15 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - 保留原64方法名及独立5项watchdog、真实armed2s超时与exit0 fixture；新增19个BootTests声明方法，总83（34调度/HUD/image、12安装、19启动、2真实CLI、13场景、3规范化）。新分支使用fake单调钟/CLI/明确synthetic回执与JSON，不运行真实240s sleep，不复制Swift布局或为测试绕正式validator。覆盖help fail closed、无-b argv、alreadyBooted高正退出码/取消、两类等待续等、失败分类/cleanup、fresh状态负例、第二失败不重启、预算不足不发/状态后cap重算/不重置deadline、安装仍557、metadata独立与完整24PNG不能覆盖坏boot。AST声明不等于执行通过；只在Actions执行并核对ci-regression-results.json实际结果，本机不运行任何CI脚本/测试/build/sips/simctl。
 - C下载最新main/SHA/run/attempt官方未加密ZIP并保留，核对API digest/CRC、双build、83声明方法实际结果和独立5项watchdog、boot help/所有原始输出/真实receipt/fresh状态/实际cap与时序、安装与v5.57全部scene/HUD25/24正式图。真实快路径成功可验收但必须说明续等分支没有本run设备覆盖，不制造超时或额外重跑补覆盖；若仍未进入App，只能失败缺证，不借旧图或旧报告通过。视觉仍逐张审全部24原图，不能由CPU/hash或API绿色step替代。
 
+### v5.59 help语义兼容与真实原文fixture
+
+- v5.58 C不通过：run `39841781150` attempt1 / main `ccdff57c5505840dadaf038b6176ca4a636c9c88`，双build、83方法及独立5项watchdog实际通过；help CLI正常exit0/reaped、cap10s、外层0.246439s、余量1036.388986s。源码要求旧标题与精确[-b]，误拒绝真实`Checks device boot status.`/`[-bcd]`及明确默认监控正文，初始boot/monitor/install/App/scene/HUD25均未执行，24项not_run/0PNG。不是编译/迁移超时或预算不足。
+- 唯一生产改动为`boot_monitor_semantics`：识别默认监控指定设备至启动完成的正文及唯一无歧义条件-b说明，标题不作必要或充分证据、可选usage列表不固定[-b]。仅归一化CRLF/合理空白与换行，缺必要句、含糊/冲突/重复定义、自动或默认boot声明及错误仍fail closed；不依赖-c的多周期说明，不启用-b/-c/-d。原receipt前置、四键结果、metadata/全部gate、调度/预算/安装/scene/Swift/24探针/workflow不变。
+- `ci/fixtures/bootstatus-help-run39841781150.txt`为官方原字节442 bytes/SHA256 `1bb8a0fabb52cfad5e7cdb4e93b7f1b22bc643c8cb875d2f3fd15bf70085e5eb`，来源run/attempt/SHA/artifact ID见测试常量；不当本轮CLI/设备证据。旧最小BOOT_HELP从未证明为真实旧Xcode接口，现保留其synthetic标题/usage/-b两种措辞配完整正文的正例，原仅标题最小文本作缺语义负例，不宣称未经验证的旧版本兼容。
+- X批准保留原文末尾两个LF：根`.gitattributes`仅对上述精确fixture路径设`whitespace=-blank-at-eof`，其余路径/规则与全局配置不变。C用`git check-attr whitespace -- ci/fixtures/bootstatus-help-run39841781150.txt ci/simulator_probe.py ci/check_probe_runner.py`确认例外范围，并复核442 bytes/hash；不得用裁剪原文或全局放宽替代。
+- 保留83方法名和独立5项watchdog，新增4个help方法（官方原文长度/hash与CRLF/空白/无标题变体、缺必要语义、含糊/重复冲突/自动boot、原Runner/metadata重验当前输出不读历史fixture），AST声明总87；所有变体与fake快路径/HUD/24PNG均明确synthetic，不替代App运行。已有非正常receipt与无-b/-c/-d的真实路径约束保持；仅Actions执行，数量/结果待最新报告，不在本机导入或运行CI/测试/build/设备工具。
+- C仍须下载最新main/SHA/run/attempt官方未加密ZIP并核对API digest/CRC、双build、87声明方法实际结果及5项watchdog、当前真实help/正常CLI回执、全部原boot/安装/scene/snapshot/nonce/两帧/fixture/HUD25与24正式图。真实快路径与synthetic续等覆盖分开报告，任何早停准确缺证不通过，不用fixture、旧图或API绿色conclusion补证；预算/门槛/架构不变。
+
 ### 触发条件
 
 `.github/workflows/ci-results.yml` 在以下情况运行：

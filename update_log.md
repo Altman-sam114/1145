@@ -6095,7 +6095,7 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - 两build成功（generic64.2s、sim SDK70.156s）、64回归和独立5项watchdog通过；真实timeout fixture已armed、TERM/KILL sent、leader=-9/reaped，耗时2.573917s。首bootstatus240.696s超时，最后为Status2/非terminal Data Migration/CoreLocationMigrator；主动shutdown7.573s、再次boot9.751s、第二bootstatus195.137s后成功。install-admission:1余量537.151810s低于557s，差19.848190s；attempts空，未执行install/prewarm/App/help launch/trace/HUD25，24项not_run/0PNG，不是scene断言失败或Swift编译卡死，也不能证明v5.57运行修复或v5.55视觉。
 - work543.427s/cleanup74.494s/总617.921s；app log/device-state诊断均124且0byte，最终所选设备shutdown exit0。JUnit9case/5failure/1准确XCTest skip；API continue-on-error的绿色conclusion不替代真实outcome。C退回启动预算修复，v5.55至v5.57均不计成功，不进入地图/模型升级。
 
-### v5.58 / 保留迁移进度的同设备启动续等（待最新云端验收）
+### v5.58 / 保留迁移进度的同设备启动续等（C不通过：help解析误拒绝真实接口）
 
 日期：2026-10-22
 
@@ -6105,3 +6105,16 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - boot schema1/policy记录绑定run/SHA/attempt/version与同设备身份的commands/admissions、实际argv/原文hash/CLI回执、最后等待分类、fresh状态、monotonic起止/remaining/requested/effective cap，finally原子落盘。runner/metadata独立验证boot，manifest新增simulatorBootOutcome，JUnit10case含1准确XCTest skip，失败摘要显示实际决策和预算，不用后续完整HUD/24PNG覆盖坏boot。
 - 保留64方法名和独立5项watchdog、真实armed2s fixture，新增19项fake-clock/CLI启动策略及gate方法，AST声明总83。仅本机AST/文本/diff检查，未执行任何本机测试/CI脚本/build/设备命令；实际执行及App/HUD25/24正式PNG仍待最新Actions和C下载验收，不预写通过或另造状态空commit。
 - 关键文件：ci/simulator_probe.py、ci/package_results.py、ci/check_probe_runner.py及README/flow/flowchart/test/本轮提示词。用户Team ID两行及既有未跟踪资料保留排除。收益仅为不主动打断同设备启动、减少重启命令；17.324s历史命令成本小于19.848190s缺口，help/state还增加开销，是否更快/保住准入及视觉正确只能由本轮官方artifact判定，不称根治或完全复刻。
+- C核对最新main `ccdff57c5505840dadaf038b6176ca4a636c9c88`、run `39841781150` attempt1 completed/failure；官方artifact ID `12452729094`，`desert-frontline-ci-v5.58-main-ccdff57c5505-run39841781150-attempt1`，未加密ZIP 89,324 bytes/23 entries/CRC通过，API digest/SHA256 `349bb5707a19bca86b60be77044ccce017e4f31c8bc287a0832f909c2929d8b9`，缓存 `/private/tmp/desert-frontline-c-review-39841781150/` 保留。
+- generic步骤44s与sim SDK阶段37.066s成功，83实际方法日志与报告/独立5项watchdog通过，真实armed2s fixture TERM/KILL sent、leader=-9/reaped。help CLI正常exit0/reaped、cap10s，CLI0.237573s/外层0.246439s，结束余量1036.388986s；源码硬认旧标题和[-b]，误拒绝真实`Checks device boot status.`、`Usage ... [-bcd]`及默认monitor-until-complete正文。这是源码兼容问题，不是编译、迁移超时或预算不足；初始boot/两次monitor/安装/launch help/prewarm/App/scene/HUD25均未执行，24项not_run/0PNG，不能证明快路径、真实续等或v5.55视觉。
+- work43.619s/cleanup0.792s/总44.411s；诊断/收尾149分别为设备未boot/已Shutdown，所选设备状态快照Shutdown，不称本轮成功shutdown或App崩溃。JUnit实际10case/6failure/1准确XCTest skip；C不通过，不新增C提交。83方法里的旧help只有合成最小文本，未覆盖真实接口；后续只修该helper与fixture，不扩大gate/预算/架构。
+
+### v5.59 / 云端bootstatus帮助语义兼容（待最新云端验收）
+
+日期：2026-10-22
+
+- 仅修改`boot_monitor_semantics`：以明确默认monitor-until-complete正文及唯一条件-b定义为必要语义，不再要求标题或精确[-b]列表，支持已取得的[-bcd]原文与合理CRLF/空白/换行；缺失、含糊、重复冲突、自动/默认boot声明及错误仍fail closed。四键语义结构与全部原receipt/metadata/gate/argv/调度/预算/安装/scene/Swift/探针/workflow不变，不启用-b/-c/-d。
+- 新增官方442-byte TXT fixture，源为run39841781150/artifact12452729094/commit ccdff57，SHA256 `1bb8a0fabb52cfad5e7cdb4e93b7f1b22bc643c8cb875d2f3fd15bf70085e5eb`，测试入口记录来源并核对长度/hash；它是历史解析输入而非本轮设备证据。旧最小BOOT_HELP明确为synthetic，正例补完整监控正文、原最小标题文本改作负例，保留标题/usage/-b两种措辞覆盖，不宣称未经验证的旧Xcode兼容。
+- 官方原文末尾两个LF原样保留；X批准根`.gitattributes`只对该精确TXT路径设置`whitespace=-blank-at-eof`，不改全局或其他路径规则，C须核对属性范围与原文hash。此为存储保真窄例外，不放宽任何生产验证门槛。
+- 原83方法名和独立5项watchdog保留，新增4项针对help的原文/变体/负例/原metadata重验方法，AST声明总87。只做本机AST/YAML/文本/diff静态检查，未执行或导入CI脚本/测试/build/设备工具；实际回归、真实help与boot/install、scene/HUD25/24原图仍待最新Actions及C独立验收，不预写通过，不造状态空commit。
+- 关键文件：ci/simulator_probe.py局部函数、ci/check_probe_runner.py、ci/fixtures/bootstatus-help-run39841781150.txt、.gitattributes及必要文档/本轮提示词。Team ID两行及旧未跟踪资料保留排除。风险仍为后续真实bootstatus/迁移/安装/呈现尚无本轮新证据；本修复不等于启动加速或视觉已通过，新失败须交X，不继续扩修。
