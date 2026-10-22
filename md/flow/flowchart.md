@@ -252,6 +252,24 @@ flowchart TD
   Fail --> Artifact
 ```
 
+### CLI回收后只读组证据
+
+读图说明：原TERM/0.5秒/KILL/wait顺序不变，入口已有returncode非None或重入即失败且不发旧组非零信号。只有图示窄条件才查一次signal0；它不发送信号，即使数字PGID复用也只会保守失败。新终态保留原EPERM，不冒充KILL成功，仍由既有共享receipt校验接入runner/metadata，没有新增独立gate。
+
+```mermaid
+flowchart TD
+  Entry{首次cleanup且已有returncode为None} -- 否 --> Fail[失败 / 禁止旧组非零信号]
+  Entry -- 是 --> Original[TERM / 原0.5s grace / KILL / 最多1s wait]
+  Original --> Legacy{原信号回执完整且reaped / 无留证错误}
+  Legacy -- 是 --> Success[原success / owned CLI组边界]
+  Legacy -- 否 --> Narrow{TERM sent / KILL error EPERM / reaped且return为负TERM}
+  Narrow -- 否 --> Fail
+  Narrow -- 是 --> Query[仅一次原PGID signal0 / 此后无非零信号]
+  Query -- 真实ESRCH --> Absent[group_absent_after_reap / 保留KILL error与errno]
+  Query -- 返回0或任意错误 --> Fail
+  Absent --> Receipt[既有cli_receipt_complete窄证据链 / runner与metadata]
+```
+
 ### 保留同设备迁移进度的启动续等
 
 读图说明：一次help必须有明确默认monitor-until-complete正文和唯一条件-b说明，不依赖标题或精确[-b]可选列表，支持已留证[-bcd]；缺失/含糊/矛盾仍拒绝，正式argv无-b/-c/-d。之后只有一次初始boot。首轮真实watchdog超时且最后为已知非terminal等待，CLI收尾完整后才查一次fresh状态；Booted只是续等条件，不替代最终bootstatus正常exit0。每条命令从原deadline重算并留下557s安装保留和本次CLI2s，预算或证据不够准确失败，不延长预算、不暗中再boot；原安装恢复不充当第三次启动等待。

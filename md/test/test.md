@@ -165,6 +165,14 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - 保留83方法名和独立5项watchdog，新增4个help方法（官方原文长度/hash与CRLF/空白/无标题变体、缺必要语义、含糊/重复冲突/自动boot、原Runner/metadata重验当前输出不读历史fixture），AST声明总87；所有变体与fake快路径/HUD/24PNG均明确synthetic，不替代App运行。已有非正常receipt与无-b/-c/-d的真实路径约束保持；仅Actions执行，数量/结果待最新报告，不在本机导入或运行CI/测试/build/设备工具。
 - C仍须下载最新main/SHA/run/attempt官方未加密ZIP并核对API digest/CRC、双build、87声明方法实际结果及5项watchdog、当前真实help/正常CLI回执、全部原boot/安装/scene/snapshot/nonce/两帧/fixture/HUD25与24正式图。真实快路径与synthetic续等覆盖分开报告，任何早停准确缺证不通过，不用fixture、旧图或API绿色conclusion补证；预算/门槛/架构不变。
 
+### v5.60 CLI回收后一次只读组检查
+
+- v5.59 C不通过：run39845000713/attempt1/main6d98f5b，双build、87方法和独立5watchdog通过，真实help通过后仅一次boot成功；wait1 cap240s超时、TERM sent/KILL EPERM、leader=-15/reaped但cleanup失败，仍余797.410136s。无install/prewarm/App/trace/HUD，24not_run/0PNG，不是help或预算不足，也未证明zombie根因。
+- 保持TERM→0.5s→KILL→最多1s wait；禁止pre-KILL poll/reap和reap后非零信号。一次性cleanup guard及入口只读已有returncode（非None即失败）保护首次已回收异常与重入；留证异常准确失败，取消传播不变。
+- schema1新增窄终态group_absent_after_reap，仅在TERM真实sent、KILL保留error/数值EPERM/原诊断、wait已reap且return=-SIGTERM后，一次真实signal0查询得到ESRCH。postReapGroupCheck绑定原PGID、signal0、after-reap、absent、数值errno与诊断。原success不变，查询返回0/EPERM/EINTR/未知、缺失/跨PGID/伪造/额外错误、未reap及身份不明全部失败；不重发信号/轮询/增加预算。Darwin kill(2)的signal0无信号发送、ESRCH不存在语义是设计依据，不是hosted根因证明。此前v5.56/v5.58“EPERM拒绝”指没有这一独立窄证据的错误，原错误本身仍不视为信号成功。
+- 原87方法完整源码和独立5watchdog保留，新增8方法，AST声明95（34调度、12安装、24启动、9回执、13场景、3规范化）。真实短fixture先ready并记录PID/PGID，再把自身拥有的真实Popen绑定到生产wrapper计短timeout；无注入TERM-normal及TERM忽略child仍KILL用例以stdout EOF确认所有fixture writer终止，保留原armed/-9。结构化watchdogReceipts记录层级、ready/信号时已有returncode、实际回执；KILL EPERM注入+真实query、query取消注入与正常真实wait后输出异常单独标记，不冒充原生EPERM。fake进程/query负例与19种metadata篡改是synthetic，完整HUD/24PNG不覆盖坏receipt。仅云端执行，实际数量/结果待新run。
+- C仍下载最新官方未加密ZIP，核对API digest/CRC/身份、双build、95声明对应实际日志及5watchdog、真实CLI层级与回执、真实boot/安装/全部prewarm/scene/snapshot/两帧/fixture/HUD25/24原图，逐张目视。原生EPERM未发生就明确新终态设备覆盖未发生；只有首次bootstatus成功则续等仍仅synthetic覆盖，任何早停准确不通过。
+
 ### 触发条件
 
 `.github/workflows/ci-results.yml` 在以下情况运行：

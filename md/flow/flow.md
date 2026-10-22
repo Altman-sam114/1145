@@ -249,6 +249,10 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - 验收失败时不默认回滚，退回 Agent B 在 `main` 上追加修复 commit，再 push 触发新 run。
 - 本轮制度不引入 `smalldata_test`、`develop`、`codeb/...`、候选分支或 PR 合并流。
 
+### CLI回收后只读组证据
+
+`run_bounded`仍按TERM→0.5s→KILL→最多1s wait清理，非零信号均在回收前；入口一次性guard及直接读已有returncode防止重入/已回收身份再发信号，不调用poll。receipt schema1的原signal-success不变；仅TERM sent、KILL error+数值EPERM、wait已reap且return=-SIGTERM时追加一次`killpg(originalPGID,0)`。真实ESRCH形成独立`group_absent_after_reap`，postReapGroupCheck绑定PGID/signal0/after-reap/errno/诊断，保留原KILL错误。返回0或查询错误、身份/阶段/证据缺失及留证异常仍失败；共享cli_receipt_complete分别供runner/metadata核验，不新增gate、不改boot/install分类。组消失是查询瞬间事实，不表示原KILL成功、escaped后代/系统服务已停或迁移已就绪。
+
 ## 8. 已确认铁律
 
 - README 只能记录已完成、可验证的当前功能。

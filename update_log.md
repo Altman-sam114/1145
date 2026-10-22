@@ -6109,7 +6109,7 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - generic步骤44s与sim SDK阶段37.066s成功，83实际方法日志与报告/独立5项watchdog通过，真实armed2s fixture TERM/KILL sent、leader=-9/reaped。help CLI正常exit0/reaped、cap10s，CLI0.237573s/外层0.246439s，结束余量1036.388986s；源码硬认旧标题和[-b]，误拒绝真实`Checks device boot status.`、`Usage ... [-bcd]`及默认monitor-until-complete正文。这是源码兼容问题，不是编译、迁移超时或预算不足；初始boot/两次monitor/安装/launch help/prewarm/App/scene/HUD25均未执行，24项not_run/0PNG，不能证明快路径、真实续等或v5.55视觉。
 - work43.619s/cleanup0.792s/总44.411s；诊断/收尾149分别为设备未boot/已Shutdown，所选设备状态快照Shutdown，不称本轮成功shutdown或App崩溃。JUnit实际10case/6failure/1准确XCTest skip；C不通过，不新增C提交。83方法里的旧help只有合成最小文本，未覆盖真实接口；后续只修该helper与fixture，不扩大gate/预算/架构。
 
-### v5.59 / 云端bootstatus帮助语义兼容（待最新云端验收）
+### v5.59 / 云端bootstatus帮助语义兼容（C不通过：真实boot CLI回收未确认）
 
 日期：2026-10-22
 
@@ -6118,3 +6118,15 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - 官方原文末尾两个LF原样保留；X批准根`.gitattributes`只对该精确TXT路径设置`whitespace=-blank-at-eof`，不改全局或其他路径规则，C须核对属性范围与原文hash。此为存储保真窄例外，不放宽任何生产验证门槛。
 - 原83方法名和独立5项watchdog保留，新增4项针对help的原文/变体/负例/原metadata重验方法，AST声明总87。只做本机AST/YAML/文本/diff静态检查，未执行或导入CI脚本/测试/build/设备工具；实际回归、真实help与boot/install、scene/HUD25/24原图仍待最新Actions及C独立验收，不预写通过，不造状态空commit。
 - 关键文件：ci/simulator_probe.py局部函数、ci/check_probe_runner.py、ci/fixtures/bootstatus-help-run39841781150.txt、.gitattributes及必要文档/本轮提示词。Team ID两行及旧未跟踪资料保留排除。风险仍为后续真实bootstatus/迁移/安装/呈现尚无本轮新证据；本修复不等于启动加速或视觉已通过，新失败须交X，不继续扩修。
+- C核对最新main `6d98f5b76c5eddef2f4fe4aa446b0c62ce48ee1f`、run `39845000713` attempt1 completed/failure；官方artifact ID `12455790304`，`desert-frontline-ci-v5.59-main-6d98f5b76c5e-run39845000713-attempt1`，未加密ZIP95,839 bytes/25 entries/CRC通过，API digest/SHA256 `461dd72c8c1fa0986670b55cba4b6ca029fc16f55916adcf6a9e7c9b7b376610`，缓存 `/private/tmp/desert-frontline-c-review-39845000713/` 保留。
+- 两build成功（generic watchdog41.8s、sim SDK32.802s），87实际方法和5watchdog通过；真实help442byte/正常receipt已过，一次boot正常exit0，wait1超时240.744873s/外层240.933053s，TERM sent、KILL真实EPERM、leader=-15/reaped，cleanup=failure准确阻止续等。末原文Status2/非terminal CoreLocationMigrator，迁移03:56，余797.410136s，不是help或557预算问题；未查fresh state/第二wait/安装/App，24not_run/0PNG，无scene/HUD25。work282.642/cleanup14.657/总297.299s，所选设备最终shutdown exit0；JUnit10case/6failure/1准确skip。不能断言zombie根因或系统服务已停；C只读无提交，不计成功。
+
+### v5.60 / CLI回收后只读组消失证据（待最新云端验收）
+
+日期：2026-10-22
+
+- X否决pre-KILL poll/reap后再向数字PGID发信号的复用风险，采用非破坏性只读证据：保留TERM/0.5s/KILL/最多1s wait顺序，入口一次性guard及已有returncode非None失败，不在reap后发任何非零信号。查询/留证异常保守失败，取消传播保持。
+- 仅TERM sent、KILL error+数值EPERM、leader真实reap/-SIGTERM后，一次killpg原PGID signal0得到真实ESRCH才记新group_absent_after_reap；原KILL错误/errno不改名，schema1小型postReapGroupCheck由原共享validator窄校验，原success路径不变。依据Darwin signal0不发信号/ESRCH不存在；只证明该瞬间组不存在，不证实EPERM根因、KILL成功、escaped后代或系统服务停止。
+- 保留原87方法完整源码和独立5watchdog，新增8方法AST声明95：无注入真实TERM-normal/同组TERM忽略child、注入KILL错误但真实查询、query取消/正常wait后输出异常、fake查询/未reap等负例与metadata窄证据篡改。真实fixture先ready再绑定自有Popen计时，以stdout EOF/信号顺序留证；注入与synthetic明确分层。所有实际执行待Actions，只做本机AST/文本/diff静态检查，不运行本机测试/CI脚本/build/设备工具。
+- 关键文件：ci/run_bounded.py、ci/simulator_probe.py仅cli_receipt_complete及errno导入、ci/check_probe_runner.py、README/flow/flowchart/test和本轮提示词。boot help/调度/分类/state/caps/557/617/deadline/install/scene/HUD25/Swift/24探针/workflow均冻结，用户Team ID和既有未跟踪资料保留排除。
+- 本轮仍须最新官方ZIP全链与24原图由C独立验收，不把新回执、单测或旧图当App/视觉通过；真实原生EPERM与续等若未发生明确仅相应fixture覆盖。不称根治云端卡死或总目标完成。

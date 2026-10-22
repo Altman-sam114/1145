@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """Standard-library CI regressions; never boots or queries a simulator."""
+import errno
 import hashlib
 import json
 import os
 from pathlib import Path
 import plistlib
+import select
 import signal
 import struct
+import subprocess
 import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import uuid
 import zlib
 
@@ -882,6 +885,57 @@ class BootTests(unittest.TestCase):
                 self.assertEqual(manifest["sceneReadinessOutcome"], "success")
                 self.assertEqual(manifest["hudLayoutContractOutcome"], "success")
 
+    def test_post_reap_absence_receipt_narrow_gate_and_metadata(self):
+        # The entire boot/HUD/24-PNG chain here is synthetic schema evidence.
+        runner = FakeRunner(self.directory)
+        runner.work()
+        boot_fixture(runner, continuation=True)
+        command = runner.summary["boot"]["commands"][2]
+        process = command["process"]
+        process.update(cleanupOutcome="group_absent_after_reap",
+                       kill=dict(status="error", errno=errno.EPERM, error="synthetic KILL EPERM"),
+                       postReapGroupCheck=dict(pgid=process["pgid"], signal=0, phase="after-leader-reap",
+                           status="absent", errno=errno.ESRCH, diagnostic="synthetic ESRCH, not OS output"))
+        validate_results(runner.probes, runner.summary, self.directory)
+        self.assertEqual(self.package(runner)["simulatorBootOutcome"], "success")
+        valid = json.dumps(process)
+        for mutation in ("missing", "query-none", "query-present", "query-eperm", "query-unknown", "wrong-pgid",
+                         "wrong-phase", "nonzero-query", "boolean-signal", "boolean-errno", "query-error",
+                         "wrong-return", "unreaped", "term-not-sent", "kill-not-eperm", "kill-no-diagnostic",
+                         "claimed-legacy-success", "cleanup-error", "reap-error"):
+            with self.subTest(mutation=mutation):
+                record = json.loads(valid)
+                query = record["postReapGroupCheck"]
+                if mutation == "missing": del record["postReapGroupCheck"]
+                elif mutation == "query-none": record["postReapGroupCheck"] = None
+                elif mutation == "query-present": query["status"] = "exists"
+                elif mutation == "query-eperm": query["errno"] = errno.EPERM
+                elif mutation == "query-unknown": del query["errno"]
+                elif mutation == "wrong-pgid": query["pgid"] += 1
+                elif mutation == "wrong-phase": query["phase"] = "before-reap"
+                elif mutation == "nonzero-query": query["signal"] = signal.SIGKILL
+                elif mutation == "boolean-signal": query["signal"] = False
+                elif mutation == "boolean-errno": record["kill"]["errno"] = True
+                elif mutation == "query-error": query["error"] = "additional failure"
+                elif mutation == "wrong-return": record["returnCode"] = -signal.SIGKILL
+                elif mutation == "unreaped": record["reaped"] = False
+                elif mutation == "term-not-sent": record["term"]["status"] = "already_gone"
+                elif mutation == "kill-not-eperm": record["kill"]["errno"] = errno.EACCES
+                elif mutation == "kill-no-diagnostic": del record["kill"]["error"]
+                elif mutation == "claimed-legacy-success": record["cleanupOutcome"] = "success"
+                elif mutation == "cleanup-error": record["cleanupError"] = "identity unanchored"
+                elif mutation == "reap-error": record["reapError"] = "ECHILD"
+                command["process"] = record
+                self.assertFalse(cli_receipt_complete(record))
+                with self.assertRaises(ProbeFailure):
+                    validate_results(runner.probes, runner.summary, self.directory)
+                runner.summary.update(status="success", integrityOutcome="success")
+                manifest = self.package(runner)
+                self.assertEqual(manifest["simulatorBootOutcome"], "failure")
+                self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+                self.assertEqual(manifest["hudLayoutContractOutcome"], "success")
+                self.assertEqual(manifest["sceneReadinessOutcome"], "success")
+
     def test_boot_first_success_has_one_boot_and_monitor_without_auto_boot(self):
         runner = self.runner()
         deadline = runner.deadline
@@ -1094,6 +1148,186 @@ class BootTests(unittest.TestCase):
 
 
 class WatchdogReceiptTests(unittest.TestCase):
+    def term_case(self, child=False, injected_eperm=False, cancel_query=False):
+        """Real ready-bound processes/syscalls; optional KILL fault is explicitly injected."""
+        native_killpg = os.killpg
+        with tempfile.TemporaryDirectory() as directory:
+            ready, sentinel = Path(directory) / "ready.json", Path(directory) / "survived"
+            ready_tmp = str(ready) + ".tmp"
+            program = ("import json,os,signal,time; from pathlib import Path\nsignal.signal(signal.SIGTERM, signal.SIG_DFL)\n"
+                       + ("child=os.fork()\nif child == 0:\n"
+                          " signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+                          f" Path({ready_tmp!r}).write_text(json.dumps(dict(pid=os.getpid(),pgid=os.getpgrp(),leader=os.getppid())))\n"
+                          f" os.replace({ready_tmp!r}, {str(ready)!r})\n"
+                          f" time.sleep(5); Path({str(sentinel)!r}).touch(); os._exit(42)\n"
+                          "time.sleep(30)\n" if child else
+                          f"Path({ready_tmp!r}).write_text(json.dumps(dict(pid=os.getpid(),pgid=os.getpgrp(),leader=os.getpid())))\n"
+                          f"os.replace({ready_tmp!r}, {str(ready)!r})\n"
+                          "time.sleep(30)\n"))
+            process = subprocess.Popen([sys.executable, "-c", program], start_new_session=True, stdout=subprocess.PIPE)
+            receipt, calls = {}, []
+
+            def signal_group(pgid, sig):
+                calls.append(dict(pgid=pgid, signal=int(sig), leaderReturnCodeBefore=process.returncode))
+                if sig == signal.SIGKILL and injected_eperm:
+                    raise PermissionError(errno.EPERM, "Explicit injected KILL failure, not native EPERM")
+                if sig == 0 and cancel_query:
+                    raise SystemExit(143)
+                return native_killpg(pgid, sig)
+
+            try:
+                deadline = time.monotonic() + 3
+                while not ready.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(ready.exists(), "Real fixture did not become ready")
+                observed = json.loads(ready.read_text())
+                self.assertEqual(observed["pgid"], process.pid)
+                self.assertEqual(observed["leader"], process.pid)
+                if child:
+                    self.assertNotEqual(observed["pid"], process.pid)
+                # Bind the already-owned real Popen after readiness so the short timeout starts here.
+                with patch("run_bounded.subprocess.Popen", return_value=process), patch("run_bounded.os.killpg", side_effect=signal_group):
+                    if cancel_query:
+                        with self.assertRaises(SystemExit) as raised:
+                            run_bounded(["ready-bound-real-fixture"], 0.2, receipt=receipt)
+                        result = raised.exception.code
+                    else:
+                        result = run_bounded(["ready-bound-real-fixture"], 0.2, receipt=receipt)
+                self.assertTrue(select.select([process.stdout], [], [], 1)[0], "A fixture writer survived group cleanup")
+                self.assertEqual(os.read(process.stdout.fileno(), 1), b"", "Fixture stdout did not reach EOF")
+                self.assertFalse(sentinel.exists())
+                self.assertTrue(all(call["leaderReturnCodeBefore"] is None for call in calls if call["signal"] != 0))
+                execution = "real ready-bound Popen, signals, wait and any signal0; no injection"
+                if injected_eperm:
+                    execution = ("real ready-bound Popen/TERM/wait; injected KILL error and query cancellation" if cancel_query else
+                                 "real ready-bound Popen/TERM/wait/signal0; injected KILL error, not native EPERM")
+                WATCHDOG_RECEIPT_EVIDENCE.append(dict(case="real-term-child" if child else "real-term-leader",
+                    execution=execution,
+                    cancelledQuery=cancel_query, ready=observed, groupSignals=calls, stdoutEOF=True, **receipt))
+                return receipt, calls, result
+            finally:
+                # Never signal a numeric group after this fixture has reaped its leader.
+                if process.returncode is None:
+                    try:
+                        native_killpg(process.pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+                    process.wait(timeout=1)
+                process.stdout.close()
+
+    def test_real_term_normal_leader_receipt(self):
+        receipt, calls, result = self.term_case()
+        self.assertEqual(result, 124)
+        self.assertTrue(cli_receipt_complete(receipt))
+        self.assertEqual(receipt["returnCode"], -signal.SIGTERM)
+        self.assertEqual([call["signal"] for call in calls[:2]], [signal.SIGTERM, signal.SIGKILL])
+
+    def test_real_term_leader_exit_still_kills_same_group_ignored_child(self):
+        receipt, calls, result = self.term_case(child=True)
+        self.assertEqual(result, 124)
+        self.assertTrue(cli_receipt_complete(receipt))
+        self.assertEqual(receipt["returnCode"], -signal.SIGTERM)
+        self.assertEqual(receipt["kill"]["status"], "sent")
+        self.assertEqual([call["signal"] for call in calls], [signal.SIGTERM, signal.SIGKILL])
+
+    def test_real_group_query_with_explicitly_injected_kill_eperm(self):
+        receipt, calls, result = self.term_case(injected_eperm=True)
+        self.assertEqual(result, 124)
+        self.assertTrue(cli_receipt_complete(receipt))
+        self.assertEqual(receipt["cleanupOutcome"], "group_absent_after_reap")
+        self.assertEqual(receipt["kill"]["status"], "error")
+        self.assertEqual(receipt["kill"]["errno"], errno.EPERM)
+        self.assertEqual(receipt["postReapGroupCheck"]["errno"], errno.ESRCH)
+        self.assertEqual([call["signal"] for call in calls], [signal.SIGTERM, signal.SIGKILL, 0])
+        self.assertEqual(calls[-1]["leaderReturnCodeBefore"], -signal.SIGTERM)
+
+    def test_query_cancellation_never_reenters_nonzero_signals(self):
+        receipt, calls, result = self.term_case(injected_eperm=True, cancel_query=True)
+        self.assertEqual(result, 143)
+        self.assertEqual(receipt["trigger"], "cancelled")
+        self.assertEqual(receipt["cleanupOutcome"], "failure")
+        self.assertIn("reentry", receipt["cleanupError"])
+        self.assertFalse(cli_receipt_complete(receipt))
+        self.assertEqual([call["signal"] for call in calls], [signal.SIGTERM, signal.SIGKILL, 0])
+
+    def test_synthetic_query_errors_remain_failure_and_preserve_signal_order(self):
+        # Fake process and syscalls: deterministic negative branches, not OS evidence.
+        for error in (None, PermissionError(errno.EPERM, "injected"), InterruptedError(errno.EINTR, "injected"),
+                      OSError(errno.EINVAL, "injected"), RuntimeError("injected query exception")):
+            with self.subTest(error=error):
+                process, clock, calls, receipt = Mock(pid=424242, returncode=None), [0.0], [], {}
+                def wait(timeout):
+                    if not calls:
+                        clock[0] = 1
+                        raise subprocess.TimeoutExpired("synthetic", timeout)
+                    process.returncode = -signal.SIGTERM
+                    return process.returncode
+                def signal_group(pgid, sig):
+                    calls.append((pgid, sig, process.returncode))
+                    if sig == signal.SIGKILL:
+                        raise PermissionError(errno.EPERM, "injected KILL error")
+                    if sig == 0 and error is not None:
+                        raise error
+                process.wait.side_effect = wait
+                with patch("run_bounded.subprocess.Popen", return_value=process), \
+                     patch("run_bounded.time.monotonic", side_effect=lambda: clock[0]), \
+                     patch("run_bounded.time.sleep", side_effect=lambda value: clock.__setitem__(0, clock[0] + value)), \
+                     patch("run_bounded.os.killpg", side_effect=signal_group):
+                    self.assertEqual(run_bounded(["synthetic"], 1, receipt=receipt), 124)
+                self.assertEqual([call[1] for call in calls], [signal.SIGTERM, signal.SIGKILL, 0])
+                self.assertIsNone(calls[1][2])
+                self.assertEqual(calls[2][2], -signal.SIGTERM)
+                self.assertEqual(receipt["kill"]["errno"], errno.EPERM)
+                self.assertEqual(receipt["cleanupOutcome"], "failure")
+                self.assertFalse(cli_receipt_complete(receipt))
+
+    def test_first_cleanup_after_real_wait_output_error_never_signals_old_group(self):
+        receipt, native_print = {}, print
+        def log(*args, **kwargs):
+            if args and str(args[0]).startswith("[watchdog] finished"):
+                raise OSError("Injected output error after the real normal wait reaped")
+            native_print(*args, **kwargs)
+        with patch("run_bounded.print", side_effect=log, create=True), patch("run_bounded.os.killpg") as signals, \
+             patch("run_bounded.subprocess.Popen.poll", side_effect=AssertionError("No polling allowed")) as poll:
+            with self.assertRaisesRegex(OSError, "after the real normal wait"):
+                run_bounded([sys.executable, "-c", "raise SystemExit(0)"], 5, receipt=receipt)
+        signals.assert_not_called()
+        poll.assert_not_called()
+        self.assertEqual(receipt["returnCode"], 0)
+        self.assertTrue(receipt["reaped"])
+        self.assertIn("unanchored", receipt["cleanupError"])
+        self.assertEqual(receipt["cleanupOutcome"], "failure")
+        self.assertFalse(cli_receipt_complete(receipt))
+        WATCHDOG_RECEIPT_EVIDENCE.append(dict(case="real-normal-wait-injected-output-error", **receipt))
+
+    def test_synthetic_ineligible_cleanup_never_queries(self):
+        for kind in ("term-error", "kill-other-error", "wrong-return", "unreaped"):
+            with self.subTest(kind=kind):
+                process, clock, calls, receipt = Mock(pid=424242, returncode=None), [0.0], [], {}
+                def wait(timeout):
+                    if not calls:
+                        clock[0] = 1
+                        raise subprocess.TimeoutExpired("synthetic", timeout)
+                    if kind == "unreaped":
+                        raise ChildProcessError(errno.ECHILD, "injected unknown wait status")
+                    process.returncode = -signal.SIGKILL if kind == "wrong-return" else -signal.SIGTERM
+                    return process.returncode
+                def signal_group(pgid, sig):
+                    calls.append(sig)
+                    if sig == signal.SIGTERM and kind == "term-error":
+                        raise PermissionError(errno.EACCES, "injected TERM error")
+                    if sig == signal.SIGKILL:
+                        raise PermissionError(errno.EACCES if kind == "kill-other-error" else errno.EPERM, "injected KILL error")
+                process.wait.side_effect = wait
+                with patch("run_bounded.subprocess.Popen", return_value=process), \
+                     patch("run_bounded.time.monotonic", side_effect=lambda: clock[0]), \
+                     patch("run_bounded.time.sleep", side_effect=lambda value: clock.__setitem__(0, clock[0] + value)), \
+                     patch("run_bounded.os.killpg", side_effect=signal_group):
+                    self.assertEqual(run_bounded(["synthetic"], 1, receipt=receipt), 124)
+                self.assertEqual(calls, [signal.SIGTERM, signal.SIGKILL])
+                self.assertNotIn("postReapGroupCheck", receipt)
+                self.assertFalse(cli_receipt_complete(receipt))
+
     def test_real_normal_exit_receipt(self):
         receipt = {}
         self.assertEqual(run_bounded([sys.executable, "-c", "raise SystemExit(0)"], 5, receipt=receipt), 0)

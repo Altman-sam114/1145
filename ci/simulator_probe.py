@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Cloud-only, single-device capture runner with a shared monotonic deadline."""
 from contextlib import contextmanager
+import errno
 import hashlib
 import json
 import math
@@ -71,7 +72,8 @@ def cli_receipt_complete(receipt):
     def number(value):
         return type(value) in (int, float) and math.isfinite(value) and value >= 0
 
-    if (receipt.get("schemaVersion") != 1 or receipt.get("scope") != "owned-cli-process-group-only"
+    if ("cleanupError" in receipt or "reapError" in receipt
+            or receipt.get("schemaVersion") != 1 or receipt.get("scope") != "owned-cli-process-group-only"
             or type(receipt.get("pid")) is not int or receipt["pid"] <= 0 or receipt.get("pgid") != receipt["pid"]
             or receipt.get("reaped") is not True or type(receipt.get("returnCode")) is not int
             or type(receipt.get("exitCode")) is not int
@@ -79,15 +81,30 @@ def cli_receipt_complete(receipt):
             or not number(receipt.get("elapsedSeconds")) or not number(receipt.get("cleanupElapsedSeconds"))
             or receipt["cleanupElapsedSeconds"] > receipt["elapsedSeconds"]):
         return False
+    outcome = receipt.get("cleanupOutcome")
+    if "postReapGroupCheck" in receipt and outcome != "group_absent_after_reap":
+        return False
     if receipt.get("trigger") == "exit":
         code = receipt["returnCode"]
         return (receipt.get("exitCode") == (code if code >= 0 else 128 - code)
                 and receipt.get("cleanupOutcome") == "not_needed" and receipt["cleanupElapsedSeconds"] == 0
                 and all(receipt.get(key, {}).get("status") == "not_needed" for key in ("term", "kill")))
-    return (receipt.get("trigger") in ("timeout", "cancelled", "exception")
-            and (receipt["trigger"] != "timeout" or receipt["exitCode"] == 124)
-            and receipt.get("cleanupOutcome") == "success"
-            and all(receipt.get(key, {}).get("status") in ("sent", "already_gone") for key in ("term", "kill")))
+    if (receipt.get("trigger") not in ("timeout", "cancelled", "exception")
+            or (receipt["trigger"] == "timeout" and receipt["exitCode"] != 124)):
+        return False
+    if outcome == "success":
+        return all(receipt.get(key, {}).get("status") in ("sent", "already_gone") for key in ("term", "kill"))
+    check, kill = receipt.get("postReapGroupCheck", {}), receipt.get("kill", {})
+    return (outcome == "group_absent_after_reap" and receipt.get("term", {}).get("status") == "sent"
+            and kill.get("status") == "error" and type(kill.get("errno")) is int and kill["errno"] == errno.EPERM
+            and isinstance(kill.get("error"), str) and bool(kill["error"])
+            and receipt["returnCode"] == -signal.SIGTERM and isinstance(check, dict)
+            and type(check.get("pgid")) is int and check["pgid"] == receipt["pgid"]
+            and type(check.get("signal")) is int and check["signal"] == 0
+            and check.get("phase") == "after-leader-reap" and check.get("status") == "absent"
+            and "error" not in check
+            and type(check.get("errno")) is int and check["errno"] == errno.ESRCH
+            and isinstance(check.get("diagnostic"), str) and bool(check["diagnostic"]))
 
 
 def install_retry_reason(code, diagnostic, receipt):
