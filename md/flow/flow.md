@@ -235,6 +235,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - Agent B 每轮从最新 `origin/main` 开始，在 `main` 上小步实现，先跑本地轻量检查，再 commit 并 `git push origin main`。
 - GitHub Actions 在 `main` push 或手动触发时运行 `ci-results.yml`；前二十二次保持既有 HUD、命令、地图、战斗、受损、STOP、target-cycle 与 selection-cycle 探针，第二十三次使用 land focus 与 capture-only `enemy-touch-assist` 生成 `simulator-enemy-touch-assist.png`。该场景将镜头缩远到 1.58，编排两个 Blue AA Truck 和一个玩家已知 Red Fighter，用确定性 precondition 证明点击点位于 Fighter 精确 footprint 外、26pt 屏幕辅助范围内，再真实调用敌军辅助攻击 helper，用于核对两车共同锁定、两条攻击意图线、`ATK TAP JET`、目标态势和完整 HUD；普通 App 不进入 capture-only 写入。二十三次启动均独立解析 PID、截图并检查存活。
 - CI 执行层用 `ci/probes.json` 单一清单驱动全部 24 次正式 launch / 原场景与输出名；`ci/simulator_probe.py` 用共享 1080 秒 monotonic deadline 顺序管理 simulator build、确定性 runtime / iPhone 选择、同设备有限 boot / prewarm 重试和 capture，另有最多 90 秒诊断 / cleanup，低于 step 21 分钟。可用 runtime 须满足构建 app 最低版本且不高于所选 SDK，按 runtime 版本降序、iPhone name / UDID 升序选择，不创建 / 下载 / 切换设备。每阶段原子更新 `simulator-probe-summary.json`，含身份、预算 / 耗时、设备、状态、PID、图像校验和失败进度；直接管理单命令进程组，无嵌套 watchdog 逃逸。每图须有效 RGB/RGBA PNG、横屏、截图后 PID 活跃，全部 24 项成功且 metadata 再验通过才允许 CI 成功；负路径测试只在 Actions 标准库测试执行。失败 / 取消尽力保留 summary 并有限清理选定设备，强制终止 runner 无法保证上传。
+- 安装走独立180s cap与最多两次同UDID/App尝试；首次准入557s，只有CLI回执完整的watchdog124或窄白名单暂态诊断才可在617s准入后做同设备60s bootstatus并再次检查557s重试。永久/未知/取消/收尾不明、恢复或第二次失败立即停止；不添加设备切换、App清空或全局服务重置。保留95s prewarm/settle、原24 wait合计100s与180s后续命令运行余量，非最坏I/O保证。installation schema1记录身份、admissions、attempts/recovery、实际进程receipt、输出bytes/SHA与时序，finally原子落盘；成功真实exit0才进入prewarm。runner与metadata分别复核安装、HUD25和24PNG，manifest/JUnit单列安装；receipt仅证明所记录CLI信号发送/leader回收结果，不证明系统服务或所有后代已死。
 - capture 由同一 `normalize_screenshot(...)` 入口先记录 rawImage bytes/尺寸/SHA，portrait 有界旋转 270 度、native landscape 保持文件不变、square 失败，再记录 rotationDegrees/policy 与最终 image/PID；summary schemaVersion 2 和 metadata 双重核验同一证据。raw 文件原地规范化、不额外上传 24 份副本；真实 sips 角点回归仅云端执行，C 仍须目视全部官方 PNG 的正向与 HUD 遮挡，不能由宽高推断真实 UI 朝向。
 - 第二十四次使用 coast focus 与 capture-only `naval-damage` 生成 `simulator-naval-damage.png`：约 29% HP Blue Battleship 与约 46% HP Red Submarine 保持在 Battleship 既有 230pt 声呐范围和玩家可见 tile 内，经 `updateFog(force: true)` / `isKnownToFaction(...)` 真实校验合法已知后，冻结 Red Submarine -> Blue Battleship 的 persistent 单鱼雷 / 短扰流气泡航迹、一次方向化水面命中与舰体命中，同时保留 Battleship 两档战损、Blue Battleship -> Red Submarine 的 `ASW HIT` 和单选战斗态势；场景不写 `revealedUntil`，也不新增第 25 次 launch。二十四次启动均独立解析 PID、截图并检查存活。
 - Agent C 必须用 `gh auth login` 后下载最新 run 的未加密结果包，默认放在 `/private/tmp/desert-frontline-c-review-<run_id>/`。
@@ -276,7 +277,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 
 小地图底部缩放读数只读映射 cameraRig.xScale，随既有缩放和 updateMinimap 刷新。
 
-云端模拟器探针按命令类型限时：截图 I/O 180 秒、应用 launch 120 秒、其他 simctl 60 秒；超时仍生成失败证据。
+云端模拟器探针按命令类型限时：截图 I/O 180 秒、应用 launch 120 秒、install独立180秒（最多两次、预算与分类准入）、安装恢复bootstatus60秒，其余 simctl 60 秒；超时仍生成失败证据。
 
 小地图标题下的 L/A/S 图例只解释既有陆/空/海 blip 颜色，属于静态 HUD 节点。
 

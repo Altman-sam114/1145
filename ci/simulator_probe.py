@@ -23,12 +23,154 @@ HUD_CHECKS = {"controls", "containers", "bands", "routing", "pending", "pageStat
 HUD_FIXTURES = {"667x375": (667, 375), "852x393": (852, 393), "874x402": (874, 402),
                 "1024x768": (1024, 768), "1366x1024": (1366, 1024)}
 HUD_PAGES = {"tactical", "build", "air", "naval", "support"}
+INSTALL_CAP = 180
+INSTALL_RECOVERY_CAP = 60
+INSTALL_COMMAND_RESERVE = 180
+INSTALL_PREWARM_RESERVE = 95
+INSTALL_CLEANUP_RESERVE = 2
+INSTALL_POLICY = "same-device-install-180-once-v1"
 
 
 class ProbeFailure(Exception):
-    def __init__(self, message, code=1):
+    def __init__(self, message, code=1, diagnostic=""):
         super().__init__(message)
         self.code = code
+        self.diagnostic = diagnostic
+
+
+def cli_receipt_complete(receipt):
+    def number(value):
+        return type(value) in (int, float) and math.isfinite(value) and value >= 0
+
+    if (receipt.get("schemaVersion") != 1 or receipt.get("scope") != "owned-cli-process-group-only"
+            or type(receipt.get("pid")) is not int or receipt["pid"] <= 0 or receipt.get("pgid") != receipt["pid"]
+            or receipt.get("reaped") is not True or type(receipt.get("returnCode")) is not int
+            or type(receipt.get("exitCode")) is not int
+            or not number(receipt.get("limitSeconds")) or receipt["limitSeconds"] <= 0
+            or not number(receipt.get("elapsedSeconds")) or not number(receipt.get("cleanupElapsedSeconds"))
+            or receipt["cleanupElapsedSeconds"] > receipt["elapsedSeconds"]):
+        return False
+    if receipt.get("trigger") == "exit":
+        code = receipt["returnCode"]
+        return (receipt.get("exitCode") == (code if code >= 0 else 128 - code)
+                and receipt.get("cleanupOutcome") == "not_needed" and receipt["cleanupElapsedSeconds"] == 0
+                and all(receipt.get(key, {}).get("status") == "not_needed" for key in ("term", "kill")))
+    return (receipt.get("trigger") in ("timeout", "cancelled", "exception")
+            and (receipt["trigger"] != "timeout" or receipt["exitCode"] == 124)
+            and receipt.get("cleanupOutcome") == "success"
+            and all(receipt.get(key, {}).get("status") in ("sent", "already_gone") for key in ("term", "kill")))
+
+
+def install_retry_reason(code, diagnostic, receipt):
+    if type(code) is not int:
+        return False, "invalid_exit_code"
+    if code >= 128:
+        return False, "cancelled_or_signal"
+    if not cli_receipt_complete(receipt) or receipt.get("exitCode") != code:
+        return False, "cli_cleanup_unconfirmed"
+    text = diagnostic.lower()
+    if any(token in text for token in ("no such file", "invalid bundle", "not a valid bundle", "signature",
+                                       "unsupported architecture", "invalid argument", "failed to verify")):
+        return False, "permanent_diagnostic"
+    if code == 124 and receipt.get("trigger") == "timeout":
+        return True, "watchdog_timeout"
+    for token, reason in (("device or resource busy", "transient_busy"), ("device is busy", "transient_busy"),
+                          ("resource temporarily unavailable", "transient_unavailable"),
+                          ("connection interrupted", "transient_connection")):
+        if token in text:
+            return True, reason
+    return False, "permanent_or_unknown"
+
+
+def install_reserve(probes):
+    return INSTALL_PREWARM_RESERVE + sum(probe["wait"] for probe in probes) + INSTALL_COMMAND_RESERVE
+
+
+def validate_installation(summary, probes, directory=None):
+    evidence = summary.get("installation", {})
+    product = summary.get("appProduct", {})
+    udid = summary.get("selectedDevice", {}).get("udid")
+    attempts = evidence.get("attempts", [])
+    reserve = install_reserve(probes)
+    required = INSTALL_CAP + INSTALL_CLEANUP_RESERVE + reserve
+
+    def number(value):
+        return type(value) in (int, float) and math.isfinite(value) and value >= 0
+
+    def admission(record, minimum, phase):
+        return (record.get("allowed") is True and record.get("requiredSeconds") == minimum
+                and record.get("phase") == phase
+                and record.get("postInstallReserveSeconds") == reserve
+                and number(record.get("remainingSeconds")) and record["remainingSeconds"] >= minimum)
+
+    def command(record, cap):
+        process = record.get("process", {})
+        output = record.get("output", {})
+        if (record.get("udid") != udid or record.get("requestedCapSeconds") != cap
+                or not number(record.get("effectiveCapSeconds")) or not 0 < record["effectiveCapSeconds"] <= cap
+                or process.get("limitSeconds") != record["effectiveCapSeconds"]
+                or not cli_receipt_complete(process) or process.get("exitCode") != record.get("exitCode")
+                or not all(number(record.get(key)) for key in ("elapsedSeconds", "remainingStartSeconds", "remainingEndSeconds"))
+                or record["remainingEndSeconds"] > record["remainingStartSeconds"]
+                or record["remainingEndSeconds"] < reserve
+                or record["effectiveCapSeconds"] > record["remainingStartSeconds"] - INSTALL_CLEANUP_RESERVE + 0.01
+                or abs(record["remainingStartSeconds"] - record["remainingEndSeconds"] - record["elapsedSeconds"]) > 0.01
+                or process["elapsedSeconds"] > record["elapsedSeconds"] + 0.01
+                or record["remainingStartSeconds"] > record.get("admission", {}).get("remainingSeconds", -1)
+                or not isinstance(output.get("path"), str) or Path(output["path"]).name != output["path"]
+                or type(output.get("bytes")) is not int or output["bytes"] < 0
+                or not re.fullmatch(r"[0-9a-f]{64}", output.get("sha256", ""))):
+            raise ProbeFailure("Install command/CLI receipt is incomplete or inconsistent")
+        if directory is not None:
+            data = (directory / output["path"]).read_bytes()
+            if len(data) != output["bytes"] or hashlib.sha256(data).hexdigest() != output["sha256"]:
+                raise ProbeFailure("Install command output evidence mismatch")
+
+    if (evidence.get("schemaVersion") != 1 or evidence.get("policy") != INSTALL_POLICY
+            or evidence.get("status") != "success" or not udid or evidence.get("udid") != udid
+            or not product.get("bundleId") or not product.get("path")
+            or evidence.get("bundleId") != product["bundleId"] or evidence.get("appPath") != product["path"]
+            or not 1 <= len(attempts) <= 2):
+        raise ProbeFailure("Successful same-device installation evidence missing/invalid")
+    for index, attempt in enumerate(attempts):
+        command(attempt, INSTALL_CAP)
+        if (attempt.get("attempt") != index + 1 or attempt.get("bundleId") != product["bundleId"]
+                or attempt.get("appPath") != product["path"]
+                or not admission(attempt.get("admission", {}), required, f"install-admission:{index + 1}")
+                or attempt["output"]["path"] != f"install-attempt-{index + 1}.log"):
+            raise ProbeFailure("Install attempt identity/order/admission mismatch")
+        if index == len(attempts) - 1:
+            if (attempt.get("status") != "success" or attempt.get("exitCode") != 0
+                    or attempt["process"].get("trigger") != "exit" or attempt["process"].get("returnCode") != 0
+                    or attempt.get("retryable") is not False or attempt.get("retryReason") != "installed"):
+                raise ProbeFailure("Final install attempt did not successfully exit")
+        else:
+            retryable, reason = install_retry_reason(attempt.get("exitCode", 1), attempt.get("diagnostic", ""), attempt["process"])
+            if (attempt.get("status") != "failure" or not retryable or attempt.get("retryable") is not True
+                    or attempt.get("retryReason") != reason or attempt.get("retryDecision") != "retry"):
+                raise ProbeFailure("Install retry was not eligible")
+    recovery = evidence.get("recovery")
+    if len(attempts) == 2:
+        if (not recovery or recovery.get("status") != "success" or recovery.get("exitCode") != 0
+                or recovery.get("process", {}).get("trigger") != "exit"
+                or recovery.get("process", {}).get("returnCode") != 0
+                or not admission(recovery.get("admission", {}), required + INSTALL_RECOVERY_CAP, "install-recovery-admission")):
+            raise ProbeFailure("Bounded same-device install recovery missing")
+        command(recovery, INSTALL_RECOVERY_CAP)
+        if recovery["output"]["path"] != "install-recovery.log":
+            raise ProbeFailure("Install recovery output path mismatch")
+    elif recovery is not None:
+        raise ProbeFailure("Unexpected install recovery without a retry")
+    admissions = [attempts[0]["admission"]]
+    if recovery is not None:
+        admissions += [recovery["admission"], attempts[1]["admission"]]
+    if evidence.get("admissions") != admissions:
+        raise ProbeFailure("Install admission chronology mismatch")
+    commands = [attempts[0], recovery, attempts[1]] if recovery is not None else attempts
+    if any(current["admission"]["remainingSeconds"] > previous["remainingEndSeconds"]
+           for previous, current in zip(commands, commands[1:])):
+        raise ProbeFailure("Install shared deadline advanced backwards")
+    return evidence
 
 
 def load_probes(path=Path(__file__).with_name("probes.json")):
@@ -189,6 +331,7 @@ def validate_hud_contract(summary, directory):
 
 
 def validate_results(probes, summary, directory):
+    validate_installation(summary, probes, directory)
     validate_hud_contract(summary, directory)
     if summary.get("hudContract", {}).get("status") != "success":
         raise ProbeFailure("HUD contract collection/validation did not complete")
@@ -300,13 +443,16 @@ class Runner:
             print(f"[stage] END {name}; status={record['status']}; elapsed={record['elapsedSeconds']}s", flush=True)
             self.save()
 
-    def command(self, name, command, cap=60, env=None, log=None):
+    def command(self, name, command, cap=60, env=None, log=None, receipt=None):
         with self.stage(name):
             # Reserve group TERM/KILL/reap time inside the shared stage budget.
             seconds = min(cap, self.remaining(2) - 2)
             with tempfile.TemporaryFile() as output:
                 try:
-                    code = run_bounded(command, seconds, stdout=output, env=env)
+                    arguments = {"stdout": output, "env": env}
+                    if receipt is not None:
+                        arguments["receipt"] = receipt
+                    code = run_bounded(command, seconds, **arguments)
                 finally:
                     output.seek(0)
                     text = output.read().decode("utf-8", errors="replace")
@@ -314,11 +460,104 @@ class Runner:
                         (self.directory / log).write_text(text)
                     print(text, end="" if text.endswith("\n") else "\n", flush=True)
             if code:
-                raise ProbeFailure(f"{name} exited {code}", code)
+                raise ProbeFailure(f"{name} exited {code}", code, diagnostic=text)
             return text
 
     def simctl(self, name, *arguments, cap=60, **kwargs):
         return self.command(name, ["/usr/bin/xcrun", "simctl", *arguments], cap=cap, **kwargs)
+
+    def _install_admission(self, phase, recovery=False):
+        with self.stage(phase):
+            reserve = install_reserve(self.probes)
+            required = INSTALL_CAP + INSTALL_CLEANUP_RESERVE + reserve + (INSTALL_RECOVERY_CAP if recovery else 0)
+            remaining = self.deadline - time.monotonic()
+            record = {"phase": phase, "requiredSeconds": required, "remainingSeconds": round(remaining, 6),
+                      "postInstallReserveSeconds": reserve, "allowed": remaining >= required}
+            self.summary["installation"]["admissions"].append(record)
+            print(f"[install] admission {phase}; required={required}s remaining={remaining:.3f}s allowed={record['allowed']}", flush=True)
+            if not record["allowed"]:
+                raise ProbeFailure(f"install budget_insufficient at {phase}: required={required}s remaining={remaining:.3f}s", 124)
+            return record
+
+    def _install_command(self, record, name, arguments, cap, log):
+        started = time.monotonic()
+        record.update(status="running", udid=self.device["udid"], requestedCapSeconds=cap,
+                      remainingStartSeconds=round(self.deadline - started, 6), process={})
+        try:
+            self.simctl(name, *arguments, cap=cap, log=log, receipt=record["process"])
+            if (not cli_receipt_complete(record["process"]) or record["process"].get("exitCode") != 0
+                    or record["process"].get("trigger") != "exit" or record["process"].get("returnCode") != 0):
+                raise ProbeFailure(f"{name} returned without a complete normal exit0 CLI receipt")
+            record.update(status="success", exitCode=0)
+        except BaseException as error:
+            code = getattr(error, "code", 130 if isinstance(error, KeyboardInterrupt) else 1)
+            record.update(status="cancelled" if isinstance(code, int) and code >= 128 else "failure",
+                          exitCode=code, error=str(error), diagnostic=getattr(error, "diagnostic", ""))
+            raise
+        finally:
+            record.update(elapsedSeconds=round(time.monotonic() - started, 6),
+                          remainingEndSeconds=round(self.deadline - time.monotonic(), 6),
+                          effectiveCapSeconds=record["process"].get("limitSeconds"))
+            path = self.directory / log
+            if path.exists():
+                data = path.read_bytes()
+                record["output"] = {"path": log, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+            print(f"[install] {name} status={record['status']} exit={record.get('exitCode')} elapsed={record['elapsedSeconds']}s "
+                  f"cap={record['effectiveCapSeconds']}s remaining={record['remainingEndSeconds']}s", flush=True)
+            self.save()
+
+    def install_app(self, app):
+        evidence = {"schemaVersion": 1, "policy": INSTALL_POLICY, "status": "running", "udid": self.device["udid"],
+                    "bundleId": self.bundle, "appPath": str(app), "attempts": [], "admissions": []}
+        self.summary["installation"] = evidence
+        try:
+            for number in (1, 2):
+                try:
+                    admission = self._install_admission(f"install-admission:{number}")
+                except ProbeFailure:
+                    if evidence["attempts"]:
+                        evidence["attempts"][-1]["retryDecision"] = "budget_insufficient"
+                    raise
+                record = {"attempt": number, "bundleId": self.bundle, "appPath": str(app), "admission": admission}
+                evidence["attempts"].append(record)
+                try:
+                    self._install_command(record, f"install:{number}", ["install", self.device["udid"], str(app)],
+                                          INSTALL_CAP, f"install-attempt-{number}.log")
+                except BaseException as error:
+                    code = record.get("exitCode", 1)
+                    retryable, reason = install_retry_reason(code, record.get("diagnostic", ""), record["process"])
+                    record.update(retryable=retryable, retryReason=reason, retryDecision="not_retryable")
+                    if code >= 128 or not retryable:
+                        raise
+                    if number == 2:
+                        record["retryDecision"] = "attempt_limit"
+                        raise
+                    try:
+                        recovery_admission = self._install_admission("install-recovery-admission", recovery=True)
+                    except ProbeFailure:
+                        record["retryDecision"] = "budget_insufficient"
+                        raise
+                    recovery = {"admission": recovery_admission}
+                    evidence["recovery"] = recovery
+                    record["retryDecision"] = "recovering"
+                    try:
+                        self._install_command(recovery, "install-retry-ready", ["bootstatus", self.device["udid"], "-b"],
+                                              INSTALL_RECOVERY_CAP, "install-recovery.log")
+                    except BaseException:
+                        record["retryDecision"] = "recovery_failed"
+                        raise
+                    record["retryDecision"] = "retry"
+                    continue
+                record.update(retryable=False, retryReason="installed", retryDecision="not_needed")
+                self.remaining(install_reserve(self.probes))
+                evidence["status"] = "success"
+                return
+        except BaseException as error:
+            code = getattr(error, "code", 130 if isinstance(error, KeyboardInterrupt) else 1)
+            evidence.update(status="cancelled" if isinstance(code, int) and code >= 128 else "failure", stopReason=str(error))
+            raise
+        finally:
+            self.save()
 
     def wait(self, name, seconds):
         with self.stage(name):
@@ -431,6 +670,7 @@ class Runner:
             with (app / "Info.plist").open("rb") as source:
                 info = plistlib.load(source)
             self.bundle = info["CFBundleIdentifier"]
+            self.summary["appProduct"] = {"bundleId": self.bundle, "path": str(app)}
         sdk = self.command("simulator-sdk-version", ["/usr/bin/xcrun", "--sdk", "iphonesimulator", "--show-sdk-version"]).strip()
         runtimes = json.loads(self.simctl("installed-runtimes", "list", "runtimes", "--json", log="simulator-runtimes.json"))
         devices = json.loads(self.simctl("available-devices", "list", "devices", "available", "--json"))
@@ -456,7 +696,7 @@ class Runner:
                 if attempt == 2 or error.code >= 128:
                     raise
                 self.simctl("boot-retry-shutdown", "shutdown", udid)
-        self.simctl("install", "install", udid, str(app))
+        self.install_app(app)
         for attempt in range(1, 4):
             if attempt > 1:
                 self.remaining(120 + 95 + sum(p["wait"] for p in self.probes))

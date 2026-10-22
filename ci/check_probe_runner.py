@@ -13,10 +13,44 @@ from unittest.mock import patch
 import zlib
 
 from simulator_probe import (HUD_CHECKS, HUD_FIXTURES, HUD_PAGES, Runner, ProbeFailure,
-                             load_probes, png_info, select_device, validate_hud_contract, validate_results)
+                             INSTALL_CAP, INSTALL_POLICY, INSTALL_RECOVERY_CAP, cli_receipt_complete, install_reserve,
+                             load_probes, png_info, select_device, validate_hud_contract, validate_installation, validate_results)
+from run_bounded import run_bounded
+from package_results import main as package_results
 
 
 NORMALIZATION_EVIDENCE = []
+WATCHDOG_RECEIPT_EVIDENCE = []
+
+
+def unit_cli_receipt(code=0, cap=INSTALL_CAP, timeout=False):
+    """Synthetic schema fixture only; real watchdog receipts use a separate suite."""
+    stopped = timeout or code >= 128
+    return dict(schemaVersion=1, scope="owned-cli-process-group-only", pid=os.getpid(), pgid=os.getpid(),
+                trigger="timeout" if timeout else "cancelled" if code >= 128 else "exit",
+                limitSeconds=cap, reaped=True, returnCode=-15 if stopped else code, exitCode=code,
+                term={"status": "sent" if stopped else "not_needed"},
+                kill={"status": "already_gone" if stopped else "not_needed"},
+                cleanupOutcome="success" if stopped else "not_needed", cleanupElapsedSeconds=0.5 if stopped else 0,
+                elapsedSeconds=cap + 0.5 if timeout else 0.6 if stopped else 0.1)
+
+
+def installation_fixture(runner):
+    runner.bundle = "unit.fixture.only"
+    runner.summary["selectedDevice"] = runner.device
+    runner.summary["appProduct"] = {"bundleId": runner.bundle, "path": "unit.app"}
+    reserve = install_reserve(runner.probes)
+    admission = dict(phase="install-admission:1", requiredSeconds=INSTALL_CAP + 2 + reserve, remainingSeconds=1080,
+                     postInstallReserveSeconds=reserve, allowed=True)
+    data = b"synthetic install schema fixture, not simulator evidence\n"
+    (runner.directory / "install-attempt-1.log").write_bytes(data)
+    attempt = dict(attempt=1, udid=runner.device["udid"], bundleId=runner.bundle, appPath="unit.app", status="success", exitCode=0,
+                   requestedCapSeconds=INSTALL_CAP, effectiveCapSeconds=INSTALL_CAP, remainingStartSeconds=1080,
+                   remainingEndSeconds=1079.9, elapsedSeconds=0.1, process=unit_cli_receipt(), admission=admission,
+                   retryable=False, retryReason="installed", retryDecision="not_needed",
+                   output={"path": "install-attempt-1.log", "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
+    runner.summary["installation"] = dict(schemaVersion=1, policy=INSTALL_POLICY, status="success", udid=runner.device["udid"],
+                                          bundleId=runner.bundle, appPath="unit.app", attempts=[attempt], admissions=[admission])
 
 
 def hud_fixture(runner):
@@ -132,6 +166,7 @@ class FakeRunner(Runner):
             Path(args[-1]).write_bytes(png_bytes())
 
     def work(self):
+        installation_fixture(self)
         hud_fixture(self)
         for index, definition in enumerate(self.probes):
             self.capture(definition, index)
@@ -365,6 +400,193 @@ class ProbeTests(unittest.TestCase):
             validate_results(self.probes, runner.summary, self.directory)
 
 
+class InstallRunner(Runner):
+    """Fake clock/commands exercise only the production install policy, never a device."""
+    def __init__(self, directory, clock, outcomes, budget=1080):
+        super().__init__(directory, budget)
+        self.clock, self.outcomes, self.calls = clock, list(outcomes), []
+        self.device, self.bundle = {"udid": "install-unit-device-only"}, "unit.fixture.only"
+        self.summary.update(selectedDevice=self.device, appProduct={"bundleId": self.bundle, "path": "unit.app"})
+
+    def simctl(self, name, *args, cap=60, receipt=None, log=None):
+        self.calls.append((args, cap))
+        outcome = self.outcomes.pop(0)
+        code = outcome.get("code", 0)
+        duration = outcome.get("duration", 0.6 if code >= 128 else 0.1)
+        self.clock[0] += duration
+        receipt.update(unit_cli_receipt(code, cap, timeout=outcome.get("timeout", False)))
+        receipt["elapsedSeconds"] = duration
+        receipt.update(outcome.get("receipt", {}))
+        text = outcome.get("diagnostic", "")
+        (self.directory / log).write_text(text)
+        if code:
+            raise ProbeFailure("injected install/readiness outcome", code, diagnostic=text)
+        return text
+
+
+class InstallationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.directory, self.clock = Path(self.temp.name), [0]
+        self.timer = patch("simulator_probe.time.monotonic", side_effect=lambda: self.clock[0])
+        self.timer.start()
+        self.addCleanup(self.timer.stop)
+
+    def runner(self, outcomes, budget=1080):
+        return InstallRunner(self.directory, self.clock, outcomes, budget)
+
+    def timeout(self, **extra):
+        return dict(code=124, timeout=True, duration=180.6, **extra)
+
+    def assert_failed(self, runner):
+        with self.assertRaises(ProbeFailure):
+            runner.install_app(Path("unit.app"))
+        saved = json.loads((self.directory / "simulator-probe-summary.json").read_text())
+        self.assertNotEqual(saved["installation"]["status"], "success")
+        with self.assertRaises(ProbeFailure):
+            validate_installation(saved, runner.probes, self.directory)
+        return saved["installation"]
+
+    def test_slow_first_install_success(self):
+        runner = self.runner([{"duration": 120}])
+        runner.install_app(Path("unit.app"))
+        validate_installation(runner.summary, runner.probes, self.directory)
+        self.assertEqual(len(runner.calls), 1)
+        self.assertEqual(runner.calls[0][1], 180)
+
+    def test_timeout_then_one_same_device_retry(self):
+        runner = self.runner([self.timeout(), {}, {}])
+        runner.install_app(Path("unit.app"))
+        validate_installation(runner.summary, runner.probes, self.directory)
+        self.assertEqual([call[0][0] for call in runner.calls], ["install", "bootstatus", "install"])
+        self.assertTrue(all(call[0][1] == runner.device["udid"] for call in runner.calls))
+        self.assertEqual([call[1] for call in runner.calls], [180, 60, 180])
+
+    def test_explicit_transient_retry(self):
+        runner = self.runner([{"code": 7, "diagnostic": "Device is busy"}, {}, {}])
+        runner.install_app(Path("unit.app"))
+        validate_installation(runner.summary, runner.probes, self.directory)
+        self.assertEqual(runner.summary["installation"]["attempts"][0]["retryReason"], "transient_busy")
+
+    def test_permanent_and_unknown_do_not_retry(self):
+        for diagnostic in ("Invalid bundle; device is busy", "Failed to install"):
+            with self.subTest(diagnostic=diagnostic):
+                runner = self.runner([{"code": 7, "diagnostic": diagnostic}])
+                self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 1)
+
+    def test_second_failure_ends(self):
+        runner = self.runner([self.timeout(), {}, self.timeout()])
+        evidence = self.assert_failed(runner)
+        self.assertEqual(len(runner.calls), 3)
+        self.assertEqual(len(evidence["attempts"]), 2)
+        self.assertEqual(evidence["attempts"][-1]["retryDecision"], "attempt_limit")
+
+    def test_initial_budget_insufficient_no_command(self):
+        runner = self.runner([], budget=556)
+        evidence = self.assert_failed(runner)
+        self.assertEqual(runner.calls, [])
+        self.assertEqual(evidence["attempts"], [])
+        self.assertEqual(evidence["admissions"][0]["requiredSeconds"], 557)
+
+    def test_retry_budget_insufficient_no_recovery(self):
+        for budget, outcomes, commands, required in ((700, [self.timeout()], 1, 617),
+                (798, [self.timeout(), {"duration": 60.5}], 2, 557)):
+            with self.subTest(budget=budget):
+                runner = self.runner(outcomes, budget=budget)
+                evidence = self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), commands)
+                self.assertEqual(len(evidence["attempts"]), 1)
+                self.assertEqual(evidence["attempts"][0]["retryDecision"], "budget_insufficient")
+                self.assertEqual(evidence["admissions"][-1]["requiredSeconds"], required)
+
+    def test_readiness_failure_stops_retry(self):
+        runner = self.runner([self.timeout(), {"code": 7}])
+        evidence = self.assert_failed(runner)
+        self.assertEqual(len(runner.calls), 2)
+        self.assertEqual(evidence["attempts"][0]["retryDecision"], "recovery_failed")
+
+    def test_cancelled_does_not_retry_and_saves_receipt(self):
+        runner = self.runner([{"code": 143}])
+        evidence = self.assert_failed(runner)
+        self.assertEqual(len(runner.calls), 1)
+        self.assertEqual(evidence["status"], "cancelled")
+        self.assertEqual(evidence["attempts"][0]["process"]["trigger"], "cancelled")
+
+    def test_cleanup_error_or_unreaped_does_not_retry(self):
+        for receipt in ({"reaped": False}, {"term": {"status": "error", "error": "permission denied"}},
+                        {"kill": {"status": "error", "error": "permission denied"}}):
+            with self.subTest(receipt=receipt):
+                runner = self.runner([self.timeout(receipt=receipt)])
+                evidence = self.assert_failed(runner)
+                self.assertEqual(len(runner.calls), 1)
+                self.assertEqual(evidence["attempts"][0]["retryReason"], "cli_cleanup_unconfirmed")
+
+    def test_command_cap_uses_shared_deadline(self):
+        runner = self.runner([], budget=100)
+        receipt = {}
+        def bounded(command, seconds, **kwargs):
+            kwargs["receipt"].update(unit_cli_receipt(cap=seconds))
+            return 0
+        with patch("simulator_probe.run_bounded", side_effect=bounded) as command:
+            runner.command("cap-fixture", ["fake"], cap=180, receipt=receipt)
+        self.assertEqual(command.call_args.args[1], 98)
+        self.assertEqual(receipt["limitSeconds"], 98)
+
+    def test_install_gate_cannot_be_overridden_by_hud_or_pngs(self):
+        for mutation in ("missing", "failed", "cross-device", "unreaped", "output-tampered", "bad-elapsed",
+                         "wrong-limit", "missing-normal-exit", "bad-admission-phase"):
+            with self.subTest(mutation=mutation):
+                runner = FakeRunner(self.directory)
+                runner.work()
+                installation = runner.summary["installation"]
+                if mutation == "missing": del runner.summary["installation"]
+                elif mutation == "failed": installation["status"] = "failure"
+                elif mutation == "cross-device": installation["attempts"][0]["udid"] = "another-device"
+                elif mutation == "unreaped": installation["attempts"][0]["process"]["reaped"] = False
+                elif mutation == "bad-elapsed": installation["attempts"][0]["process"]["elapsedSeconds"] = -1
+                elif mutation == "wrong-limit": installation["attempts"][0]["process"]["limitSeconds"] = 181
+                elif mutation == "missing-normal-exit": del installation["attempts"][0]["process"]["returnCode"]
+                elif mutation == "bad-admission-phase": installation["attempts"][0]["admission"]["phase"] = "stale"
+                else: (self.directory / "install-attempt-1.log").write_text("tampered")
+                with self.assertRaises(ProbeFailure):
+                    validate_results(runner.probes, runner.summary, self.directory)
+                runner.summary.update(status="success", integrityOutcome="success")
+                runner.save()
+                environment = {key: runner.summary[field] for key, field in (
+                    ("CI_VERSION", "version"), ("GITHUB_REF_NAME", "branch"), ("GITHUB_SHA", "commitSha"),
+                    ("GITHUB_RUN_ID", "runId"), ("GITHUB_RUN_ATTEMPT", "runAttempt"))}
+                environment.update(WORKFLOW_NAME="synthetic unit fixture", GITHUB_OUTPUT=str(self.directory / "outputs"),
+                                   STATIC_OUTCOME="success", PROJECT_LINT_OUTCOME="success", BUILD_OUTCOME="success",
+                                   SIMULATOR_LAUNCH_OUTCOME="success")
+                with patch.dict(os.environ, environment), patch("package_results.Path", side_effect=lambda path:
+                        self.directory if path == "ci-results" else Path(path)):
+                    package_results()
+                manifest = json.loads((self.directory / "ci-artifact-manifest.json").read_text())
+                self.assertEqual(manifest["simulatorInstallOutcome"], "failure")
+                self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+
+
+class WatchdogReceiptTests(unittest.TestCase):
+    def test_real_normal_exit_receipt(self):
+        receipt = {}
+        self.assertEqual(run_bounded([sys.executable, "-c", "raise SystemExit(0)"], 5, receipt=receipt), 0)
+        self.assertTrue(cli_receipt_complete(receipt))
+        self.assertEqual(receipt["returnCode"], 0)
+        self.assertEqual(receipt["trigger"], "exit")
+        WATCHDOG_RECEIPT_EVIDENCE.append(dict(case="real-normal-exit", **receipt))
+
+    def test_real_timeout_receipt(self):
+        receipt = {}
+        self.assertEqual(run_bounded([sys.executable, "-c", "import time; time.sleep(30)"], 0.05, receipt=receipt), 124)
+        self.assertTrue(cli_receipt_complete(receipt))
+        self.assertEqual(receipt["trigger"], "timeout")
+        self.assertIn(receipt["term"]["status"], ("sent", "already_gone"))
+        self.assertIn(receipt["kill"]["status"], ("sent", "already_gone"))
+        WATCHDOG_RECEIPT_EVIDENCE.append(dict(case="real-timeout", **receipt))
+
+
 class NormalizationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -418,6 +640,8 @@ if __name__ == "__main__":
     results = []
     for case, name, execution in (
             (ProbeTests, "scheduler-and-evidence", "fake simulator commands; real short timeout command"),
+            (InstallationTests, "bounded-install-policy", "fake clock and simulator commands; production install policy/gate"),
+            (WatchdogReceiptTests, "cli-process-receipts", "real short CLI normal exit and timeout; no simulator"),
             (NormalizationTests, "screenshot-normalization", "real sips portrait rotation; no simulator")):
         print(f"Cloud regression suite: {name} ({execution})", flush=True)
         result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(case))
@@ -427,9 +651,9 @@ if __name__ == "__main__":
     success = all(result["success"] for result in results)
     Path("ci-results").mkdir(exist_ok=True)
     Path("ci-results/ci-regression-results.json").write_text(json.dumps({
-        "suite": "CI scheduler, HUD evidence schema, image evidence and real sips normalization (no simulator)",
+        "suite": "CI scheduler, bounded install, CLI receipts, HUD/image evidence and real sips normalization (no simulator)",
         **{key: sum(result[key] for result in results) for key in ("tests", "failures", "errors", "skipped")},
-        "suites": results, "normalizationFixtures": NORMALIZATION_EVIDENCE,
+        "suites": results, "normalizationFixtures": NORMALIZATION_EVIDENCE, "watchdogReceipts": WATCHDOG_RECEIPT_EVIDENCE,
         "success": success, "commitSha": os.environ.get("GITHUB_SHA"),
         "runId": os.environ.get("GITHUB_RUN_ID"), "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
     }, indent=2) + "\n")

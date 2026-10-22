@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from simulator_probe import load_probes, validate_hud_contract, validate_results
+from simulator_probe import load_probes, validate_hud_contract, validate_installation, validate_results
 
 
 def main():
@@ -20,12 +20,20 @@ def main():
     integrity = "failure"
     hud_integrity = "failure"
     hud_error = "HUD contract or runner summary unavailable"
+    install_integrity = "failure"
+    install_error = "Install evidence or runner summary unavailable"
     integrity_error = ""
     try:
         probes = load_probes()
         summary = json.loads((results / "simulator-probe-summary.json").read_text())
         if any(summary.get(key) != value for key, value in identity.items()):
             raise ValueError("Probe summary identity does not match this run/attempt/commit/version")
+        try:
+            validate_installation(summary, probes, results)
+            install_integrity, install_error = "success", ""
+        except Exception as error:
+            install_error = str(error)
+            raise
         try:
             validate_hud_contract(summary, results)
             hud_integrity, hud_error = "success", ""
@@ -57,6 +65,7 @@ def main():
         ("simulator-launch", simulator_outcome, "simulator-launch.log"),
         ("probe-artifact-integrity", integrity, "simulator-probe-summary.json"),
         ("hud-layout-contract", hud_integrity, "hud-layout-contract.json"),
+        ("simulator-install", install_integrity, "simulator-probe-summary.json"),
     ]
     suite = ET.Element("testsuite", name="DesertFrontlineCI", tests=str(len(checks) + 1),
                        failures=str(sum(outcome != "success" for _, outcome, _ in checks)), skipped="1")
@@ -70,6 +79,11 @@ def main():
     reports = ["DesertFrontline.xcresult", "simulator-launch.log", "simulator-build.log", "simulator-app.log",
                "simulator-runtimes.json", "simulator-boot-state.json", "simulator-probe-summary.json",
                "ci-regression-results.json", "probes.json", "hud-layout-contract.json"] + [probe["png"] for probe in probes]
+    installation = summary.get("installation", {})
+    for record in installation.get("attempts", []) + ([installation["recovery"]] if installation.get("recovery") else []):
+        path = record.get("output", {}).get("path")
+        if path and Path(path).name == path:
+            reports.append(path)
     manifest = dict(identity, shortSha=identity["commitSha"][:12], workflowName=os.environ["WORKFLOW_NAME"],
                     createdAt=datetime.datetime.now(datetime.timezone.utc).isoformat(), projectName="Desert Frontline",
                     scheme="DesertFrontline", destination="generic/platform=iOS",
@@ -77,6 +91,7 @@ def main():
                     buildLogPath="ci-results/xcodebuild.log", simulatorLaunchLogPath="ci-results/simulator-launch.log",
                     failureSummaryPath="ci-results/ci-failure-summary.md", probeSummaryPath="ci-results/simulator-probe-summary.json",
                     hudLayoutContractPath="ci-results/hud-layout-contract.json", hudLayoutContractOutcome=hud_integrity,
+                    simulatorInstallOutcome=install_integrity,
                     staticChecksOutcome=checks[0][1], projectLintOutcome=checks[1][1], buildOutcome=checks[2][1],
                     simulatorLaunchOutcome=simulator_outcome, simulatorStepOutcome=simulator_step_outcome,
                     probeIntegrityOutcome=integrity, testOutcome="skipped",
@@ -89,6 +104,8 @@ def main():
               f"- Failure stage: {summary.get('failureStage', 'none')}",
               f"- Last completed probe: {summary.get('lastCompletedProbe', 'none')}",
               f"- Probe counts: {summary.get('counts', 'unavailable')}",
+              f"- Installation: {install_integrity}; {install_error or 'bounded same-device attempts, successful exit0 and CLI receipts verified'}",
+              f"- Install stop reason: {installation.get('stopReason', 'none')}",
               f"- HUD contract: {hud_integrity}; {hud_error or '25 Swift production frame/route cases; state restored; prewarm producer verified'}",
               f"- Integrity detail: {integrity_error or '24 complete launches, live PIDs, raw/rotation evidence, landscape PNGs and current HUD contract'}",
               "- XCTest: skipped (no XCTest target exists)",

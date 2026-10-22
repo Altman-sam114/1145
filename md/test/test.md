@@ -96,10 +96,10 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - 本轮本机只允许 `git diff --check`、暂存 diff 检查、YAML / Python AST / shell 语法检查；禁止本机 build、Simulator、simctl、watchdog 或 scheduler 测试，也不得本机伪造 `GITHUB_ACTIONS=true`。全部回归由 Actions 执行。
 - `ci/probes.json` 是唯一 24 项权威清单，包含 ID、page、marker、focus、原等待时间和 PNG basename；顺序、场景和输出名与既有 24 次探针一致。预热单独统计，正式 launch 不重试、不以替代图补数。
 - `ci/simulator_probe.py` 顺序执行 simulator build、可解释设备选择、boot、install、prewarm 和 24 项 capture；本轮没有并行 boot/build 的加速承诺。共享 monotonic 工作 deadline 1080 秒，所有命令与等待都扣除同一预算，另用最多 90 秒有界收尾，合计 1170 秒 < step 1260 秒。generic build 独立 600 秒 / step 12 分钟；job 45 分钟；静态测试 / lint 最多 2 / 1 分钟，metadata / upload 最多 3 / 5 分钟。
-- 模拟器编译最多 420 秒、bootstatus 每次 240 秒最多两次、launch 每次 120 秒、截图 180 秒、其他 simctl 60 秒、sips 30 秒；每次命令额外在剩余预算内留 2 秒用于 TERM/KILL/reap。boot / prewarm 重试检查剩余预算，不能靠重试重置总 deadline。预热保留 90 秒通知消退、5 秒稳定等待，首次截图 8 秒、其余 4 秒，等待每 30 秒打印心跳。
+- 模拟器编译最多 420 秒、bootstatus 每次 240 秒最多两次、launch 每次 120 秒、截图 180 秒、sips 30 秒；v5.56 的 install 独立180秒、安装恢复就绪60秒，其余 simctl 60 秒。每次命令额外在剩余预算内留 2 秒用于 TERM/KILL/reap。boot / prewarm 重试检查剩余预算，不能靠重试重置总 deadline。预热保留 90 秒通知消退、5 秒稳定等待，首次截图 8 秒、其余 4 秒，等待每 30 秒打印心跳。
 - 选择策略：记录 Xcode / simulator SDK、全部已安装 runtime；仅候选 `isAvailable` 的 iOS runtime / iPhone，版本须在构建后 app `MinimumOSVersion` 与所选 SDK 之间，runtime 按新到旧、设备按 name / UDID 升序排序。未有稳定旧 runtime 的证据，因此不凭猜测选旧版本；不下载、不新建、不在重试时更换设备。
 - `simulator-probe-summary.json` 每个阶段 / 探针原子落盘，记录 commit / run / attempt / version / branch、设备 / runtime / 选择理由、工作与收尾预算 / 耗时、阶段 start / end / exit、prewarm、当前阶段、失败原因、最后成功 probe、expected / completed / failed / notRun / running 计数和每项 PID / launch 次数 / launch 后与截图后存活 / PNG 大小、尺寸、SHA-256。缺失 summary 时 metadata 只能补失败记录，不能推断 success。
-- 每个截图必须通过完整 PNG chunk CRC、RGB/RGBA 8-bit 非交错结构、解压 scanline / filter / 数据长度校验，竖图经有界 sips 旋转为横屏后再校验；PID 两次活跃检查、24 项一一对应、无重复 ID / path、无额外截图同时满足才允许成功。`ci/package_results.py` 在上传前重验身份、prewarm、全部 24 PNG 和 summary；JUnit 有 5 个 CI testcase 加 1 个准确 skipped 的 XCTest，计数与实际节点一致。
+- 每个截图必须通过完整 PNG chunk CRC、RGB/RGBA 8-bit 非交错结构、解压 scanline / filter / 数据长度校验，竖图经有界 sips 旋转为横屏后再校验；PID 两次活跃检查、24 项一一对应、无重复 ID / path、无额外截图同时满足才允许成功。`ci/package_results.py` 在上传前重验身份、安装、prewarm、HUD契约、全部 24 PNG 和 summary；v5.56 的 JUnit 为7个CI testcase加1个准确skipped的XCTest，共8 case，计数与实际节点一致。
 - `ci/check_watchdog.py` 仅 Actions 检查成功、非零、超时、后代清理、SIGTERM 后代清理；`ci/check_probe_runner.py` 仅 Actions 使用 fake commands 与标准库 unittest 检查 24 完整结果、缺项、重复 ID / path、空 / 坏 / 截断 PNG、缺图、dead PID、真实短命令超时、deadline 传递 / 耗尽、失败 summary、runtime 确定排序和被篡改图像证据。其日志进入 `static-checks.log`，结构化 `ci-regression-results.json` 进入 artifact；失败会阻止最终 CI 通过。
 - 调度器直接持有一个子命令进程组，不套另一层 watchdog session；取消先终止所属命令组，再记录失败并按有界 finally 采集 app log / device state、仅 shutdown 选定设备。重复取消在收尾时忽略，不扩大为全局 shutdown。收尾警告不覆盖原始失败；强制销毁 runner / GitHub 硬取消仍可能阻止上传。
 - artifact 增加 `probes.json`、`simulator-probe-summary.json`、`simulator-build.log`、`simulator-runtimes.json`、`simulator-boot-state.json` 和 `ci-regression-results.json`，与 manifest / JUnit / generic build / 原 24 PNG 一并验收。C 必须核对最新 SHA / run / attempt 以及全部 PNG 目视，结构通过不代表无白屏、真实触控、动态玩法、多尺寸或真机长期性能。
@@ -124,6 +124,16 @@ ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci-results.yml"); put
 - runner与metadata分别复核，报告进入 manifest 的 hudLayoutContractPath/outcome、projectSpecificReports、JUnit和失败摘要。JUnit新增 hud-layout-contract，正常结构为7 case / 0 failure / 1 skipped XCTest；失败缺报仍留证。新增11个schema/身份/缺报/篡改/漏断言/未恢复/未完成采集负例，保留26项既有回归，实际结果以云端 ci-regression-results.json 为准；schema单测使用明确标记的synthetic fixture，不是另一个布局或真实模拟器证据。
 - C独立检查最新未加密ZIP、全部24张正式PNG和契约身份/25组合：左五页轨和当前动作dock、36pt资源条、任务/消息、限宽选择队列、分带地图、费用/来源与armed/disabled状态可读，原陆海空/迷雾无回退。用panelAreaFraction客观复核占屏，不因无重叠就宣称战场面积已改善。几何路由契约不等于真实触摸、多尺寸截图、动态战斗或真机性能认证。
 - 性能风险继续保留：v5.54 work 1065.448/1080s仅余14.552s；慢点在hosted boot与截图I/O，不能说编译已持续快速稳定。本轮不放宽超时掩盖问题。
+
+### v5.56 安装限时、预算与实际CLI回执
+
+- 失败基线：v5.55 run `39814471623` attempt1 的两类build、37项回归和独立5项watchdog检查成功，但install在60.619s返回124，开始/结束余量683.339/622.720s；prewarm空、24项not_run、0正式PNG、无HUD JSON。C不通过，不是HUD断言失败；API绿色continue-on-error step不能替代真实outcome或最终gate。
+- install专属requested cap180s，最多两次且同一UDID/App。首尝试准入为 `180+2+95+sum(24 wait)+180=557s`；恢复前为617s，恢复使用同UDID `bootstatus -b` cap60s，再检查557s。95s保留原90s通知等待与5ssettle，100s保留全部原24 wait，180s是后续命令运行保留，不保证最坏24次I/O。1080/90/1260/2700s总预算、原设备选择、prewarm和24项门槛均不改变。
+- 只有本watchdog真实124且CLI终止/reap回执完整，或明确device busy/resource temporarily unavailable/connection interrupted，才允许一次就绪恢复和重试。文件/bundle/签名/架构/参数等永久诊断优先拒绝；未知非零、信号/取消、TERM/KILL/reap错误、就绪失败、第二次失败均停止。预算不足不发命令；不新增boot/shutdown、切换设备/runtime、清空App或全局CoreSimulator重置。
+- `run_bounded(..., receipt=...)` 向后兼容记录真实pid/pgid、trigger、requested/effective limit、exit/returncode、TERM/KILL sent/already_gone/error、leader reap、cleanup耗时。scope仅为owned CLI组，发送成功及leader回收不等于所有后代或系统安装服务已清理。正常exit0同样来自实际wait，不能合成成功。
+- summary的installation schema1/policy带UDID、bundle/App、admissions、1至2条attempt及可选recovery，每项保存cap、elapsed、remaining、分类/决策、CLI回执与独立输出文件bytes/SHA。失败/取消finally原子落盘；未记录真实成功不进入prewarm。runner和metadata分别验证同设备身份、时序/预算/分类/回执/输出完整性；缺失、失败或跨设备记录即使HUD/24PNG完整也为红，manifest有simulatorInstallOutcome，JUnit新增simulator-install。
+- 云端回归保留原37项，新增12个安装策略/负例方法（含恢复后再次预算不足、TERM/KILL/reap错误、取消和metadata红等subtests）、2个真实短CLI exit/timeout回执方法，AST声明总数51（34调度/HUD/image、12安装、2回执、3真实sips规范化）。独立5项watchdog检查保持；所有实际执行数量/结果必须以最新run日志和ci-regression-results.json为准，未在本机运行。fake clock/command与synthetic installation/HUD fixture仅为schema单测，不是正式模拟器证据。
+- C必须下载最新main/SHA/run/attempt的官方未加密ZIP，核对安装attempt/recovery原始输出、实际receipt、manifest/JUnit/日志、所有回归、prewarm绑定PID的HUD25矩阵及全部24张正向PNG；继续按实际panelAreaFraction和图像判断占屏与可读性。安装门槛通过本身不代表v5.55视觉通过、完全复刻或真实触摸/连续战斗/真机性能认证。
 
 ### 触发条件
 

@@ -142,7 +142,7 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 
 ## v5.39 云端超时与失败留证
 
-云端 generic build 由 `ci/run_bounded.py` 限制 600 秒；模拟器由 `ci/simulator_probe.py` 共享 1080 秒 monotonic 工作预算，另预留至多 90 秒诊断 / 同设备 shutdown，内层 1170 秒小于 step 21 分钟硬限时。generic build step 12 分钟、job 45 分钟，metadata / upload 各预留 3 / 5 分钟。单命令保持 simulator build 420 秒、bootstatus 240 秒最多两次、launch 120 秒、截图 180 秒、其他 simctl 60 秒，实际限时还会受剩余总预算约束并预留进程组终止时间。所有等待每 30 秒输出心跳。失败 / SIGTERM / SIGINT 后尽力原子保存进度、采集有界诊断、只关闭本 run 选定的唯一设备；metadata / upload 使用 always，runner 强制销毁仍可能无法上传。保留首次成功预热 90 秒通知消退、5 秒稳定等待和全部 24 次原场景独立截图 / PID 探针，不把静态截图当作动态玩法测试。
+云端 generic build 由 `ci/run_bounded.py` 限制 600 秒；模拟器由 `ci/simulator_probe.py` 共享 1080 秒 monotonic 工作预算，另预留至多 90 秒诊断 / 同设备 shutdown，内层 1170 秒小于 step 21 分钟硬限时。generic build step 12 分钟、job 45 分钟，metadata / upload 各预留 3 / 5 分钟。单命令保持 simulator build 420 秒、bootstatus 240 秒最多两次、launch 120 秒、截图 180 秒；v5.56 将 install 独立设为 180 秒，其余 simctl 60 秒，实际限时还会受剩余总预算约束并预留进程组终止时间。所有等待每 30 秒输出心跳。失败 / SIGTERM / SIGINT 后尽力原子保存进度、采集有界诊断、只关闭本 run 选定的唯一设备；metadata / upload 使用 always，runner 强制销毁仍可能无法上传。保留首次成功预热 90 秒通知消退、5 秒稳定等待和全部 24 次原场景独立截图 / PID 探针，不把静态截图当作动态玩法测试。
 
 ## v5.41 云端目视口径
 
@@ -154,7 +154,7 @@ The default validation path is `main` direct push plus GitHub Actions. Local ful
 
 ## v5.43 云端探针限时
 
-模拟器截图 `simctl io` 使用 180 秒 watchdog，应用 launch 使用 120 秒，其他 simctl 命令保持 60 秒；用于区分慢 runner I/O 与应用启动失败。
+模拟器截图 `simctl io` 使用 180 秒 watchdog，应用 launch 使用 120 秒；install 自 v5.56 起独立使用 180 秒，其余 simctl 命令保持 60 秒，用于区分慢 runner I/O 与应用启动失败。
 
 ## v5.44 云端目视口径
 
@@ -190,4 +190,11 @@ The command dock visually separates the five navigation pages from the context-s
 - The HUD root uses a separate high render band above world effects and fog tiles, whose local depth offsets previously allowed black fog diamonds to cover command tabs and the minimap. Fog knowledge, opacity, combat and touch routing do not change; this is not a HUD layout redesign.
 - The cloud capture runner normalizes the evidenced hosted portrait canvas with a bounded 270-degree clockwise rotation, leaves native landscape PNGs unchanged and rejects square images. Each probe records pre-normalization `rawImage` byte count/dimensions/SHA-256, `rotationDegrees`, `normalizationPolicy` and final `image` evidence. Raw PNGs are not duplicated in the artifact; only their original metadata is retained before in-place normalization.
 - Cloud-only regressions run real `sips` against a tiny asymmetric RGB fixture and check exact corner positions, plus unchanged native landscape data and missing/inconsistent evidence failures. The same normalization path runs in captures and tests; runner and metadata both validate the evidence.
-- The 270-degree policy follows the reviewed iPhone 17 / iOS 26.5 hosted captures, not automatic UI orientation detection. Agent C must still inspect all 24 official PNGs for upright text, a bottom command dock and unobscured HUD. v5.53 passed CI technical checks but failed this visual gate; v5.54 remains pending its own cloud artifact review.
+- The 270-degree policy follows the reviewed iPhone 17 / iOS 26.5 hosted captures, not automatic UI orientation detection. Agent C must still inspect all 24 official PNGs for upright text, a bottom command dock and unobscured HUD. v5.53 passed CI technical checks but failed this visual gate; v5.54 passed review of run `39802364105`, without certifying later versions.
+
+## v5.56 Cloud Installation Evidence
+
+- v5.55 compiled successfully in the cloud but failed its 60-second simulator installation cap before prewarm; its redesigned HUD has no accepted runtime/visual result yet. This is not an established Swift compilation hang or a HUD assertion failure.
+- Installation now has a dedicated 180-second cap and at most two attempts on the same selected device and app. Only a confirmed watchdog timeout or an explicit narrow transient diagnostic permits one bounded 60-second same-device readiness check and retry; cancellation, permanent/unknown failures and unconfirmed CLI cleanup stop immediately.
+- Admission requires at least 557 seconds for an install and 617 seconds before recovery, reserving the existing prewarm/settle, all 24 waits and an operational command allowance. This does not guarantee worst-case I/O completion; the original shared deadline remains authoritative.
+- The artifact retains per-attempt output hashes, timing, admission decisions and actual CLI TERM/KILL/reap receipts. Runner and metadata both require a successful final installation before accepting the existing HUD25/24-PNG evidence. CLI receipts do not prove that system installation services or every descendant have stopped. v5.56 remains pending its own latest cloud artifact review; no local tests or device operations run this round.

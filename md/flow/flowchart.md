@@ -106,9 +106,9 @@ flowchart TD
   Implement --> Commit["main commit\nsubject: 版本号: 简要说明"]
   Commit --> Push["git push origin main\n触发云端验证"]
   Push --> Actions["GitHub Actions ci-results\n静态检查、plutil、generic iOS build"]
-  Actions --> Probe["单一24项清单 / 唯一云端设备\n1080秒工作deadline + 最多90秒诊断清理 < 21分钟step\n同设备有限boot/prewarm，进程组取消清理"]
+  Actions --> Probe["单一24项清单 / 唯一云端设备\n1080秒工作deadline + 最多90秒诊断清理 < 21分钟step\n同设备有限boot/install/prewarm，实际CLI收尾回执"]
   Probe --> Normalize["截图方向留证\nrawImage bytes/尺寸/SHA -> portrait 270 / native landscape 0\nsquare失败；记录角度/policy/最终image"]
-  Normalize --> Integrity["原子probe summary / 完整性双重门槛\n24次launch、PID存活、raw/旋转/final证据\n失败也保留已完成与未运行项"]
+  Normalize --> Integrity["原子probe summary / 完整性双重门槛\n安装成功回执、HUD25、24次launch/PID/raw/旋转/final证据\n失败也保留已完成与未运行项"]
   Integrity --> Artifact["always 未加密 CI 结果包\nmanifest、JUnit、build/launch日志、failure summary、xcresult\nprobe summary、云端负路径结果、24 PNG"]
   Artifact --> AgentC["Agent C\ngh auth login 后下载最新 run 结果包"]
   AgentC --> Verify["核对 origin/main 最新 commit\nrun id、run attempt、artifact、日志"]
@@ -206,4 +206,30 @@ flowchart TD
   Read --> Gate[runner 与 metadata 独立复核 / manifest 与 JUnit gate]
   Read --> Capture[保留原24 launch PID PNG / 所有等待]
   Capture --> Gate
+```
+
+### 同设备有界安装恢复
+
+读图说明：每次install有独立180秒cap但仍扣同一个1080秒deadline。只有实际CLI回执完整且失败明确可重试时，才允许一次同UDID就绪检查和第二次安装；预算不足、取消或永久/未知失败不绕路。receipt记录CLI信号发送与leader回收，不宣称系统安装服务或所有后代已清理。557/617秒为保留既有等待与命令运行余量的准入，不是最坏I/O保证。
+
+```mermaid
+flowchart TD
+  Boot[既有同设备boot成功] --> Admit1{剩余至少557s}
+  Admit1 -- 是 --> Install1[同UDID与App install1 cap180 / 实际CLI回执]
+  Admit1 -- 否 --> Fail[失败或取消finally落盘 / 有界诊断与上传]
+  Install1 -- 正常exit0且回执完整 --> Prewarm[既有prewarm90s与settle5s / HUD25 / 原24图]
+  Install1 -- 失败 --> Classify{实际回执完整且124超时或明确暂态}
+  Classify -- 否或取消 --> Fail
+  Classify -- 是 --> AdmitRecovery{剩余至少617s}
+  AdmitRecovery -- 否 --> Fail
+  AdmitRecovery -- 是 --> Ready[同UDID bootstatus cap60 / 不新增boot或shutdown]
+  Ready -- 失败 --> Fail
+  Ready -- 成功 --> Admit2{重新检查至少557s}
+  Admit2 -- 否 --> Fail
+  Admit2 -- 是 --> Install2[同UDID与App install2 cap180 / 不再重试]
+  Install2 -- 失败或回执不完整 --> Fail
+  Install2 -- 正常exit0且回执完整 --> Prewarm
+  Prewarm --> Gate[runner与metadata复核安装身份预算分类输出回执 / HUD25与24PNG]
+  Gate --> Artifact[manifest simulatorInstallOutcome / JUnit8含1跳过 / 未加密ZIP]
+  Fail --> Artifact
 ```

@@ -6052,7 +6052,7 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - generic build 39.1s、sim SDK build 33.623s；首bootstatus在240.656s超时，同一设备shutdown/retry后75.490s成功；prewarm launch7.510s/既有通知等待90.100s。attack-move截图109.670s、naval42.058s、mobile-AA39.709s；work1065.448/1080s仅余14.552s，cleanup28.109s，总1093.558s。未见cleanup warning；证据指向hosted启动/I/O抖动，不是已证实的编译卡死，也不代表流水线始终快速稳定。
 - 这份通过结论只覆盖v5.54该SHA/run，不替代下一版验收。没有在本机编译、运行或测试，也没有新增设备/外部依赖。
 
-### v5.55 / 战场优先 HUD 与安全区重排（待本轮云端验收）
+### v5.55 / 战场优先 HUD 与安全区重排（C不通过：安装超时，视觉未验收）
 
 日期：2026-10-22
 
@@ -6062,3 +6062,17 @@ v5.42 的 run `36284839704` 中 generic build、static checks、project lint 成
 - 关键文件：GameScene.swift、GameView.swift、ci/simulator_probe.py、ci/package_results.py、ci/check_probe_runner.py、README、flow/flowchart、test和本轮版本提示词。用户pbxproj两行Team ID与既有未跟踪内容未动、未提交。
 - 本机仅做Python AST与git diff --check等静态检查；本轮generic iOS build、实际25组合结果、24正式PNG与视觉效果待最新云端结果包由C验收，不提前写通过。契约不是多尺寸真实触摸/截图认证；hosted boot/I/O与14.552s历史余量风险仍在。
 - 这是总目标的首个实质界面空间重构增量，不是完全复刻或总目标完成。后续地图材质/海岸、单位模型及陆海空打击视觉仍需独立真正重做，不能用微装饰或本轮UI取代。
+- C实际复核：main `68dbd229c85ca21a114d79994c209f428a5b5b30`，run `39814471623` attempt1 completed/failure；artifact ID `12442980498`，`desert-frontline-ci-v5.55-main-68dbd229c85c-run39814471623-attempt1`，官方未加密ZIP 76,945 bytes/22 entries、CRC通过，API digest/SHA256 `3bc339747ef50dc79cd7c615938bbc33ba85efa514efbdf676bff6bbe5e8c9a2`，缓存 `/private/tmp/desert-frontline-c-review-39814471623/` 保留。
+- generic build48.1s、sim SDK build36.488s成功，37项回归和独立5项watchdog检查通过；bootstatus首240.740s超时，同设备第二次96.910s成功。install在work t396.661s开始，原60s cap耗时60.619s返回124，工作余量683.339降至622.720s，并非1080s总预算耗尽或编译卡死。work457.296s、cleanup8.184s、总465.479s，所选设备shutdown成功。
+- prewarm=[]、24项not_run、0正式PNG、无HUD报告；JUnit7case/3failure/1skip，不能判为HUD断言失败，也无视觉通过结论。API的continue-on-error step conclusion为success，metadata真实outcome为failure且最终gate红。旧watchdog有TERM/KILL/wait尝试但无实际结构化回执，不能称系统安装服务/全部子进程已清理。C已退B聚焦安装可靠性，不继续地图升级。
+
+### v5.56 / 云端安装限时与单设备有界恢复（待最新云端验收）
+
+日期：2026-10-22
+
+- 只改CI安装链，不改Swift/HUD/地图/单位。install专属180s cap，最多两次同UDID/App；只有真实CLI回执完整的watchdog124或窄白名单明确暂态诊断才能进行一次同设备60s bootstatus后重试，永久/未知/取消/收尾不明直接失败，第二次失败不循环。
+- 准入固定557s，恢复前617s并在恢复后重查557s，保留95s prewarm/settle、24 wait合计100s与180s命令运行余量和2sCLI收尾。1080s work/90s cleanup/21m step/45m job及原24探针、顺序、等待、HUD25、270/0规范化均保留。该运行保留不是最坏I/O完成保证；服务端安装可能在CLI退出后仍有延迟，不能以重试承诺hosted持续稳定。
+- run_bounded新增兼容可选实际receipt；installation schema1保存身份、预算准入、attempt/recovery、正常exit0或失败/取消、TERM/KILL发送结果与leader reap、耗时及独立输出bytes/SHA。finally原子留证，runner/metadata分别要求成功安装并复核自洽性，manifest与JUnit单列安装（8case含1真实跳过XCTest）；CLI回执不等于系统服务或所有后代已停止。
+- 保留原37项与独立5项watchdog，新增12个安装策略方法及2个真实短CLI回执方法，AST声明总数51；含fake时钟/命令、永久/未知/取消/收尾错误、两阶段预算不足、metadata不被HUD/PNG覆盖等负例。结构化fixtures均明确为synthetic schema而非模拟器证据。实际数量/结果待新run，不预填通过。
+- 关键文件：`ci/run_bounded.py`、`ci/simulator_probe.py`、`ci/check_probe_runner.py`、`ci/package_results.py`、README、flow/flowchart、test与v5.56提示词。仅做本机AST、文本与git diff --check，不运行本机测试/build/sips/模拟器，不改设备或服务。用户两行Team ID与既有未跟踪资料保留、排除提交。
+- 待C下载最新main/SHA/run/attempt官方未加密artifact，核对实际安装、CLI回执、所有回归、prewarm活PID绑定的HUD25与全部24正式PNG。v5.55视觉仍未验收，不因本轮CI代码或单测就宣布美观、占屏优化、完全复刻或总目标完成；下一步由C真实结果决定，不另做状态文档空提交。
