@@ -543,7 +543,8 @@ def validate_hud_contract(summary, directory):
             raise ProbeFailure(f"HUD label audit phases incomplete: {context}")
         count_fields = ("measuredCount", "nonemptyCount", "visibleNonemptyCount", "positiveBoundsCount", "containedCount",
                         "finiteGeometryCount", "sourcePreservedCount", "idempotentCount", "parentPreservedCount",
-                        "appearancePreservedCount", "fontRangeCount", "referenceMatchedCount", "baseEligibleCount", "baseRecoveredCount")
+                        "appearancePreservedCount", "fontRangeCount", "referenceMatchedCount", "baseEligibleCount", "baseRecoveredCount",
+                        "displayValidCount", "truncatedCount")
         for record in records:
             phase = record["phase"]
             if (any(type(record.get(field)) is not int or not 0 <= record[field] <= len(ids) for field in count_fields)
@@ -556,9 +557,12 @@ def validate_hud_contract(summary, directory):
             if (record["measuredCount"] != len(ids) or record["visibleNonemptyCount"] > nonempty
                     or record["positiveBoundsCount"] != nonempty or record["containedCount"] != nonempty
                     or any(record[field] != len(ids) for field in ("finiteGeometryCount", "sourcePreservedCount", "idempotentCount",
-                                                                  "parentPreservedCount", "appearancePreservedCount", "fontRangeCount"))
+                                                                  "parentPreservedCount", "appearancePreservedCount", "fontRangeCount", "displayValidCount"))
                     or record.get("referenceRequired") is not referenced
                     or record["referenceMatchedCount"] != (len(ids) if referenced else 0)
+                    or record["truncatedCount"] > nonempty
+                    or (phase in {"long1", "long2"} and record["truncatedCount"] == 0)
+                    or (phase == "short" and record["truncatedCount"] != 0)
                     or (phase in {"long1", "short", "long2"} and nonempty != len(ids))):
                 raise ProbeFailure(f"HUD label audit assertions incomplete: {context}/{phase}")
             eligible = record["baseEligibleCount"]

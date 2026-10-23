@@ -729,6 +729,13 @@ private struct HUDLayout {
     }
 }
 
+private final class HUDTextLabel: SKLabelNode {
+    // Gameplay writes the full source; only the fitter writes the rendered text.
+    var sourceText: String? {
+        didSet { text = sourceText }
+    }
+}
+
 private enum HUDPalette {
     static let panel = UIColor(red: 0.080, green: 0.090, blue: 0.087, alpha: 0.94)
     static let panelRaised = UIColor(red: 0.13, green: 0.145, blue: 0.135, alpha: 0.97)
@@ -1151,18 +1158,18 @@ final class GameScene: SKScene {
     private let enemyRetreatRecoveryThreshold: CGFloat = 0.62
     private let enemyAssaultWaveSummaryDuration: TimeInterval = 12
 
-    private var moneyLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-    private var incomeLabel = SKLabelNode(fontNamed: "Menlo")
-    private var selectedLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-    private var queueLabel = SKLabelNode(fontNamed: "Menlo")
-    private var messageLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-    private var missionTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-    private var missionDetailLabel = SKLabelNode(fontNamed: "Menlo")
+    private var moneyLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
+    private var incomeLabel = HUDTextLabel(fontNamed: "Menlo")
+    private var selectedLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
+    private var queueLabel = HUDTextLabel(fontNamed: "Menlo")
+    private var messageLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
+    private var missionTitleLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
+    private var missionDetailLabel = HUDTextLabel(fontNamed: "Menlo")
     private var missionProgressConnectors: [SKShapeNode] = []
     private var missionProgressNodes: [SKShapeNode] = []
-    private var forcesLabel = SKLabelNode(fontNamed: "Menlo")
-    private var aiStatusLabel = SKLabelNode(fontNamed: "Menlo")
-    private var selectionInfoTitleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
+    private var forcesLabel = HUDTextLabel(fontNamed: "Menlo")
+    private var aiStatusLabel = HUDTextLabel(fontNamed: "Menlo")
+    private var selectionInfoTitleLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
     private var selectionInfoRowLabels: [SKLabelNode] = []
     private var selectionTargetHealthBack = SKShapeNode()
     private var selectionTargetHealthFill = SKShapeNode()
@@ -1176,7 +1183,7 @@ final class GameScene: SKScene {
     private var selectionInfoRowBaseFontSize: CGFloat = 9
     private var hudButtonFrames: [HudAction: CGRect] = [:]
     private var hudButtonHitFrames: [HudAction: CGRect] = [:]
-    private var hudButtonSubtitleLabels: [HudAction: SKLabelNode] = [:]
+    private var hudButtonSubtitleLabels: [HudAction: HUDTextLabel] = [:]
     private var hudButtonShapes: [HudAction: SKShapeNode] = [:]
     private var hudPage: HudPage = .tactical
     private var hudPageFrames: [HudPage: CGRect] = [:]
@@ -1186,7 +1193,7 @@ final class GameScene: SKScene {
     private var windowSafeAreaInsets = UIEdgeInsets.zero
     private var hasWindowSafeArea = false
     private var hudLayout: HUDLayout?
-    private var boundedHUDLabels: [(node: SKLabelNode, frame: CGRect, fontSize: CGFloat)] = []
+    private var boundedHUDLabels: [(node: HUDTextLabel, frame: CGRect, fontSize: CGFloat)] = []
     private var didWriteHUDContract = false
     private var hudContractStableWindow: (size: CGSize, insets: UIEdgeInsets, since: TimeInterval)?
     private var sceneInitializationComplete = false
@@ -1215,7 +1222,7 @@ final class GameScene: SKScene {
     private var minimapFrame = CGRect.zero
     private var minimapBlipsNode = SKNode()
     private var minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 36, height: 24), cornerRadius: 2)
-    private var minimapScaleLabel = SKLabelNode(fontNamed: "Menlo")
+    private var minimapScaleLabel = HUDTextLabel(fontNamed: "Menlo")
     private var zoomOutHitFrame = CGRect.zero
     private var zoomInHitFrame = CGRect.zero
 
@@ -4736,7 +4743,7 @@ final class GameScene: SKScene {
         isLayingOutHUD = true
         defer { isLayingOutHUD = false; hudGeometryRevision += 1 }
         if !isWritingHUDContract { ciBeacon("hud-start") }
-        let lastMessage = (messageLabel.text, messageLabel.fontColor, messageLabel.alpha)
+        let lastMessage = (messageLabel.sourceText, messageLabel.fontColor, messageLabel.alpha)
         hudNode.removeAllChildren()
         hudButtonFrames.removeAll()
         hudButtonHitFrames.removeAll()
@@ -4776,7 +4783,7 @@ final class GameScene: SKScene {
         missionTitleLabel = makeHUDLabel(slot: "missionTitle", font: "AvenirNextCondensed-DemiBold", size: 12, color: HUDPalette.gold)
         missionDetailLabel = makeHUDLabel(slot: "missionDetail", size: 9)
         messageLabel = makeHUDLabel(slot: "messageText", size: 10)
-        messageLabel.text = lastMessage.0
+        messageLabel.sourceText = lastMessage.0
         messageLabel.fontColor = lastMessage.1
         messageLabel.alpha = lastMessage.2
         selectedLabel = makeHUDLabel(slot: "selected", size: 9, color: HUDPalette.mutedText)
@@ -4812,9 +4819,9 @@ final class GameScene: SKScene {
     }
 
     private func makeHUDLabel(slot: String, font: String = "Menlo", size fontSize: CGFloat,
-                              color: UIColor = HUDPalette.text) -> SKLabelNode {
+                              color: UIColor = HUDPalette.text) -> HUDTextLabel {
         let frame = hudLayout!.slots[slot]!
-        let label = SKLabelNode(fontNamed: font)
+        let label = HUDTextLabel(fontNamed: font)
         label.name = "hud-text:\(slot)"
         label.fontSize = fontSize
         label.fontColor = color
@@ -4829,10 +4836,11 @@ final class GameScene: SKScene {
     private func fitHUDLabels() {
         for item in boundedHUDLabels {
             let label = item.node
+            label.text = label.sourceText
             label.xScale = 1
             label.fontSize = item.fontSize
             label.numberOfLines = 1
-            label.lineBreakMode = .byTruncatingTail
+            label.lineBreakMode = .byClipping
             label.preferredMaxLayoutWidth = 0
             let anchorX: CGFloat
             switch label.horizontalAlignmentMode {
@@ -4840,21 +4848,45 @@ final class GameScene: SKScene {
             case .right: anchorX = item.frame.maxX
             default: anchorX = item.frame.midX
             }
-            // Reset the anchor, not the source text: repeated fits cannot accumulate offsets.
+            // Recompute from canonical input and a fixed anchor, never the previous display.
             label.position = CGPoint(x: anchorX, y: item.frame.midY)
+            guard let source = label.sourceText, !source.isEmpty else { continue }
             let floor = min(8, item.fontSize)
             var bounds = label.frame
-            if bounds.width > item.frame.width || bounds.height > item.frame.height {
-                let ratio = min(item.frame.width / max(bounds.width, 1), item.frame.height / max(bounds.height, 1))
-                label.fontSize = max(floor, item.fontSize * ratio)
+            func fits(_ rect: CGRect) -> Bool {
+                rect.width.isFinite && rect.height.isFinite && rect.width > 0 && rect.height > 0 &&
+                    rect.width <= item.frame.width && rect.height <= item.frame.height
             }
-            label.preferredMaxLayoutWidth = item.frame.width
-            bounds = label.frame
-            if bounds.height > item.frame.height && label.fontSize > floor {
-                label.fontSize = max(floor, label.fontSize * item.frame.height / bounds.height)
+            for _ in 0..<2 {
+                guard !fits(bounds), label.fontSize > floor else { break }
+                let ratio = min(max(1, item.frame.width - 1) / max(bounds.width, 1),
+                                max(1, item.frame.height - 1) / max(bounds.height, 1))
+                label.fontSize = max(floor, min(label.fontSize, label.fontSize * ratio))
                 bounds = label.frame
             }
-            guard !(label.text?.isEmpty ?? true) else { continue }
+            if !fits(bounds) {
+                let prefix = Array(source.prefix(256))
+                let ellipsis = "\u{2026}"
+                var best = ellipsis
+                label.text = best
+                var low = 0
+                var high = prefix.count
+                // At most nine measured candidates; keep only a candidate that really fits.
+                for _ in 0..<9 {
+                    guard low <= high else { break }
+                    let count = (low + high) / 2
+                    let candidate = String(prefix.prefix(count)) + ellipsis
+                    label.text = candidate
+                    if fits(label.frame) {
+                        best = candidate
+                        low = count + 1
+                    } else {
+                        high = count - 1
+                    }
+                }
+                label.text = best
+                bounds = label.frame
+            }
             let offsetX: CGFloat
             switch label.horizontalAlignmentMode {
             case .left: offsetX = item.frame.minX - bounds.minX
@@ -4890,7 +4922,7 @@ final class GameScene: SKScene {
         let actualQueue = buildOrders
         let actualPending = (pendingConstructionKind, pendingSupportPower, isSettingRallyPoint, isSettingAttackMove)
         let actualCamera = (cameraRig.position, cameraRig.xScale, cameraRig.yScale)
-        let actualMessage = (messageLabel.text, messageLabel.fontColor, messageLabel.alpha)
+        let actualMessage = (messageLabel.sourceText, messageLabel.fontColor, messageLabel.alpha)
         let actualTouch = (touchStartScene, touchStartWorld, panStartCamera, isPanning, isUsingMinimap)
         let fixtures: [(String, CGSize, UIEdgeInsets)] = [
             ("667x375", CGSize(width: 667, height: 375), .zero),
@@ -4915,7 +4947,7 @@ final class GameScene: SKScene {
             1 + node.children.reduce(0) { $0 + nodeCount($1) }
         }
         struct LabelSnapshot {
-            let node: SKLabelNode
+            let node: HUDTextLabel
             let parent: SKNode?
             let id: String
             let parentID: String
@@ -4923,6 +4955,7 @@ final class GameScene: SKScene {
             let parentState: [CGFloat]
             let ancestryComplete: Bool
             let source: String?
+            let display: String?
             let fontName: String?
             let fontSize: CGFloat
             let baseFontSize: CGFloat
@@ -4964,7 +4997,7 @@ final class GameScene: SKScene {
                 return LabelSnapshot(node: label, parent: label.parent, id: label.name ?? "",
                     parentID: label.parent === hudNode ? "hud-root" : label.parent?.name ?? "",
                     ancestry: ancestry, parentState: parentState, ancestryComplete: ancestor == nil,
-                    source: label.text, fontName: label.fontName, fontSize: label.fontSize, baseFontSize: item.fontSize,
+                    source: label.sourceText, display: label.text, fontName: label.fontName, fontSize: label.fontSize, baseFontSize: item.fontSize,
                     slot: item.frame, bounds: label.frame, position: label.position,
                     scale: CGSize(width: label.xScale, height: label.yScale), rotation: label.zRotation,
                     alpha: label.alpha, hidden: label.isHidden, visible: visible, color: label.fontColor,
@@ -4983,24 +5016,26 @@ final class GameScene: SKScene {
                 first.rotation == second.rotation && first.horizontal == second.horizontal && first.vertical == second.vertical
         }
         func sameFit(_ first: LabelSnapshot, _ second: LabelSnapshot, sameObject: Bool) -> Bool {
-            first.id == second.id && first.source == second.source && first.slot == second.slot &&
+            first.id == second.id && first.source == second.source && first.display == second.display && first.slot == second.slot &&
                 first.bounds == second.bounds && first.position == second.position && first.fontSize == second.fontSize &&
                 first.baseFontSize == second.baseFontSize && first.lines == second.lines && first.maxWidth == second.maxWidth &&
                 first.lineBreak == second.lineBreak && sameAppearance(first, second) && sameParents(first, second, sameObject: sameObject)
         }
         func labelJSON(_ value: LabelSnapshot) -> [String: Any] {
-            let source = Data((value.source ?? "").utf8)
-            let limit = min(96, source.count)
-            var prefix = ""
-            for length in stride(from: limit, through: max(0, limit - 3), by: -1) {
-                if let valid = String(data: source.prefix(length), encoding: .utf8) { prefix = valid; break }
+            func textJSON(_ text: String?) -> [String: Any] {
+                let bytes = Data((text ?? "").utf8)
+                let limit = min(96, bytes.count)
+                var prefix = ""
+                for length in stride(from: limit, through: max(0, limit - 3), by: -1) {
+                    if let valid = String(data: bytes.prefix(length), encoding: .utf8) { prefix = valid; break }
+                }
+                return ["isNil": text == nil, "prefix": prefix, "bytes": bytes.count,
+                        "sha256": SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()]
             }
             func number(_ value: CGFloat) -> Any { value.isFinite ? Double(value) as Any : String(describing: value) }
             func rectangle(_ value: CGRect) -> [String: Any] { rectJSON(value).mapValues(number) }
-            let sourceInfo: [String: Any] = ["isNil": value.source == nil, "prefix": prefix, "bytes": source.count,
-                "sha256": SHA256.hash(data: source).map { String(format: "%02x", $0) }.joined()]
             return ["id": value.id, "parentID": value.parentID, "coordinateSpace": "label-parent-local",
-                    "source": sourceInfo,
+                    "source": textJSON(value.source), "display": textJSON(value.display),
                     "fontName": value.fontName ?? "", "fontSize": number(value.fontSize), "baseFontSize": number(value.baseFontSize),
                     "horizontalAlignment": value.horizontal, "expectedSlot": rectangle(value.slot), "actualBBox": rectangle(value.bounds),
                     "position": [number(value.position.x), number(value.position.y)],
@@ -5037,6 +5072,7 @@ final class GameScene: SKScene {
             var eligible: Set<String> = []
             if phase == "short" {
                 for item in boundedHUDLabels.prefix(64) {
+                    item.node.text = item.node.sourceText
                     item.node.fontSize = item.fontSize
                     item.node.preferredMaxLayoutWidth = 0
                     let natural = item.node.frame
@@ -5057,7 +5093,8 @@ final class GameScene: SKScene {
             }
             var counts = Dictionary(uniqueKeysWithValues: ["nonemptyCount", "visibleNonemptyCount", "positiveBoundsCount",
                 "containedCount", "finiteGeometryCount", "sourcePreservedCount", "idempotentCount", "parentPreservedCount",
-                "appearancePreservedCount", "fontRangeCount", "referenceMatchedCount", "baseRecoveredCount"].map { ($0, 0) })
+                "appearancePreservedCount", "fontRangeCount", "referenceMatchedCount", "baseRecoveredCount",
+                "displayValidCount", "truncatedCount"].map { ($0, 0) })
             for (index, value) in second.enumerated() {
                 guard index < before.count && index < first.count else { continue }
                 let input = before[index]
@@ -5076,6 +5113,12 @@ final class GameScene: SKScene {
                     check(value.slot.insetBy(dx: -0.5, dy: -0.5).contains(value.bounds), "containedCount")
                 }
                 check(input.source == first[index].source && input.source == value.source, "sourcePreservedCount", comparison: input)
+                let truncated = value.display != value.source
+                let validPrefix = value.display.map { display in
+                    display.hasSuffix("\u{2026}") && value.source?.hasPrefix(String(display.dropLast())) == true
+                } ?? false
+                check(!truncated || (nonempty && validPrefix), "displayValidCount")
+                if truncated { counts["truncatedCount"]! += 1 }
                 check(first[index].node === value.node && sameFit(first[index], value, sameObject: true), "idempotentCount", comparison: first[index])
                 check(sameParents(input, value, sameObject: true), "parentPreservedCount", comparison: input)
                 check(sameAppearance(input, value), "appearancePreservedCount", comparison: input)
@@ -5088,6 +5131,12 @@ final class GameScene: SKScene {
             }
             if let reference, reference.count != second.count {
                 labelFailure(phase, "reference-count", second.first, other: reference.first, audit: &audit)
+            }
+            if ["long1", "long2"].contains(phase) && counts["truncatedCount"] == 0 {
+                labelFailure(phase, "truncation-not-exercised", second.first, audit: &audit)
+            }
+            if phase == "short" && counts["truncatedCount"] != 0 {
+                labelFailure(phase, "short-text-truncated", second.first, audit: &audit)
             }
             var summary: [String: Any] = counts.mapValues { $0 as Any }
             summary.merge(["phase": phase, "fitPasses": 2, "registryValid": registryValid,
@@ -5200,13 +5249,13 @@ final class GameScene: SKScene {
                 let labelCount = boundedHUDLabels.count
                 let normal = auditLabels("normal", audit: &labelAudit)
                 let stress = String(repeating: "Long mission / aircraft / target / queue ", count: 8)
-                for item in boundedHUDLabels { item.node.text = stress }
+                for item in boundedHUDLabels { item.node.sourceText = stress }
                 let long = auditLabels("long1", audit: &labelAudit)
-                for item in boundedHUDLabels { item.node.text = "OK" }
+                for item in boundedHUDLabels { item.node.sourceText = "OK" }
                 _ = auditLabels("short", audit: &labelAudit)
-                for item in boundedHUDLabels { item.node.text = stress }
+                for item in boundedHUDLabels { item.node.sourceText = stress }
                 _ = auditLabels("long2", reference: long, audit: &labelAudit)
-                for value in normal { value.node.text = value.source }
+                for value in normal { value.node.sourceText = value.source }
                 _ = auditLabels("restored", reference: normal, audit: &labelAudit)
                 for (index, row) in selectionInfoRowLabels.enumerated() where !(row.text?.isEmpty ?? true) {
                     expect(layout.slots["row\(index)"]!.insetBy(dx: -0.5, dy: -0.5).contains(row.frame), "labels", "row\(index)")
@@ -5250,7 +5299,7 @@ final class GameScene: SKScene {
         cameraRig.yScale = actualCamera.2
         layoutHUD()
         updateHUD()
-        messageLabel.text = actualMessage.0
+        messageLabel.sourceText = actualMessage.0
         messageLabel.fontColor = actualMessage.1
         messageLabel.alpha = actualMessage.2
         _ = auditLabels("actual-restored", reference: actualLabels, sameParentObject: false, audit: &actualLabelAudit)
@@ -5302,9 +5351,9 @@ final class GameScene: SKScene {
     private func addMinimap(frame: CGRect) {
         if !isWritingHUDContract { ciBeacon("minimap-start") }
         let title = makeHUDLabel(slot: "mapTitle", font: "AvenirNextCondensed-DemiBold", size: 10, color: HUDPalette.gold)
-        title.text = "SECTOR  /  N"
+        title.sourceText = "SECTOR  /  N"
         let legend = makeHUDLabel(slot: "mapLegend", size: 8, color: HUDPalette.mutedText)
-        legend.text = "LAND   AIR   SEA"
+        legend.sourceText = "LAND   AIR   SEA"
 
         // Clip terrain, blips and camera footprint to the same clickable content band.
         let crop = SKCropNode()
@@ -5413,9 +5462,9 @@ final class GameScene: SKScene {
         node.addChild(shape)
         hudButtonShapes[action] = shape
 
-        let title = SKLabelNode(fontNamed: "AvenirNextCondensed-DemiBold")
+        let title = HUDTextLabel(fontNamed: "AvenirNextCondensed-DemiBold")
         title.name = "hud-text:action:\(action.rawValue):title"
-        title.text = action.title
+        title.sourceText = action.title
         title.fontSize = frame.width < 66 ? 14 : 17
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
@@ -5423,9 +5472,9 @@ final class GameScene: SKScene {
         title.position = CGPoint(x: 0, y: 9)
         node.addChild(title)
         boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 4, y: 0, width: frame.width - 8, height: 22), title.fontSize))
-        let subtitleLabel = SKLabelNode(fontNamed: "Menlo")
+        let subtitleLabel = HUDTextLabel(fontNamed: "Menlo")
         subtitleLabel.name = "hud-text:action:\(action.rawValue):subtitle"
-        subtitleLabel.text = subtitle(for: action)
+        subtitleLabel.sourceText = subtitle(for: action)
         subtitleLabel.fontSize = 8
         subtitleLabel.fontColor = HUDPalette.mutedText
         subtitleLabel.verticalAlignmentMode = .center
@@ -5447,18 +5496,18 @@ final class GameScene: SKScene {
         shape.lineWidth = 0.75
         node.addChild(shape)
         hudPageShapes[page] = shape
-        let title = SKLabelNode(fontNamed: "AvenirNextCondensed-DemiBold")
+        let title = HUDTextLabel(fontNamed: "AvenirNextCondensed-DemiBold")
         title.name = "hud-text:page:\(page.rawValue):title"
-        title.text = page.title
+        title.sourceText = page.title
         title.fontSize = 12
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
         title.position = CGPoint(x: 0, y: 6)
         node.addChild(title)
-        let subtitle = SKLabelNode(fontNamed: "Menlo")
+        let subtitle = HUDTextLabel(fontNamed: "Menlo")
         subtitle.name = "hud-text:page:\(page.rawValue):subtitle"
-        subtitle.text = page.subtitle
+        subtitle.sourceText = page.subtitle
         subtitle.fontSize = 8
         subtitle.fontColor = HUDPalette.mutedText
         subtitle.verticalAlignmentMode = .center
@@ -5678,17 +5727,17 @@ final class GameScene: SKScene {
 
     private func updateHUD() {
         let income = incomePerTick(for: .player)
-        moneyLabel.text = "$\(playerMoney)"
-        incomeLabel.text = "+$\(income)/s  OIL \(oilCount(for: .player))  FLAG \(controlPointCount(for: .player))"
-        forcesLabel.text = "BLUE \(mobileCount(for: .player))"
+        moneyLabel.sourceText = "$\(playerMoney)"
+        incomeLabel.sourceText = "+$\(income)/s  OIL \(oilCount(for: .player))  FLAG \(controlPointCount(for: .player))"
+        forcesLabel.sourceText = "BLUE \(mobileCount(for: .player))"
         let enemyStatus = currentEnemyAssaultWaveSummary() ?? "AI \(aiDifficulty.displayName)"
-        aiStatusLabel.text = "R\(mobileCount(for: .enemy)) F\(controlPointCount(for: .enemy)) \(enemyStatus)"
+        aiStatusLabel.sourceText = "R\(mobileCount(for: .enemy)) F\(controlPointCount(for: .enemy)) \(enemyStatus)"
         let missionStatus = missionStatusContent()
-        missionTitleLabel.text = missionStatus.title
-        missionDetailLabel.text = missionStatus.detail
+        missionTitleLabel.sourceText = missionStatus.title
+        missionDetailLabel.sourceText = missionStatus.detail
         updateMissionProgressVisuals()
         for (action, subtitleLabel) in hudButtonSubtitleLabels {
-            subtitleLabel.text = subtitle(for: action)
+            subtitleLabel.sourceText = subtitle(for: action)
             if let power = action.supportPower, supportCooldown(for: .player, power: power) > 0 {
                 subtitleLabel.fontColor = UIColor(red: 1.0, green: 0.72, blue: 0.56, alpha: 1.0)
             } else {
@@ -5707,28 +5756,28 @@ final class GameScene: SKScene {
         refreshCommandIntentVisuals(for: selected)
         refreshFocusFireMarker(for: selected)
         if let pendingConstructionKind {
-            selectedLabel.text = "Place \(pendingConstructionKind.displayName): tap valid ground."
+            selectedLabel.sourceText = "Place \(pendingConstructionKind.displayName): tap valid ground."
         } else if isSettingRallyPoint {
-            selectedLabel.text = "Set rally point: tap map for selected factory or carrier."
+            selectedLabel.sourceText = "Set rally point: tap map for selected factory or carrier."
         } else if isSettingAttackMove {
-            selectedLabel.text = "Attack move: tap map for selected combat units."
+            selectedLabel.sourceText = "Attack move: tap map for selected combat units."
         } else if let pendingSupportPower {
-            selectedLabel.text = "Target \(pendingSupportPower.displayName): tap map."
+            selectedLabel.sourceText = "Target \(pendingSupportPower.displayName): tap map."
         } else if selected.isEmpty {
-            selectedLabel.text = "Tap a unit, then tap ground or enemy to command."
+            selectedLabel.sourceText = "Tap a unit, then tap ground or enemy to command."
         } else if selected.count == 1, let entity = selected.first {
             if entity.kind.isStructure && !entity.isOperational {
-                selectedLabel.text = "\(entity.kind.displayName) building \(Int(ceil(entity.buildProgressRemaining)))s"
+                selectedLabel.sourceText = "\(entity.kind.displayName) building \(Int(ceil(entity.buildProgressRemaining)))s"
             } else if entity.kind.supportsRallyPoint, let rallyPoint = entity.rallyPoint, let tile = tile(at: rallyPoint) {
-                selectedLabel.text = "\(entity.kind.displayName)  HP \(Int(entity.hp))/\(Int(entity.kind.maxHP))  Rally \(tile.row),\(tile.col)"
+                selectedLabel.sourceText = "\(entity.kind.displayName)  HP \(Int(entity.hp))/\(Int(entity.kind.maxHP))  Rally \(tile.row),\(tile.col)"
             } else {
-                selectedLabel.text = "\(entity.kind.displayName)  HP \(Int(entity.hp))/\(Int(entity.kind.maxHP))"
+                selectedLabel.sourceText = "\(entity.kind.displayName)  HP \(Int(entity.hp))/\(Int(entity.kind.maxHP))"
             }
         } else {
-            selectedLabel.text = "\(selected.count) units selected"
+            selectedLabel.sourceText = "\(selected.count) units selected"
         }
         if let threatSummary = airDefenseThreatSummaryLine(for: selected) {
-            selectedLabel.text = "\(selectedLabel.text ?? "")  |  \(threatSummary)"
+            selectedLabel.sourceText = "\(selectedLabel.sourceText ?? "")  |  \(threatSummary)"
         }
         if pendingConstructionKind == nil,
            pendingSupportPower == nil,
@@ -5737,21 +5786,21 @@ final class GameScene: SKScene {
            let primary = primaryCombatTarget(for: selected) {
             let targetPercent = Int((primary.target.hp / max(primary.target.kind.maxHP, 1)) * 100)
             let label = primary.count > 1 ? "FOCUS \(primary.count)" : "ATK"
-            selectedLabel.text = "\(selectedLabel.text ?? "")  |  \(label) \(primary.target.kind.shortCode) \(targetPercent)%"
+            selectedLabel.sourceText = "\(selectedLabel.sourceText ?? "")  |  \(label) \(primary.target.kind.shortCode) \(targetPercent)%"
         }
 
         let playerQueue = buildOrders.filter { $0.faction == .player }
         if playerQueue.isEmpty {
-            queueLabel.text = "Queue: idle"
+            queueLabel.sourceText = "Queue: idle"
         } else {
             let summary = playerQueue.prefix(3).map { "\($0.kind.shortCode) \(Int(ceil($0.remaining)))s" }.joined(separator: "  ")
-            queueLabel.text = "Queue: \(summary)"
+            queueLabel.sourceText = "Queue: \(summary)"
         }
 
         updateSelectionInfoPanel(selected: selected)
 
         if let victoryState {
-            messageLabel.text = victoryState
+            messageLabel.sourceText = victoryState
         }
 
         updateMinimap()
@@ -5926,7 +5975,7 @@ final class GameScene: SKScene {
 
     private func updateSelectionInfoPanel(selected: [GameEntity]) {
         let content = selectionInfoContent(for: selected)
-        selectionInfoTitleLabel.text = content.title
+        selectionInfoTitleLabel.sourceText = content.title
         if incomingThreatSummary(for: selected) != nil {
             selectionInfoTitleLabel.fontColor = HUDPalette.warning
         } else if selected.count == 1, let entity = selected.first {
@@ -7066,7 +7115,7 @@ final class GameScene: SKScene {
     private func updateMinimap() {
         guard minimapFrame.width > 0 else { return }
         minimapBlipsNode.removeAllChildren()
-        minimapScaleLabel.text = String(format: "%.1fx", 1.0 / max(cameraRig.xScale, 0.01))
+        minimapScaleLabel.sourceText = String(format: "%.1fx", 1.0 / max(cameraRig.xScale, 0.01))
 
         for entity in entities.values where entity.isAlive {
             if entity.faction == .enemy && !isKnownToFaction(entity, observer: .player) {
@@ -13636,7 +13685,7 @@ final class GameScene: SKScene {
     }
 
     private func showMessage(_ text: String, color: UIColor) {
-        messageLabel.text = text
+        messageLabel.sourceText = text
         fitHUDLabels()
         messageLabel.fontColor = color
         messageLabel.removeAllActions()

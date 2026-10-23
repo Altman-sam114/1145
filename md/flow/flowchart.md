@@ -188,7 +188,7 @@ v5.54 读图补充：HUD 根 z=10000，高于 world/fog 累计深度（当前 fo
 
 ### 战场优先 HUD 与云端契约
 
-读图说明：真实窗口几何先去重排队，初始化完整完成后在安全 update 点应用，布局非重入。注册标签保留完整源文，用native单行截尾和固定锚点重算后的父局部实际bbox拟合，不更改slot/字号底线/容差。云端prewarm复用生产框/路由完成25组合，原labels类实测六阶段双fit及原态恢复，fixture内部尺寸不当作外部请求；actual身份/source/appearance/parent/幂等与完整sameFit恢复参与stateRestored，baseline本身不合法不误称恢复漂移，但其合法性仍独立使总报告失败，不改ready语义。仅CI保存有界快照/诊断，trace只带报告描述符。Python不复算布局/字体，固定PNG仍由C逐张看图；合框不证明小屏占屏已优化。
+读图说明：真实窗口几何先去重排队，初始化完成后在安全update点应用，布局非重入。注册HUDTextLabel显式保存完整sourceText，text仅为实际显示；每次从源文/base/固定锚点重算，至多两次缩字和九次Character前缀加ellipsis实测，按真实父局部bbox对齐，不依赖已失败的native单行截尾，不改slot/字号底线/容差。云端prewarm复用生产框/路由完成25组合，labels实测六阶段双fit和原态恢复，比较源文与显示的幂等/往返、有效前缀和短串base恢复；actual恢复与bbox合法性分别严格参与原门槛，不改ready语义。仅CI保存有界source/display诊断，trace只带描述符；Python不复算布局/字体，全部24原图仍由C目视，合框不证明小屏占屏改善。
 
 ```mermaid
 flowchart TD
@@ -197,7 +197,8 @@ flowchart TD
   Page[当前 HudPage] --> Layout[HUDLayout 生产框与 route]
   SceneInsets --> Layout
   Layout --> Draw[左页轨 / 收口 dock / 紧凑顶栏 / 有界面板 / 分带小地图]
-  Draw --> Fit[完整text不写 / base与固定锚点重算 / native单行tail / 父局部实际bbox对齐]
+  Draw --> Source[生产只写完整sourceText / text仅显示 / 不猜测上次输出]
+  Source --> Fit[base与固定锚点 / 两次缩字 / 最多九次前缀实测 / 父局部bbox对齐]
   Layout --> Touch[双指优先后单指 route]
   Touch --> Inert[静态卡与 gap inert / pending 不变]
   Touch --> Command[既有 page / action / zoom / map / world]

@@ -6152,7 +6152,7 @@ C复核：实现 `625e8fd65431ae2c8890cc4316c3a7eb783d8a0b` 与最新main、run 
 - 真实HUD报告44,132 bytes、SHA-256 `b7aeed3bd2d180a800e57e2dbc821db0b46179a8910ea4c6bdf8f69edcbd104f` 与prewarm描述符/身份一致；`stateRestored=true`，25组合恰好都只有`labels=false, failures=["labels:button"]`、其他八类true。C不通过，准确失败于hud-contract-read-and-validate；24正式项全not_run、0PNG，不能目视验收。匿名标签尚不能定位字体/设备/字形根因，也不是恢复失败或已证明编译卡死。
 - X只读该run直接trace：初始化end0.474s、HUD契约start2.387s→written8.337s约5.95s、ready8.999s；这是阶段elapsed边界，不把约96s launch RPC当作场景计算耗时。后续缺24正式场景导致完整性错误不证明真实nonce重复；未封存live stderr后追加不冒充snapshot篡改。UI整体重构、v5.55布局和小屏占屏仍未验收。
 
-### v5.62 / HUD标签边界与幂等拟合（待本轮云端/C验收）
+### v5.62 / HUD标签边界与幂等拟合（C不通过：原生单行截尾失效）
 
 日期：2026-10-22
 
@@ -6164,3 +6164,18 @@ C复核：实现 `625e8fd65431ae2c8890cc4316c3a7eb783d8a0b` 与最新main、run 
 - 关键文件：GameScene.swift局部fitter/标签name/一次性契约、ci/simulator_probe.py仅HUD validator、ci/check_probe_runner.py仅fixture/新增审计负例及必要README/flow/flowchart/test/本文与v5.62提示词。玩法/地图/模型/输入、生命周期、boot/receipt/安装/预算/等待、探针/规范化/watchdog/workflow均冻结；用户Team ID及旧未跟踪资料保留排除。本机仅Git/AST/文本/hash/diff，未导入或运行任何CI/测试/build/Swift编译/设备工具。
 
 遗留：native单行截尾实际bbox和渲染未获本轮云端证据；若不符准确失败交X，不偷换缓存/字体/几何或扩大预算。667×375 TACT约70.7% HUD占屏、整体UI美观/手感、地图/模型/陆海空深度及全面复刻仍未完成，标签合框不代表总目标完成。
+
+C复核（2026-10-23）：main/origin/main `161d8a50628b86832c1d934eaa1bbbc839e4b137` 与run `39862237947` attempt1及manifest/summary一致。官方artifact `12463470079`，`desert-frontline-ci-v5.62-main-161d8a50628b-run39862237947-attempt1`，ZIP135427 bytes/30entries/CRC通过，API digest/SHA256 `4cd9e2064b758a003b0e23e53c4539d37dcdb34a4d998618d31df5d144bdb20e`，缓存 `/private/tmp/desert-frontline-c-review-39862237947/` 保留。
+
+- generic63.6s与sim SDK53.754s成功，97实际回归与独立5watchdog通过；一次boot monitor正常exit0，外层127.135s，一次install正常exit0外层93.380s。prewarm PID12785/独立nonce/生产阶段/两稳定帧到达，没有执行第二monitor，不冒称续等覆盖。
+- 真实HUD报告323147 bytes、stateRestored=true；25组合的long1/long2所有注册标签均超宽，典型Menlo字号8的1577px bbox对184.5px slot，preferredMaxLayoutWidth虽设置但未限制单行。TACT正常/恢复/重建及actual两阶段selected另有321px bbox对320px slot。全部短串base恢复与幂等不代表合框；C不通过于hud-contract-read-and-validate，24not_run/0PNG，JUnit10case/4failure/1准确XCTest skip。
+- 无正式图不能判断重构美观；没有证据支持本轮编译卡死。此处是可定位实际渲染测量反例，X批准新一轮显式源/显示分离与实测截尾方案，不能在旧轮偷偷更换算法或放宽bbox门槛。当前执行者按用户要求串行执行A/B/C职责，未声称三个独立Agent交叉审查。
+
+### v5.63 / 显式HUD原文与实测截尾（待本轮云端/C验收）
+
+日期：2026-10-23。
+
+- X批准v5.63 A提示词，以HUDTextLabel.sourceText显式保存完整输入，所有注册标签生产写入、追加和消息恢复使用源文；text仅显示。每次fit从source/base/固定anchor重算，最多两次比例缩字，仍超框则至多256个完整Character与ellipsis做9次实测二分，按真实父局部bbox对齐。保留原font/floor/slot/0.5容差/scale，不再依赖已失败native单行截尾，不建源/输出猜测缓存或额外测量节点。
+- 原HUD25六阶段双fit及actual恢复保留；snapshot与sameFit同时比较source/display，新增完整displayValidCount及truncatedCount，long须实际截尾、short不得截尾，源文/字号恢复仍严格。失败有界详情同时留source/display前缀与完整bytes/hash；原1MiB、beacon/trace上限和ready语义不改。Python只做协议校验；原97方法仅两个审计负例增加subtests，5watchdog保持，实际执行待最新Actions。
+- 关键文件：GameScene.swift局部HUD文本、ci/simulator_probe.py仅HUD validator、ci/check_probe_runner.py仅synthetic HUD fixture/审计负例、README/flow/flowchart/test/本文与v5.63提示词。所有玩法、地图/模型、输入/几何、生命周期、启动/安装/预算/等待、24探针及workflow冻结；用户Team ID及旧未跟踪资料保留排除。本机仅Git/文本/AST/hash/diff，不运行测试、CI脚本、Swift编译或设备工具。
+- 百度再次返回安全验证页，未绕过；Apple官方App Store Search API确认Desert Stormfront的沙漠石油、基地/机场/船厂、陆海空潜艇、战争迷雾及AI玩法形态，未新增第三方素材或宣称完全复制。整体UI占屏/美观、地图和模型重构仍待后续有限轮次，不能把本修复称为总目标完成。
