@@ -189,7 +189,7 @@ v5.60实际C复核：run `39849692612` attempt1 / main `820dcac741495b25a181456c
 
 v5.61实际C复核：run `39853761823` attempt1 / main `625e8fd65431ae2c8890cc4316c3a7eb783d8a0b` completed/failure；generic35.2s、sim SDK34.232s、95不同实际方法和独立5watchdog均通过。真实首monitor正常exit0，未跑wait2；安装成功，第二次prewarm PID14500存活并输出生产阶段/两稳定帧。HUD报告44,132 bytes，`stateRestored=true`，25组合都只有`labels:button`失败、另八类true，匿名项尚不能定位字体或设备根因；准确停在hud-contract-read-and-validate，24not_run/0PNG。X核对trace的初始化end0.474s、契约2.387→8.337s约5.95s、ready8.999s；这是阶段elapsed边界，不把约96s launch RPC当作场景计算慢。无证据宣称编译卡死、恢复失败或真实nonce重复；缺正式launch的完整性错误不是已发生的重复nonce。
 
-### v5.63 显式原文、实测截尾与幂等审计（待最新云端/C验收）
+### v5.63 显式原文、实测截尾与幂等审计（技术项通过，整体视觉不通过）
 
 - v5.62 run39862237947双build/97回归/5watchdog通过，但25组合long阶段全部越界，正常selected另有321px/320px超宽；stateRestored=true，24not_run/0PNG，C不通过。源码不再依赖该环境失效的native单行截尾。
 - 保留全部25组合和原九类key/断言，标签增强仍AND到labels。原字体、floor min(8,base)、slot、44pt hit框、0.5包含容差、26动作/5页和独立选择行fitter不改；不隐藏/透明/清空非空文本、放大框或压扁scale换绿。HUDTextLabel.sourceText显式保留完整输入，text仅显示；所有注册生产写入/追加/恢复迁移到源文，不从旧输出猜源。每次base/固定锚点重算，至多两次缩字；若仍超框，对最多256个Character加ellipsis做最多9次真实frame二分测量，保留实测合框候选。preferred width为0，每标签最多15次frame读取，不新建测量节点。
@@ -199,6 +199,13 @@ v5.61实际C复核：run `39853761823` attempt1 / main `625e8fd65431ae2c8890cc43
 - runner/metadata仍调用正式`validate_hud_contract`，只增audit schema/类型/ID唯一性与page/action覆盖、六阶段和计数完整性、成功/恢复一致性检查；Python不建字形/字体/包含模型。原95个方法正文、真实fixture和独立5watchdog源码保留；仅schema-only hud_fixture增加明确synthetic计数占位，加两方法检查缺/坏schema/阶段/ID/计数和外层全true却source/幂等/正bbox/可见性/base/重建/实际恢复失败，经正式validator/validate_results与metadata同时拒绝，其他boot/install/scene gate仍通过。
 - AST声明97方法（36调度/HUD、12安装、24启动、9回执、13场景、3规范化）加独立5watchdog。所有执行仅Actions，本机只Git/AST/文本/hash/diff，不导入或执行CI/测试/build/Swift编译/sips/游戏/设备命令，不伪造GITHUB_ACTIONS。沿用双build、原boot/install/预算/所有等待/readiness/snapshot/nonce/HUD25/24图门槛，不改workflow或额外重跑。
 - v5.63只扩充原两项审计schema/假绿负例subtests：缺/坏displayValidCount、truncatedCount、非源文前缀显示、long未截尾、short误截尾须被原validator及metadata拒绝；声明仍97+5，不冒充新设备证据。C下载最新main/SHA/run/attempt官方未加密ZIP，核对digest/CRC/manifest/JUnit/双build、97实际方法和5watchdog、真实boot/install/prewarm/trace及HUD25全链，再目视全部24正向官方PNG。任一不符准确失败交X；667×375 TACT约70.7%占屏仍未解决，不把合框说成整体美观、真实触摸、连续战斗、真机性能或完全复刻认证。
+
+### v5.64 宿主渲染配置与缺层排查（待最新云端/C验收）
+
+- v5.63 run39884193841双build/97回归/5watchdog和真实25组合/actual标签审计全通过；但TACT/BUILD两图raw及final均同SHA，只有地图、没有HUD/部队/fog，第二图重复早停，22not_run。两个实际nonce/PID不同，摘要的nonce泛化失败不是重复nonce根因；不将CPU ready当GPU就绪，不计整体成功轮次。
+- GameView显式SpriteView options空集，关闭shouldCullNonVisibleNodes并保留同z兄弟顺序；普通App与CI共用，不引入替身renderer/新scene/额外截图等待。现为自动剔除假设的有限排查，不是已证实根因或性能认证。
+- ready原hud检查要求真实SKView的剔除/忽略兄弟顺序均false，额外renderConfiguration完整两布尔字段由scene_evidence.latest_ready及metadata复核；缺失、坏类型、任一true拒绝。scene_fixture明确synthetic，占位不能当设备证据。新增一项协议负例方法覆盖原validator和外层假绿metadata，原97方法保持，声明98（36/12/24/9/14/3）加5watchdog，实际只认Actions执行。
+- 全部24图/前5图重复早停、双PID/raw270/final、HUD25/源显示审计、nonce/snapshot/两帧、所有boot/install/预算/等待/workflow保持。C核对最新官方ZIP的身份/digest/CRC/manifest/JUnit/双build/98+5与实际配置及全部原证据，逐张看24图HUD/单位/fog、五页差异和陆海空无回退；不同hash或配置为false本身不充分。关闭剔除可能增加离屏处理成本，不宣称60FPS或真机性能。本机仍只Git/AST/文本/diff，不运行任何测试/编译/设备命令。
 
 ### 触发条件
 

@@ -7,7 +7,8 @@ struct GameView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            SpriteView(scene: holder.scene, preferredFramesPerSecond: 60)
+            // Keep the full layered tree; cloud captures must not lose HUD or units to host culling.
+            SpriteView(scene: holder.scene, preferredFramesPerSecond: 60, options: [])
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .background(Color.black)
                 .background(WindowSafeAreaObserver { insets in

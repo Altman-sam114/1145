@@ -96,6 +96,10 @@ def latest_ready(records, definition):
             or any(type(counts.get(key)) is not int or counts[key] <= 0 for key in ("mapNodes", "entities", "playerUnits", "visiblePlayerUnits", "fogNodes", "visibleTiles"))
             or counts.get("panels") != 7 or counts.get("pages") != 5 or counts.get("actions") != ACTIONS[definition["page"]]):
         raise ValueError("Scene ready lacks production stages, fixture facts or stable frames")
+    rendering = ready.get("renderConfiguration")
+    if (not isinstance(rendering, dict) or set(rendering) != {"automaticCulling", "ignoresSiblingOrder"}
+            or any(value is not False for value in rendering.values())):
+        raise ValueError("Scene ready render configuration missing or invalid")
     size, view, insets = ready.get("sceneSize", {}), ready.get("viewSize", {}), ready.get("insets", {})
     if (not all(finite(size.get(key)) and finite(view.get(key)) and abs(size[key] - view[key]) < 1 for key in ("width", "height"))
             or size["width"] <= size["height"] or set(insets) != {"top", "left", "bottom", "right"}

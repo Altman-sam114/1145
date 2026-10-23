@@ -1547,7 +1547,8 @@ final class GameScene: SKScene {
             "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count,
             "hud": hudNode.parent === cameraRig && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
-                moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty,
+                moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty &&
+                !view.shouldCullNonVisibleNodes && !view.ignoresSiblingOrder,
             "fog": !fogLayer.children.isEmpty && !visibleTiles.isEmpty && !exploredTiles.isEmpty,
             "fixture": !ciFixtureBranch.isEmpty && hudPage.rawValue == expectedPage && fixtureChecks.values.allSatisfy({ $0 }) &&
                 ciFixtureCamera.map({ cameraRig.position.distance(to: clampCamera($0)) < 1 }) == true,
@@ -1582,6 +1583,8 @@ final class GameScene: SKScene {
             "viewSize": ["width": view.bounds.width, "height": view.bounds.height],
             "insets": ["top": windowSafeAreaInsets.top, "left": windowSafeAreaInsets.left, "bottom": windowSafeAreaInsets.bottom, "right": windowSafeAreaInsets.right],
             "camera": ["x": cameraRig.position.x, "y": cameraRig.position.y, "scale": cameraRig.xScale],
+            "renderConfiguration": ["automaticCulling": view.shouldCullNonVisibleNodes,
+                                    "ignoresSiblingOrder": view.ignoresSiblingOrder],
             "counts": ["mapNodes": mapNode.children.count, "entities": attached.count, "playerUnits": playerUnits.count,
                        "visiblePlayerUnits": visiblePlayerUnits.count, "panels": panelNames.count, "pages": layout.pages.count,
                        "actions": hudButtonShapes.count, "fogNodes": fogLayer.children.count, "visibleTiles": visibleTiles.count,

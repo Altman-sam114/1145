@@ -222,6 +222,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 ## 6. 前端 / 数据层 / 模型层 / 测试层关系
 
 - 前端显示：SpriteKit 节点和 SwiftUI `SpriteView`。
+- `GameView` 的 SpriteView 显式 `options: []`，关闭自动节点剔除、保留同z兄弟绘制顺序；普通游戏和CI共用同一宿主。实际SKView配置作为ready.renderConfiguration两项布尔值留证，并参与原HUD就绪与metadata复核。这是缺层图像的有限排查，不把CPU配置/两帧当GPU呈现证明；关闭剔除的离屏处理成本未获真机性能认证。
 - 数据/状态层：`GameScene` 字段、`GameEntity`、`BuildOrder`、`BattlefieldControlPoint`。
 - 模型层：`EntityKind`、`VeterancyRank`、`SupportPower`、`HudAction`、`AIDifficulty`、`MissionStage`。
 - 规则层：`GameScene` 内的 update、command、build、combat、AI、fog、victory 系列函数。

@@ -81,6 +81,7 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          counts=dict(mapNodes=1, entities=1, playerUnits=1, visiblePlayerUnits=1, fogNodes=1,
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
+         renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False),
          insets=dict(top=0, left=62, right=62, bottom=21), **(extra_ready or {}))
     for channel in ("stdout", "stderr"):
         path = runner.directory / f"scene-{scene['nonce']}-{channel}.live.log"
@@ -1564,6 +1565,28 @@ class SceneEvidenceTests(unittest.TestCase):
         records[-1]["frames"] = records[-1]["frames"][:1]
         with self.assertRaisesRegex(ValueError, "stable frames"):
             latest_ready(records, self.definition)
+
+    def test_scene_render_configuration_cannot_hide_behind_ready(self):
+        for rendering in (None, [], {}, {"automaticCulling": False},
+                          {"automaticCulling": True, "ignoresSiblingOrder": False},
+                          {"automaticCulling": False, "ignoresSiblingOrder": True},
+                          {"automaticCulling": 0, "ignoresSiblingOrder": False}):
+            with self.subTest(rendering=rendering):
+                self.runner.work()
+                scene = self.runner.summary["probes"][0]["scene"]
+                records = self.records(scene)
+                records[-1]["renderConfiguration"] = rendering
+                with self.assertRaisesRegex(ValueError, "render configuration"):
+                    latest_ready(records, self.definition)
+                self.rewrite(scene, records)
+                scene["ready"] = records[-1]
+                with self.assertRaises(ProbeFailure):
+                    validate_scene_evidence(self.runner.probes, self.runner.summary, self.directory)
+                self.runner.summary.update(status="success", integrityOutcome="success")
+                manifest = self.package(self.runner)
+                self.assertEqual(manifest["sceneReadinessOutcome"], "failure")
+                self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+                self.runner = FakeRunner(self.directory)
 
     def test_scene_missing_stage_or_production_fact_rejects_ready(self):
         for mutation in ("initialization", "fixture", "hud", "stage", "branch"):

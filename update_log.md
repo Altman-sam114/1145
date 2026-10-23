@@ -6171,7 +6171,7 @@ C复核（2026-10-23）：main/origin/main `161d8a50628b86832c1d934eaa1bbbc839e4
 - 真实HUD报告323147 bytes、stateRestored=true；25组合的long1/long2所有注册标签均超宽，典型Menlo字号8的1577px bbox对184.5px slot，preferredMaxLayoutWidth虽设置但未限制单行。TACT正常/恢复/重建及actual两阶段selected另有321px bbox对320px slot。全部短串base恢复与幂等不代表合框；C不通过于hud-contract-read-and-validate，24not_run/0PNG，JUnit10case/4failure/1准确XCTest skip。
 - 无正式图不能判断重构美观；没有证据支持本轮编译卡死。此处是可定位实际渲染测量反例，X批准新一轮显式源/显示分离与实测截尾方案，不能在旧轮偷偷更换算法或放宽bbox门槛。当前执行者按用户要求串行执行A/B/C职责，未声称三个独立Agent交叉审查。
 
-### v5.63 / 显式HUD原文与实测截尾（待本轮云端/C验收）
+### v5.63 / 显式HUD原文与实测截尾（文字技术项通过，C整体不通过：截图缺层/重复）
 
 日期：2026-10-23。
 
@@ -6179,3 +6179,17 @@ C复核（2026-10-23）：main/origin/main `161d8a50628b86832c1d934eaa1bbbc839e4
 - 原HUD25六阶段双fit及actual恢复保留；snapshot与sameFit同时比较source/display，新增完整displayValidCount及truncatedCount，long须实际截尾、short不得截尾，源文/字号恢复仍严格。失败有界详情同时留source/display前缀与完整bytes/hash；原1MiB、beacon/trace上限和ready语义不改。Python只做协议校验；原97方法仅两个审计负例增加subtests，5watchdog保持，实际执行待最新Actions。
 - 关键文件：GameScene.swift局部HUD文本、ci/simulator_probe.py仅HUD validator、ci/check_probe_runner.py仅synthetic HUD fixture/审计负例、README/flow/flowchart/test/本文与v5.63提示词。所有玩法、地图/模型、输入/几何、生命周期、启动/安装/预算/等待、24探针及workflow冻结；用户Team ID及旧未跟踪资料保留排除。本机仅Git/文本/AST/hash/diff，不运行测试、CI脚本、Swift编译或设备工具。
 - 百度再次返回安全验证页，未绕过；Apple官方App Store Search API确认Desert Stormfront的沙漠石油、基地/机场/船厂、陆海空潜艇、战争迷雾及AI玩法形态，未新增第三方素材或宣称完全复制。整体UI占屏/美观、地图和模型重构仍待后续有限轮次，不能把本修复称为总目标完成。
+
+C复核：本地/远端main `cc0981b7e467c38d38749d1d254a59f8f456917a`、run `39884193841` attempt1与manifest/summary/报告一致；官方artifact `12472202523`，`desert-frontline-ci-v5.63-main-cc0981b7e467-run39884193841-attempt1`，ZIP1415214 bytes/40entries/CRC通过，digest/SHA256 `e847a44de9a679f3ea33de2b17a2ecdc09be1917b24f577e76eb753f4576d97d`，缓存 `/private/tmp/desert-frontline-c-review-39884193841/` 保留。
+
+- generic33.5s、sim SDK29.062s、97不同实际方法与5watchdog通过；一次monitor115.185s、一次install21.946s正常exit0。真实HUD报告147711 bytes，SHA256 `3cf58ee9122d6690dca6800e108ddd502f94c28b104fb62e7057cef9ca619efd`，25×9全true，所有六阶段与actual两阶段零失败、stateRestored=true，长串实际截尾/短串base恢复和source/display幂等通过。这是文字修复本run真实技术证据，不等于全部画面通过。
+- 正式TACT PID10436、BUILD PID10597，独立nonce/阶段/两帧/实际页/实体及7面板事实都到达ready；但两张raw SHA均 `85d33d17076b5b9d2f0f657de849afddfae9d84cd172b134bf68ae9ca21fae5d`，final均 `9b09bb42224df93b5c5f0e68c3fbb97d07b42055e86a011b629269f40cec62f0`。两原图目视只有地形，没有HUD/部队/fog。第二图失败于重复PNG，1完成/1失败/22未运行；JUnit10case/3failure/1准确skip。不能把摘要nonce泛化错误误说成真实nonce重复，也不能将无drawable单次警告证明为唯一根因。
+- work307.836s/cleanup7.831s，所选设备shutdown正常；预算尚多，不是Swift编译卡死或时间不够。X退B，仅排查宿主自动剔除，不跳过重复图gate、不开始新美术扩展、不以原文合框宣称UI验收成功。
+
+### v5.64 / 宿主自动剔除与实际渲染配置（待本轮云端/C验收）
+
+日期：2026-10-23。
+
+- GameView既有SpriteView显式options空集：关闭自动节点剔除、保留同z兄弟顺序；普通App与CI共用同一场景/SceneHolder/安全区队列。Apple公开文档确认默认含shouldCullNonVisibleNodes且允许关闭；仅为v5.63缺层假设的窄修复/诊断，不宣称根因已证实。离屏节点处理成本与真机帧率仍待后续性能证据。
+- GameScene原hud ready检查增加实际SKView两个false，额外renderConfiguration记录真实配置；scene_evidence共享validator严格核对字段/布尔值，不以配置替代GPU图像。原97方法保持，新增1个synthetic协议负例方法涵盖缺/坏/开启剔除或乱序及metadata假绿，声明98+5，仅云端执行。
+- 不改文字算法/HUD25、布局/输入/模型/地图/玩法、boot/install/receipt/预算/等待、24项/重复图早停/规范化/workflow。关键文件GameView/GameScene局部ready、ci/scene_evidence.py、ci/check_probe_runner.py和必要文档/提示词；用户Team ID与旧未跟踪资料排除保留，本机仅Git/AST/文本/diff。须最新main官方完整artifact与24原图C目视才能接受；总目标和约70.7%小屏HUD占屏仍未完成。
