@@ -1286,10 +1286,11 @@ final class GameScene: SKScene {
         focusFireMarkerNode.isHidden = true
         worldNode.addChild(fogLayer)
 
-        camera = cameraRig
         addChild(cameraRig)
         cameraRig.addChild(hudNode)
         cameraRig.position = initialCameraPosition()
+        // Select the camera only after it belongs to this scene's node tree.
+        camera = cameraRig
 
         mapNode.zPosition = 0
         entityLayer.zPosition = 100
@@ -1380,6 +1381,7 @@ final class GameScene: SKScene {
         guard hudGeometryDirty else { return }
         hudGeometryDirty = false
         cameraRig.position = clampCamera(cameraRig.position)
+        camera = cameraRig
         layoutHUD()
         ciBeacon("geometry-applied", extra: ["revision": hudGeometryRevision])
     }
@@ -1531,6 +1533,22 @@ final class GameScene: SKScene {
         let attached = entities.values.filter { $0.isAlive && $0.node.parent === entityLayer }
         let playerUnits = attached.filter { $0.faction == .player && !$0.kind.isStructure }
         let visiblePlayerUnits = playerUnits.filter { !$0.node.isHidden && $0.node.alpha > 0 }
+        let cameraCenter = convertPoint(toView: cameraRig.position)
+        let hudOrigin = convertPoint(toView: hudNode.convert(.zero, to: self))
+        let viewCenter = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
+        let projectedPlayerUnits = visiblePlayerUnits.filter {
+            view.bounds.contains(convertPoint(toView: $0.node.convert(.zero, to: self)))
+        }.count
+        let projectionChecks = ["activeCamera": camera === cameraRig, "cameraAttached": cameraRig.parent === self,
+                                "hostScene": view.scene === self]
+        let projection: [String: Any] = [
+            "bindings": projectionChecks,
+            "cameraCenter": ["x": cameraCenter.x, "y": cameraCenter.y],
+            "hudOrigin": ["x": hudOrigin.x, "y": hudOrigin.y],
+            "visiblePlayerUnits": projectedPlayerUnits
+        ]
+        let projectionValid = projectionChecks.values.allSatisfy({ $0 }) &&
+            cameraCenter.distance(to: viewCenter) < 1 && hudOrigin.distance(to: viewCenter) < 1 && projectedPlayerUnits > 0
         let panelNames = Set(hudNode.children.compactMap(\.name).filter { $0.hasPrefix("hud-panel:") })
         let controlsHaveText = (Array(hudButtonShapes.values) + Array(hudPageShapes.values)).allSatisfy { shape in
             guard let parent = shape.parent, parent.parent === hudNode, !parent.isHidden else { return false }
@@ -1541,7 +1559,7 @@ final class GameScene: SKScene {
         let checks: [String: Bool] = [
             "initialized": sceneInitializationComplete && requiredStages.isSubset(of: ciCompletedStages),
             "geometry": !pendingGeometry && !hudGeometryDirty && !isLayingOutHUD && !isWritingHUDContract &&
-                hasWindowSafeArea && size.width > size.height && abs(view.bounds.width - size.width) < 1 &&
+                projectionValid && hasWindowSafeArea && size.width > size.height && abs(view.bounds.width - size.width) < 1 &&
                 abs(view.bounds.height - size.height) < 1 && window.safeAreaInsets == windowSafeAreaInsets,
             "map": terrain.count == rows && mapNode.children.count >= rows * cols,
             "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count,
@@ -1558,7 +1576,8 @@ final class GameScene: SKScene {
             let failure = checks.keys.sorted().map { "\($0)=\(checks[$0]!)" }.joined(separator: ",")
             if failure != ciLastReadinessFailure {
                 ciLastReadinessFailure = failure
-                ciBeacon("readiness-pending", extra: ["checks": checks, "fixtureChecks": fixtureChecks, "fixtureBranch": ciFixtureBranch])
+                ciBeacon("readiness-pending", extra: ["checks": checks, "fixtureChecks": fixtureChecks,
+                                                    "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
             ciReadyFrames.removeAll()
             ciStableGeometry = nil
@@ -1585,6 +1604,7 @@ final class GameScene: SKScene {
             "camera": ["x": cameraRig.position.x, "y": cameraRig.position.y, "scale": cameraRig.xScale],
             "renderConfiguration": ["automaticCulling": view.shouldCullNonVisibleNodes,
                                     "ignoresSiblingOrder": view.ignoresSiblingOrder],
+            "projection": projection,
             "counts": ["mapNodes": mapNode.children.count, "entities": attached.count, "playerUnits": playerUnits.count,
                        "visiblePlayerUnits": visiblePlayerUnits.count, "panels": panelNames.count, "pages": layout.pages.count,
                        "actions": hudButtonShapes.count, "fogNodes": fogLayer.children.count, "visibleTiles": visibleTiles.count,

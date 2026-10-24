@@ -32,6 +32,7 @@
 2. `GameView` 用 `GeometryReader` 包住全屏 `SpriteView` 挂载 `SceneHolder.scene`，并用黑色背景兜底，避免 SpriteKit 视图尚未铺满时露出系统白屏或空黑屏。
 3. `SceneHolder` 先创建非零初始尺寸 `GameScene(size: 1366x1024)`，`scaleMode = .resizeFill`。SwiftUI 有效尺寸与去重/合并的真实 UIWindow inset 只排队，不在 UIKit 布局回调栈改 SpriteKit 子树；初始化完整结束后，在 `update` 开头统一应用、clamp 相机并重建 HUD。
 4. `GameScene.didMove(to:)` 初始化 world、map、entity、effect、fog、HUD、camera 节点。
+   相机先加入 scene、挂载 HUD 并设置初始位置，之后才指定 `scene.camera`；外部几何在 update 安全点应用后重新绑定同一个已挂载相机。云端 ready 通过实际 `view.scene` / `scene.camera` / camera.parent 身份和 SpriteKit view 投影验证相机/HUD 原点居中、屏内可见玩家机动单位非零；这仍是 CPU 投影证据，正式 PNG 目视门槛不变。
 5. 初始化流程依次构建地形、绘制地图、生成控制点、生成初始单位/建筑、布局 HUD、刷新迷雾、刷新 HUD；`drawMap()` 用 tile 坐标与 skirmish seed 的确定性散列选择小幅沙地色差并低密度生成沙丘等高线 / 风纹，只读检查 road 四个正交邻格后按真实连通方向绘制道路肩、内层路床和中心标记，为 ridge 一次性生成不同尺寸 / 偏移的岩体落影、亮暗岩面与碎石，为 oil 增加污环 / 裂纹；水格继续只读检查四个正交邻格，在邻陆水格叠加两级浅水菱形（外层浅青 + 内缘亮青渐变）、青白冲洗带、细泡沫线和沿岸线确定性散布的白色泡点，开阔水格保留稀疏方向波纹并按哈希确定性变化波杆长度 / 角度、约半数追加第二条短波杆；`.sand` / `.oil` 陆地格沿同一四方向边表为水邻边加入缩进、低对比湿沙唇与稀疏断续高光，其中 `.sand` 每个 tile 还按 `terrainDetailHash(for:)` 与 `edge.index` 稀疏选择至多一条短平行潮痕和一个小漂砾，`.ridge` 陆地格按哈希为水邻边加入短暗色礁石轮廓与少量碎片，`.road` 不增加陆地侧岸线装饰。水侧与陆地侧都只创建 `mapNode` 子节点，并受既有 `fogLayer` 覆盖；所有这些节点只在地图构建 / 重开时创建，不进入每帧 update，不改变 terrain、移动速度、寻路、建造、海岸、迷雾或小地图语义。
 6. `GameScene.update(_:)` 先确认初始化完成、应用外部待处理几何，再推进施工、生产、支援冷却、经济、占领、维修、移动、战斗、AI、迷雾、死亡清理、任务进度、胜负和 HUD。HUD 布局非重入；HUD25 内部尺寸变化不进入外部请求队列，期间真实窗口变化保留到恢复后处理。
 7. 触摸事件在 `touchesBegan/Moved/Ended` 中分流到 HUD、迷你地图、双指平移缩放、框选、建筑预览、支援技能目标、集结点、attack-move、选中、移动和攻击。

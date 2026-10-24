@@ -218,7 +218,8 @@ flowchart TD
 flowchart TD
   Launch[原prewarm或24项独立launch / 唯一nonce与stdout stderr] --> Stages[真实terrain map control units HUD fog fixture完成]
   Stages --> Frames[生产实体 HUD文本 迷雾 相机 恢复检查 / didFinishUpdate稳定两帧]
-  Frames --> Ready{当前身份与latest ready有效}
+  Frames --> Projection[已挂载后选中同一camera / 外部几何后重绑\n实际host与camera身份 / 相机及HUD原点view投影居中 / 屏内玩家单位]
+  Projection --> Ready{当前身份与latest ready有效}
   Ready -- 否或窗口到期 --> Stop[准确失败 / 保存trace和已有图 / 后项not_run]
   Ready -- 是 --> Image[保持90s或8s与4s最小等待 / 原PID raw270 final链]
   Image --> Unique{前五不同页PNG无重复SHA}

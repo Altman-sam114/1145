@@ -105,6 +105,20 @@ def latest_ready(records, definition):
             or size["width"] <= size["height"] or set(insets) != {"top", "left", "bottom", "right"}
             or not all(finite(value) for value in insets.values())):
         raise ValueError("Scene ready window geometry invalid")
+    projection = ready.get("projection")
+    if not isinstance(projection, dict):
+        raise ValueError("Scene ready projection missing")
+    bindings = projection.get("bindings")
+    if (not isinstance(bindings, dict) or set(bindings) != {"activeCamera", "cameraAttached", "hostScene"}
+            or any(value is not True for value in bindings.values())
+            or type(projection.get("visiblePlayerUnits")) is not int or projection["visiblePlayerUnits"] <= 0):
+        raise ValueError("Scene ready projection bindings or visible units invalid")
+    for key in ("cameraCenter", "hudOrigin"):
+        point = projection.get(key)
+        if (not isinstance(point, dict) or set(point) != {"x", "y"}
+                or not all(finite(point.get(axis)) for axis in ("x", "y"))
+                or math.hypot(point["x"] - view["width"] / 2, point["y"] - view["height"] / 2) >= 1):
+            raise ValueError("Scene ready projection is not centered in the host view")
     return ready
 
 

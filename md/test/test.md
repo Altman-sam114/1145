@@ -200,12 +200,18 @@ v5.61实际C复核：run `39853761823` attempt1 / main `625e8fd65431ae2c8890cc43
 - AST声明97方法（36调度/HUD、12安装、24启动、9回执、13场景、3规范化）加独立5watchdog。所有执行仅Actions，本机只Git/AST/文本/hash/diff，不导入或执行CI/测试/build/Swift编译/sips/游戏/设备命令，不伪造GITHUB_ACTIONS。沿用双build、原boot/install/预算/所有等待/readiness/snapshot/nonce/HUD25/24图门槛，不改workflow或额外重跑。
 - v5.63只扩充原两项审计schema/假绿负例subtests：缺/坏displayValidCount、truncatedCount、非源文前缀显示、long未截尾、short误截尾须被原validator及metadata拒绝；声明仍97+5，不冒充新设备证据。C下载最新main/SHA/run/attempt官方未加密ZIP，核对digest/CRC/manifest/JUnit/双build、97实际方法和5watchdog、真实boot/install/prewarm/trace及HUD25全链，再目视全部24正向官方PNG。任一不符准确失败交X；667×375 TACT约70.7%占屏仍未解决，不把合框说成整体美观、真实触摸、连续战斗、真机性能或完全复刻认证。
 
-### v5.64 宿主渲染配置与缺层排查（待最新云端/C验收）
+### v5.64 宿主渲染配置与缺层排查（C视觉不通过）
 
 - v5.63 run39884193841双build/97回归/5watchdog和真实25组合/actual标签审计全通过；但TACT/BUILD两图raw及final均同SHA，只有地图、没有HUD/部队/fog，第二图重复早停，22not_run。两个实际nonce/PID不同，摘要的nonce泛化失败不是重复nonce根因；不将CPU ready当GPU就绪，不计整体成功轮次。
 - GameView显式SpriteView options空集，关闭shouldCullNonVisibleNodes并保留同z兄弟顺序；普通App与CI共用，不引入替身renderer/新scene/额外截图等待。现为自动剔除假设的有限排查，不是已证实根因或性能认证。
 - ready原hud检查要求真实SKView的剔除/忽略兄弟顺序均false，额外renderConfiguration完整两布尔字段由scene_evidence.latest_ready及metadata复核；缺失、坏类型、任一true拒绝。scene_fixture明确synthetic，占位不能当设备证据。新增一项协议负例方法覆盖原validator和外层假绿metadata，原97方法保持，声明98（36/12/24/9/14/3）加5watchdog，实际只认Actions执行。
 - 全部24图/前5图重复早停、双PID/raw270/final、HUD25/源显示审计、nonce/snapshot/两帧、所有boot/install/预算/等待/workflow保持。C核对最新官方ZIP的身份/digest/CRC/manifest/JUnit/双build/98+5与实际配置及全部原证据，逐张看24图HUD/单位/fog、五页差异和陆海空无回退；不同hash或配置为false本身不充分。关闭剔除可能增加离屏处理成本，不宣称60FPS或真机性能。本机仍只Git/AST/文本/diff，不运行任何测试/编译/设备命令。
+
+### v5.65 相机挂载与生产投影（待云端/C验收）
+
+- v5.64 run39885456455双build、98方法+5watchdog、真实boot/install/HUD25通过；TACT/BUILD官方图近乎全黑且同SHA，1完成/1失败/22not_run，C不通过。关闭剔除没有解决；三个实际launch nonce不同，完整性摘要不能当nonce重复根因。官方ZIP173165 bytes，digest/CRC核对，缓存标准目录保留。
+- 相机先addChild再选为scene.camera，外部几何应用后重绑同一节点。真实ready/pending新增projection：实际host/scene/camera绑定、camera/HUD原点经SpriteKit投到view的坐标与屏内可见玩家机动单位数；原geometry检查要求两点距view中心小于1pt、绑定true且屏内单位数正。Python共享validator严格核对，不复制Swift几何，不改HUD25九类或24项门槛。
+- 新增一项synthetic协议负例方法，缺失/坏类型/绑定false或数字/缺binding/0或bool单位/偏移或非有限点须被latest_ready、runner和metadata拒绝。声明99方法（36/12/24/9/15/3）加原独立5watchdog；只在Actions执行。CPU投影不证明GPU呈现，C仍须下载最新main/run/attempt官方ZIP，核对完整身份/digest/CRC/manifest/JUnit/双build/99+5/实际投影/HUD25和24张正向原图，无HUD/单位/迷雾或重复即失败。原预算、等待、设备策略、规范化和workflow不变；无本机测试/编译/设备操作。
 
 ### 触发条件
 

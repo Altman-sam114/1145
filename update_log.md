@@ -6186,10 +6186,20 @@ C复核：本地/远端main `cc0981b7e467c38d38749d1d254a59f8f456917a`、run `39
 - 正式TACT PID10436、BUILD PID10597，独立nonce/阶段/两帧/实际页/实体及7面板事实都到达ready；但两张raw SHA均 `85d33d17076b5b9d2f0f657de849afddfae9d84cd172b134bf68ae9ca21fae5d`，final均 `9b09bb42224df93b5c5f0e68c3fbb97d07b42055e86a011b629269f40cec62f0`。两原图目视只有地形，没有HUD/部队/fog。第二图失败于重复PNG，1完成/1失败/22未运行；JUnit10case/3failure/1准确skip。不能把摘要nonce泛化错误误说成真实nonce重复，也不能将无drawable单次警告证明为唯一根因。
 - work307.836s/cleanup7.831s，所选设备shutdown正常；预算尚多，不是Swift编译卡死或时间不够。X退B，仅排查宿主自动剔除，不跳过重复图gate、不开始新美术扩展、不以原文合框宣称UI验收成功。
 
-### v5.64 / 宿主自动剔除与实际渲染配置（待本轮云端/C验收）
+### v5.64 / 宿主自动剔除与实际渲染配置（C视觉不通过）
 
 日期：2026-10-23。
 
 - GameView既有SpriteView显式options空集：关闭自动节点剔除、保留同z兄弟顺序；普通App与CI共用同一场景/SceneHolder/安全区队列。Apple公开文档确认默认含shouldCullNonVisibleNodes且允许关闭；仅为v5.63缺层假设的窄修复/诊断，不宣称根因已证实。离屏节点处理成本与真机帧率仍待后续性能证据。
 - GameScene原hud ready检查增加实际SKView两个false，额外renderConfiguration记录真实配置；scene_evidence共享validator严格核对字段/布尔值，不以配置替代GPU图像。原97方法保持，新增1个synthetic协议负例方法涵盖缺/坏/开启剔除或乱序及metadata假绿，声明98+5，仅云端执行。
 - 不改文字算法/HUD25、布局/输入/模型/地图/玩法、boot/install/receipt/预算/等待、24项/重复图早停/规范化/workflow。关键文件GameView/GameScene局部ready、ci/scene_evidence.py、ci/check_probe_runner.py和必要文档/提示词；用户Team ID与旧未跟踪资料排除保留，本机仅Git/AST/文本/diff。须最新main官方完整artifact与24原图C目视才能接受；总目标和约70.7%小屏HUD占屏仍未完成。
+
+C复核（2026-10-24）：run `39885456455` attempt1 / main `917c38b453e6ba319c2b53c5a032ef31aee9e637` completed/failure。官方artifact `12473065771` ZIP173165 bytes，SHA256 `010cbe4472d3c33b6943dc28abf1f2df71951786473a7a556c6747afdd2827a4` 与API digest一致，CRC正常，缓存 `/private/tmp/desert-frontline-c-review-39885456455/` 保留。双build、98回归+5watchdog、boot/install/HUD25通过；两个正式launch的实际配置均false、身份/阶段/两帧不同，但TACT/BUILD图同SHA且近乎全黑、只见边缘地图。1完成/1失败/22not_run，JUnit10/3fail/1准确skip，整体不通过。实际nonce不同，不把完整性泛化诊断当成nonce根因；关闭剔除未解决，不计成功轮次。
+
+### v5.65 / 相机挂载次序与实际投影（待云端/C验收）
+
+日期：2026-10-24。
+
+- 按Apple官方camera示例修正为相机先进入scene再指定scene.camera，外部几何安全点完成后重绑同一cameraRig；不替换宿主/场景、不调z/迷雾/玩法。仅为有限渲染修复假设，不能预先宣称根因。
+- ready/pending记录实际scene-camera-host绑定、相机/HUD原点view投影和屏内可见玩家机动单位；绑定true、两点距中心<1pt、单位数正并入原geometry检查，runner/metadata共同核对。新增1项synthetic负例方法，声明99+5watchdog；原24图、HUD25、预算/等待/设备/规范化不变。
+- 本机只做Git/AST/文本/diff静态检查；无测试/构建/Simulator/simctl/sips。须最新main的官方artifact完整核对及全部24正向PNG目视；CPU投影不能替代GPU画面，全面UI/模型重构仍未完成。

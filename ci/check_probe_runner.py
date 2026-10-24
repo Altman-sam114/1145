@@ -82,6 +82,8 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
          renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False),
+         projection=dict(bindings=dict(activeCamera=True, cameraAttached=True, hostScene=True),
+                         cameraCenter=dict(x=437, y=201), hudOrigin=dict(x=437, y=201), visiblePlayerUnits=1),
          insets=dict(top=0, left=62, right=62, bottom=21), **(extra_ready or {}))
     for channel in ("stdout", "stderr"):
         path = runner.directory / f"scene-{scene['nonce']}-{channel}.live.log"
@@ -1577,6 +1579,38 @@ class SceneEvidenceTests(unittest.TestCase):
                 records = self.records(scene)
                 records[-1]["renderConfiguration"] = rendering
                 with self.assertRaisesRegex(ValueError, "render configuration"):
+                    latest_ready(records, self.definition)
+                self.rewrite(scene, records)
+                scene["ready"] = records[-1]
+                with self.assertRaises(ProbeFailure):
+                    validate_scene_evidence(self.runner.probes, self.runner.summary, self.directory)
+                self.runner.summary.update(status="success", integrityOutcome="success")
+                manifest = self.package(self.runner)
+                self.assertEqual(manifest["sceneReadinessOutcome"], "failure")
+                self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+                self.runner = FakeRunner(self.directory)
+
+    def test_scene_projection_must_bind_and_center_the_real_camera(self):
+        mutations = ("missing", "bad-type", "activeCamera", "cameraAttached", "hostScene", "missing-binding",
+                     "numeric-binding", "no-units", "bool-units", "camera-offset", "hud-offset", "nonfinite", "bad-point")
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                self.runner.work()
+                scene = self.runner.summary["probes"][0]["scene"]
+                records = self.records(scene)
+                projection = records[-1]["projection"]
+                if mutation == "missing": del records[-1]["projection"]
+                elif mutation == "bad-type": records[-1]["projection"] = []
+                elif mutation in ("activeCamera", "cameraAttached", "hostScene"): projection["bindings"][mutation] = False
+                elif mutation == "missing-binding": del projection["bindings"]["activeCamera"]
+                elif mutation == "numeric-binding": projection["bindings"]["activeCamera"] = 1
+                elif mutation == "no-units": projection["visiblePlayerUnits"] = 0
+                elif mutation == "bool-units": projection["visiblePlayerUnits"] = True
+                elif mutation == "camera-offset": projection["cameraCenter"]["x"] += 2
+                elif mutation == "hud-offset": projection["hudOrigin"]["y"] -= 2
+                elif mutation == "nonfinite": projection["cameraCenter"]["x"] = float("nan")
+                elif mutation == "bad-point": projection["hudOrigin"] = "center"
+                with self.assertRaisesRegex(ValueError, "projection"):
                     latest_ready(records, self.definition)
                 self.rewrite(scene, records)
                 scene["ready"] = records[-1]
