@@ -24,7 +24,7 @@ from simulator_probe import (HUD_CHECKS, HUD_FIXTURES, HUD_PAGES, Runner, ProbeF
                              load_probes, png_info, select_device, validate_hud_contract, validate_installation,
                              validate_results, validate_scene_evidence)
 from scene_evidence import (ACTIONS, CHECKS, STAGES, TRACE_LIMIT, file_evidence, latest_ready,
-                            read_hud_report, seal_scene, trace_records, validate_page_images, validate_scene)
+                            read_app_document, read_hud_report, seal_scene, trace_records, validate_page_images, validate_scene)
 from run_bounded import run_bounded
 from package_results import main as package_results
 
@@ -1697,32 +1697,95 @@ class SceneEvidenceTests(unittest.TestCase):
             seal_scene(self.runner.summary, scene, self.directory, self.definition)
 
     def test_scene_report_current_bundle_nonce_path_and_hash(self):
-        for mutation in ("valid", "bundle", "nonce", "hash", "outside", "symlink", "oversize"):
-            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory) / "unit-device" / "data"
+        for filename in ("hud-layout-contract.json", "render-world.png", "render-hud.png"):
+            for mutation in ("valid", "bundle", "nonce", "hash", "outside", "symlink", "oversize"):
+                with self.subTest(filename=filename, mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory) / "unit-device" / "data"
+                    container = root / "Containers/Data/Application" / str(uuid.uuid4())
+                    nonce, bundle = uuid.uuid4().hex, "unit.fixture.only"
+                    source = container / "Documents/DesertCI" / nonce / filename
+                    source.parent.mkdir(parents=True)
+                    data = b'{"syntheticPathFixtureOnly":true}'
+                    source.write_bytes(data)
+                    metadata = container / ".com.apple.mobile_container_manager.metadata.plist"
+                    metadata.write_bytes(plistlib.dumps({"MCMMetadataIdentifier": bundle}))
+                    descriptor = dict(path=str(source), bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+                    def read():
+                        return (read_hud_report(root, descriptor, nonce, bundle) if filename == "hud-layout-contract.json"
+                                else read_app_document(root, descriptor, nonce, bundle, filename))
+                    if mutation == "valid":
+                        self.assertEqual(read(), data)
+                        continue
+                    if mutation == "bundle": bundle = "another.bundle"
+                    elif mutation == "nonce": nonce = uuid.uuid4().hex
+                    elif mutation == "hash": descriptor["sha256"] = "0" * 64
+                    elif mutation == "outside": root = Path(directory) / "other-device"
+                    elif mutation == "oversize": source.write_bytes(b"x" * (1048577 if filename.endswith(".json") else 8388609))
+                    else:
+                        target = source.with_suffix(".real")
+                        source.rename(target)
+                        source.symlink_to(target)
+                    with self.assertRaises((ValueError, FileNotFoundError)):
+                        read()
+        with self.assertRaisesRegex(ValueError, "Unsupported"):
+            read_app_document(self.directory, {}, "unused", "unit.fixture.only", "unapproved.png")
+
+    def test_offscreen_collection_is_bounded_non_gating_and_preserves_cancel_deadline(self):
+        # Synthetic files/protocol only; these are not Swift or GPU rendering results.
+        for mutation in ("valid", "missing", "hash", "bad-png", "nonce", "stale", "bad-type", "partial", "cancel", "deadline"):
+            with self.subTest(mutation=mutation):
+                self.runner = FakeRunner(self.directory)
+                root = self.directory / "unit-device/data"
+                self.runner.device.update(udid="unit-device", dataPath=str(root))
+                self.runner.bundle = "unit.fixture.only"
+                scene = self.scene()["scene"]
+                records = self.records(scene)
                 container = root / "Containers/Data/Application" / str(uuid.uuid4())
-                nonce, bundle = uuid.uuid4().hex, "unit.fixture.only"
-                source = container / "Documents/DesertCI" / nonce / "hud-layout-contract.json"
-                source.parent.mkdir(parents=True)
-                data = b'{"syntheticSchemaOnly":true}'
-                source.write_bytes(data)
-                metadata = container / ".com.apple.mobile_container_manager.metadata.plist"
-                metadata.write_bytes(plistlib.dumps({"MCMMetadataIdentifier": bundle}))
-                descriptor = dict(path=str(source), bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
-                if mutation == "valid":
-                    self.assertEqual(read_hud_report(root, descriptor, nonce, bundle), data)
+                folder = container / "Documents/DesertCI" / scene["nonce"]
+                folder.mkdir(parents=True)
+                (container / ".com.apple.mobile_container_manager.metadata.plist").write_bytes(
+                    plistlib.dumps({"MCMMetadataIdentifier": self.runner.bundle}))
+                images = {}
+                for name in ("world", "hud"):
+                    data = b"invalid PNG" if mutation == "bad-png" else png_bytes()
+                    source = folder / f"render-{name}.png"
+                    source.write_bytes(data)
+                    images[name] = dict(path=str(source), bytes=len(data), sha256=hashlib.sha256(data).hexdigest(),
+                                        width=2, height=1, coordinateSpace=f"{name}Node-local",
+                                        crop=dict(x=-1, y=-1, width=2, height=1))
+                report = dict(schemaVersion=1, producer="GameScene.RenderDiagnostics", role="diagnostic-only", status="collected",
+                              geometryRevision=scene["ready"]["geometryRevision"], images=images,
+                              coreFingerprintBefore="f"*64, coreFingerprintAfter="f"*64, coreStatePreserved=True, errors=[])
+                if mutation == "hash": images["world"]["sha256"] = "0" * 64
+                elif mutation == "nonce":
+                    other = folder.parent / uuid.uuid4().hex / "render-world.png"
+                    other.parent.mkdir()
+                    other.write_bytes(png_bytes())
+                    images["world"]["path"] = str(other)
+                elif mutation == "stale": report["geometryRevision"] += 1
+                elif mutation == "bad-type": report = []
+                elif mutation == "partial": report.update(status="failure", images={}, errors=["synthetic export failure"])
+                if mutation != "missing": records.append(dict(records[-1], stage="render-diagnostics", diagnostics=report))
+                self.rewrite(scene, records)
+                self.runner.summary["prewarm"] = [dict(attempt=1, pid=scene["pid"], status="success", scene=scene)]
+                if mutation == "deadline":
+                    self.runner.deadline = time.monotonic() - 1
+                    with self.assertRaises(ProbeFailure) as error: self.runner.collect_render_diagnostics(scene["pid"])
+                    self.assertEqual(error.exception.code, 124)
                     continue
-                if mutation == "bundle": bundle = "another.bundle"
-                elif mutation == "nonce": nonce = uuid.uuid4().hex
-                elif mutation == "hash": descriptor["sha256"] = "0" * 64
-                elif mutation == "outside": root = Path(directory) / "other-device"
-                elif mutation == "oversize": source.write_bytes(b"x" * 1048577)
-                else:
-                    target = source.with_suffix(".real")
-                    source.rename(target)
-                    source.symlink_to(target)
-                with self.assertRaises((ValueError, FileNotFoundError)):
-                    read_hud_report(root, descriptor, nonce, bundle)
+                if mutation == "cancel":
+                    with patch("simulator_probe.read_app_document", side_effect=KeyboardInterrupt):
+                        with self.assertRaises(KeyboardInterrupt): self.runner.collect_render_diagnostics(scene["pid"])
+                    continue
+                self.runner.collect_render_diagnostics(scene["pid"])
+                evidence = self.runner.summary["renderDiagnostics"]
+                self.assertEqual(evidence["role"], "diagnostic-only")
+                self.assertEqual(evidence["collectionStatus"], "collected" if mutation == "valid" else "partial" if mutation == "partial" else "failure")
+                self.assertTrue((self.directory / "render-diagnostics.json").is_file())
+                if mutation == "valid":
+                    self.assertEqual(set(evidence["images"]), {"world", "hud"})
+                    self.runner.work()
+                    self.assertEqual(self.runner.summary["integrityOutcome"], "success")
 
     def test_scene_short_records_wrong_probe_and_nonce_reuse_metadata_red(self):
         for mutation in ("short", "probe", "nonce"):

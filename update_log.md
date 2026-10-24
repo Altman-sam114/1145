@@ -6213,7 +6213,7 @@ C复核（2026-10-24）：实现SHA `8f9645b3b46558543d9238594a0e2adfeff5eab2` �
 
 X结论：按连续同类渲染失败停止自动提交循环，未宣称总目标完成。下一有限方案可隔离SpriteView宿主、显式管理同一SKView/场景的呈现生命周期，仍只云端验证；该方案尚未实施，需要人工确认重新进入一轮。C失败结论文档留在工作区未提交/未推送，避免为同一失败代码再触发一次无有效修复的云端run；用户原有签名Team ID与未跟踪资料保持不变。
 
-### v5.66 / 显式SKView宿主与呈现生命周期（待云端/C验收）
+### v5.66 / 显式SKView宿主与呈现生命周期（技术项通过，C视觉不通过）
 
 日期：2026-10-24。
 
@@ -6221,3 +6221,22 @@ X结论：按连续同类渲染失败停止自动提交循环，未宣称总目�
 - 窗口/布局/inset回调只合并排队，离开布局栈且窗口/尺寸有效后同步几何，当前scene不是目标时才present；拆卸清空目标并present nil，排队回调不能复活。GameScene.didMove对已初始化场景只排队几何/失效ready，不重复addChild或重置玩法，SKRM原路径不变。
 - 原ready.renderConfiguration记录实际viewClass，runner/metadata要求GameRenderView与两个false；原负例扩充字段/类型/旧宿主subtests，保持99方法+5watchdog，不虚增测试数。所有24项、HUD25、预算/等待/boot/install/receipt/旋转与workflow冻结。
 - 承接前轮三份未提交C结论文档，用户Team ID和未跟踪资料排除保留；本机仅Git/AST/文本/diff。最新main云端双build和全部24原图C复核前，不宣称GPU修复、UI已重构或总目标完成；同因失败即停止本轮，不循环换宿主试到绿。
+
+C复核（2026-10-24）：本地/远端main `f17bc25c79db7fdffcad87bb47af3377cbaa7c5e` 与run `40054833004` attempt1及manifest一致，run completed/failure，job8分21秒。官方artifact `12544714262`、`desert-frontline-ci-v5.66-main-f17bc25c79db-run40054833004-attempt1`，ZIP178864 bytes、SHA256 `6c79e88319f86544f3ebce44fa9c847593d22aa6ad555c5da5f46acba24e967c` 与API digest一致，全项CRC正常；缓存 `/private/tmp/desert-frontline-c-review-40054833004/` 保留。
+
+- generic45.7s、sim SDK31.082s，99实际方法（36/12/24/9/15/3）零失败/错误，独立5watchdog通过；boot首monitor98.004959s、安装、真实HUD25与stateRestored通过。不是Swift编译卡死；本次monitor未出现第二次续等，不能据此证明该分支动态覆盖。
+- prewarm/TACT/BUILD三个真实launch的实际viewClass均GameRenderView，culling/order均false；camera/scene/host绑定true，两投影均(436.9999694824219,201)、屏内可见玩家机动单位6，host替换和CPU检查实际生效，不是旧binary或仅文字配置。
+- 逐张目视两张已产生的正式PNG仍近乎全黑/顶部少量地图；两图68330 bytes、SHA256 `218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f`，逐字节同于v5.65两图。准确停止在probe:build:normalized-image-check，原error为Distinct first-five HUD pages produced an identical PNG；1完成/1失败/22not_run。三个实际nonce不同，缺后项的完整性泛化nonce诊断不是重复nonce根因。JUnit10/3fail/1准确skip，C整体不通过，不计成功轮次。
+- work363.585s、cleanup10.802s、总374.387s，正式执行有余量；本轮没有延时/重跑/换设备/改门槛。本机只静态diff/AST和官方包/公开文档读取，未执行测试/构建/设备命令，未启动Agent；Team ID及旧未跟踪资料保持。
+
+X结论：显式宿主替换不足以解决渲染故障，停止本轮云端提交，不再重复宿主/相机参数实验，不开始美术扩展。下一调查需对相同生产节点做屏幕与有界离屏渲染的差分留证；Apple公开SKView.texture(from:crop:)定义crop为节点坐标，允许渲染节点子树，此处仅查明API语义，尚未实施诊断或据此确定根因。C失败结论文档留工作区未提交，避免无修复再次触发相同CI；总目标保持未完成。
+
+### v5.67 / 生产场景离屏差分留证（待云端/C复核）
+
+日期：2026-10-24。
+
+- 停止宿主/相机猜测，新增一次有界诊断，不宣称黑屏已修复。仅原prewarm在HUD25恢复/两稳定帧ready后异步一次导出生产worldNode和hudNode；按节点坐标crop，不移动/隐藏/重挂节点、不改变玩法、camera/fog/z/布局。原始透明PNG不旋转/合成，crop≤2048×1536/2M平方点，Retina PNG≤4096×3072/8M像素/8MiB。
+- 两图写当前App Documents/DesertCI/nonce，直接trace事件留实际crop/尺寸/bytes/SHA、几何版本、核心事实指纹前后/相等性、窗口状态、耗时与错误。runner在原HUD收集后、terminate前安全读取并归档两个diagnostic PNG和JSON；沿用设备dataPath/当前bundle容器metadata/nonce/无符号链接/hash约束，HUD wrapper仍1MiB，仅两个PNG增加8MiB文件白名单。
+- 诊断非gate，不能代替24正式屏幕图或令黑屏/重复通过。收集错误留证但不挡正式探针，取消和原总deadline继续传播；package仅索引/状态/摘要，不改原JUnit10、正式readiness/HUD25/24定义/PID/nonce/snapshot/预算/等待/boot/install/receipt/规范化/workflow。普通App和正式24launch不执行导出。
+- 原路径测试扩充三个文件名，新增一个synthetic收集/负路径方法，声明100（36/12/24/9/16/3）+原独立5watchdog，仅云端执行。关键文件GameScene局部CI、四个CI脚本/共享读取helper、必要文档和本轮A提示词；承接v5.66未提交C文档，用户Team ID和旧未跟踪资料排除保留。本机只Git/AST/文本/diff，无测试/编译/设备运行/子Agent。
+- 最新main官方包的身份/digest/CRC、双build/100+5、原正式证据及新trace/两PNG差分须经C实际复核；diagnostic collected只是字节收集，不认证GPU屏幕、完整运行态、美术或总目标。若新证据不能指导下一动作停止，不盲目继续。

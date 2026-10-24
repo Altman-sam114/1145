@@ -230,6 +230,8 @@ flowchart TD
   Stop --> Metadata
 ```
 
+读图补充：只有原prewarm发出ready后异步一次导出生产worldNode/hudNode的节点坐标crop，直接trace绑定原nonce并记录核心事实指纹和错误；runner经同设备App容器校验后归档两个diagnostic PNG及JSON。它是与正式屏幕图对照的非gate证据，不能补24图、旋转成替身或令重复图通过；普通游戏/正式launch不导出，原等待/总预算和取消传播不变。
+
 ### 同设备有界安装恢复
 
 读图说明：每次install有独立180秒cap但仍扣同一个1080秒deadline。只有实际CLI回执完整且失败明确可重试时，才允许一次同UDID就绪检查和第二次安装；预算不足、取消或永久/未知失败不绕路。receipt记录CLI信号发送与leader回收，不宣称系统安装服务或所有后代已清理。557/617秒为保留既有等待与命令运行余量的准入，不是最坏I/O保证。

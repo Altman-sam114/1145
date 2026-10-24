@@ -18,7 +18,7 @@ import uuid
 import zlib
 
 from run_bounded import run_bounded
-from scene_evidence import (file_evidence, latest_ready, read_hud_report, seal_scene, trace_records,
+from scene_evidence import (file_evidence, latest_ready, read_app_document, read_hud_report, seal_scene, trace_records,
                             validate_page_images, validate_scene)
 
 
@@ -1030,6 +1030,67 @@ class Runner:
             finally:
                 self.save()
 
+    def collect_render_diagnostics(self, pid):
+        """Archive offscreen evidence only; never substitute it for formal screen probes."""
+        self.remaining()
+        evidence = {"schemaVersion": 1, "role": "diagnostic-only", "collectionStatus": "unavailable", "images": {}}
+        self.summary["renderDiagnostics"] = evidence
+        try:
+            producer = next(item for item in self.summary["prewarm"] if item.get("pid") == pid)
+            scene = producer["scene"]
+            events = [item for item in trace_records(self.summary, scene, self.directory)
+                      if item["stage"] == "render-diagnostics"]
+            if len(events) != 1:
+                raise ValueError("Expected one prewarm render-diagnostics event")
+            event = events[0]
+            evidence["sourceEvent"] = event
+            report = event.get("diagnostics", {})
+            if not isinstance(report, dict):
+                raise ValueError("Invalid offscreen diagnostic report type")
+            images = report.get("images", {})
+            fingerprints = [report.get(key) for key in ("coreFingerprintBefore", "coreFingerprintAfter")]
+            if (report.get("schemaVersion") != 1 or report.get("producer") != "GameScene.RenderDiagnostics"
+                    or report.get("role") != "diagnostic-only" or report.get("status") not in ("collected", "failure")
+                    or report.get("geometryRevision") != scene["ready"]["geometryRevision"]
+                    or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value) for value in fingerprints)
+                    or type(report.get("coreStatePreserved")) is not bool
+                    or report["coreStatePreserved"] != (fingerprints[0] == fingerprints[1])
+                    or not isinstance(images, dict) or not set(images) <= {"world", "hud"}):
+                raise ValueError("Invalid/stale offscreen diagnostic event")
+            root = Path(self.device["dataPath"])
+            if root.name != "data" or root.parent.name != self.device["udid"]:
+                raise ValueError("Diagnostic dataPath does not match the selected device")
+            for name, descriptor in images.items():
+                if not isinstance(descriptor, dict):
+                    raise ValueError("Invalid offscreen image descriptor type")
+                if any(type(descriptor.get(key)) is not int or descriptor[key] <= 0 for key in ("bytes", "width", "height")):
+                    raise ValueError("Invalid offscreen image scalar metadata")
+                crop = descriptor.get("crop", {})
+                if (descriptor.get("coordinateSpace") != f"{name}Node-local" or set(crop) != {"x", "y", "width", "height"}
+                        or any(type(value) not in (int, float) or not math.isfinite(value) for value in crop.values())
+                        or not 0 < crop["width"] <= 2048 or not 0 < crop["height"] <= 1536
+                        or crop["width"] * crop["height"] > 2097152):
+                    raise ValueError("Invalid node-local diagnostic crop")
+                data = read_app_document(root, descriptor, scene["nonce"], self.bundle, f"render-{name}.png")
+                path = self.directory / f"diagnostic-{name}.png"
+                path.write_bytes(data)
+                actual = png_info(path)
+                if (any(actual[key] != descriptor.get(key) for key in ("bytes", "sha256", "width", "height"))
+                        or actual["width"] > 4096 or actual["height"] > 3072 or actual["width"] * actual["height"] > 8388608):
+                    raise ValueError("Offscreen PNG evidence dimensions/hash mismatch")
+                evidence["images"][name] = dict(actual, path=path.name)
+            evidence.update(collectionStatus="collected" if set(evidence["images"]) == {"world", "hud"} else "partial",
+                            producerStatus=report["status"])
+        except (ValueError, KeyError, OSError, TypeError, StopIteration, ProbeFailure) as error:
+            if isinstance(error, ProbeFailure) and error.code >= 124:
+                raise
+            evidence.update(collectionStatus="failure", error=str(error))
+        finally:
+            (self.directory / "render-diagnostics.json").write_text(json.dumps(evidence, indent=2) + "\n")
+            self.save()
+        self.remaining()
+        print(f"[diagnostic-only] offscreen collection={evidence['collectionStatus']}; not a screen gate", flush=True)
+
     def normalize_screenshot(self, name, path, record):
         with self.stage(f"{name}:png-check"):
             record["rawImage"] = png_info(path)
@@ -1146,6 +1207,8 @@ class Runner:
                     raise
                 self.wait("prewarm-retry-wait", 20)
         self.collect_hud_contract(record["pid"])
+        with self.stage("render-diagnostics-archive"):
+            self.collect_render_diagnostics(record["pid"])
         self.simctl("prewarm-terminate", "terminate", udid, self.bundle)
         with self.stage("prewarm-trace-snapshot"):
             self.remaining()

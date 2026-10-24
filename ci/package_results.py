@@ -95,7 +95,8 @@ def main():
     ET.ElementTree(suite).write(results / "junit.xml", encoding="utf-8", xml_declaration=True)
     reports = ["DesertFrontline.xcresult", "simulator-launch.log", "simulator-build.log", "simulator-app.log",
                "simulator-runtimes.json", "simulator-boot-state.json", "simulator-probe-summary.json",
-               "ci-regression-results.json", "probes.json", "hud-layout-contract.json", "simulator-launch-help.log"] + [probe["png"] for probe in probes]
+               "ci-regression-results.json", "probes.json", "hud-layout-contract.json", "simulator-launch-help.log",
+               "render-diagnostics.json", "diagnostic-world.png", "diagnostic-hud.png"] + [probe["png"] for probe in probes]
     installation = summary.get("installation", {})
     boot = summary.get("boot", {})
     for record in boot.get("commands", []):
@@ -122,6 +123,8 @@ def main():
                     simulatorInstallOutcome=install_integrity,
                     simulatorBootOutcome=boot_integrity,
                     sceneReadinessOutcome=scene_integrity,
+                    renderDiagnosticsPath="ci-results/render-diagnostics.json",
+                    renderDiagnosticsCollectionStatus=summary.get("renderDiagnostics", {}).get("collectionStatus", "unavailable"),
                     staticChecksOutcome=checks[0][1], projectLintOutcome=checks[1][1], buildOutcome=checks[2][1],
                     simulatorLaunchOutcome=simulator_outcome, simulatorStepOutcome=simulator_step_outcome,
                     probeIntegrityOutcome=integrity, testOutcome="skipped",
@@ -140,6 +143,9 @@ def main():
               f"- Install stop reason: {installation.get('stopReason', 'none')}",
               f"- HUD contract: {hud_integrity}; {hud_error or '25 Swift production frame/route cases; state restored; prewarm producer verified'}",
               f"- Scene readiness: {scene_integrity}; {scene_error or '24 distinct launch nonces, bound production stages/two stable frames, frozen direct trace and first-five page PNGs verified'}",
+              f"- Offscreen diagnostics (non-gating): {summary.get('renderDiagnostics', {}).get('collectionStatus', 'unavailable')}; "
+              f"producer={summary.get('renderDiagnostics', {}).get('producerStatus', 'unavailable')}; "
+              f"{summary.get('renderDiagnostics', {}).get('error', 'not screen-presentation evidence; see render-diagnostics.json')}",
               f"- Integrity detail: {integrity_error or '24 complete launches, live PIDs, raw/rotation evidence, landscape PNGs and current HUD contract'}",
               "- XCTest: skipped (no XCTest target exists)",
               "- Forced runner destruction/GitHub cancellation can prevent final evidence upload."]

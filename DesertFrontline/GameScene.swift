@@ -1218,6 +1218,7 @@ final class GameScene: SKScene {
     private var ciReadyWritten = false
     private var ciHUDReport: [String: Any]?
     private var ciHUDRestored = false
+    private var ciRenderDiagnosticsAttempted = false
     private var ciLastReadinessFailure = ""
     private var minimapFrame = CGRect.zero
     private var minimapBlipsNode = SKNode()
@@ -1620,6 +1621,89 @@ final class GameScene: SKScene {
         if let ciHUDReport { readiness["hudReport"] = ciHUDReport }
         ciBeacon("ready", extra: readiness)
         ciReadyWritten = true
+        if environment["DESERT_CI_HUD_CONTRACT"] == "1", !ciRenderDiagnosticsAttempted {
+            DispatchQueue.main.async { [weak self] in self?.writeCIRenderDiagnostics() }
+        }
+    }
+
+    private func ciRenderCoreFingerprint() -> String {
+        let units = entities.values.sorted { $0.id < $1.id }.map {
+            "\($0.id):\($0.hp):\($0.node.position):\($0.node.zPosition):\($0.node.isHidden):\($0.node.parent === entityLayer):\($0.attackTarget?.id ?? 0):\(String(describing: $0.destination)):\($0.path.count)"
+        }.joined(separator: ";")
+        let orders = buildOrders.map { "\($0.sourceID):\($0.kind.shortCode):\($0.remaining)" }.joined(separator: ";")
+        let roots = [worldNode, mapNode, entityLayer, effectsLayer, fogLayer, hudNode, cameraRig].map {
+            "\($0.position):\($0.xScale):\($0.yScale):\($0.zPosition):\($0.alpha):\($0.isHidden):\($0.children.count)"
+        }.joined(separator: ";")
+        let facts = "\(size)|\(windowSafeAreaInsets)|\(hudGeometryRevision)|\(camera === cameraRig)|\(hudNode.parent === cameraRig)|\(selectedIDs.sorted())|\(playerMoney)|\(enemyMoney)|\(String(describing: pendingConstructionKind))|\(String(describing: pendingSupportPower))|\(isSettingRallyPoint)|\(isSettingAttackMove)|\(units)|\(orders)|\(roots)"
+        return SHA256.hash(data: Data(facts.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private func writeCIRenderDiagnostics() {
+        let environment = ProcessInfo.processInfo.environment
+        guard isCICaptureMode, environment["DESERT_CI_HUD_CONTRACT"] == "1",
+              !ciRenderDiagnosticsAttempted else { return }
+        ciRenderDiagnosticsAttempted = true
+        ciBeacon("render-diagnostics-start", extra: ["geometryRevision": hudGeometryRevision])
+        let started = ProcessInfo.processInfo.systemUptime
+        let before = ciRenderCoreFingerprint()
+        var images: [String: Any] = [:]
+        var errors: [String] = []
+        defer {
+            let after = ciRenderCoreFingerprint()
+            let report: [String: Any] = [
+                "schemaVersion": 1, "producer": "GameScene.RenderDiagnostics", "role": "diagnostic-only",
+                "status": images.count == 2 && before == after && errors.isEmpty ? "collected" : "failure",
+                "geometryRevision": hudGeometryRevision, "images": images, "errors": errors,
+                "coreFingerprintBefore": before, "coreFingerprintAfter": after, "coreStatePreserved": before == after,
+                "elapsedSeconds": ProcessInfo.processInfo.systemUptime - started,
+                "window": ["key": view?.window?.isKeyWindow ?? false, "hidden": view?.window?.isHidden ?? true,
+                           "viewHidden": view?.isHidden ?? true, "viewPaused": view?.isPaused ?? true,
+                           "activationState": view?.window?.windowScene?.activationState.rawValue ?? -1],
+                "limitations": "Offscreen production node subtrees, not screen presentation or complete gameplay-state certification"
+            ]
+            ciBeacon("render-diagnostics", extra: ["diagnostics": report])
+        }
+        let nonce = environment["DESERT_CI_NONCE"] ?? ""
+        guard let view, nonce.count == 32, nonce.allSatisfy({ $0.isHexDigit }) else {
+            errors.append("Rendering view or launch nonce unavailable")
+            return
+        }
+        let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DesertCI").appendingPathComponent(nonce)
+        do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+        catch { errors.append(String(String(describing: error).prefix(240))); return }
+        let worldCrop = CGRect(x: cameraRig.position.x - size.width * cameraRig.xScale / 2,
+                               y: cameraRig.position.y - size.height * cameraRig.yScale / 2,
+                               width: size.width * cameraRig.xScale, height: size.height * cameraRig.yScale)
+        let hudCrop = CGRect(x: -size.width / 2, y: -size.height / 2, width: size.width, height: size.height)
+        // Export existing subtrees without moving, hiding, cloning or reparenting them.
+        for (name, node, crop) in [("world", worldNode, worldCrop), ("hud", hudNode, hudCrop)] {
+            autoreleasepool {
+                guard crop.minX.isFinite, crop.minY.isFinite, crop.width.isFinite, crop.height.isFinite,
+                      crop.width > 0, crop.height > 0, crop.width <= 2048, crop.height <= 1536,
+                      crop.width * crop.height <= 2097152 else { errors.append("\(name): crop out of bounds"); return }
+                guard let texture = view.texture(from: node, crop: crop) else {
+                    errors.append("\(name): texture unavailable")
+                    return
+                }
+                let image = texture.cgImage()
+                guard image.width > 0, image.height > 0, image.width <= 4096, image.height <= 3072,
+                      image.width * image.height <= 8388608,
+                      let data = UIImage(cgImage: image).pngData(), data.count <= 8388608 else {
+                    errors.append("\(name): PNG unavailable or oversized")
+                    return
+                }
+                let url = folder.appendingPathComponent("render-\(name).png")
+                do {
+                    try data.write(to: url, options: .atomic)
+                    images[name] = ["path": url.path, "bytes": data.count,
+                                    "sha256": SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(),
+                                    "width": image.width, "height": image.height, "nodeZPosition": node.zPosition,
+                                    "coordinateSpace": "\(name)Node-local",
+                                    "crop": ["x": crop.minX, "y": crop.minY, "width": crop.width, "height": crop.height]]
+                } catch { errors.append("\(name): \(String(String(describing: error).prefix(200)))") }
+            }
+        }
     }
 
     private func buildTerrain() {

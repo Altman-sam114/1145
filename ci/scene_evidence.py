@@ -163,7 +163,11 @@ def validate_page_images(records):
             seen.add(sha)
 
 
-def read_hud_report(data_root, descriptor, nonce, bundle_id):
+def read_app_document(data_root, descriptor, nonce, bundle_id, filename):
+    limits = {"hud-layout-contract.json": 1048576, "render-world.png": 8388608, "render-hud.png": 8388608}
+    if filename not in limits:
+        raise ValueError("Unsupported App diagnostic document")
+    limit = limits[filename]
     root, source = data_root.resolve(strict=True), Path(descriptor["path"])
     resolved = source.resolve(strict=True)
     relative = resolved.relative_to(root)
@@ -172,15 +176,19 @@ def read_hud_report(data_root, descriptor, nonce, bundle_id):
             or any((data_root.joinpath(*parts[:count])).is_symlink() for count in range(1, len(parts) + 1))
             or len(parts) != 8 or parts[:3] != ("Containers", "Data", "Application")
             or not re.fullmatch(r"[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}", parts[3])
-            or parts[4:] != ("Documents", "DesertCI", nonce, "hud-layout-contract.json")
-            or not resolved.is_file() or not 0 < resolved.stat().st_size <= 1048576):
-        raise ValueError("HUD report escaped selected device/App Documents nonce directory")
+            or parts[4:] != ("Documents", "DesertCI", nonce, filename)
+            or not resolved.is_file() or not 0 < resolved.stat().st_size <= limit):
+        raise ValueError("App document escaped selected device/App Documents nonce directory")
     metadata = root.joinpath(*parts[:4], ".com.apple.mobile_container_manager.metadata.plist")
     if metadata.is_symlink() or not metadata.is_file() or not 0 < metadata.stat().st_size <= 65536:
         raise ValueError("Current App container metadata unavailable")
     if plistlib.loads(metadata.read_bytes()).get("MCMMetadataIdentifier") != bundle_id:
-        raise ValueError("HUD report container belongs to a different bundle")
+        raise ValueError("App document container belongs to a different bundle")
     data = resolved.read_bytes()
-    if len(data) > 1048576 or len(data) != descriptor.get("bytes") or hashlib.sha256(data).hexdigest() != descriptor.get("sha256"):
-        raise ValueError("HUD report length/hash mismatch")
+    if len(data) > limit or len(data) != descriptor.get("bytes") or hashlib.sha256(data).hexdigest() != descriptor.get("sha256"):
+        raise ValueError("App document length/hash mismatch")
     return data
+
+
+def read_hud_report(data_root, descriptor, nonce, bundle_id):
+    return read_app_document(data_root, descriptor, nonce, bundle_id, "hud-layout-contract.json")

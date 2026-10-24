@@ -215,11 +215,20 @@ v5.61实际C复核：run `39853761823` attempt1 / main `625e8fd65431ae2c8890cc43
 
 实际C复核：run40053446630/attempt1、SHA8f9645b3b46558543d9238594a0e2adfeff5eab2，官方artifact12544671757 ZIP176761 bytes、digest/CRC正常。generic43.3s、sim SDK33.565s、99+5、boot/install/HUD25全通过。三个实际launch绑定均true，相机/HUD投影(436.9999694824219,201)、view874×402、屏内玩家单位6，说明CPU投影合格；两张官方PNG仍同SHA218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f、近乎全黑，1完成/1失败/22未运行，JUnit10/3fail/1准确skip。C不通过，不能把技术项通过说成画面已修复。
 
-### v5.66 显式SKView呈现生命周期（待云端/C验收）
+### v5.66 显式SKView呈现生命周期（C视觉不通过）
 
 - 生产宿主改为单一UIViewRepresentable/GameRenderView: SKView；真实bounds/inset在布局回调外合并排队，有窗口/有效尺寸才present，同场景不重复present，拆卸清空目标并present nil。GameScene已初始化重挂载只排队几何/使ready失效，不重建节点或比赛；无CI专用场景/renderer。
 - 原renderConfiguration增加真实viewClass，runner/metadata要求GameRenderView及原两个false；原配置负例方法扩充缺字段/错误类型/旧宿主subtests，仍99声明方法+5独立watchdog，仅Actions运行。保留真实投影/HUD25/24项/PID/nonce/snapshot/raw270/final/前五重复早停及全部预算/等待/设备策略。
 - C必须下载最新main/SHA/run/attempt官方ZIP，核对digest/CRC/manifest/JUnit/双build/99+5/boot/install/实际宿主与投影/HUD25，并逐张目视24正向PNG。宿主字段或CPUready不能替代GPU图像；黑屏/缺层/重复仍失败，同因不继续宿主试验。本机只Git/AST/文本/diff，不做测试/构建/设备操作。
+
+实际C复核：run40054833004/attempt1、SHAf17bc25c79db7fdffcad87bb47af3377cbaa7c5e，官方artifact12544714262 ZIP178864 bytes、digest/CRC正常。generic45.7s、sim SDK31.082s、99方法+5watchdog、boot/install/HUD25与stateRestored通过。三个真实launch的viewClass均GameRenderView、两配置false、绑定true、相机/HUD投影(436.9999694824219,201)、屏内玩家单位6。两张官方图仍近乎全黑、68330 bytes、同SHA218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f，且与v5.65同hash；1完成/1失败/22未运行，JUnit10/3fail/1准确skip。显式宿主替换不足以解决，停止本轮，不以CPU证据假称GPU修复。
+
+### v5.67 生产子树离屏差分留证（待云端/C复核）
+
+- 仅原prewarm在HUD25恢复/两帧ready后主队列异步导出一次实际worldNode/hudNode，不另建场景、不改变节点/camera/fog/z/布局。crop限2048×1536/2097152平方点，Retina原始PNG限4096×3072/8388608像素和8MiB；记录节点坐标crop、真实尺寸/hash/bytes、geometryRevision、核心事实前后SHA/相等性、窗口状态、耗时和有界错误。核心事实相同不冒称全部缓存/动画或完整游戏状态认证。
+- 原身份绑定trace新增render-diagnostics事件；runner在原HUD收集后、terminate前经选定设备dataPath、当前bundle容器metadata、nonce路径/符号链接/size/hash校验读取两图，归档diagnostic-world.png、diagnostic-hud.png和render-diagnostics.json，不旋转/合成/代替simulator-*.png。HUD读取wrapper原1MiB与安全规则不变，通用helper只额外允许两个8MiB PNG文件名。
+- 诊断收集状态是非gate，不改原JUnit10项或正式readiness/24图/全部等待/预算/设备/boot/install/receipt/规范化/重复早停；缺失/坏数据明确留证后仍执行正式探针，取消与deadline不得吞掉。package只增加索引/诊断状态和摘要说明；C必须核对sourceEvent与封存trace、两个原始PNG的CRC/尺寸/SHA/路径/crop/核心事实，并与本run实际屏幕图目视对照。诊断collected不等于屏幕已修复，正式图重复/黑屏仍整体不通过。
+- 原路径测试扩充HUD/两个PNG安全边界；新增一个明确synthetic的收集方法覆盖合法/缺事件/hash/坏PNG/错nonce/旧几何/坏类型/部分导出/取消/deadline以及不污染正式24图。声明100方法（36/12/24/9/16/3）+独立5watchdog，仅Actions运行。本机只Git/AST/文本/diff；没有本机测试/构建/设备操作，无新依赖/Agent。
 
 ### 触发条件
 

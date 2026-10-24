@@ -38,6 +38,8 @@
 6. `GameScene.update(_:)` 先确认初始化完成、应用外部待处理几何，再推进施工、生产、支援冷却、经济、占领、维修、移动、战斗、AI、迷雾、死亡清理、任务进度、胜负和 HUD。HUD 布局非重入；HUD25 内部尺寸变化不进入外部请求队列，期间真实窗口变化保留到恢复后处理。
 7. 触摸事件在 `touchesBegan/Moved/Ended` 中分流到 HUD、迷你地图、双指平移缩放、框选、建筑预览、支援技能目标、集结点、attack-move、选中、移动和攻击。
 
+仅CI prewarm：原HUD25恢复/两帧ready后，异步一次对原worldNode按相机可见世界矩形、原hudNode按中心化HUD矩形做有界SKView离屏导出，不移动/隐藏/重挂节点。两张原始PNG写当前Documents/DesertCI/nonce，直接trace的render-diagnostics事件记录crop/尺寸/bytes/SHA、几何版本、核心事实前后指纹、窗口状态与错误。runner在原HUD收集后、terminate前按选定设备/当前bundle/nonce安全路径读取，归档为diagnostic-world/hud.png和render-diagnostics.json。此数据非正式gate，不替代24屏幕图或改变ready；收集错误留证，取消/原deadline仍传播，普通游戏与正式24launch不导出。
+
 ## 3. 核心状态对象 / 模块
 
 ### `EntityKind`
