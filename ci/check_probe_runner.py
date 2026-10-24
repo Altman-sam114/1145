@@ -81,7 +81,7 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          counts=dict(mapNodes=1, entities=1, playerUnits=1, visiblePlayerUnits=1, fogNodes=1,
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
-         renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False),
+         renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False, viewClass="GameRenderView"),
          projection=dict(bindings=dict(activeCamera=True, cameraAttached=True, hostScene=True),
                          cameraCenter=dict(x=437, y=201), hudOrigin=dict(x=437, y=201), visiblePlayerUnits=1),
          insets=dict(top=0, left=62, right=62, bottom=21), **(extra_ready or {}))
@@ -1569,10 +1569,13 @@ class SceneEvidenceTests(unittest.TestCase):
             latest_ready(records, self.definition)
 
     def test_scene_render_configuration_cannot_hide_behind_ready(self):
+        base = {"automaticCulling": False, "ignoresSiblingOrder": False, "viewClass": "GameRenderView"}
         for rendering in (None, [], {}, {"automaticCulling": False},
-                          {"automaticCulling": True, "ignoresSiblingOrder": False},
-                          {"automaticCulling": False, "ignoresSiblingOrder": True},
-                          {"automaticCulling": 0, "ignoresSiblingOrder": False}):
+                          {"automaticCulling": False, "ignoresSiblingOrder": False},
+                          dict(base, automaticCulling=True), dict(base, ignoresSiblingOrder=True),
+                          dict(base, automaticCulling=0), dict(base, viewClass=None),
+                          dict(base, viewClass=True), dict(base, viewClass="SKView"),
+                          dict(base, viewClass="SpriteKitViewCoordinator")):
             with self.subTest(rendering=rendering):
                 self.runner.work()
                 scene = self.runner.summary["probes"][0]["scene"]

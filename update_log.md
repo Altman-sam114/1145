@@ -6196,10 +6196,28 @@ C复核：本地/远端main `cc0981b7e467c38d38749d1d254a59f8f456917a`、run `39
 
 C复核（2026-10-24）：run `39885456455` attempt1 / main `917c38b453e6ba319c2b53c5a032ef31aee9e637` completed/failure。官方artifact `12473065771` ZIP173165 bytes，SHA256 `010cbe4472d3c33b6943dc28abf1f2df71951786473a7a556c6747afdd2827a4` 与API digest一致，CRC正常，缓存 `/private/tmp/desert-frontline-c-review-39885456455/` 保留。双build、98回归+5watchdog、boot/install/HUD25通过；两个正式launch的实际配置均false、身份/阶段/两帧不同，但TACT/BUILD图同SHA且近乎全黑、只见边缘地图。1完成/1失败/22not_run，JUnit10/3fail/1准确skip，整体不通过。实际nonce不同，不把完整性泛化诊断当成nonce根因；关闭剔除未解决，不计成功轮次。
 
-### v5.65 / 相机挂载次序与实际投影（待云端/C验收）
+### v5.65 / 相机挂载次序与实际投影（技术项通过，C视觉不通过）
 
 日期：2026-10-24。
 
 - 按Apple官方camera示例修正为相机先进入scene再指定scene.camera，外部几何安全点完成后重绑同一cameraRig；不替换宿主/场景、不调z/迷雾/玩法。仅为有限渲染修复假设，不能预先宣称根因。
 - ready/pending记录实际scene-camera-host绑定、相机/HUD原点view投影和屏内可见玩家机动单位；绑定true、两点距中心<1pt、单位数正并入原geometry检查，runner/metadata共同核对。新增1项synthetic负例方法，声明99+5watchdog；原24图、HUD25、预算/等待/设备/规范化不变。
 - 本机只做Git/AST/文本/diff静态检查；无测试/构建/Simulator/simctl/sips。须最新main的官方artifact完整核对及全部24正向PNG目视；CPU投影不能替代GPU画面，全面UI/模型重构仍未完成。
+
+C复核（2026-10-24）：实现SHA `8f9645b3b46558543d9238594a0e2adfeff5eab2` 与本地/远端main、run `40053446630` attempt1的head/manifest一致，run completed/failure。官方artifact `12544671757`，名称 `desert-frontline-ci-v5.65-main-8f9645b3b465-run40053446630-attempt1`，ZIP176761 bytes、SHA256 `a69590a5f1288e7fd99a1be3190d51b37d2ca8b258d8fc93f5f43c74ab0c01a0` 与API digest一致，ZIP全项CRC正常；缓存 `/private/tmp/desert-frontline-c-review-40053446630/` 保留。
+
+- generic build43.3s、sim SDK33.565s，99回归（36/12/24/9/15/3）零失败/错误，原独立5watchdog通过；boot首monitor108.237s、安装、实际HUD25与stateRestored通过。总job8分14秒，不是Swift编译卡死。
+- 三个真实launch的host/scene/camera绑定均true；camera/HUD原点实际投影均(436.9999694824219,201)、view874×402，屏内可见玩家机动单位6。相机次序/投影技术项合格，但不能证明GPU画面；该改动没有解决截图故障。
+- 目视两张官方PNG仍近乎全黑、顶部仅少量地图；两图68330 bytes，SHA256均 `218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f`。准确停止在probe:build:normalized-image-check，原始error为Distinct first-five HUD pages produced an identical PNG；1完成/1失败/22not_run。三个nonce实际不同，摘要的Every launch must have a distinct nonce是未执行项完整性泛化诊断，不是nonce重复根因。JUnit10/3fail/1准确skip；C整体不通过，不计成功轮次。
+- 本地`gh run watch`已等到云端结束，监控收尾脚本使用zsh只读变量status报错；随后直接用GitHub API核对最终run、steps与官方artifact，不能把这个本机监控脚本错误当成云端build失败。所有本机静态diff/AST检查通过，无本机测试或设备运行。
+
+X结论：按连续同类渲染失败停止自动提交循环，未宣称总目标完成。下一有限方案可隔离SpriteView宿主、显式管理同一SKView/场景的呈现生命周期，仍只云端验证；该方案尚未实施，需要人工确认重新进入一轮。C失败结论文档留在工作区未提交/未推送，避免为同一失败代码再触发一次无有效修复的云端run；用户原有签名Team ID与未跟踪资料保持不变。
+
+### v5.66 / 显式SKView宿主与呈现生命周期（待云端/C验收）
+
+日期：2026-10-24。
+
+- 目标续行只做一次有界宿主隔离轮次，不重复旧版本/相机微调，不把v5.65失败计成功。GameSurface UIViewRepresentable用单一GameRenderView: SKView挂载原SceneHolder.scene；60FPS、触控、剔除/顺序配置不变。去掉并行GeometryReader和背景观察UIView，真实SKView.bounds/UIWindow inset为唯一外部几何源。
+- 窗口/布局/inset回调只合并排队，离开布局栈且窗口/尺寸有效后同步几何，当前scene不是目标时才present；拆卸清空目标并present nil，排队回调不能复活。GameScene.didMove对已初始化场景只排队几何/失效ready，不重复addChild或重置玩法，SKRM原路径不变。
+- 原ready.renderConfiguration记录实际viewClass，runner/metadata要求GameRenderView与两个false；原负例扩充字段/类型/旧宿主subtests，保持99方法+5watchdog，不虚增测试数。所有24项、HUD25、预算/等待/boot/install/receipt/旋转与workflow冻结。
+- 承接前轮三份未提交C结论文档，用户Team ID和未跟踪资料排除保留；本机仅Git/AST/文本/diff。最新main云端双build和全部24原图C复核前，不宣称GPU修复、UI已重构或总目标完成；同因失败即停止本轮，不循环换宿主试到绿。

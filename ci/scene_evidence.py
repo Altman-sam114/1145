@@ -97,8 +97,9 @@ def latest_ready(records, definition):
             or counts.get("panels") != 7 or counts.get("pages") != 5 or counts.get("actions") != ACTIONS[definition["page"]]):
         raise ValueError("Scene ready lacks production stages, fixture facts or stable frames")
     rendering = ready.get("renderConfiguration")
-    if (not isinstance(rendering, dict) or set(rendering) != {"automaticCulling", "ignoresSiblingOrder"}
-            or any(value is not False for value in rendering.values())):
+    if (not isinstance(rendering, dict) or set(rendering) != {"automaticCulling", "ignoresSiblingOrder", "viewClass"}
+            or rendering.get("viewClass") != "GameRenderView"
+            or any(rendering.get(key) is not False for key in ("automaticCulling", "ignoresSiblingOrder"))):
         raise ValueError("Scene ready render configuration missing or invalid")
     size, view, insets = ready.get("sceneSize", {}), ready.get("viewSize", {}), ready.get("insets", {})
     if (not all(finite(size.get(key)) and finite(view.get(key)) and abs(size[key] - view[key]) < 1 for key in ("width", "height"))

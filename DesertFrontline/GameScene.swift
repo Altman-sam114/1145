@@ -1264,9 +1264,15 @@ final class GameScene: SKScene {
     private let isCICaptureMode = ProcessInfo.processInfo.environment["DESERT_CI_CAPTURE_MODE"] == "1"
 
     override func didMove(to view: SKView) {
-        ciBeacon("initialization-start")
         backgroundColor = UIColor(white: 0.04, alpha: 1.0)
         view.isMultipleTouchEnabled = true
+        if sceneInitializationComplete {
+            requestViewSize(view.bounds.size)
+            if let window = view.window { updateWindowSafeAreaInsets(window.safeAreaInsets) }
+            ciInvalidateReady("host-reattached")
+            return
+        }
+        ciBeacon("initialization-start")
         if let window = view.window {
             windowSafeAreaInsets = window.safeAreaInsets
             hasWindowSafeArea = true
@@ -1603,7 +1609,8 @@ final class GameScene: SKScene {
             "insets": ["top": windowSafeAreaInsets.top, "left": windowSafeAreaInsets.left, "bottom": windowSafeAreaInsets.bottom, "right": windowSafeAreaInsets.right],
             "camera": ["x": cameraRig.position.x, "y": cameraRig.position.y, "scale": cameraRig.xScale],
             "renderConfiguration": ["automaticCulling": view.shouldCullNonVisibleNodes,
-                                    "ignoresSiblingOrder": view.ignoresSiblingOrder],
+                                    "ignoresSiblingOrder": view.ignoresSiblingOrder,
+                                    "viewClass": String(describing: type(of: view))],
             "projection": projection,
             "counts": ["mapNodes": mapNode.children.count, "entities": attached.count, "playerUnits": playerUnits.count,
                        "visiblePlayerUnits": visiblePlayerUnits.count, "panels": panelNames.count, "pages": layout.pages.count,

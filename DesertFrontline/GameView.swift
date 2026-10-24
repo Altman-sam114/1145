@@ -6,66 +6,92 @@ struct GameView: View {
     @StateObject private var holder = SceneHolder()
 
     var body: some View {
-        GeometryReader { proxy in
-            // Keep the full layered tree; cloud captures must not lose HUD or units to host culling.
-            SpriteView(scene: holder.scene, preferredFramesPerSecond: 60, options: [])
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .background(Color.black)
-                .background(WindowSafeAreaObserver { insets in
-                    holder.scene.updateWindowSafeAreaInsets(insets)
-                })
-                .onAppear {
-                    holder.resizeScene(to: proxy.size)
-                }
-                .onChange(of: proxy.size) { _, newSize in
-                    holder.resizeScene(to: newSize)
-                }
-        }
-        .background(Color.black)
-        .ignoresSafeArea()
+        GameSurface(scene: holder.scene)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black)
+            .ignoresSafeArea()
     }
 }
 
-private struct WindowSafeAreaObserver: UIViewRepresentable {
-    var onChange: (UIEdgeInsets) -> Void
+private struct GameSurface: UIViewRepresentable {
+    let scene: GameScene
 
-    func makeUIView(context: Context) -> SafeAreaView {
-        let view = SafeAreaView()
-        view.isUserInteractionEnabled = false
-        view.onChange = onChange
+    func makeUIView(context: Context) -> GameRenderView {
+        let view = GameRenderView(frame: .zero)
+        view.backgroundColor = .black
+        view.preferredFramesPerSecond = 60
+        view.shouldCullNonVisibleNodes = false
+        view.ignoresSiblingOrder = false
+        view.isMultipleTouchEnabled = true
+        view.setTargetScene(scene)
         return view
     }
 
-    func updateUIView(_ uiView: SafeAreaView, context: Context) {
-        uiView.onChange = onChange
-        uiView.reportInsets()
+    func updateUIView(_ uiView: GameRenderView, context: Context) {
+        uiView.setTargetScene(scene)
     }
 
-    final class SafeAreaView: UIView {
-        var onChange: ((UIEdgeInsets) -> Void)?
-        private var reportScheduled = false
-        private var lastReported: UIEdgeInsets?
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            reportInsets()
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: GameRenderView, context: Context) -> CGSize? {
+        guard let width = proposal.width, let height = proposal.height,
+              width.isFinite, height.isFinite else { return nil }
+        return CGSize(width: width, height: height)
+    }
+
+    static func dismantleUIView(_ uiView: GameRenderView, coordinator: ()) {
+        uiView.setTargetScene(nil)
+        uiView.presentScene(nil)
+    }
+}
+
+private final class GameRenderView: SKView {
+    private weak var targetScene: GameScene?
+    private var synchronizationScheduled = false
+    private var lastSize: CGSize?
+    private var lastInsets: UIEdgeInsets?
+
+    func setTargetScene(_ scene: GameScene?) {
+        if targetScene !== scene {
+            targetScene = scene
+            lastSize = nil
+            lastInsets = nil
         }
-        override func safeAreaInsetsDidChange() {
-            super.safeAreaInsetsDidChange()
-            reportInsets()
-        }
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            reportInsets()
-        }
-        func reportInsets() {
-            guard window != nil, !reportScheduled else { return }
-            reportScheduled = true
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.reportScheduled = false
-                guard let insets = self.window?.safeAreaInsets, insets != self.lastReported else { return }
-                self.lastReported = insets
-                self.onChange?(insets)
+        scheduleSynchronization()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        scheduleSynchronization()
+    }
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        scheduleSynchronization()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        scheduleSynchronization()
+    }
+
+    private func scheduleSynchronization() {
+        guard !synchronizationScheduled else { return }
+        synchronizationScheduled = true
+        // Present only after layout, using the actual rendering surface's geometry.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.synchronizationScheduled = false
+            guard let game = self.targetScene, let window = self.window,
+                  self.bounds.width > 1, self.bounds.height > 1 else { return }
+            if self.lastSize != self.bounds.size {
+                game.requestViewSize(self.bounds.size)
+                self.lastSize = self.bounds.size
+            }
+            if self.lastInsets != window.safeAreaInsets {
+                game.updateWindowSafeAreaInsets(window.safeAreaInsets)
+                self.lastInsets = window.safeAreaInsets
+            }
+            if self.scene !== game {
+                self.presentScene(game)
             }
         }
     }
@@ -80,9 +106,5 @@ final class SceneHolder: ObservableObject {
         let scene = GameScene(size: sceneSize)
         scene.scaleMode = .resizeFill
         self.scene = scene
-    }
-
-    func resizeScene(to size: CGSize) {
-        scene.requestViewSize(size)
     }
 }

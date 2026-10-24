@@ -22,7 +22,7 @@ Submarine 对 naval 的视觉分派先经过“攻击者为玩家 / 玩家已知
 
 ```mermaid
 flowchart TD
-  App["DesertFrontlineApp\n创建窗口入口"] --> View["GameView\nGeometryReader + 全屏 SpriteView options空集\n关闭自动剔除/保留兄弟顺序/黑底/同步视口"]
+  App["DesertFrontlineApp\n创建窗口入口"] --> View["GameView / GameSurface\n显式GameRenderView: SKView / 单一SceneHolder\n窗口与有效bounds后异步present / 拆卸nil / 黑底"]
   View --> Holder["SceneHolder\n创建非零初始 GameScene\nresizeFill 并跟随窗口尺寸"]
   Holder --> Scene["GameScene.didMove\n初始化世界节点、地图、实体、HUD、相机"]
   Scene --> Init["初始化链路\n地形 -> 确定性沙纹/连通道路/岩脊/油田/海岸地图 -> 控制点 -> 初始部队 -> HUD -> 迷雾"]
@@ -188,11 +188,11 @@ v5.54 读图补充：HUD 根 z=10000，高于 world/fog 累计深度（当前 fo
 
 ### 战场优先 HUD 与云端契约
 
-读图说明：真实窗口几何先去重排队，初始化完成后在安全update点应用，布局非重入。注册HUDTextLabel显式保存完整sourceText，text仅为实际显示；每次从源文/base/固定锚点重算，至多两次缩字和九次Character前缀加ellipsis实测，按真实父局部bbox对齐，不依赖已失败的native单行截尾，不改slot/字号底线/容差。云端prewarm复用生产框/路由完成25组合，labels实测六阶段双fit和原态恢复；actual恢复与bbox合法性分别严格参与原门槛。宿主options空集关闭自动剔除并保留兄弟顺序，实际SKView两个false写入ready且被runner/metadata核对；这不证明GPU已呈现，前5图重复早停与全部24原图目视仍保留。v5.63文字已通过但前两图缺层，不能因CPU合框/配置而接受视觉或小屏占屏。
+读图说明：真实窗口几何先去重排队，初始化完成后在安全update点应用，布局非重入。注册HUDTextLabel显式保存完整sourceText，text仅为实际显示；每次从源文/base/固定锚点重算，至多两次缩字和九次Character前缀加ellipsis实测，按真实父局部bbox对齐，不依赖已失败的native单行截尾，不改slot/字号底线/容差。云端prewarm复用生产框/路由完成25组合，labels实测六阶段双fit和原态恢复；actual恢复与bbox合法性分别严格参与原门槛。显式GameRenderView宿主关闭自动剔除并保留兄弟顺序，实际SKView类名及两个false写入ready且被runner/metadata核对；这不证明GPU已呈现，前5图重复早停与全部24原图目视仍保留。v5.65投影已通过但前两图仍黑屏重复，不能因CPU合框/配置而接受视觉或小屏占屏。
 
 ```mermaid
 flowchart TD
-  Window[真实 UIWindow inset与SwiftUI尺寸] --> Pending[去重合并 / 外部几何排队]
+  Window[真实 UIWindow inset与GameRenderView.bounds] --> Pending[布局回调外异步合并 / 外部几何排队 / 不重复present]
   Pending --> SceneInsets[初始化结束后update统一应用 / layout非重入]
   Page[当前 HudPage] --> Layout[HUDLayout 生产框与 route]
   SceneInsets --> Layout
