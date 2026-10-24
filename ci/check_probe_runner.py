@@ -82,7 +82,10 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
          renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False, viewClass="GameRenderView"),
-         projection=dict(bindings=dict(activeCamera=True, cameraAttached=True, hostScene=True),
+         camera=dict(x=43, y=-666.5, scale=1),
+         projection=dict(policy="world-node-affine-v1",
+                         bindings=dict(nativeCameraDisabled=True, hudAttached=True, worldAttached=True, hostScene=True),
+                         worldTransform=dict(x=-43, y=666.5, scaleX=1, scaleY=1),
                          cameraCenter=dict(x=437, y=201), hudOrigin=dict(x=437, y=201), visiblePlayerUnits=1),
          insets=dict(top=0, left=62, right=62, bottom=21), **(extra_ready or {}))
     for channel in ("stdout", "stderr"):
@@ -215,7 +218,7 @@ def hud_fixture(runner):
             report["matrix"].append(dict(fixture=fixture, page=page, size={"width": width, "height": height}, insets=insets,
                 checks={key: True for key in HUD_CHECKS}, failures=[], status="success", safeFrame=rectangle,
                 panels={key: rectangle for key in ("resources", "rail", "dock", "mission", "message", "selection", "minimap")},
-                controls=controls, panelArea=1, viewportArea=2, panelAreaFraction=0.5,
+                controls=controls, panelArea=1, viewportArea=2, panelAreaFraction=0.5, cameraProjectionSamples=3,
                 labelAudit=label_audit(controls, ["normal", "long1", "short", "long2", "restored", "rebuilt"])))
     report["actualLabelAudit"] = label_audit(report["matrix"][0]["controls"], ["actual-normal", "actual-restored"])
     write_hud_fixture(runner, report)
@@ -542,6 +545,10 @@ class ProbeTests(unittest.TestCase):
 
     def test_hud_missing_assertion(self):
         self.mutate_hud(lambda report: report["matrix"][0]["checks"].pop("pending"))
+        self.mutate_hud(lambda report: report["matrix"][0].pop("cameraProjectionSamples"))
+        for value in (True, 2, 4):
+            with self.subTest(cameraProjectionSamples=value):
+                self.mutate_hud(lambda report: report["matrix"][0].update(cameraProjectionSamples=value))
 
     def test_hud_missing_report(self):
         runner = self.complete()
@@ -1593,9 +1600,11 @@ class SceneEvidenceTests(unittest.TestCase):
                 self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
                 self.runner = FakeRunner(self.directory)
 
-    def test_scene_projection_must_bind_and_center_the_real_camera(self):
-        mutations = ("missing", "bad-type", "activeCamera", "cameraAttached", "hostScene", "missing-binding",
-                     "numeric-binding", "no-units", "bool-units", "camera-offset", "hud-offset", "nonfinite", "bad-point")
+    def test_scene_projection_must_bind_and_center_the_real_world_viewport(self):
+        bindings = ("nativeCameraDisabled", "hudAttached", "worldAttached", "hostScene")
+        mutations = ("missing", "bad-type", *bindings, "missing-binding", "numeric-binding", "no-units", "bool-units",
+                     "camera-offset", "hud-offset", "nonfinite", "bad-point", "old-policy", "missing-policy",
+                     "missing-transform", "world-offset", "world-scale", "zero-camera-scale", "bool-transform", "nonfinite-transform")
         for mutation in mutations:
             with self.subTest(mutation=mutation):
                 self.runner.work()
@@ -1604,15 +1613,23 @@ class SceneEvidenceTests(unittest.TestCase):
                 projection = records[-1]["projection"]
                 if mutation == "missing": del records[-1]["projection"]
                 elif mutation == "bad-type": records[-1]["projection"] = []
-                elif mutation in ("activeCamera", "cameraAttached", "hostScene"): projection["bindings"][mutation] = False
-                elif mutation == "missing-binding": del projection["bindings"]["activeCamera"]
-                elif mutation == "numeric-binding": projection["bindings"]["activeCamera"] = 1
+                elif mutation in bindings: projection["bindings"][mutation] = False
+                elif mutation == "missing-binding": del projection["bindings"]["nativeCameraDisabled"]
+                elif mutation == "numeric-binding": projection["bindings"]["nativeCameraDisabled"] = 1
                 elif mutation == "no-units": projection["visiblePlayerUnits"] = 0
                 elif mutation == "bool-units": projection["visiblePlayerUnits"] = True
                 elif mutation == "camera-offset": projection["cameraCenter"]["x"] += 2
                 elif mutation == "hud-offset": projection["hudOrigin"]["y"] -= 2
                 elif mutation == "nonfinite": projection["cameraCenter"]["x"] = float("nan")
                 elif mutation == "bad-point": projection["hudOrigin"] = "center"
+                elif mutation == "old-policy": projection["policy"] = "native-camera-v1"
+                elif mutation == "missing-policy": del projection["policy"]
+                elif mutation == "missing-transform": del projection["worldTransform"]
+                elif mutation == "world-offset": projection["worldTransform"]["x"] += 2
+                elif mutation == "world-scale": projection["worldTransform"]["scaleY"] = 2
+                elif mutation == "zero-camera-scale": records[-1]["camera"]["scale"] = 0
+                elif mutation == "bool-transform": projection["worldTransform"]["scaleX"] = True
+                elif mutation == "nonfinite-transform": projection["worldTransform"]["x"] = float("nan")
                 with self.assertRaisesRegex(ValueError, "projection"):
                     latest_ready(records, self.definition)
                 self.rewrite(scene, records)

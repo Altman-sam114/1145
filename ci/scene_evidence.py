@@ -107,13 +107,23 @@ def latest_ready(records, definition):
             or not all(finite(value) for value in insets.values())):
         raise ValueError("Scene ready window geometry invalid")
     projection = ready.get("projection")
-    if not isinstance(projection, dict):
-        raise ValueError("Scene ready projection missing")
+    if not isinstance(projection, dict) or projection.get("policy") != "world-node-affine-v1":
+        raise ValueError("Scene ready projection missing or unsupported")
     bindings = projection.get("bindings")
-    if (not isinstance(bindings, dict) or set(bindings) != {"activeCamera", "cameraAttached", "hostScene"}
+    if (not isinstance(bindings, dict) or set(bindings) != {"nativeCameraDisabled", "hudAttached", "worldAttached", "hostScene"}
             or any(value is not True for value in bindings.values())
             or type(projection.get("visiblePlayerUnits")) is not int or projection["visiblePlayerUnits"] <= 0):
         raise ValueError("Scene ready projection bindings or visible units invalid")
+    logical, transform = ready.get("camera"), projection.get("worldTransform")
+    if (not isinstance(logical, dict) or set(logical) != {"x", "y", "scale"}
+            or not isinstance(transform, dict) or set(transform) != {"x", "y", "scaleX", "scaleY"}
+            or any(type(value) not in (int, float) or not math.isfinite(value)
+                   for value in [*logical.values(), *transform.values()]) or logical["scale"] <= 0):
+        raise ValueError("Scene ready projection world transform invalid")
+    inverse = 1 / logical["scale"]
+    expected = {"x": -logical["x"] * inverse, "y": -logical["y"] * inverse, "scaleX": inverse, "scaleY": inverse}
+    if any(not math.isfinite(value) or abs(transform[key] - value) > 0.001 for key, value in expected.items()):
+        raise ValueError("Scene ready projection differs from its logical camera")
     for key in ("cameraCenter", "hudOrigin"):
         point = projection.get(key)
         if (not isinstance(point, dict) or set(point) != {"x", "y"}

@@ -24,7 +24,7 @@ Submarine 对 naval 的视觉分派先经过“攻击者为玩家 / 玩家已知
 flowchart TD
   App["DesertFrontlineApp\n创建窗口入口"] --> View["GameView / GameSurface\n显式GameRenderView: SKView / 单一SceneHolder\n窗口与有效bounds后异步present / 拆卸nil / 黑底"]
   View --> Holder["SceneHolder\n创建非零初始 GameScene\nresizeFill 并跟随窗口尺寸"]
-  Holder --> Scene["GameScene.didMove\n初始化世界节点、地图、实体、HUD、相机"]
+  Holder --> Scene["GameScene.didMove\n逻辑cameraRig / native camera nil / 中心anchor\nworld逆倍率与负位移 / HUD直接挂scene"]
   Scene --> Init["初始化链路\n地形 -> 确定性沙纹/连通道路/岩脊/油田/海岸地图 -> 控制点 -> 初始部队 -> HUD -> 迷雾"]
   Init --> Loop["GameScene.update 每帧循环\n统一推进游戏状态"]
   Loop --> Build["施工 / 生产\n建筑进度、RAD/SON/GT/SAM/CB、AA Truck、旗点覆盖、BuildOrder、航母3PAD甲板状态/起飞反馈、出兵、集结点与面板状态"]
@@ -67,7 +67,7 @@ flowchart TD
   GapCheck -- "否" --> MiniMap{"是否点到小地图"}
   MiniMap -- "是" --> Camera["移动相机到小地图位置"]
   MiniMap -- "否" --> MultiTouch{"是否双指触摸"}
-  MultiTouch -- "是" --> PanZoom["相机平移 / 缩放"]
+  MultiTouch -- "是" --> PanZoom["HUD坐标度量平移 / 缩放\n更新唯一逻辑相机 -> world统一逆投影"]
   MultiTouch -- "否" --> Pending{"是否存在 pending 模式"}
   Pending -- "建筑" --> Place["放置预览 / placeStructure\n检查视野、基地/旗点覆盖、地形规则和资金"]
   Pending -- "支援技能" --> Support["executeSupportPower\n检查资金、冷却、资产需求、效果"]
@@ -204,6 +204,8 @@ flowchart TD
   Touch --> Command[既有 page / action / zoom / map / world]
   Layout --> SwiftContract[现有 prewarm 内五尺寸乘五页检查]
   SwiftContract --> LabelAudit[原labels类 / 六阶段双fit / 正bbox 源文 幂等 base恢复 往返重建]
+  SwiftContract --> ViewportAudit[原roundTrip类 / 每case三倍率真实world-HUD正逆换算 / 共75样本]
+  ViewportAudit --> Restore
   LabelAudit --> Restore[恢复实际场景与原文 / 实际窗口双fit并入stateRestored]
   Restore --> JSON[Documents DesertCI nonce报告 / run SHA attempt PID probe nonce hash]
   JSON --> Read[选定设备dataPath / 当前容器bundle metadata / 安全路径与hash]
@@ -218,7 +220,7 @@ flowchart TD
 flowchart TD
   Launch[原prewarm或24项独立launch / 唯一nonce与stdout stderr] --> Stages[真实terrain map control units HUD fog fixture完成]
   Stages --> Frames[生产实体 HUD文本 迷雾 相机 恢复检查 / didFinishUpdate稳定两帧]
-  Frames --> Projection[已挂载后选中同一camera / 外部几何后重绑\n实际host与camera身份 / 相机及HUD原点view投影居中 / 屏内玩家单位]
+  Frames --> Projection[world-node-affine-v1 / native camera nil / scene HUD与world父关系\n实际world矩阵匹配逻辑camera / 两view中心 / 屏内玩家单位]
   Projection --> Ready{当前身份与latest ready有效}
   Ready -- 否或窗口到期 --> Stop[准确失败 / 保存trace和已有图 / 后项not_run]
   Ready -- 是 --> Image[保持90s或8s与4s最小等待 / 原PID raw270 final链]

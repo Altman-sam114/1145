@@ -6231,7 +6231,7 @@ C复核（2026-10-24）：本地/远端main `f17bc25c79db7fdffcad87bb47af3377cba
 
 X结论：显式宿主替换不足以解决渲染故障，停止本轮云端提交，不再重复宿主/相机参数实验，不开始美术扩展。下一调查需对相同生产节点做屏幕与有界离屏渲染的差分留证；Apple公开SKView.texture(from:crop:)定义crop为节点坐标，允许渲染节点子树，此处仅查明API语义，尚未实施诊断或据此确定根因。C失败结论文档留工作区未提交，避免无修复再次触发相同CI；总目标保持未完成。
 
-### v5.67 / 生产场景离屏差分留证（待云端/C复核）
+### v5.67 / 生产场景离屏差分留证（诊断技术项通过，C整体不通过）
 
 日期：2026-10-24。
 
@@ -6240,3 +6240,18 @@ X结论：显式宿主替换不足以解决渲染故障，停止本轮云端提�
 - 诊断非gate，不能代替24正式屏幕图或令黑屏/重复通过。收集错误留证但不挡正式探针，取消和原总deadline继续传播；package仅索引/状态/摘要，不改原JUnit10、正式readiness/HUD25/24定义/PID/nonce/snapshot/预算/等待/boot/install/receipt/规范化/workflow。普通App和正式24launch不执行导出。
 - 原路径测试扩充三个文件名，新增一个synthetic收集/负路径方法，声明100（36/12/24/9/16/3）+原独立5watchdog，仅云端执行。关键文件GameScene局部CI、四个CI脚本/共享读取helper、必要文档和本轮A提示词；承接v5.66未提交C文档，用户Team ID和旧未跟踪资料排除保留。本机只Git/AST/文本/diff，无测试/编译/设备运行/子Agent。
 - 最新main官方包的身份/digest/CRC、双build/100+5、原正式证据及新trace/两PNG差分须经C实际复核；diagnostic collected只是字节收集，不认证GPU屏幕、完整运行态、美术或总目标。若新证据不能指导下一动作停止，不盲目继续。
+
+C复核（2026-10-24）：本地/远端main39e51a7fe773ca61a1e2fd7577d6d2413e860d88与run40056829746/attempt1及manifest一致，completed/failure。官方artifact12546082201，desert-frontline-ci-v5.67-main-39e51a7fe773-run40056829746-attempt1，ZIP2055391 bytes、SHA256/API digest90a99bb0742c0adf2ca3fefbbb2ba36f065763b822f15e53e2e2fb181756e94e、全项CRC通过；缓存/private/tmp/desert-frontline-c-review-40056829746/保留。
+
+- 双build、100实际回归+独立5watchdog、boot/install/HUD25与真实恢复通过。正式TACT/BUILD仍近乎全黑且同历史SHA218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f；1完成/1失败/22未运行，JUnit10/3fail/1准确skip，C整体不通过。
+- 新诊断world/hud原图均2622×1206，分别1497599/436105 bytes，world确有地图/部队/战斗/迷雾，HUD完整可读；1.773s、无错误，核心事实前后hash均aceb87d02ed247ef018ee2a183525545e8d8344970cace6c5986188ec618999b。sourceEvent与封存trace、prewarm PID8004/nonce0be1ede548dc473981a0271ac91f2cbd/revision103及文件hash一致；真实窗口key/可见/前台、view未暂停。
+- X仅据这一新差分证据批准有限world视口修复方向，不以离屏图代替屏幕，不宣称Apple私有根因或美术重构完成。不开子Agent，A/B/C串行职责不冒称独立交叉审查。
+
+### v5.68 / 单一世界视口投影（待云端/C复核）
+
+日期：2026-10-24。
+
+- 逻辑cameraRig改为SKNode，native camera nil、scene中心anchor、HUD直接挂scene；同一生产helper对world做逆倍率/负相机位移，仅变化时写节点，普通游戏与CI共用。几何/updateHUD/触摸收尾统一应用，pan/pinch以HUD稳定坐标度量并只乘一次逻辑scale；世界选择/命令仍取world坐标。
+- 原HUD25的roundTrip类每case增加三倍率真实节点正逆换算，共75样本，严格留cameraProjectionSamples=3；恢复检查新增两轴scale、world变换及父关系/native camera状态。原九类/标签/26动作/5页/玩法/地图模型/fog/sonar保持。
+- ready与共享validator使用world-node-affine-v1并严格核对实际绑定/矩阵与logical camera，旧协议与坏矩阵不能假绿。原100方法仅扩充schema负例，独立5watchdog保留；24正式PNG/等待/预算/设备/boot/install/receipt/规范化/重复图gate及非gate诊断均不改。
+- 关键文件为GameScene局部视口/输入度量/契约/ready、scene_evidence/simulator_probe/check_probe_runner与本轮提示词和必要文档。本机只Git/AST/文本/diff，无测试/编译/设备工具/子Agent；保留并排除Team ID与旧未跟踪资料。须最新main官方云端双build/100+5/真实HUD25/全部24正向PNG经C验收才可接受本修复；75节点样本不是真实触控或多尺寸截图，UI全面美术/模型/地图重构与总目标仍未完成。

@@ -1102,7 +1102,7 @@ final class GameScene: SKScene {
     private let focusFireMarkerNode = SKNode()
     private let fogLayer = SKNode()
     private let hudNode = SKNode()
-    private let cameraRig = SKCameraNode()
+    private let cameraRig = SKNode()
 
     private var terrain: [[Terrain]] = []
     private var fogNodes: [TileCoord: SKShapeNode] = [:]
@@ -1267,6 +1267,8 @@ final class GameScene: SKScene {
     override func didMove(to view: SKView) {
         backgroundColor = UIColor(white: 0.04, alpha: 1.0)
         view.isMultipleTouchEnabled = true
+        anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        camera = nil
         if sceneInitializationComplete {
             requestViewSize(view.bounds.size)
             if let window = view.window { updateWindowSafeAreaInsets(window.safeAreaInsets) }
@@ -1294,10 +1296,8 @@ final class GameScene: SKScene {
         worldNode.addChild(fogLayer)
 
         addChild(cameraRig)
-        cameraRig.addChild(hudNode)
+        addChild(hudNode)
         cameraRig.position = initialCameraPosition()
-        // Select the camera only after it belongs to this scene's node tree.
-        camera = cameraRig
 
         mapNode.zPosition = 0
         entityLayer.zPosition = 100
@@ -1368,6 +1368,16 @@ final class GameScene: SKScene {
         if size != self.size { ciInvalidateReady("view-size-requested") }
     }
 
+    private func applyCameraProjection() {
+        // One logical camera drives the world transform; the HUD stays in screen space.
+        let inverseX = 1 / max(cameraRig.xScale, 0.01)
+        let inverseY = 1 / max(cameraRig.yScale, 0.01)
+        let position = CGPoint(x: -cameraRig.position.x * inverseX, y: -cameraRig.position.y * inverseY)
+        if worldNode.xScale != inverseX { worldNode.xScale = inverseX }
+        if worldNode.yScale != inverseY { worldNode.yScale = inverseY }
+        if worldNode.position != position { worldNode.position = position }
+    }
+
     private func applyRequestedHUDGeometry() {
         guard sceneInitializationComplete, !isWritingHUDContract, !isLayingOutHUD else { return }
         geometryRequestLock.lock()
@@ -1388,7 +1398,7 @@ final class GameScene: SKScene {
         guard hudGeometryDirty else { return }
         hudGeometryDirty = false
         cameraRig.position = clampCamera(cameraRig.position)
-        camera = cameraRig
+        applyCameraProjection()
         layoutHUD()
         ciBeacon("geometry-applied", extra: ["revision": hudGeometryRevision])
     }
@@ -1540,16 +1550,18 @@ final class GameScene: SKScene {
         let attached = entities.values.filter { $0.isAlive && $0.node.parent === entityLayer }
         let playerUnits = attached.filter { $0.faction == .player && !$0.kind.isStructure }
         let visiblePlayerUnits = playerUnits.filter { !$0.node.isHidden && $0.node.alpha > 0 }
-        let cameraCenter = convertPoint(toView: cameraRig.position)
+        let cameraCenter = convertPoint(toView: worldNode.convert(cameraRig.position, to: self))
         let hudOrigin = convertPoint(toView: hudNode.convert(.zero, to: self))
         let viewCenter = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
         let projectedPlayerUnits = visiblePlayerUnits.filter {
             view.bounds.contains(convertPoint(toView: $0.node.convert(.zero, to: self)))
         }.count
-        let projectionChecks = ["activeCamera": camera === cameraRig, "cameraAttached": cameraRig.parent === self,
-                                "hostScene": view.scene === self]
+        let projectionChecks = ["nativeCameraDisabled": camera == nil, "hudAttached": hudNode.parent === self,
+                                "worldAttached": worldNode.parent === self, "hostScene": view.scene === self]
         let projection: [String: Any] = [
-            "bindings": projectionChecks,
+            "policy": "world-node-affine-v1", "bindings": projectionChecks,
+            "worldTransform": ["x": worldNode.position.x, "y": worldNode.position.y,
+                               "scaleX": worldNode.xScale, "scaleY": worldNode.yScale],
             "cameraCenter": ["x": cameraCenter.x, "y": cameraCenter.y],
             "hudOrigin": ["x": hudOrigin.x, "y": hudOrigin.y],
             "visiblePlayerUnits": projectedPlayerUnits
@@ -1570,7 +1582,7 @@ final class GameScene: SKScene {
                 abs(view.bounds.height - size.height) < 1 && window.safeAreaInsets == windowSafeAreaInsets,
             "map": terrain.count == rows && mapNode.children.count >= rows * cols,
             "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count,
-            "hud": hudNode.parent === cameraRig && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
+            "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
                 moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty &&
                 !view.shouldCullNonVisibleNodes && !view.ignoresSiblingOrder,
@@ -1634,7 +1646,7 @@ final class GameScene: SKScene {
         let roots = [worldNode, mapNode, entityLayer, effectsLayer, fogLayer, hudNode, cameraRig].map {
             "\($0.position):\($0.xScale):\($0.yScale):\($0.zPosition):\($0.alpha):\($0.isHidden):\($0.children.count)"
         }.joined(separator: ";")
-        let facts = "\(size)|\(windowSafeAreaInsets)|\(hudGeometryRevision)|\(camera === cameraRig)|\(hudNode.parent === cameraRig)|\(selectedIDs.sorted())|\(playerMoney)|\(enemyMoney)|\(String(describing: pendingConstructionKind))|\(String(describing: pendingSupportPower))|\(isSettingRallyPoint)|\(isSettingAttackMove)|\(units)|\(orders)|\(roots)"
+        let facts = "\(size)|\(windowSafeAreaInsets)|\(hudGeometryRevision)|\(camera == nil)|\(hudNode.parent === self)|\(selectedIDs.sorted())|\(playerMoney)|\(enemyMoney)|\(String(describing: pendingConstructionKind))|\(String(describing: pendingSupportPower))|\(isSettingRallyPoint)|\(isSettingAttackMove)|\(units)|\(orders)|\(roots)"
         return SHA256.hash(data: Data(facts.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
@@ -5036,6 +5048,7 @@ final class GameScene: SKScene {
         let actualQueue = buildOrders
         let actualPending = (pendingConstructionKind, pendingSupportPower, isSettingRallyPoint, isSettingAttackMove)
         let actualCamera = (cameraRig.position, cameraRig.xScale, cameraRig.yScale)
+        let actualWorld = (worldNode.position, worldNode.xScale, worldNode.yScale)
         let actualMessage = (messageLabel.sourceText, messageLabel.fontColor, messageLabel.alpha)
         let actualTouch = (touchStartScene, touchStartWorld, panStartCamera, isPanning, isUsingMinimap)
         let fixtures: [(String, CGSize, UIEdgeInsets)] = [
@@ -5359,6 +5372,24 @@ final class GameScene: SKScene {
                     let back = worldPoint(fromMinimap: minimapPoint(forWorldPoint: point))
                     expect(back.distance(to: point) < 0.01, "roundTrip", "map/world")
                 }
+                let savedScale = (cameraRig.xScale, cameraRig.yScale)
+                var cameraProjectionSamples = 0
+                for scale in [minCameraScale, CGFloat(1), maxCameraScale] {
+                    cameraRig.setScale(scale)
+                    applyCameraProjection()
+                    let point = cameraRig.position + CGPoint(x: 80, y: 40)
+                    let center = hudNode.convert(cameraRig.position, from: worldNode)
+                    let projected = hudNode.convert(point, from: worldNode)
+                    let back = worldNode.convert(projected, from: hudNode)
+                    expect(center.distance(to: .zero) < 0.1 &&
+                           projected.distance(to: CGPoint(x: 80 / scale, y: 40 / scale)) < 0.1 &&
+                           back.distance(to: point) < 0.1 && camera == nil && hudNode.parent === self,
+                           "roundTrip", "world-viewport/\(scale)")
+                    cameraProjectionSamples += 1
+                }
+                cameraRig.xScale = savedScale.0
+                cameraRig.yScale = savedScale.1
+                applyCameraProjection()
                 var labelAudit = LabelAudit()
                 let labelCount = boundedHUDLabels.count
                 let normal = auditLabels("normal", audit: &labelAudit)
@@ -5395,6 +5426,7 @@ final class GameScene: SKScene {
                                "panels": layout.panels.mapValues(rectJSON), "controls": controls.mapValues(rectJSON),
                                "panelArea": panelArea, "viewportArea": fixtureSize.width * fixtureSize.height,
                                "panelAreaFraction": panelArea / (fixtureSize.width * fixtureSize.height),
+                               "cameraProjectionSamples": cameraProjectionSamples,
                                "labelAudit": auditJSON(labelAudit, labels: normal, registeredCount: labelCount),
                                "checks": checks, "failures": failures, "status": failures.isEmpty ? "success" : "failure"])
             }
@@ -5432,7 +5464,10 @@ final class GameScene: SKScene {
             restorePhaseNames == ["actual-normal", "actual-restored"] && preserved &&
             actualLabelAudit.phases.last?["referenceMatchedCount"] as? Int == actualLabelCount
         let restored = fingerprint() == originalState && size == actualSize && hudPage == actualPage &&
-            windowSafeAreaInsets == actualInsets && cameraRig.position == actualCamera.0 && labelsRestored
+            windowSafeAreaInsets == actualInsets && cameraRig.position == actualCamera.0 &&
+            cameraRig.xScale == actualCamera.1 && cameraRig.yScale == actualCamera.2 &&
+            worldNode.position == actualWorld.0 && worldNode.xScale == actualWorld.1 && worldNode.yScale == actualWorld.2 &&
+            camera == nil && hudNode.parent === self && labelsRestored
         ciInvalidateReady("contract-restored")
         let passed = restored && actualLabelAudit.failureCount == 0 && matrix.allSatisfy { $0["status"] as? String == "success" }
         let report: [String: Any] = [
@@ -5840,6 +5875,7 @@ final class GameScene: SKScene {
     }
 
     private func updateHUD() {
+        applyCameraProjection()
         let income = incomePerTick(for: .player)
         moneyLabel.sourceText = "$\(playerMoney)"
         incomeLabel.sourceText = "+$\(income)/s  OIL \(oilCount(for: .player))  FLAG \(controlPointCount(for: .player))"
@@ -7459,12 +7495,13 @@ final class GameScene: SKScene {
     }
 
     private func pinchMetrics(from touches: Set<UITouch>) -> (center: CGPoint, distance: CGFloat)? {
-        let points = Array(touches.prefix(2)).map { $0.location(in: self) }
+        let points = Array(touches.prefix(2)).map { $0.location(in: hudNode) }
         guard points.count == 2 else { return nil }
         return ((points[0] + points[1]) / 2, points[0].distance(to: points[1]))
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        defer { applyCameraProjection() }
         guard let touch = touches.first else { return }
         let activeTouches = event?.allTouches ?? touches
         let uiPoint = touch.location(in: hudNode)
@@ -7475,13 +7512,12 @@ final class GameScene: SKScene {
         }
         if consumeHUDTouch(at: uiPoint, tapCount: touch.tapCount) { return }
 
-        let scenePoint = touch.location(in: self)
         let worldPoint = touch.location(in: worldNode)
         if pendingConstructionKind != nil {
             updateConstructionPreview(at: worldPoint)
         }
         let startEntity = entity(at: worldPoint)
-        touchStartScene = scenePoint
+        touchStartScene = uiPoint
         touchStartWorld = worldPoint
         panStartCamera = cameraRig.position
         isPanning = false
@@ -7490,6 +7526,7 @@ final class GameScene: SKScene {
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        defer { applyCameraProjection() }
         guard let touch = touches.first else { return }
         let activeTouches = event?.allTouches ?? touches
         if isUsingMinimap {
@@ -7531,8 +7568,8 @@ final class GameScene: SKScene {
             return
         }
 
-        let current = touch.location(in: self)
-        let delta = current - start
+        let current = touch.location(in: hudNode)
+        let delta = (current - start) * cameraRig.xScale
         if abs(delta.x) + abs(delta.y) > 10 {
             isPanning = true
             cameraRig.position = clampCamera(panStart - delta)
@@ -7554,6 +7591,7 @@ final class GameScene: SKScene {
             isBoxSelecting = false
             selectionBoxNode?.removeFromParent()
             selectionBoxNode = nil
+            applyCameraProjection()
         }
 
         if isUsingMinimap {

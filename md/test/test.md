@@ -223,12 +223,20 @@ v5.61实际C复核：run `39853761823` attempt1 / main `625e8fd65431ae2c8890cc43
 
 实际C复核：run40054833004/attempt1、SHAf17bc25c79db7fdffcad87bb47af3377cbaa7c5e，官方artifact12544714262 ZIP178864 bytes、digest/CRC正常。generic45.7s、sim SDK31.082s、99方法+5watchdog、boot/install/HUD25与stateRestored通过。三个真实launch的viewClass均GameRenderView、两配置false、绑定true、相机/HUD投影(436.9999694824219,201)、屏内玩家单位6。两张官方图仍近乎全黑、68330 bytes、同SHA218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f，且与v5.65同hash；1完成/1失败/22未运行，JUnit10/3fail/1准确skip。显式宿主替换不足以解决，停止本轮，不以CPU证据假称GPU修复。
 
-### v5.67 生产子树离屏差分留证（待云端/C复核）
+### v5.67 生产子树离屏差分留证（C整体不通过）
 
 - 仅原prewarm在HUD25恢复/两帧ready后主队列异步导出一次实际worldNode/hudNode，不另建场景、不改变节点/camera/fog/z/布局。crop限2048×1536/2097152平方点，Retina原始PNG限4096×3072/8388608像素和8MiB；记录节点坐标crop、真实尺寸/hash/bytes、geometryRevision、核心事实前后SHA/相等性、窗口状态、耗时和有界错误。核心事实相同不冒称全部缓存/动画或完整游戏状态认证。
 - 原身份绑定trace新增render-diagnostics事件；runner在原HUD收集后、terminate前经选定设备dataPath、当前bundle容器metadata、nonce路径/符号链接/size/hash校验读取两图，归档diagnostic-world.png、diagnostic-hud.png和render-diagnostics.json，不旋转/合成/代替simulator-*.png。HUD读取wrapper原1MiB与安全规则不变，通用helper只额外允许两个8MiB PNG文件名。
 - 诊断收集状态是非gate，不改原JUnit10项或正式readiness/24图/全部等待/预算/设备/boot/install/receipt/规范化/重复早停；缺失/坏数据明确留证后仍执行正式探针，取消与deadline不得吞掉。package只增加索引/诊断状态和摘要说明；C必须核对sourceEvent与封存trace、两个原始PNG的CRC/尺寸/SHA/路径/crop/核心事实，并与本run实际屏幕图目视对照。诊断collected不等于屏幕已修复，正式图重复/黑屏仍整体不通过。
 - 原路径测试扩充HUD/两个PNG安全边界；新增一个明确synthetic的收集方法覆盖合法/缺事件/hash/坏PNG/错nonce/旧几何/坏类型/部分导出/取消/deadline以及不污染正式24图。声明100方法（36/12/24/9/16/3）+独立5watchdog，仅Actions运行。本机只Git/AST/文本/diff；没有本机测试/构建/设备操作，无新依赖/Agent。
+
+C复核：run40056829746/attempt1、SHA39e51a7fe773ca61a1e2fd7577d6d2413e860d88，官方artifact12546082201 ZIP2055391 bytes，SHA256/API digest90a99bb0742c0adf2ca3fefbbb2ba36f065763b822f15e53e2e2fb181756e94e、CRC正常，缓存标准目录保留。双build/100+5/boot/install/HUD25通过；两诊断图2622×1206，world1497599 bytes和hud436105 bytes确有真实地图/部队/迷雾与完整HUD，导出1.773s、核心事实hash前后相同、无错误。sourceEvent与封存prewarm trace、身份/nonce/PID/hash逐项相符；窗口前台key/可见、view未暂停。两正式图仍SHA218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f、黑屏重复，1完成/1失败/22未运行，JUnit10/3fail/1准确skip。离屏成功不等于屏幕通过，也不确定Apple内部根因。
+
+### v5.68 单一world视口投影（待云端/C复核）
+
+- 生产cameraRig仅保留逻辑位置/scale，native camera nil、scene中心anchor、HUD挂scene；同一helper将world根设为逆scale和负相机位移，普通游戏与CI共用。手势度量改为稳定HUD坐标，世界命令仍取world坐标；玩法、布局、26动作/5页、fog/sonar不变。
+- 原HUD25每case的roundTrip类增加0.72/1/1.58三档真实节点center/offset/inverse检查，合计75样本，每case严格整数cameraProjectionSamples=3；不是75真实窗口或触控注入。实际恢复加入两轴camera scale与world位置/scale、HUD父关系/native camera nil；原九类与标签门槛保留。
+- ready投影policy为world-node-affine-v1，四个严格true绑定与实际worldTransform必须匹配logical camera，保留原view中心/屏内玩家数门槛。原100方法仅扩充synthetic负例，拒绝旧policy、绑定缺失/数值、错矩阵、非法scale及样本计数缺失/bool/非3；保持独立5watchdog。只在云端执行双build/100+5/实际HUD25和24正式PNG，C下载最新main官方包逐张检查。诊断仍非gate，预算/设备/等待/boot/install/receipt/规范化/重复图门槛全部不改，不以CPU矩阵通过宣称UI美术已重构。
 
 ### 触发条件
 

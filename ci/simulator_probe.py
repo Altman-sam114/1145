@@ -595,7 +595,8 @@ def validate_hud_contract(summary, directory):
             raise ProbeFailure(f"HUD contract fixture metadata mismatch: {key}")
         checks = item.get("checks", {})
         if (set(checks) != HUD_CHECKS or any(value is not True for value in checks.values())
-                or item.get("status") != "success" or item.get("failures") != []):
+                or item.get("status") != "success" or item.get("failures") != []
+                or type(item.get("cameraProjectionSamples")) is not int or item["cameraProjectionSamples"] != 3):
             raise ProbeFailure(f"HUD contract assertions failed/incomplete: {key}")
         panels, controls = item.get("panels", {}), item.get("controls", {})
         required_controls = {f"page:{page}" for page in HUD_PAGES} | {"zoomOut", "zoomIn", "map"}
