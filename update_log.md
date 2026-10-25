@@ -6247,7 +6247,7 @@ C复核（2026-10-24）：本地/远端main39e51a7fe773ca61a1e2fd7577d6d2413e860
 - 新诊断world/hud原图均2622×1206，分别1497599/436105 bytes，world确有地图/部队/战斗/迷雾，HUD完整可读；1.773s、无错误，核心事实前后hash均aceb87d02ed247ef018ee2a183525545e8d8344970cace6c5986188ec618999b。sourceEvent与封存trace、prewarm PID8004/nonce0be1ede548dc473981a0271ac91f2cbd/revision103及文件hash一致；真实窗口key/可见/前台、view未暂停。
 - X仅据这一新差分证据批准有限world视口修复方向，不以离屏图代替屏幕，不宣称Apple私有根因或美术重构完成。不开子Agent，A/B/C串行职责不冒称独立交叉审查。
 
-### v5.68 / 单一世界视口投影（待云端/C复核）
+### v5.68 / 单一世界视口投影（技术项通过，C整体不通过）
 
 日期：2026-10-24。
 
@@ -6255,3 +6255,20 @@ C复核（2026-10-24）：本地/远端main39e51a7fe773ca61a1e2fd7577d6d2413e860
 - 原HUD25的roundTrip类每case增加三倍率真实节点正逆换算，共75样本，严格留cameraProjectionSamples=3；恢复检查新增两轴scale、world变换及父关系/native camera状态。原九类/标签/26动作/5页/玩法/地图模型/fog/sonar保持。
 - ready与共享validator使用world-node-affine-v1并严格核对实际绑定/矩阵与logical camera，旧协议与坏矩阵不能假绿。原100方法仅扩充schema负例，独立5watchdog保留；24正式PNG/等待/预算/设备/boot/install/receipt/规范化/重复图gate及非gate诊断均不改。
 - 关键文件为GameScene局部视口/输入度量/契约/ready、scene_evidence/simulator_probe/check_probe_runner与本轮提示词和必要文档。本机只Git/AST/文本/diff，无测试/编译/设备工具/子Agent；保留并排除Team ID与旧未跟踪资料。须最新main官方云端双build/100+5/真实HUD25/全部24正向PNG经C验收才可接受本修复；75节点样本不是真实触控或多尺寸截图，UI全面美术/模型/地图重构与总目标仍未完成。
+
+C复核（2026-10-24）：本地/远端main974622eb3640ae7ec0969ebc1b6d5e4dec1ba3b5与run40058443505/attempt1及manifest/summary一致，completed/failure、job10分9秒。官方artifact12546497692，desert-frontline-ci-v5.68-main-974622eb3640-run40058443505-attempt1，ZIP676034 bytes/43项，SHA256/API digest62295e429ad1a95d57f5f2f1138263ce1f588d92c67e7f9281f8f2bab320159c、全项CRC正常，缓存/private/tmp/desert-frontline-c-review-40058443505/保留。
+
+- generic step48s与sim SDK39.693s成功，100实际方法（36/12/24/9/16/3）和独立5watchdog通过，boot首monitor200.787569s、一次install成功；未覆盖真实第二monitor。HUD148412 bytes、SHA7c1e3567a1b0efccd1fe3fdbe7d89e240ded5b5ccc36bab0d59c0f15fa5781b5与身份/descriptor一致，25×9/75节点样本/actual恢复及label审计零失败。
+- 三个实际launch都已使用world-node-affine-v1、四绑定true/native camera nil、world(-43,666.5)/scale1匹配logical(43,-666.5)/scale1，两view中心(437,201)、屏内玩家单位6；这些CPU技术证据不修复GPU画面。两正式PNG仍68330 bytes/同历史SHA218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f，逐张目视黑屏。准确失败于第二页重复图，1完成/1失败/22未运行，JUnit10/3fail/1准确skip；实际nonce都不同，泛化完整性诊断不充当nonce根因。
+- 诊断HUD436027 bytes仍可读，world152297 bytes变成大面积琥珀色形状，已不具前轮世界构图；两图2622×1206，sourceEvent与冻结prewarm trace、nonce/PID/hash/CRC相符。导出3.099749s、核心事实hash前后相同不等于图像正确或证明全部状态无回归。不能以旧world图替本轮诊断、不能把collected视为验收通过。
+- work469.423s/cleanup10.226s、总479.649s，预算仍充足，不是Swift编译卡死。X按同类视觉连续失败规则停止自动试错提交；本修复不计成功，全面UI/地图/模型/陆海空重构总目标未完成。C结论留本地文档未提交/推送，避免仅为失败文字再触发同一代码CI；用户Team ID与旧未跟踪资料原样保留。本机只有Git/AST/文本/官方artifact读取与CRC/hash核对，无本机测试/构建/设备操作，无子Agent。
+
+
+### v5.69 / 小地图直接有界绘制（待云端/C复核）
+
+日期：2026-10-25。
+
+- 用户续行后重新同步最新main并下载v5.68官方包，digest/CRC与历史记录相符；确认最近失败不是Swift编译卡死，而是正式屏幕黑屏重复。v5.54→v5.55新增的SKCropNode小地图是新的有限修复假设，不先宣称私有根因。百度搜索本次正常返回Desert Stormfront对应结果，未下载/运行第三方游戏或引入素材。
+- 生产小地图改用普通SKNode直接绘制；真实符号包围框夹入内容带、camera box求交；世界/小地图正逆映射、点击、zoom、fog/sonar和命令保持。HUD25原bands类增加实际容器与子图元边界断言，原100方法+独立5watchdog和24正式probe/gate/预算/等待不改。
+- 关键文件：GameScene局部小地图/契约，README/flow/flowchart/test/本日志及v5.69 A提示词。承接v5.68未提交C结论；原签名Team ID与旧未跟踪资料保留排除。未执行本机测试/编译/Simulator/设备命令，未开子Agent。
+- 等待最新main官方artifact实测；全面UI/地图/模型/陆海空重构与总目标仍未完成，不能以本次改动或CPU契约当视觉通过。

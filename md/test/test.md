@@ -232,11 +232,20 @@ v5.61实际C复核：run `39853761823` attempt1 / main `625e8fd65431ae2c8890cc43
 
 C复核：run40056829746/attempt1、SHA39e51a7fe773ca61a1e2fd7577d6d2413e860d88，官方artifact12546082201 ZIP2055391 bytes，SHA256/API digest90a99bb0742c0adf2ca3fefbbb2ba36f065763b822f15e53e2e2fb181756e94e、CRC正常，缓存标准目录保留。双build/100+5/boot/install/HUD25通过；两诊断图2622×1206，world1497599 bytes和hud436105 bytes确有真实地图/部队/迷雾与完整HUD，导出1.773s、核心事实hash前后相同、无错误。sourceEvent与封存prewarm trace、身份/nonce/PID/hash逐项相符；窗口前台key/可见、view未暂停。两正式图仍SHA218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f、黑屏重复，1完成/1失败/22未运行，JUnit10/3fail/1准确skip。离屏成功不等于屏幕通过，也不确定Apple内部根因。
 
-### v5.68 单一world视口投影（待云端/C复核）
+### v5.68 单一world视口投影（技术项通过，C整体不通过）
 
 - 生产cameraRig仅保留逻辑位置/scale，native camera nil、scene中心anchor、HUD挂scene；同一helper将world根设为逆scale和负相机位移，普通游戏与CI共用。手势度量改为稳定HUD坐标，世界命令仍取world坐标；玩法、布局、26动作/5页、fog/sonar不变。
 - 原HUD25每case的roundTrip类增加0.72/1/1.58三档真实节点center/offset/inverse检查，合计75样本，每case严格整数cameraProjectionSamples=3；不是75真实窗口或触控注入。实际恢复加入两轴camera scale与world位置/scale、HUD父关系/native camera nil；原九类与标签门槛保留。
 - ready投影policy为world-node-affine-v1，四个严格true绑定与实际worldTransform必须匹配logical camera，保留原view中心/屏内玩家数门槛。原100方法仅扩充synthetic负例，拒绝旧policy、绑定缺失/数值、错矩阵、非法scale及样本计数缺失/bool/非3；保持独立5watchdog。只在云端执行双build/100+5/实际HUD25和24正式PNG，C下载最新main官方包逐张检查。诊断仍非gate，预算/设备/等待/boot/install/receipt/规范化/重复图门槛全部不改，不以CPU矩阵通过宣称UI美术已重构。
+
+C复核：run40058443505/attempt1、main974622eb3640ae7ec0969ebc1b6d5e4dec1ba3b5与manifest/summary一致，completed/failure。官方artifact12546497692，ZIP676034 bytes/43项，SHA256/API digest62295e429ad1a95d57f5f2f1138263ce1f588d92c67e7f9281f8f2bab320159c、CRC正常，缓存/private/tmp/desert-frontline-c-review-40058443505/保留。generic step48s、sim SDK39.693s，100方法+5watchdog、boot/install通过；HUD148412 bytes/hash7c1e3567a1b0efccd1fe3fdbe7d89e240ded5b5ccc36bab0d59c0f15fa5781b5与descriptor一致，25×9/75节点样本/actual恢复及全部label审计通过。
+
+三个真实launch的四绑定true、native camera nil，world(-43,666.5)/scale1与logical(43,-666.5)/scale1相符，两view投影(437,201)、屏内玩家单位6；CPU技术项真实生效。但TACT/BUILD两官方PNG仍68330 bytes、同历史SHA218f100a6b8d532f83cd529c5d1cd5c9b64dd3a77aec192afd1fc3a960efca6f、黑屏；准确失败于probe:build:normalized-image-check重复图，1完成/1失败/22未运行，JUnit10/3fail/1准确skip。三个nonce实际不同，完整性泛化nonce诊断不是根因。诊断HUD可读，world图变成大面积琥珀色形状而非前轮可用世界图，不能将collected当画面正确或继续沿用旧world图；事件/hash/CRC核对。work469.423s/cleanup10.226s，预算未耗尽；不是编译卡死。本轮停止试错提交，后续需要新一轮有界诊断决策，不能开始美术扩展或宣称总目标完成。
+
+### v5.69 小地图直接有界绘制（待云端/C复核）
+
+- 生产小地图用普通SKNode，不经过SKCropNode/mask；地形点与实体/旗点完整图元框内夹取，相机框求交；原点击正逆映射、zoom、fog/sonar和全部命令保持。HUD25原bands类别增加真实容器类型和子图元有限/框内断言，不放宽九类或文本/恢复门槛。
+- 本机仅Git/文本/AST/diff；双build、100方法+5watchdog、boot/install/HUD25和原24正式PNG全部在Actions执行。C下载最新main同SHA/run/attempt官方未加密ZIP，核对digest/CRC/manifest/JUnit/build/失败摘要/trace和逐张画面，特别检查小地图边缘符号、camera box与header/footer不重叠。非gate离屏图不能代替正式屏幕，重复/黑屏仍失败；同因失败停止本轮，不自动改门槛或追加盲试。
 
 ### 触发条件
 

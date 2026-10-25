@@ -1221,6 +1221,7 @@ final class GameScene: SKScene {
     private var ciRenderDiagnosticsAttempted = false
     private var ciLastReadinessFailure = ""
     private var minimapFrame = CGRect.zero
+    private var minimapContentNode = SKNode()
     private var minimapBlipsNode = SKNode()
     private var minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 36, height: 24), cornerRadius: 2)
     private var minimapScaleLabel = HUDTextLabel(fontNamed: "Menlo")
@@ -5335,6 +5336,14 @@ final class GameScene: SKScene {
                 for key in ["zoomOut", "zoomIn", "mapScale"] {
                     expect(layout.slots["mapFooter"]!.contains(layout.slots[key]!), "bands", key)
                 }
+                expect(type(of: minimapContentNode) == SKNode.self && minimapContentNode.parent === hudNode,
+                       "bands", "direct-minimap-container")
+                for child in minimapContentNode.children {
+                    let bounds = child.calculateAccumulatedFrame()
+                    expect([bounds.minX, bounds.minY, bounds.width, bounds.height].allSatisfy(\.isFinite) &&
+                           minimapFrame.insetBy(dx: -0.5, dy: -0.5).contains(bounds),
+                           "bands", "minimap-content-bounds")
+                }
                 for (key, frame) in layout.slots {
                     let parent: String
                     if key.hasPrefix("map") || key.hasPrefix("zoom") { parent = "minimap" }
@@ -5504,34 +5513,31 @@ final class GameScene: SKScene {
         let legend = makeHUDLabel(slot: "mapLegend", size: 8, color: HUDPalette.mutedText)
         legend.sourceText = "LAND   AIR   SEA"
 
-        // Clip terrain, blips and camera footprint to the same clickable content band.
-        let crop = SKCropNode()
-        crop.maskNode = SKShapeNode(rect: frame)
-        (crop.maskNode as? SKShapeNode)?.fillColor = .white
-        (crop.maskNode as? SKShapeNode)?.strokeColor = .clear
-        hudNode.addChild(crop)
+        // Bound primitives directly so the HUD needs no offscreen mask render pass.
+        minimapContentNode = SKNode()
+        minimapContentNode.name = "hud:minimap-content"
+        hudNode.addChild(minimapContentNode)
         let mapBackground = SKShapeNode(rect: frame)
         mapBackground.fillColor = HUDPalette.panelDeep
         mapBackground.strokeColor = .clear
-        crop.addChild(mapBackground)
+        minimapContentNode.addChild(mapBackground)
         for row in 0..<rows {
             for col in 0..<cols {
                 let point = minimapPoint(forWorldPoint: tileCenter(TileCoord(row: row, col: col)))
                 let dot = SKShapeNode(rectOf: CGSize(width: 4, height: 3), cornerRadius: 0.4)
-                dot.position = point
                 dot.fillColor = minimapTerrainColor(terrain[row][col])
                 dot.strokeColor = .clear
                 dot.alpha = 0.78
-                crop.addChild(dot)
+                addBoundedMinimapNode(dot, at: point, to: minimapContentNode)
             }
         }
         minimapBlipsNode = SKNode()
-        crop.addChild(minimapBlipsNode)
+        minimapContentNode.addChild(minimapBlipsNode)
         minimapCameraBox = SKShapeNode(rectOf: CGSize(width: 40, height: 28), cornerRadius: 1)
         minimapCameraBox.strokeColor = UIColor.white.withAlphaComponent(0.85)
         minimapCameraBox.fillColor = .clear
         minimapCameraBox.lineWidth = 1
-        crop.addChild(minimapCameraBox)
+        minimapContentNode.addChild(minimapCameraBox)
         minimapScaleLabel = makeHUDLabel(slot: "mapScale", size: 8, color: HUDPalette.mutedText)
         addZoomButton(frame: zoomOutHitFrame, title: "-")
         addZoomButton(frame: zoomInHitFrame, title: "+")
@@ -7262,6 +7268,16 @@ final class GameScene: SKScene {
         hudLayout?.worldPoint(point, in: worldBounds) ?? .zero
     }
 
+    private func addBoundedMinimapNode(_ node: SKNode, at point: CGPoint, to parent: SKNode) {
+        let bounds = node.calculateAccumulatedFrame()
+        let content = minimapFrame.insetBy(dx: 2, dy: 2)
+        node.position = CGPoint(
+            x: min(max(point.x, content.minX - bounds.minX), content.maxX - bounds.maxX),
+            y: min(max(point.y, content.minY - bounds.minY), content.maxY - bounds.maxY)
+        )
+        parent.addChild(node)
+    }
+
     private func updateMinimap() {
         guard minimapFrame.width > 0 else { return }
         minimapBlipsNode.removeAllChildren()
@@ -7272,28 +7288,27 @@ final class GameScene: SKScene {
                 continue
             }
             let blip = minimapBlipNode(for: entity)
-            blip.position = minimapPoint(forWorldPoint: entity.node.position)
-            minimapBlipsNode.addChild(blip)
+            addBoundedMinimapNode(blip, at: minimapPoint(forWorldPoint: entity.node.position), to: minimapBlipsNode)
         }
 
         for point in controlPoints {
             let blip = SKShapeNode(rectOf: CGSize(width: 6.5, height: 6.5), cornerRadius: 1.2)
-            blip.position = minimapPoint(forWorldPoint: point.node.position)
             blip.fillColor = controlPointColor(for: point.faction)
             blip.strokeColor = UIColor.white.withAlphaComponent(0.75)
             blip.lineWidth = 0.8
-            minimapBlipsNode.addChild(blip)
+            addBoundedMinimapNode(blip, at: minimapPoint(forWorldPoint: point.node.position), to: minimapBlipsNode)
         }
 
         let visibleWidth = size.width * cameraRig.xScale
         let visibleHeight = size.height * cameraRig.yScale
         let boxWidth = max(22, minimapFrame.width * min(1, visibleWidth / max(worldBounds.width, 1)))
         let boxHeight = max(18, minimapFrame.height * min(1, visibleHeight / max(worldBounds.height, 1)))
-        minimapCameraBox.path = CGPath(
-            rect: CGRect(x: -boxWidth / 2, y: -boxHeight / 2, width: boxWidth, height: boxHeight),
-            transform: nil
-        )
-        minimapCameraBox.position = minimapPoint(forWorldPoint: cameraRig.position)
+        let center = minimapPoint(forWorldPoint: cameraRig.position)
+        let box = CGRect(x: center.x - boxWidth / 2, y: center.y - boxHeight / 2,
+                         width: boxWidth, height: boxHeight)
+            .intersection(minimapFrame.insetBy(dx: 1, dy: 1))
+        minimapCameraBox.path = CGPath(rect: box, transform: nil)
+        minimapCameraBox.position = .zero
     }
 
     private func minimapBlipNode(for entity: GameEntity) -> SKNode {

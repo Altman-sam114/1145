@@ -96,7 +96,7 @@ Mechanic 实体另持有预创建的 `mechanicRepairEffectNode`，由阵营化�
 
 小地图下方的 `−` / `+` 是独立的 HUD 命中区域，调用 `adjustCameraZoom(by:)` 复用 `minCameraScale`、`maxCameraScale` 和 `clampCamera`，并刷新小地图 camera box；它们不属于 `HudAction`，不会穿透为世界点击或清理 pending 命令。
 
-`HudPage` 保留全部 26 个 `HudAction` 的五页映射：TACT 九种战术命令，BUILD 六种陆军/建造，AIR 两种飞机，SEA 三种舰艇，SUP 六种支援/设置。`HUDLayout(size:insets:page:)` 是生产绘制、单指命中和云端契约的共同框来源；左侧五页竖轨常驻，底部 dock 按当前页动作总宽收口，顶部 36pt 资源条，任务/消息独立有界，选择/队列共用限宽容器，右侧小地图分 header/legend、裁剪内容、44pt zoom footer。`GameRenderView` 被动读取真实 UIWindow inset与自身bounds，经场景重建同一布局，不使用忽略安全区的 GeometryReader inset。`touchesBegan` 保持双指优先；单指进入同源 route（page/action/zoom/map/inert/world），所有静态面板、rail/dock 间隙与安全框外区域 inert，不穿透世界或清除 pending。切页只重建 HUD，保留选择、队列和互斥 pending；active/armed 用克制金色边线。`HUDPalette` 统一石墨灰/沙金，移除巨型金币、THEATER 与重复 LIVE 装饰；有界文本 fitting 仅影响显示。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射：TACT 九种战术命令，BUILD 六种陆军/建造，AIR 两种飞机，SEA 三种舰艇，SUP 六种支援/设置。`HUDLayout(size:insets:page:)` 是生产绘制、单指命中和云端契约的共同框来源；左侧五页竖轨常驻，底部 dock 按当前页动作总宽收口，顶部 36pt 资源条，任务/消息独立有界，选择/队列共用限宽容器，右侧小地图分 header/legend、直接有界内容、44pt zoom footer。`GameRenderView` 被动读取真实 UIWindow inset与自身bounds，经场景重建同一布局，不使用忽略安全区的 GeometryReader inset。`touchesBegan` 保持双指优先；单指进入同源 route（page/action/zoom/map/inert/world），所有静态面板、rail/dock 间隙与安全框外区域 inert，不穿透世界或清除 pending。切页只重建 HUD，保留选择、队列和互斥 pending；active/armed 用克制金色边线。`HUDPalette` 统一石墨灰/沙金，移除巨型金币、THEATER 与重复 LIVE 装饰；有界文本 fitting 仅影响显示。
 
 ### `AIDifficulty`
 
@@ -305,3 +305,8 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 小地图缩放按钮上方显示 ZOOM 静态标签，输入仍复用既有 adjustCameraZoom。
 
 THEATER 状态卡包含静态绿色 LIVE 指示点，仅为状态卡视觉层级，不创建运行态连接状态。
+
+
+### 当前小地图直接绘制（v5.69）
+
+`addMinimap` 使用普通 `minimapContentNode: SKNode`，不创建 SKCropNode/mask 离屏通道。地形点、动态实体/旗点完整子树的实际包围框经 `addBoundedMinimapNode` 夹入原内容带并留2pt描边余量；相机框与内缩1pt内容框求交。仅边缘符号呈现可略内移，生产 `HUDLayout.mapPoint/worldPoint`、点击/zoom/命令路由及敌军fog/sonar过滤不变。原HUD25的bands类别核对实际普通容器及子图元有限/框内。此窄改动是屏幕故障修复假设，仍以最新云端24正式PNG验收，不能由CPU边界或离屏诊断替代。

@@ -8,7 +8,7 @@ Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界�
 
 海军实体的 `navalWakeNode` 与选中艏向箭头都在实体配置阶段一次性预创建：Battleship / Carrier 依舰体尺度绘制艏部 V 形浅水冲洗、近 / 远段递减尾流、泡沫边与舰艉推进器扰流，Submarine 仅保留低透明扰动；移动时 `updateNavalWake` 用同一 `localWakeDirection` 与 `xScale` 镜像同时旋转尾流和箭头。选择刷新只让玩家选中、存活且可见的三类海军显示箭头；停止保留最后 rotation，取消选择、死亡、重开和 fog 隐藏继续复用实体父节点生命周期，不新增状态、每帧节点或第 25 次探针。读图：海军 movement direction 分流到既有 wake rotation 与 heading cue rotation，selection / alive / fog 门槛控制 cue 显隐。
 
-HUD 使用石墨灰/沙金的战场优先布局：左五页轨、底部当前动作收口 dock、36pt 顶栏、独立任务/消息、统一选择/队列与三带小地图。真实 UIWindow inset 经被动观察传到 GameScene；生产 `HUDLayout` 同时提供绘制框和单指 route。双指仍优先 pan/pinch；单指 page/action/zoom/map/inert/world 分流，静态卡和 rail/dock gap 消费触摸、不清 pending。切页不改玩法状态，重建先清旧节点/字典。小地图 crop、正逆换算与点击共享内容框；header/footer 不挤占内容带。
+HUD 使用石墨灰/沙金的战场优先布局：左五页轨、底部当前动作收口 dock、36pt 顶栏、独立任务/消息、统一选择/队列与三带小地图。真实 UIWindow inset 经被动观察传到 GameScene；生产 `HUDLayout` 同时提供绘制框和单指 route。双指仍优先 pan/pinch；单指 page/action/zoom/map/inert/world 分流，静态卡和 rail/dock gap 消费触摸、不清 pending。切页不改玩法状态，重建先清旧节点/字典。小地图直接有界图元、正逆换算与点击共享内容框；header/footer 不挤占内容带。
 
 Carrier 的甲板作业轨和安全/拦阻边线属于 `HealthVisual -> Render` 的实体静态模型子树：它们在 Carrier 创建时一次性挂入 `base`，不进入 `effectsLayer`，不增加玩法分支，并沿用实体移动、镜像、fog、死亡和 `SKRM` 生命周期。
 
@@ -301,4 +301,20 @@ flowchart TD
   Ready --> Gate[新policy仅3或4角色 / runner与metadata验证 / simulatorBootOutcome / JUnit10含1跳过]
   Fail --> Gate
   Gate --> Review[C核对最新官方ZIP回执状态输出预算 / 全部24正式原图]
+```
+
+
+### v5.69 小地图呈现边界
+
+读图说明：世界事实只读投影到原内容框；直接图元夹框/相机框求交只影响呈现，不回写世界或改变点击坐标，也不需要离屏遮罩。
+
+```mermaid
+flowchart LR
+  Facts["地形 / 已知实体 / 旗点 / 逻辑相机"] --> Mapping["原 mapPoint / HUDLayout 内容框"]
+  Mapping --> Dots["普通 SKNode
+完整符号包围框夹入 / 相机框求交"]
+  Dots --> Screen["真实屏幕 / 原24正式PNG验收"]
+  Dots --> Contract["HUD25 bands
+真实容器与图元框内"]
+  Touch["小地图点击"] --> Inverse["原 worldPoint / 镜头聚焦"]
 ```
