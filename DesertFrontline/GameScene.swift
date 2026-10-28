@@ -1243,7 +1243,6 @@ final class GameScene: SKScene {
     private let selectionInfoWarningColor = UIColor(red: 1.0, green: 0.72, blue: 0.20, alpha: 1.0)
     private let selectionInfoCriticalColor = UIColor(red: 1.0, green: 0.38, blue: 0.24, alpha: 1.0)
     private var selectionTargetHealthBarFrame = CGRect.zero
-    private var selectionInfoRowAvailableWidth: CGFloat = 0
     private var selectionInfoRowBaseFontSize: CGFloat = 9
     private var hudButtonFrames: [HudAction: CGRect] = [:]
     private var hudButtonHitFrames: [HudAction: CGRect] = [:]
@@ -5570,8 +5569,12 @@ final class GameScene: SKScene {
                 _ = auditLabels("long2", reference: long, audit: &labelAudit)
                 for value in normal { value.node.sourceText = value.source }
                 _ = auditLabels("restored", reference: normal, audit: &labelAudit)
+                var selectionRows: [[String: Any]] = []
                 for (index, row) in selectionInfoRowLabels.enumerated() where !(row.text?.isEmpty ?? true) {
-                    expect(layout.slots["row\(index)"]!.insetBy(dx: -0.5, dy: -0.5).contains(row.frame), "labels", "row\(index)")
+                    let slot = layout.slots["row\(index)"]!
+                    expect(slot.insetBy(dx: -0.5, dy: -0.5).contains(row.frame), "labels", "row\(index)")
+                    selectionRows.append(["id": "row\(index)", "slot": rectJSON(slot), "bounds": rectJSON(row.frame),
+                                          "fontSize": row.fontSize, "scaleX": row.xScale, "scaleY": row.yScale])
                 }
                 updateHUD()
                 let count = nodeCount(hudNode)
@@ -5598,6 +5601,7 @@ final class GameScene: SKScene {
                                "panelArea": panelArea, "viewportArea": fixtureSize.width * fixtureSize.height,
                                "panelAreaFraction": panelArea / (fixtureSize.width * fixtureSize.height),
                                "cameraProjectionSamples": cameraProjectionSamples,
+                               "selectionRows": selectionRows,
                                "labelAudit": auditJSON(labelAudit, labels: normal, registeredCount: labelCount),
                                "checks": checks, "failures": failures, "status": failures.isEmpty ? "success" : "failure"])
             }
@@ -5724,7 +5728,6 @@ final class GameScene: SKScene {
     }
 
     private func addSelectionInfoPanel(frame: CGRect, compact: Bool) {
-        selectionInfoRowAvailableWidth = frame.width - 20
         selectionInfoRowBaseFontSize = compact ? 9.5 : 10.5
         selectionInfoTitleLabel = makeHUDLabel(slot: "selectionTitle", font: "AvenirNextCondensed-DemiBold", size: 12, color: HUDPalette.gold)
         for index in 0..<(compact ? 4 : 5) {
@@ -6346,7 +6349,7 @@ final class GameScene: SKScene {
         for (index, label) in selectionInfoRowLabels.enumerated() {
             let rawText = index < content.rows.count ? content.rows[index] : ""
             label.text = compactSelectionInfoRow(rawText)
-            fitSelectionInfoRow(label)
+            if let slot = hudLayout?.slots["row\(index)"] { fitSelectionInfoRow(label, in: slot) }
             label.fontColor = rowColors[index]
         }
         updateSelectionTargetHealthBar(selected: selected)
@@ -6391,21 +6394,25 @@ final class GameScene: SKScene {
         return compact.trimmingCharacters(in: .whitespaces)
     }
 
-    private func fitSelectionInfoRow(_ label: SKLabelNode) {
+    private func fitSelectionInfoRow(_ label: SKLabelNode, in slot: CGRect) {
         label.fontSize = selectionInfoRowBaseFontSize
         label.xScale = 1
-        guard selectionInfoRowAvailableWidth > 0,
-              !(label.text?.isEmpty ?? true) else { return }
-
-        let rawWidth = label.frame.width
-        guard rawWidth > selectionInfoRowAvailableWidth else { return }
-
-        let fontRatio = selectionInfoRowAvailableWidth / max(rawWidth, 1)
-        label.fontSize = max(7.5, selectionInfoRowBaseFontSize * fontRatio)
-        let fittedWidth = label.frame.width
-        if fittedWidth > selectionInfoRowAvailableWidth {
-            label.xScale = min(1, selectionInfoRowAvailableWidth / max(fittedWidth, 1))
+        label.yScale = 1
+        label.position = CGPoint(x: slot.minX, y: slot.midY)
+        guard slot.width > 0, slot.height > 0, !(label.text?.isEmpty ?? true) else { return }
+        let floor = min(8, selectionInfoRowBaseFontSize)
+        for _ in 0..<2 {
+            let bounds = label.frame
+            guard bounds.width > 0, bounds.height > 0, bounds.width.isFinite, bounds.height.isFinite else { return }
+            let ratio = min((slot.width - 1) / bounds.width, (slot.height - 0.5) / bounds.height)
+            guard ratio < 1, label.fontSize > floor else { break }
+            label.fontSize = max(floor, label.fontSize * ratio)
         }
+        let bounds = label.frame
+        if bounds.width > slot.width { label.xScale = slot.width / bounds.width }
+        // Font alignment uses typographic metrics; center the actual ink in its canonical slot.
+        label.position.x += slot.minX - label.frame.minX
+        label.position.y += slot.midY - label.frame.midY
     }
 
     private func selectionInfoRowColors(for selected: [GameEntity]) -> [UIColor] {

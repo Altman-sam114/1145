@@ -6284,3 +6284,12 @@ C复核（2026-10-24）：本地/远端main974622eb3640ae7ec0969ebc1b6d5e4dec1ba
 - 已核验 v5.69 run40165304151/attempt1/main699e172 原包：artifact12588462536，digest/CRC一致，双构建/24图/JUnit10零失败1准确skip；小屏战术HUD占屏70.7%。它是旧版基线，不证明本轮实现。
 - 本机只静态 diff/AST/JSON/YAML/plist；新实现尚未云端构建/截图。内置生图4次503，用户要求调查后发现成功项目与本会话服务路由不同；未擅自切换会话、全局配置或收费API。详见美术说明与work.md。
 - 本轮关键文件：GameScene、Art、工程Resources、check_unit_art、workflow/runner/package和对应说明。总目标仍未完成：真实原生效果、易用性、进一步地图/兵模质量、动态海空表现与完整对局尚需逐步验证，不能以一次构建/固定截图冒充全面复刻。
+
+### v6.1 / 紧凑选择文字实际边界修复（待云端验收）
+
+日期：2026-10-28。
+
+- v6.0精确7ba2ab3的run40699552229/attempt1官方包已核验：artifact12821393791，ZIP153519bytes，SHA256/API digest09b7b672f3e0bf77a34a63d6f8283b521b45cb52fffe245070e0fd5fea4e34a3、全项CRC通过。双构建与十种source/bundle资源、5+100+6脚本方法通过；失败在HUD合同15个小屏case的selection row文字边界，stateRestored=true，0/24正式截图，JUnit10/4fail/1准确skip，不计视觉成功。
+- fitSelectionInfoRow改由HUDLayout行slot统一约束宽高，重置基准后按真实glyph框拟合/定位，不仅按typographic center或字宽；原容差、25矩阵和24探针不变，增加每行slot/bounds/font/scale原始证据。没有放宽gate或用旧图填缺项。
+- 正常Git HTTPS在TLS握手失败，未冒称push成功；使用Altman-sam114认证的GitHub官方Git Data API逐对象验证，证明parent roundtrip、24blob、tree与精确7ba2ab3相同后force=false快进main；GitHub真实触发push事件。没有改全局配置、关闭证书校验、用其他SSH账号或重写历史。发布回执保存在本机临时证据目录。
+- 关键文件GameScene及本日志/工作台；本机仅静态检查与Git/API操作，未本机编译、运行或测试。新行拟合尚待云端；全面视觉、真实触控及完整对局目标仍未完成。
