@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "version": "v6.0",
+  "createdDate": "2026-10-28",
+  "generator": "built-in image generation; original project art",
+  "decodeMaxPixels": 384,
+  "promptDocument": "md/art/v6.0-unit-art.md",
+  "assets": [
+    {
+      "kind": "humvee",
+      "file": "Units/scout.png",
+      "sourceFile": "call_512d4604331740af8c526597044e90a9.png",
+      "bytes": 1728719,
+      "sha256": "6b8327c0446fbda124ec777546a41405f734f43c713819fc2d6de6e61a5078f8",
+      "width": 1254,
+      "height": 1254,
+      "worldWidth": 58
+    },
+    {
+      "kind": "tank",
+      "file": "Units/tank.png",
+      "sourceFile": "call_7f896064c6b647e79008df806b7b8d9f.png",
+      "bytes": 1370216,
+      "sha256": "bd18a1d74ad2238581d945b65993b58a45588da10c5a8f0e997b43c5a8410f47",
+      "width": 1254,
+      "height": 1254,
+      "worldWidth": 66
+    },
+    {
+      "kind": "artillery",
+      "file": "Units/artillery.png",
+      "sourceFile": "call_1c3ea6ebe2f643c8a95e8f2878a4222e.png",
+      "bytes": 1067803,
+      "sha256": "a82868256919b0396795e8079315f2d3bcea4e292faff2439ea3f1f41d5de93e",
+      "width": 1254,
+      "height": 1254,
+      "worldWidth": 74
+    },
+    {
+      "kind": "mechanic",
+      "file": "Units/repair-truck.png",
+      "sourceFile": "call_94aecf2bb6b545ca87bdaf8f0625d388.png",
+      "bytes": 1359652,
+      "sha256": "1ba3da87d90be2b8669290f3af6da30e3f152a59be4b6429993728193c6a1401",
+      "width": 1254,
+      "height": 1254,
+      "worldWidth": 66
+    },
+    {
+      "kind": "aaTruck",
+      "file": "Units/mobile-aa.png",
+      "sourceFile": "call_92e75141d50746bca6094692226fb50b.png",
+      "bytes": 1631165,
+      "sha256": "3be565d6e70580b5b9d9e3bff6bd9b169d8149c46d9f7349989b670181bae4bf",
+      "width": 1254,
+      "height": 1254,
+      "worldWidth": 66
+    },
+    {
+      "kind": "helicopter",
+      "file": "Units/helicopter.png",
+      "sourceFile": "call_4e5396894e3a4163871c1ff98b4072d6.png",
+      "bytes": 1021815,
+      "sha256": "38b9b138beab348882aca08cc98c6bc8109b51bc4f8a0eff5171a29604e7a5e3",
+      "width": 1254,
+      "height": 1254,
+      "worldWidth": 78
+    },
+    {
+      "kind": "fighter",
+      "file": "Units/fighter.png",
+      "sourceFile": "call_a06df40486de4775ac686b794e660585.png",
+      "bytes": 1111399,
+      "sha256": "db0615f9966c97e0b55460717b95ba034a88564c13ab8eb54b8edec8b1afb8b2",
+      "width": 1254,
+      "height": 1254,
+      "worldWidth": 76
+    },
+    {
+      "kind": "battleship",
+      "file": "Units/battleship.png",
+      "sourceFile": "call_faf89cc8190c40eb9bb78fe94f4f1610.png",
+      "bytes": 1218924,
+      "sha256": "6bfe6ab5da4dcd0ddacf4ae0b2b31870bcb4d762a0ee3ce1b3a2b2b3e1d4724c",
+      "width": 1254,
+      "height": 1254,
+      "worldWidth": 106
+    },
+    {
+      "kind": "carrier",
+      "file": "Units/carrier.png",
+      "sourceFile": "call_Vb0gkxWNsbLDK6xNE6ZFH5nt.png",
+      "bytes": 2052097,
+      "sha256": "49bf98b9a8b7352c7e4c5c5c6fe1558bcc25d7e25c979d44fe8c84fce35589c3",
+      "width": 1536,
+      "height": 1024,
+      "worldWidth": 128
+    },
+    {
+      "kind": "submarine",
+      "file": "Units/submarine.png",
+      "sourceFile": "call_vJNEwMyxzuMvXROuEA36Za0o.png",
+      "bytes": 1767971,
+      "sha256": "20b16a2bc3dc9ca962e3696af9000b24af252aee304bd3ae93ba8eea71d92549",
+      "width": 1536,
+      "height": 1024,
+      "worldWidth": 88
+    }
+  ]
+}

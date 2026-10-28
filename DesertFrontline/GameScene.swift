@@ -1,4 +1,5 @@
 import CryptoKit
+import ImageIO
 import SpriteKit
 import UIKit
 
@@ -335,6 +336,36 @@ private enum EntityKind: CaseIterable, Hashable {
         }
     }
 
+    var artworkName: String? {
+        switch self {
+        case .humvee: "scout"
+        case .tank: "tank"
+        case .artillery: "artillery"
+        case .mechanic: "repair-truck"
+        case .aaTruck: "mobile-aa"
+        case .helicopter: "helicopter"
+        case .fighter: "fighter"
+        case .battleship: "battleship"
+        case .carrier: "carrier"
+        case .submarine: "submarine"
+        default: nil
+        }
+    }
+
+    var artworkWidth: CGFloat {
+        switch self {
+        case .humvee: 58
+        case .tank, .mechanic, .aaTruck: 66
+        case .artillery: 74
+        case .helicopter: 78
+        case .fighter: 76
+        case .battleship: 106
+        case .carrier: 128
+        case .submarine: 88
+        default: footprint
+        }
+    }
+
     var requiredFactory: EntityKind? {
         switch self {
         case .aaTruck, .humvee, .tank, .artillery, .mechanic:
@@ -516,32 +547,53 @@ private enum HudAction: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .selectArmy: "ARMY"
+        case .selectArmy: "Army"
         case .controlGroup1: "G1"
         case .controlGroup2: "G2"
-        case .holdPosition: "HOLD"
-        case .stop: "STOP"
-        case .cycleTarget: "TGT"
-        case .attackMove: "AMOV"
-        case .buildHumvee: "HMV"
+        case .holdPosition: "Hold"
+        case .stop: "Stop"
+        case .cycleTarget: "Target"
+        case .attackMove: "Advance"
+        case .buildHumvee: "Scout"
         case .buildAATruck: "AA"
-        case .buildTank: "TANK"
-        case .buildArtillery: "ART"
-        case .buildMechanic: "MECH"
-        case .buildHelicopter: "HELI"
-        case .buildFighter: "JET"
-        case .buildBattleship: "SHIP"
-        case .buildSubmarine: "SUB"
-        case .buildCarrier: "CV"
-        case .setRally: "RLY"
-        case .buildBase: "BASE"
-        case .reconSweep: "SCAN"
-        case .fieldRepair: "REPR"
-        case .airStrike: "AIRS"
-        case .navalBarrage: "BARR"
+        case .buildTank: "Tank"
+        case .buildArtillery: "Arty"
+        case .buildMechanic: "Repair"
+        case .buildHelicopter: "Heli"
+        case .buildFighter: "Jet"
+        case .buildBattleship: "Warship"
+        case .buildSubmarine: "Sub"
+        case .buildCarrier: "Carrier"
+        case .setRally: "Rally"
+        case .buildBase: "Build"
+        case .reconSweep: "Scan"
+        case .fieldRepair: "Repair"
+        case .airStrike: "Airstrike"
+        case .navalBarrage: "Barrage"
         case .cycleAI: "AI"
-        case .focusHQ: "HQ"
-        case .newSkirmish: "SKRM"
+        case .focusHQ: "Base"
+        case .newSkirmish: "Restart"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .selectArmy: "square.stack.3d.up"
+        case .controlGroup1, .controlGroup2: "person.3.sequence"
+        case .holdPosition: "shield.lefthalf.filled"
+        case .stop: "stop.fill"
+        case .cycleTarget: "scope"
+        case .attackMove: "arrow.up.right"
+        case .setRally: "flag.fill"
+        case .buildBase: "building.2.crop.circle"
+        case .reconSweep: "dot.radiowaves.left.and.right"
+        case .fieldRepair: "wrench.and.screwdriver"
+        case .airStrike: "airplane"
+        case .navalBarrage: "burst.fill"
+        case .cycleAI: "dial.low"
+        case .focusHQ: "house.fill"
+        case .newSkirmish: "arrow.clockwise"
+        default: "plus"
         }
     }
 
@@ -581,11 +633,11 @@ private enum HudPage: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .tactical: "TACT"
-        case .build: "BUILD"
-        case .air: "AIR"
-        case .naval: "SEA"
-        case .support: "SUP"
+        case .tactical: "Orders"
+        case .build: "Build"
+        case .air: "Air"
+        case .naval: "Fleet"
+        case .support: "Support"
         }
     }
 
@@ -596,6 +648,16 @@ private enum HudPage: String, CaseIterable {
         case .air: "wing"
         case .naval: "fleet"
         case .support: "ops"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .tactical: "scope"
+        case .build: "building.2"
+        case .air: "airplane"
+        case .naval: "ferry"
+        case .support: "antenna.radiowaves.left.and.right"
         }
     }
 
@@ -636,25 +698,23 @@ private struct HUDLayout {
         self.safe = safe
         let compact = safe.height < 500
         self.compact = compact
-        let top = CGRect(x: safe.minX, y: safe.maxY - 36, width: safe.width, height: 36)
+        let top = CGRect(x: safe.minX, y: safe.maxY - 28, width: safe.width, height: 28)
         let actionGap: CGFloat = compact ? 4 : 6
-        let buttonWidth = min(compact ? 88 : 100, (safe.width - 12 - CGFloat(page.actions.count - 1) * actionGap) / CGFloat(page.actions.count))
+        let buttonWidth = min(compact ? 76 : 100, (safe.width - 12 - CGFloat(page.actions.count - 1) * actionGap) / CGFloat(page.actions.count))
         let dockWidth = 12 + CGFloat(page.actions.count) * buttonWidth + CGFloat(page.actions.count - 1) * actionGap
-        let dock = CGRect(x: safe.minX, y: safe.minY, width: dockWidth, height: compact ? 64 : 76)
-        let railWidth: CGFloat = compact ? 56 : 66
-        let pageHeight: CGFloat = compact ? 44 : 50
-        let pageGap: CGFloat = compact ? 3 : 6
-        let railHeight = 10 + pageHeight * 5 + pageGap * 4
-        let rail = CGRect(x: safe.minX, y: top.minY - 6 - railHeight, width: railWidth, height: railHeight)
-        let mapWidth = min(196, max(156, safe.width * 0.22))
-        let mapHeight = min(126, max(84, safe.height * 0.24))
+        let dock = CGRect(x: safe.minX, y: safe.minY, width: dockWidth, height: compact ? 60 : 76)
+        let pageGap: CGFloat = 4
+        let railWidth: CGFloat = compact ? 252 : 332
+        let rail = CGRect(x: safe.minX, y: dock.maxY + 6, width: railWidth, height: compact ? 52 : 60)
+        let pageWidth = (railWidth - 8 - 4 * pageGap) / 5
+        let mapWidth: CGFloat = compact ? 140 : 184
+        let mapHeight: CGFloat = compact ? 60 : 108
         let mapPanel = CGRect(x: safe.maxX - mapWidth, y: top.minY - 6 - mapHeight - 88,
                               width: mapWidth, height: mapHeight + 88)
-        let centerX = rail.maxX + 8
-        let centerWidth = mapPanel.minX - 8 - centerX
-        let mission = CGRect(x: centerX, y: top.minY - 60, width: min(460, centerWidth), height: 54)
-        let message = CGRect(x: centerX, y: mission.minY - 28, width: min(540, centerWidth), height: 22)
-        let selection = CGRect(x: centerX, y: dock.maxY + 6, width: min(compact ? 340 : 420, centerWidth), height: compact ? 112 : 140)
+        let mission = CGRect(x: safe.minX, y: top.minY - 46, width: compact ? 280 : 360, height: 40)
+        let message = CGRect(x: safe.minX, y: mission.minY - 24, width: compact ? 320 : 440, height: 18)
+        let selection = CGRect(x: rail.maxX + 8, y: dock.maxY + 6,
+                               width: min(compact ? 300 : 420, safe.maxX - rail.maxX - 8), height: compact ? 92 : 140)
         panels = ["resources": top, "rail": rail, "dock": dock, "mission": mission,
                   "message": message, "selection": selection, "minimap": mapPanel]
 
@@ -664,7 +724,7 @@ private struct HUDLayout {
         let footer = CGRect(x: mapPanel.minX + 6, y: mapPanel.minY + 6, width: mapWidth - 12, height: 44)
         let mapOut = CGRect(x: footer.maxX - 92, y: footer.minY, width: 44, height: 44)
         let mapIn = CGRect(x: footer.maxX - 44, y: footer.minY, width: 44, height: 44)
-        let innerTop = top.insetBy(dx: 10, dy: 6)
+        let innerTop = top.insetBy(dx: 12, dy: 3)
         let moneyWidth = innerTop.width * 0.16
         let incomeWidth = innerTop.width * 0.30
         let forcesWidth = innerTop.width * 0.15
@@ -679,23 +739,23 @@ private struct HUDLayout {
             "forces": CGRect(x: innerTop.minX + moneyWidth + incomeWidth, y: innerTop.minY, width: forcesWidth - 6, height: innerTop.height),
             "ai": CGRect(x: innerTop.minX + moneyWidth + incomeWidth + forcesWidth, y: innerTop.minY,
                          width: innerTop.width - moneyWidth - incomeWidth - forcesWidth, height: innerTop.height),
-            "missionTitle": CGRect(x: mission.minX + 10, y: mission.maxY - 19, width: mission.width - 20, height: 14),
-            "missionDetail": CGRect(x: mission.minX + 10, y: mission.minY + 15, width: mission.width - 20, height: 18),
-            "messageText": message.insetBy(dx: 8, dy: 3),
+            "missionTitle": CGRect(x: mission.minX + 10, y: mission.maxY - 17, width: mission.width - 20, height: 12),
+            "missionDetail": CGRect(x: mission.minX + 10, y: mission.minY + 11, width: mission.width - 20, height: 11),
+            "messageText": message.insetBy(dx: 8, dy: 2),
             "selectionTitle": CGRect(x: selection.minX + 10, y: selection.maxY - 20, width: selection.width - 20, height: 16),
             "selected": CGRect(x: selection.minX + 10, y: selection.maxY - 34, width: selection.width - 20, height: 12),
-            "queue": CGRect(x: selection.minX + 10, y: selection.minY + 11, width: selection.width - 20, height: 12)
+            "queue": CGRect(x: selection.minX + 10, y: selection.minY + (compact ? 6 : 11), width: selection.width - 20, height: compact ? 10 : 12)
         ]
         for index in 0..<(compact ? 4 : 5) {
             slots["row\(index)"] = CGRect(x: selection.minX + 10,
-                y: selection.maxY - 49 - CGFloat(index) * (compact ? 13 : 16),
-                width: selection.width - 20, height: compact ? 12 : 14)
+                y: selection.maxY - 45 - CGFloat(index) * (compact ? 10 : 16),
+                width: selection.width - 20, height: compact ? 10 : 14)
         }
         self.slots = slots
         var pages: [HudPage: CGRect] = [:]
         for (index, tab) in HudPage.allCases.enumerated() {
-            pages[tab] = CGRect(x: rail.minX + 5, y: rail.maxY - 5 - pageHeight - CGFloat(index) * (pageHeight + pageGap),
-                               width: rail.width - 10, height: pageHeight)
+            pages[tab] = CGRect(x: rail.minX + 4 + CGFloat(index) * (pageWidth + pageGap), y: rail.minY + 4,
+                               width: pageWidth, height: rail.height - 8)
         }
         self.pages = pages
         var actions: [HudAction: CGRect] = [:]
@@ -737,13 +797,13 @@ private final class HUDTextLabel: SKLabelNode {
 }
 
 private enum HUDPalette {
-    static let panel = UIColor(red: 0.080, green: 0.090, blue: 0.087, alpha: 0.94)
-    static let panelRaised = UIColor(red: 0.13, green: 0.145, blue: 0.135, alpha: 0.97)
-    static let panelDeep = UIColor(red: 0.045, green: 0.052, blue: 0.049, alpha: 0.96)
-    static let border = UIColor(red: 0.44, green: 0.46, blue: 0.39, alpha: 0.65)
-    static let borderSoft = UIColor(red: 0.36, green: 0.39, blue: 0.35, alpha: 0.65)
-    static let gold = UIColor(red: 0.86, green: 0.74, blue: 0.47, alpha: 1.0)
-    static let cyan = UIColor(red: 0.55, green: 0.76, blue: 0.71, alpha: 1.0)
+    static let panel = UIColor(red: 0.070, green: 0.115, blue: 0.145, alpha: 0.95)
+    static let panelRaised = UIColor(red: 0.12, green: 0.18, blue: 0.21, alpha: 0.98)
+    static let panelDeep = UIColor(red: 0.035, green: 0.067, blue: 0.09, alpha: 0.97)
+    static let border = UIColor(red: 0.43, green: 0.57, blue: 0.60, alpha: 0.65)
+    static let borderSoft = UIColor(red: 0.28, green: 0.39, blue: 0.43, alpha: 0.60)
+    static let gold = UIColor(red: 0.94, green: 0.77, blue: 0.45, alpha: 1.0)
+    static let cyan = UIColor(red: 0.38, green: 0.83, blue: 0.83, alpha: 1.0)
     static let warning = UIColor(red: 1.0, green: 0.42, blue: 0.27, alpha: 1.0)
     static let text = UIColor(red: 0.90, green: 0.94, blue: 0.91, alpha: 1.0)
     static let mutedText = UIColor(red: 0.62, green: 0.73, blue: 0.70, alpha: 1.0)
@@ -997,6 +1057,7 @@ private final class GameEntity {
     var buildProgressRemaining: TimeInterval = 0
     var rallyPoint: CGPoint?
     let node = SKNode()
+    var artworkNode: SKSpriteNode?
     let selectionNode: SKShapeNode
     let weaponReadinessNode = SKNode()
     var weaponReadinessTicks: [SKShapeNode] = []
@@ -1111,6 +1172,9 @@ final class GameScene: SKScene {
     private var worldBounds = CGRect.zero
 
     private var entities: [Int: GameEntity] = [:]
+    private var unitArtworkTextures: [EntityKind: SKTexture] = [:]
+    private var terrainSurfaceTextures: [Int: SKTexture] = [:]
+    private var hudSymbolTextures: [String: SKTexture] = [:]
     private var controlPoints: [BattlefieldControlPoint] = []
     private var selectedIDs = Set<Int>()
     private var incomingThreatsByTargetID: [Int: [GameEntity]] = [:]
@@ -1582,7 +1646,9 @@ final class GameScene: SKScene {
                 projectionValid && hasWindowSafeArea && size.width > size.height && abs(view.bounds.width - size.width) < 1 &&
                 abs(view.bounds.height - size.height) < 1 && window.safeAreaInsets == windowSafeAreaInsets,
             "map": terrain.count == rows && mapNode.children.count >= rows * cols,
-            "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count,
+            "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count &&
+                EntityKind.allCases.filter({ $0.artworkName != nil }).allSatisfy({ unitArtworkTexture(for: $0) != nil }) &&
+                attached.filter({ !$0.kind.isStructure }).allSatisfy({ $0.artworkNode?.parent != nil }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
                 moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty &&
@@ -1626,6 +1692,13 @@ final class GameScene: SKScene {
                                     "ignoresSiblingOrder": view.ignoresSiblingOrder,
                                     "viewClass": String(describing: type(of: view))],
             "projection": projection,
+            "artwork": ["policy": "rgba384-alpha-crop-v1", "attachedSprites": attached.filter({ $0.artworkNode != nil }).count,
+                        "textures": EntityKind.allCases.compactMap { kind -> [String: Any]? in
+                            guard let name = kind.artworkName, let texture = unitArtworkTextures[kind] else { return nil }
+                            return ["kind": kind.shortCode, "file": "Art/Units/\(name).png",
+                                    "width": texture.size().width, "height": texture.size().height,
+                                    "worldWidth": kind.artworkWidth]
+                        }],
             "counts": ["mapNodes": mapNode.children.count, "entities": attached.count, "playerUnits": playerUnits.count,
                        "visiblePlayerUnits": visiblePlayerUnits.count, "panels": panelNames.count, "pages": layout.pages.count,
                        "actions": hudButtonShapes.count, "fogNodes": fogLayer.children.count, "visibleTiles": visibleTiles.count,
@@ -1826,11 +1899,9 @@ final class GameScene: SKScene {
                 minY = min(minY, center.y - tileHeight / 2)
                 maxY = max(maxY, center.y + tileHeight / 2)
 
-                let shape = SKShapeNode(path: diamondPath(width: tileWidth, height: tileHeight))
+                let shape = SKSpriteNode(texture: terrainSurfaceTexture(for: terrain[row][col], tile: tile))
+                shape.size = CGSize(width: tileWidth + 0.8, height: tileHeight + 0.4)
                 shape.position = center
-                shape.lineWidth = 1
-                shape.strokeColor = UIColor(red: 0.55, green: 0.48, blue: 0.34, alpha: 0.55)
-                shape.fillColor = color(for: terrain[row][col], tile: tile)
                 shape.zPosition = zPosition(for: center)
                 mapNode.addChild(shape)
 
@@ -1851,29 +1922,74 @@ final class GameScene: SKScene {
         worldBounds = CGRect(x: minX - 120, y: minY - 120, width: maxX - minX + 240, height: maxY - minY + 240)
     }
 
+    private func terrainSurfaceTexture(for terrain: Terrain, tile: TileCoord) -> SKTexture {
+        let material: Int
+        switch terrain {
+        case .sand: material = 0
+        case .road: material = 1
+        case .water: material = 2
+        case .oil: material = 3
+        case .ridge: material = 4
+        }
+        let key = material * 5 + terrainDetailHash(for: tile) % 5
+        if let cached = terrainSurfaceTextures[key] { return cached }
+        let size = CGSize(width: 260, height: 132)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        var state = UInt64(key + 1) &* 0x9E3779B97F4A7C15
+        func sample() -> CGFloat {
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            return CGFloat((state >> 32) & 0xFFFF) / 65535
+        }
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+            let context = renderer.cgContext
+            let boundary = CGMutablePath()
+            boundary.addLines(between: [CGPoint(x: size.width / 2, y: 0), CGPoint(x: size.width, y: size.height / 2),
+                                        CGPoint(x: size.width / 2, y: size.height), CGPoint(x: 0, y: size.height / 2)])
+            boundary.closeSubpath()
+            context.addPath(boundary)
+            context.clip()
+            context.setFillColor(color(for: terrain, tile: tile).cgColor)
+            context.fill(CGRect(origin: .zero, size: size))
+            // Fine deterministic material grain is baked once per variant, not per tile or frame.
+            for index in 0..<(terrain == .water ? 800 : 2200) {
+                let light = index.isMultiple(of: 3)
+                context.setFillColor((light ? UIColor.white : UIColor.black).withAlphaComponent(light ? 0.10 : 0.055).cgColor)
+                let point = CGPoint(x: sample() * size.width, y: sample() * size.height)
+                let width = terrain == .water ? 3 + sample() * 6 : 0.6 + sample() * 1.7
+                context.fillEllipse(in: CGRect(x: point.x, y: point.y, width: width, height: 0.5 + sample() * 0.9))
+            }
+        }
+        let texture = SKTexture(image: image)
+        texture.filteringMode = .linear
+        terrainSurfaceTextures[key] = texture
+        return texture
+    }
+
     private func color(for terrain: Terrain, tile: TileCoord) -> UIColor {
         switch terrain {
         case .sand:
             let variations: [(CGFloat, CGFloat, CGFloat)] = [
-                (-0.030, -0.026, -0.018),
-                (-0.012, -0.010, -0.006),
+                (-0.010, -0.009, -0.007),
+                (-0.004, -0.004, -0.003),
                 (0.000, 0.000, 0.000),
-                (0.016, 0.014, 0.009),
-                (0.030, 0.025, 0.015)
+                (0.005, 0.004, 0.003),
+                (0.010, 0.009, 0.006)
             ]
             let variation = variations[terrainDetailHash(for: tile) % variations.count]
             return UIColor(
-                red: 0.82 + variation.0,
+                red: 0.78 + variation.0,
                 green: 0.70 + variation.1,
-                blue: 0.45 + variation.2,
+                blue: 0.54 + variation.2,
                 alpha: 1.0
             )
         case .road:
-            return UIColor(red: 0.53, green: 0.51, blue: 0.44, alpha: 1.0)
+            return UIColor(red: 0.43, green: 0.44, blue: 0.42, alpha: 1.0)
         case .water:
-            return UIColor(red: 0.07, green: 0.55, blue: 0.65, alpha: 1.0)
+            return UIColor(red: 0.10, green: 0.36, blue: 0.44, alpha: 1.0)
         case .oil:
-            return UIColor(red: 0.70, green: 0.62, blue: 0.40, alpha: 1.0)
+            return UIColor(red: 0.62, green: 0.56, blue: 0.43, alpha: 1.0)
         case .ridge:
             return UIColor(red: 0.42, green: 0.37, blue: 0.31, alpha: 1.0)
         }
@@ -1888,7 +2004,7 @@ final class GameScene: SKScene {
                     path: diamondPath(width: tileWidth - 5, height: tileHeight - 3)
                 )
                 shallowWater.position = center
-                shallowWater.fillColor = UIColor(red: 0.12, green: 0.72, blue: 0.68, alpha: 0.34)
+                shallowWater.fillColor = UIColor(red: 0.22, green: 0.64, blue: 0.62, alpha: 0.22)
                 shallowWater.strokeColor = .clear
                 shallowWater.zPosition = zPosition(for: center) + 0.12
                 mapNode.addChild(shallowWater)
@@ -1897,7 +2013,7 @@ final class GameScene: SKScene {
                     path: diamondPath(width: tileWidth - 18, height: tileHeight - 10)
                 )
                 innerShallow.position = center
-                innerShallow.fillColor = UIColor(red: 0.30, green: 0.86, blue: 0.80, alpha: 0.22)
+                innerShallow.fillColor = UIColor(red: 0.36, green: 0.75, blue: 0.70, alpha: 0.12)
                 innerShallow.strokeColor = .clear
                 innerShallow.zPosition = zPosition(for: center) + 0.14
                 mapNode.addChild(innerShallow)
@@ -1913,15 +2029,15 @@ final class GameScene: SKScene {
                     let wash = SKShapeNode(path: path)
                     wash.position = center
                     wash.strokeColor = UIColor(red: 0.62, green: 0.94, blue: 0.86, alpha: 0.32)
-                    wash.lineWidth = 7
+                    wash.lineWidth = 4.5
                     wash.lineCap = .round
                     wash.zPosition = zPosition(for: center) + 0.22
                     mapNode.addChild(wash)
 
                     let foam = SKShapeNode(path: path)
                     foam.position = center
-                    foam.strokeColor = UIColor.white.withAlphaComponent(0.72)
-                    foam.lineWidth = 2
+                    foam.strokeColor = UIColor.white.withAlphaComponent(0.48)
+                    foam.lineWidth = 1.2
                     foam.lineCap = .round
                     foam.zPosition = zPosition(for: center) + 0.26
                     mapNode.addChild(foam)
@@ -1934,9 +2050,9 @@ final class GameScene: SKScene {
                             y: start.y + (end.y - start.y) * t
                         )
                         let inward = CGPoint(x: -along.x * 0.16, y: -along.y * 0.16)
-                        let bubble = SKShapeNode(circleOfRadius: 1.2 + CGFloat((hash + index * 5) % 5) * 0.25)
+                        let bubble = SKShapeNode(circleOfRadius: 0.8 + CGFloat((hash + index * 5) % 5) * 0.15)
                         bubble.position = center + along + inward
-                        bubble.fillColor = UIColor.white.withAlphaComponent(0.5 + CGFloat((hash + index * 3) % 3) * 0.1)
+                        bubble.fillColor = UIColor.white.withAlphaComponent(0.28 + CGFloat((hash + index * 3) % 3) * 0.08)
                         bubble.strokeColor = .clear
                         bubble.zPosition = zPosition(for: center) + 0.28
                         mapNode.addChild(bubble)
@@ -2497,20 +2613,10 @@ final class GameScene: SKScene {
         for (index, offset) in offsets.enumerated() {
             let width = CGFloat(17 + (tile.row + index) % 3 * 4)
             let height = CGFloat(13 + (tile.col + index) % 2 * 5)
-            let house = SKShapeNode(rectOf: CGSize(width: width, height: height), cornerRadius: 2)
-            house.position = offset
-            house.fillColor = UIColor(red: 0.72, green: 0.68, blue: 0.59, alpha: 1.0)
-            house.strokeColor = UIColor(red: 0.38, green: 0.32, blue: 0.24, alpha: 1.0)
-            house.lineWidth = 1.2
+            let house = addIsometricBlock(to: node, width: width, depth: height, height: 9 + CGFloat(index % 2) * 4,
+                                         at: offset, roof: UIColor(red: 0.76, green: 0.72, blue: 0.61, alpha: 1),
+                                         trim: UIColor(red: 0.25, green: 0.36, blue: 0.36, alpha: 1))
             house.zPosition = CGFloat(index) * 0.05
-            node.addChild(house)
-
-            let roof = SKShapeNode(rectOf: CGSize(width: width * 0.86, height: 4), cornerRadius: 1)
-            roof.position = offset + CGPoint(x: 0, y: height * 0.32)
-            roof.fillColor = UIColor(red: 0.53, green: 0.43, blue: 0.33, alpha: 1.0)
-            roof.strokeColor = .clear
-            roof.zPosition = house.zPosition + 0.01
-            node.addChild(roof)
         }
 
         let alley = SKShapeNode(rectOf: CGSize(width: 54, height: 4), cornerRadius: 1)
@@ -2812,6 +2918,58 @@ final class GameScene: SKScene {
         return entity
     }
 
+    private func unitArtworkTexture(for kind: EntityKind) -> SKTexture? {
+        if let cached = unitArtworkTextures[kind] { return cached }
+        guard let name = kind.artworkName,
+              let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Art/Units"),
+              let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceThumbnailMaxPixelSize: 384,
+                kCGImageSourceShouldCacheImmediately: true
+              ] as CFDictionary) else { return nil }
+        let texture = SKTexture(cgImage: croppedArtwork(image))
+        texture.filteringMode = .linear
+        unitArtworkTextures[kind] = texture
+        return texture
+    }
+
+    private func croppedArtwork(_ image: CGImage) -> CGImage {
+        let width = image.width, height = image.height
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+            bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else { return image }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
+        guard let data = context.data, let normalized = context.makeImage() else { return image }
+        let pixels = data.assumingMemoryBound(to: UInt8.self)
+        var minX = width, minY = height, maxX = -1, maxY = -1
+        for y in 0..<height {
+            for x in 0..<width where pixels[(y * width + x) * 4 + 3] >= 16 {
+                minX = min(minX, x); maxX = max(maxX, x)
+                minY = min(minY, y); maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= minX, maxY >= minY else { return image }
+        // Normalize generated padding once, not on each entity or render frame.
+        let bounds = CGRect(x: CGFloat(minX), y: CGFloat(minY), width: CGFloat(maxX - minX + 1), height: CGFloat(maxY - minY + 1))
+            .insetBy(dx: -2, dy: -2).intersection(CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
+        return normalized.cropping(to: bounds) ?? image
+    }
+
+    private func addUnitArtwork(for entity: GameEntity, to base: SKNode) -> Bool {
+        guard let texture = unitArtworkTexture(for: entity.kind) else { return false }
+        let sprite = SKSpriteNode(texture: texture)
+        sprite.name = "unit-art:\(entity.kind.artworkName ?? "")"
+        let width = entity.kind.artworkWidth
+        sprite.size = CGSize(width: width, height: width * texture.size().height / max(texture.size().width, 1))
+        sprite.position.y = entity.kind.domain == .air ? 24 : 8
+        sprite.color = entity.faction.color
+        sprite.colorBlendFactor = entity.faction == .enemy ? 0.14 : 0.025
+        base.addChild(sprite)
+        entity.artworkNode = sprite
+        return true
+    }
+
     private func configureEntityNode(_ entity: GameEntity) {
         let base = SKNode()
         entity.node.addChild(base)
@@ -2824,19 +2982,21 @@ final class GameScene: SKScene {
         shadow.isHidden = entity.kind.domain == .air
         base.addChild(shadow)
 
-        switch entity.kind {
-        case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .sonarBuoy, .guardTower, .samSite, .coastalBattery:
-            addStructureBody(for: entity, to: base)
-        case .aaTruck, .humvee, .tank, .artillery, .mechanic:
-            addLandUnitBody(for: entity, to: base)
-        case .helicopter, .fighter:
-            addAirUnitBody(for: entity, to: base)
-        case .battleship, .submarine, .carrier:
-            addNavalUnitBody(for: entity, to: base)
+        if !addUnitArtwork(for: entity, to: base) {
+            switch entity.kind {
+            case .hq, .barracks, .airfield, .shipyard, .oilDerrick, .radarOutpost, .sonarBuoy, .guardTower, .samSite, .coastalBattery:
+                addStructureBody(for: entity, to: base)
+            case .aaTruck, .humvee, .tank, .artillery, .mechanic:
+                addLandUnitBody(for: entity, to: base)
+            case .helicopter, .fighter:
+                addAirUnitBody(for: entity, to: base)
+            case .battleship, .submarine, .carrier:
+                addNavalUnitBody(for: entity, to: base)
+            }
         }
 
         configureNavalWakeNode(for: entity)
-        configureSubmarineDetailNode(for: entity)
+        if entity.artworkNode == nil { configureSubmarineDetailNode(for: entity) }
         entity.node.addChild(entity.submarineDetailNode)
         configureSubmarineContactCueNode(for: entity)
         entity.node.addChild(entity.submarineContactCueNode)
@@ -2846,8 +3006,8 @@ final class GameScene: SKScene {
         configureMechanicRepairEffectNode(for: entity)
 
         entity.selectionNode.fillColor = UIColor.clear
-        entity.selectionNode.strokeColor = UIColor(red: 0.2, green: 1.0, blue: 0.35, alpha: 1.0)
-        entity.selectionNode.lineWidth = 3
+        entity.selectionNode.strokeColor = HUDPalette.cyan.withAlphaComponent(0.88)
+        entity.selectionNode.lineWidth = 1.7
         entity.selectionNode.isHidden = true
         entity.selectionNode.zPosition = -1
         configureNavalHeadingCueNode(for: entity)
@@ -2874,6 +3034,11 @@ final class GameScene: SKScene {
         entity.node.addChild(entity.airDefenseThreatMarkerNode)
         configureIncomingThreatMarkerNode(for: entity)
         entity.node.addChild(entity.incomingThreatMarkerNode)
+        for range in [entity.landAirCombatRangeNode, entity.sonarCoverageNode, entity.escortCoverageNode,
+                      entity.navalGunRangeNode, entity.repairCoverageNode, entity.carrierGuardAnchorCoverageNode,
+                      entity.airDefenseThreatCoverageNode] {
+            range.alpha = 0.52
+        }
 
         let healthBack = SKShapeNode(rectOf: CGSize(width: entity.kind.footprint, height: 5), cornerRadius: 1)
         healthBack.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 16)
@@ -2891,21 +3056,14 @@ final class GameScene: SKScene {
         entity.node.addChild(entity.healthFill)
 
         let segmentCount = 6
-        let segmentWidth = max(7, min(10, entity.kind.footprint * 0.12))
-        let segmentHeight = max(3.5, min(4.5, segmentWidth * 0.52))
-        let segmentGap: CGFloat = 1.2
-        let towerHeight = CGFloat(segmentCount) * segmentHeight + CGFloat(segmentCount - 1) * segmentGap
-        let flagX = entity.kind.footprint * 0.35
-        let towerOffsetX = max(16, min(18, entity.kind.footprint * 0.06 + 15))
+        let segmentWidth = max(4, min(7, entity.kind.footprint * 0.11))
+        let segmentHeight: CGFloat = 2.6
+        let segmentGap: CGFloat = 0.8
+        let barWidth = CGFloat(segmentCount) * segmentWidth + CGFloat(segmentCount - 1) * segmentGap
+        let barY = -entity.kind.footprint * 0.36 - 7
         entity.healthTowerNode.removeAllChildren()
         entity.healthTowerSegments.removeAll(keepingCapacity: true)
-        // Keep the tower beside the flag while leaving the upper lane clear for
-        // FOCUS / ATK captions on compact land and air targets.
-        let flagY = entity.kind.footprint * 0.45 + 5
-        entity.healthTowerNode.position = CGPoint(
-            x: flagX + towerOffsetX,
-            y: flagY - towerHeight * 0.5 + 5
-        )
+        entity.healthTowerNode.position = CGPoint(x: 0, y: barY)
         entity.healthTowerNode.zPosition = 20
         for index in 0..<segmentCount {
             let segment = SKShapeNode(
@@ -2913,37 +3071,23 @@ final class GameScene: SKScene {
                 cornerRadius: min(1.2, segmentHeight * 0.24)
             )
             segment.position = CGPoint(
-                x: 0,
-                y: -towerHeight * 0.5 + segmentHeight * 0.5 + CGFloat(index) * (segmentHeight + segmentGap)
+                x: -barWidth * 0.5 + segmentWidth * 0.5 + CGFloat(index) * (segmentWidth + segmentGap),
+                y: 0
             )
             segment.fillColor = UIColor.black.withAlphaComponent(0.72)
-            segment.strokeColor = UIColor.white.withAlphaComponent(0.62)
-            segment.lineWidth = 0.7
+            segment.strokeColor = UIColor.black.withAlphaComponent(0.45)
+            segment.lineWidth = 0.5
             entity.healthTowerSegments.append(segment)
             entity.healthTowerNode.addChild(segment)
         }
         entity.node.addChild(entity.healthTowerNode)
 
         entity.teamFlag.fillColor = entity.faction.color
-        entity.teamFlag.strokeColor = UIColor.white.withAlphaComponent(0.85)
-        entity.teamFlag.lineWidth = 0.9
-        entity.teamFlag.position = CGPoint(x: entity.kind.footprint * 0.35, y: entity.kind.footprint * 0.45 + 5)
+        entity.teamFlag.path = diamondPath(width: 6, height: 6)
+        entity.teamFlag.strokeColor = UIColor.white.withAlphaComponent(0.70)
+        entity.teamFlag.lineWidth = 0.6
+        entity.teamFlag.position = CGPoint(x: -barWidth * 0.5 - 5, y: barY)
         entity.teamFlag.zPosition = 22
-
-        let flagPole = SKShapeNode(rectOf: CGSize(width: 1.6, height: 15), cornerRadius: 0.8)
-        flagPole.position = CGPoint(x: -0.6, y: -3)
-        flagPole.fillColor = UIColor(white: 0.86, alpha: 0.95)
-        flagPole.strokeColor = UIColor.black.withAlphaComponent(0.35)
-        flagPole.lineWidth = 0.5
-        flagPole.zPosition = -1
-        entity.teamFlag.addChild(flagPole)
-
-        let poleCap = SKShapeNode(circleOfRadius: 1.2)
-        poleCap.position = CGPoint(x: -0.6, y: 5)
-        poleCap.fillColor = UIColor(white: 0.92, alpha: 1.0)
-        poleCap.strokeColor = .clear
-        poleCap.zPosition = 1
-        entity.teamFlag.addChild(poleCap)
 
         entity.node.addChild(entity.teamFlag)
 
@@ -2952,7 +3096,7 @@ final class GameScene: SKScene {
         entity.label.fontColor = .white
         entity.label.verticalAlignmentMode = .center
         entity.label.horizontalAlignmentMode = .center
-        entity.label.position = CGPoint(x: 0, y: entity.kind.isStructure ? 4 : 0)
+        entity.label.position = CGPoint(x: 0, y: barY - 9)
         entity.label.zPosition = 23
         entity.node.addChild(entity.label)
 
@@ -2982,135 +3126,140 @@ final class GameScene: SKScene {
         updateHealthBar(entity)
     }
 
-    private func addStructureBody(for entity: GameEntity, to base: SKNode) {
+    @discardableResult
+    private func addIsometricBlock(to parent: SKNode, width: CGFloat, depth: CGFloat, height: CGFloat,
+                                   at position: CGPoint = .zero, roof: UIColor, trim: UIColor? = nil) -> SKNode {
+        let block = SKNode()
+        block.position = position
+        let left = CGPoint(x: -width / 2, y: height)
+        let front = CGPoint(x: 0, y: height - depth / 2)
+        let right = CGPoint(x: width / 2, y: height)
+        let back = CGPoint(x: 0, y: height + depth / 2)
+        let drop = CGPoint(x: 0, y: -height)
+        for (index, points) in [[left, front, front + drop, left + drop],
+                                 [front, right, right + drop, front + drop], [left, back, right, front]].enumerated() {
+            let path = CGMutablePath()
+            path.addLines(between: points)
+            path.closeSubpath()
+            let face = SKShapeNode(path: path)
+            face.fillColor = index == 2 ? roof : roof.blended(with: .black, amount: index == 0 ? 0.20 : 0.37)
+            face.strokeColor = UIColor(red: 0.20, green: 0.22, blue: 0.21, alpha: 0.8)
+            face.lineWidth = 0.6
+            face.zPosition = CGFloat(index)
+            block.addChild(face)
+        }
+        let lip = SKShapeNode(path: diamondPath(width: width - 3, height: depth - 2))
+        lip.position.y = height
+        lip.fillColor = .clear
+        lip.strokeColor = UIColor.white.withAlphaComponent(0.24)
+        lip.lineWidth = 0.7
+        lip.zPosition = 3
+        block.addChild(lip)
+        if let trim, height >= 10 {
+            let glass = CGMutablePath()
+            glass.move(to: left + CGPoint(x: 4, y: -4))
+            glass.addLine(to: front + CGPoint(x: -4, y: -4))
+            glass.addLine(to: front + CGPoint(x: -4, y: -8))
+            glass.addLine(to: left + CGPoint(x: 4, y: -8))
+            glass.closeSubpath()
+            let windows = SKShapeNode(path: glass)
+            windows.fillColor = trim.blended(with: UIColor(red: 0.14, green: 0.26, blue: 0.29, alpha: 1), amount: 0.55)
+            windows.strokeColor = UIColor.white.withAlphaComponent(0.26)
+            windows.lineWidth = 0.5
+            windows.zPosition = 4
+            block.addChild(windows)
+        }
+        parent.addChild(block)
+        return block
+    }
+
+    private func addFacilityBody(for entity: GameEntity, to base: SKNode) -> Bool {
+        guard [.hq, .barracks, .airfield, .shipyard].contains(entity.kind) else { return false }
+        let concrete = UIColor(red: 0.65, green: 0.63, blue: 0.53, alpha: 1)
+        let roof = UIColor(red: 0.75, green: 0.73, blue: 0.64, alpha: 1)
+        let steel = UIColor(red: 0.31, green: 0.38, blue: 0.39, alpha: 1)
+        addIsometricBlock(to: base, width: entity.kind == .airfield ? 116 : 100, depth: 50, height: 4,
+                          at: CGPoint(x: 0, y: -5), roof: concrete)
         switch entity.kind {
         case .hq:
-            let body = SKShapeNode(rectOf: CGSize(width: 66, height: 42), cornerRadius: 5)
-            body.fillColor = UIColor(red: 0.70, green: 0.67, blue: 0.60, alpha: 1.0)
-            body.strokeColor = UIColor(white: 0.22, alpha: 1.0)
-            body.lineWidth = 2
-            base.addChild(body)
-
-            let roof = SKShapeNode(rectOf: CGSize(width: 42, height: 16), cornerRadius: 3)
-            roof.position = CGPoint(x: 2, y: 14)
-            roof.fillColor = entity.faction.color
-            roof.strokeColor = .clear
-            base.addChild(roof)
-
-            let antenna = SKShapeNode(rectOf: CGSize(width: 4, height: 32), cornerRadius: 1)
-            antenna.position = CGPoint(x: -22, y: 30)
-            antenna.fillColor = UIColor(white: 0.15, alpha: 1.0)
-            antenna.strokeColor = .clear
-            base.addChild(antenna)
+            addIsometricBlock(to: base, width: 74, depth: 38, height: 22, roof: roof, trim: entity.faction.color)
+            addIsometricBlock(to: base, width: 42, depth: 24, height: 11,
+                              at: CGPoint(x: 0, y: 23), roof: steel, trim: HUDPalette.cyan)
+            let mast = SKShapeNode(rectOf: CGSize(width: 1.8, height: 28), cornerRadius: 0.6)
+            mast.position = CGPoint(x: 22, y: 48)
+            mast.fillColor = steel; mast.strokeColor = .clear
+            base.addChild(mast)
+            for y in [CGFloat(44), 51, 58] {
+                let aerial = SKShapeNode(rectOf: CGSize(width: 13, height: 1), cornerRadius: 0.4)
+                aerial.position = CGPoint(x: 22, y: y)
+                aerial.fillColor = steel; aerial.strokeColor = .clear
+                base.addChild(aerial)
+            }
+            let dish = SKShapeNode(ellipseOf: CGSize(width: 17, height: 9))
+            dish.position = CGPoint(x: -22, y: 35)
+            dish.zRotation = -0.45
+            dish.fillColor = roof; dish.strokeColor = steel; dish.lineWidth = 1
+            base.addChild(dish)
         case .barracks:
-            let body = SKShapeNode(rectOf: CGSize(width: 62, height: 34), cornerRadius: 4)
-            body.fillColor = UIColor(red: 0.58, green: 0.55, blue: 0.49, alpha: 1.0)
-            body.strokeColor = UIColor(white: 0.22, alpha: 1.0)
-            body.lineWidth = 2
-            base.addChild(body)
-
-            let door = SKShapeNode(rectOf: CGSize(width: 24, height: 12), cornerRadius: 2)
-            door.position = CGPoint(x: 0, y: -5)
-            door.fillColor = UIColor(white: 0.18, alpha: 1.0)
-            door.strokeColor = .clear
+            addIsometricBlock(to: base, width: 80, depth: 38, height: 21, roof: roof, trim: entity.faction.color)
+            for index in 0..<3 {
+                addIsometricBlock(to: base, width: 13, depth: 8, height: 3,
+                                  at: CGPoint(x: CGFloat(index - 1) * 18, y: 23), roof: steel)
+            }
+            let shutter = CGMutablePath()
+            shutter.addLines(between: [CGPoint(x: 5, y: -13), CGPoint(x: 29, y: -1),
+                                      CGPoint(x: 29, y: 12), CGPoint(x: 5, y: 0)])
+            shutter.closeSubpath()
+            let door = SKShapeNode(path: shutter)
+            door.fillColor = steel.blended(with: .black, amount: 0.4)
+            door.strokeColor = HUDPalette.gold.withAlphaComponent(0.7); door.lineWidth = 1
             base.addChild(door)
         case .airfield:
-            let runway = SKShapeNode(rectOf: CGSize(width: 82, height: 22), cornerRadius: 2)
-            runway.fillColor = UIColor(red: 0.28, green: 0.30, blue: 0.32, alpha: 1.0)
-            runway.strokeColor = UIColor(white: 0.16, alpha: 1.0)
-            runway.lineWidth = 2
-            base.addChild(runway)
-
-            let stripe = SKShapeNode(rectOf: CGSize(width: 60, height: 3), cornerRadius: 1)
-            stripe.fillColor = UIColor.white.withAlphaComponent(0.65)
-            stripe.strokeColor = .clear
-            base.addChild(stripe)
+            addIsometricBlock(to: base, width: 112, depth: 46, height: 1, roof: steel)
+            for index in -3...3 {
+                let stripe = SKShapeNode(rectOf: CGSize(width: 6, height: 1.4), cornerRadius: 0.4)
+                stripe.position = CGPoint(x: CGFloat(index) * 12, y: -CGFloat(index) * 5.7 + 1)
+                stripe.zRotation = -0.44
+                stripe.fillColor = UIColor.white.withAlphaComponent(0.78); stripe.strokeColor = .clear
+                base.addChild(stripe)
+            }
+            addIsometricBlock(to: base, width: 40, depth: 25, height: 17,
+                              at: CGPoint(x: -23, y: 20), roof: roof, trim: entity.faction.color)
+            addIsometricBlock(to: base, width: 13, depth: 10, height: 26,
+                              at: CGPoint(x: 29, y: 18), roof: steel, trim: HUDPalette.cyan)
+            for x in [CGFloat(-44), 44] {
+                let light = SKShapeNode(circleOfRadius: 1.3)
+                light.position = CGPoint(x: x, y: -x * 0.48)
+                light.fillColor = HUDPalette.gold; light.strokeColor = .clear
+                base.addChild(light)
+            }
         case .shipyard:
-            let dock = SKShapeNode(rectOf: CGSize(width: 72, height: 28), cornerRadius: 3)
-            dock.fillColor = UIColor(red: 0.45, green: 0.39, blue: 0.29, alpha: 1.0)
-            dock.strokeColor = UIColor(white: 0.18, alpha: 1.0)
-            dock.lineWidth = 2
-            base.addChild(dock)
+            addIsometricBlock(to: base, width: 42, depth: 25, height: 15,
+                              at: CGPoint(x: -18, y: 10), roof: roof, trim: entity.faction.color)
+            let crane = CGMutablePath()
+            crane.move(to: CGPoint(x: 22, y: -4)); crane.addLine(to: CGPoint(x: 22, y: 57))
+            crane.addLine(to: CGPoint(x: -26, y: 35))
+            let gantry = SKShapeNode(path: crane)
+            gantry.strokeColor = HUDPalette.gold; gantry.lineWidth = 3; gantry.lineJoin = .round
+            base.addChild(gantry)
+            let cable = CGMutablePath()
+            cable.move(to: CGPoint(x: -22, y: 37)); cable.addLine(to: CGPoint(x: -22, y: 18))
+            cable.addLine(to: CGPoint(x: -18, y: 16))
+            let hook = SKShapeNode(path: cable)
+            hook.strokeColor = steel; hook.lineWidth = 1.2
+            base.addChild(hook)
+            for index in 0..<3 {
+                addIsometricBlock(to: base, width: 12, depth: 7, height: 5,
+                                  at: CGPoint(x: -18 + CGFloat(index) * 14, y: -12), roof: steel)
+            }
+        default: break
+        }
+        return true
+    }
 
-            let crane = SKShapeNode(rectOf: CGSize(width: 10, height: 38), cornerRadius: 1)
-            crane.position = CGPoint(x: 24, y: 16)
-            crane.fillColor = UIColor(red: 0.86, green: 0.67, blue: 0.22, alpha: 1.0)
-            crane.strokeColor = .clear
-            base.addChild(crane)
-
-            let railStroke = crane.fillColor.withAlphaComponent(0.72)
-            let railFill = dock.strokeColor.withAlphaComponent(0.78)
-            let upperRail = SKShapeNode(rectOf: CGSize(width: 44, height: 1.6), cornerRadius: 0.8)
-            upperRail.position = CGPoint(x: -6, y: 6.5)
-            upperRail.fillColor = railFill
-            upperRail.strokeColor = railStroke
-            upperRail.lineWidth = 0.7
-            upperRail.zPosition = 0.2
-            base.addChild(upperRail)
-
-            let lowerRail = SKShapeNode(rectOf: CGSize(width: 44, height: 1.6), cornerRadius: 0.8)
-            lowerRail.position = CGPoint(x: -6, y: -6.5)
-            lowerRail.fillColor = railFill
-            lowerRail.strokeColor = railStroke
-            lowerRail.lineWidth = 0.7
-            lowerRail.zPosition = 0.2
-            base.addChild(lowerRail)
-
-            let forwardStand = SKShapeNode(rectOf: CGSize(width: 5, height: 3.8), cornerRadius: 0.9)
-            forwardStand.position = CGPoint(x: -22, y: 0)
-            forwardStand.fillColor = crane.fillColor.withAlphaComponent(0.48)
-            forwardStand.strokeColor = dock.strokeColor.withAlphaComponent(0.82)
-            forwardStand.lineWidth = 0.7
-            forwardStand.zPosition = 0.28
-            base.addChild(forwardStand)
-
-            let centerStand = SKShapeNode(rectOf: CGSize(width: 5, height: 3.8), cornerRadius: 0.9)
-            centerStand.position = CGPoint(x: -8, y: 0)
-            centerStand.fillColor = crane.fillColor.withAlphaComponent(0.48)
-            centerStand.strokeColor = dock.strokeColor.withAlphaComponent(0.82)
-            centerStand.lineWidth = 0.7
-            centerStand.zPosition = 0.28
-            base.addChild(centerStand)
-
-            let aftStand = SKShapeNode(rectOf: CGSize(width: 5, height: 3.8), cornerRadius: 0.9)
-            aftStand.position = CGPoint(x: 6, y: 0)
-            aftStand.fillColor = crane.fillColor.withAlphaComponent(0.48)
-            aftStand.strokeColor = dock.strokeColor.withAlphaComponent(0.82)
-            aftStand.lineWidth = 0.7
-            aftStand.zPosition = 0.28
-            base.addChild(aftStand)
-
-            let innerQuayEdge = SKShapeNode(rectOf: CGSize(width: 40, height: 1.4), cornerRadius: 0.7)
-            innerQuayEdge.position = CGPoint(x: -8, y: -10.5)
-            innerQuayEdge.fillColor = dock.strokeColor.withAlphaComponent(0.76)
-            innerQuayEdge.strokeColor = railStroke
-            innerQuayEdge.lineWidth = 0.6
-            innerQuayEdge.zPosition = 0.34
-            base.addChild(innerQuayEdge)
-
-            let forwardLowerMooring = SKShapeNode(circleOfRadius: 1.3)
-            forwardLowerMooring.position = CGPoint(x: -27, y: -10.5)
-            forwardLowerMooring.fillColor = crane.fillColor.withAlphaComponent(0.68)
-            forwardLowerMooring.strokeColor = dock.strokeColor.withAlphaComponent(0.84)
-            forwardLowerMooring.lineWidth = 0.6
-            forwardLowerMooring.zPosition = 0.4
-            base.addChild(forwardLowerMooring)
-
-            let forwardUpperMooring = SKShapeNode(circleOfRadius: 1.3)
-            forwardUpperMooring.position = CGPoint(x: -27, y: 10.5)
-            forwardUpperMooring.fillColor = crane.fillColor.withAlphaComponent(0.68)
-            forwardUpperMooring.strokeColor = dock.strokeColor.withAlphaComponent(0.84)
-            forwardUpperMooring.lineWidth = 0.6
-            forwardUpperMooring.zPosition = 0.4
-            base.addChild(forwardUpperMooring)
-
-            let aftMooring = SKShapeNode(circleOfRadius: 1.3)
-            aftMooring.position = CGPoint(x: 13, y: -10.5)
-            aftMooring.fillColor = crane.fillColor.withAlphaComponent(0.68)
-            aftMooring.strokeColor = dock.strokeColor.withAlphaComponent(0.84)
-            aftMooring.lineWidth = 0.6
-            aftMooring.zPosition = 0.4
-            base.addChild(aftMooring)
+    private func addStructureBody(for entity: GameEntity, to base: SKNode) {
+        if addFacilityBody(for: entity, to: base) { return }
+        switch entity.kind {
         case .oilDerrick:
             let tower = SKShapeNode(path: derrickPath())
             tower.fillColor = UIColor(red: 0.16, green: 0.14, blue: 0.12, alpha: 1.0)
@@ -4896,20 +5045,30 @@ final class GameScene: SKScene {
         zoomInHitFrame = layout.slots["zoomIn"]!
 
         for key in ["resources", "rail", "dock", "mission", "message", "selection", "minimap"] {
-            let panel = SKShapeNode(rect: layout.panels[key]!, cornerRadius: key == "resources" ? 5 : 7)
+            let frame = layout.panels[key]!
+            let shadow = SKShapeNode(rect: frame.offsetBy(dx: 0, dy: -2), cornerRadius: 8)
+            shadow.fillColor = UIColor.black.withAlphaComponent(0.22)
+            shadow.strokeColor = .clear
+            hudNode.addChild(shadow)
+            let panel = SKShapeNode(rect: frame, cornerRadius: key == "resources" ? 5 : 8)
             panel.name = "hud-panel:\(key)"
             panel.fillColor = key == "dock" || key == "rail" ? HUDPalette.panelDeep : HUDPalette.panel
             panel.strokeColor = HUDPalette.borderSoft
             panel.lineWidth = 0.75
             hudNode.addChild(panel)
+            let edge = SKShapeNode(rect: CGRect(x: frame.minX + 8, y: frame.maxY - 1.5,
+                                                width: frame.width - 16, height: 0.7))
+            edge.fillColor = (key == "mission" ? HUDPalette.gold : HUDPalette.cyan).withAlphaComponent(0.28)
+            edge.strokeColor = .clear
+            hudNode.addChild(edge)
         }
-        moneyLabel = makeHUDLabel(slot: "money", font: "AvenirNextCondensed-DemiBold", size: 20, color: HUDPalette.gold)
+        moneyLabel = makeHUDLabel(slot: "money", font: "AvenirNextCondensed-DemiBold", size: 18, color: HUDPalette.gold)
         incomeLabel = makeHUDLabel(slot: "income", size: 10)
         forcesLabel = makeHUDLabel(slot: "forces", size: 10, color: HUDPalette.cyan)
         aiStatusLabel = makeHUDLabel(slot: "ai", size: 9, color: HUDPalette.mutedText)
         missionTitleLabel = makeHUDLabel(slot: "missionTitle", font: "AvenirNextCondensed-DemiBold", size: 12, color: HUDPalette.gold)
         missionDetailLabel = makeHUDLabel(slot: "missionDetail", size: 9)
-        messageLabel = makeHUDLabel(slot: "messageText", size: 10)
+        messageLabel = makeHUDLabel(slot: "messageText", size: 9)
         messageLabel.sourceText = lastMessage.0
         messageLabel.fontColor = lastMessage.1
         messageLabel.alpha = lastMessage.2
@@ -4945,7 +5104,7 @@ final class GameScene: SKScene {
         if !isWritingHUDContract { ciEndStage("hud") }
     }
 
-    private func makeHUDLabel(slot: String, font: String = "Menlo", size fontSize: CGFloat,
+    private func makeHUDLabel(slot: String, font: String = "AvenirNext-Medium", size fontSize: CGFloat,
                               color: UIColor = HUDPalette.text) -> HUDTextLabel {
         let frame = hudLayout!.slots[slot]!
         let label = HUDTextLabel(fontNamed: font)
@@ -5429,6 +5588,9 @@ final class GameScene: SKScene {
                 expect(Set(hudButtonHitFrames.keys) == Set(page.actions) && hudPageHitFrames.count == 5 && hudButtonShapes.count == page.actions.count,
                        "rebuild", "stale-targets")
                 let panelArea = layout.panels.values.reduce(CGFloat.zero) { $0 + $1.width * $1.height }
+                expect(!layout.compact || panelArea / (fixtureSize.width * fixtureSize.height) <= 0.56,
+                       "containers", "compact-hud-density")
+                expect(layout.route(at: .zero) == .world, "routing", "battlefield-center-clear")
                 matrix.append(["fixture": fixtureID, "page": page.rawValue,
                                "size": ["width": fixtureSize.width, "height": fixtureSize.height],
                                "insets": insetJSON(fixtureInsets), "safeFrame": rectJSON(layout.safe),
@@ -5563,11 +5725,11 @@ final class GameScene: SKScene {
 
     private func addSelectionInfoPanel(frame: CGRect, compact: Bool) {
         selectionInfoRowAvailableWidth = frame.width - 20
-        selectionInfoRowBaseFontSize = compact ? 9 : 10
+        selectionInfoRowBaseFontSize = compact ? 9.5 : 10.5
         selectionInfoTitleLabel = makeHUDLabel(slot: "selectionTitle", font: "AvenirNextCondensed-DemiBold", size: 12, color: HUDPalette.gold)
         for index in 0..<(compact ? 4 : 5) {
             let rowFrame = hudLayout!.slots["row\(index)"]!
-            let row = SKLabelNode(fontNamed: "Menlo")
+            let row = SKLabelNode(fontNamed: "AvenirNext-Medium")
             row.name = "hud-row:\(index)"
             row.fontSize = selectionInfoRowBaseFontSize
             row.fontColor = selectionInfoNeutralColor
@@ -5606,6 +5768,26 @@ final class GameScene: SKScene {
         }
     }
 
+    private func hudSymbol(_ name: String, size: CGFloat) -> SKSpriteNode? {
+        let texture: SKTexture
+        if let cached = hudSymbolTextures[name] {
+            texture = cached
+        } else {
+            guard let image = UIImage(systemName: name, withConfiguration:
+                UIImage.SymbolConfiguration(pointSize: 22, weight: .medium))?.withTintColor(.white, renderingMode: .alwaysOriginal)
+            else { return nil }
+            texture = SKTexture(image: image)
+            texture.filteringMode = .linear
+            hudSymbolTextures[name] = texture
+        }
+        let symbol = SKSpriteNode(texture: texture)
+        let aspect = texture.size().width / max(texture.size().height, 1)
+        symbol.size = aspect >= 1 ? CGSize(width: size, height: size / aspect) : CGSize(width: size * aspect, height: size)
+        symbol.color = HUDPalette.cyan
+        symbol.colorBlendFactor = 1
+        return symbol
+    }
+
     private func makeButton(action: HudAction, frame: CGRect) -> SKNode {
         let node = SKNode()
         node.name = "hud:\(action.rawValue)"
@@ -5617,26 +5799,37 @@ final class GameScene: SKScene {
         node.addChild(shape)
         hudButtonShapes[action] = shape
 
+        if let kind = action.buildKind, let texture = unitArtworkTexture(for: kind) {
+            let preview = SKSpriteNode(texture: texture)
+            let scale = min(36 / max(texture.size().width, 1), 24 / max(texture.size().height, 1))
+            preview.size = CGSize(width: texture.size().width * scale, height: texture.size().height * scale)
+            preview.position.y = 12
+            node.addChild(preview)
+        } else if let symbol = hudSymbol(action.symbolName, size: 15) {
+            symbol.position.y = 13
+            node.addChild(symbol)
+        }
+
         let title = HUDTextLabel(fontNamed: "AvenirNextCondensed-DemiBold")
         title.name = "hud-text:action:\(action.rawValue):title"
         title.sourceText = action.title
-        title.fontSize = frame.width < 66 ? 14 : 17
+        title.fontSize = frame.width < 66 ? 11 : 12
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
-        title.position = CGPoint(x: 0, y: 9)
+        title.position = CGPoint(x: 0, y: -4)
         node.addChild(title)
-        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 4, y: 0, width: frame.width - 8, height: 22), title.fontSize))
-        let subtitleLabel = HUDTextLabel(fontNamed: "Menlo")
+        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 4, y: -11, width: frame.width - 8, height: 14), title.fontSize))
+        let subtitleLabel = HUDTextLabel(fontNamed: "AvenirNext-Medium")
         subtitleLabel.name = "hud-text:action:\(action.rawValue):subtitle"
         subtitleLabel.sourceText = subtitle(for: action)
-        subtitleLabel.fontSize = 8
+        subtitleLabel.fontSize = 7.5
         subtitleLabel.fontColor = HUDPalette.mutedText
         subtitleLabel.verticalAlignmentMode = .center
         subtitleLabel.horizontalAlignmentMode = .center
-        subtitleLabel.position = CGPoint(x: 0, y: -13)
+        subtitleLabel.position = CGPoint(x: 0, y: -18)
         node.addChild(subtitleLabel)
-        boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: -22, width: frame.width - 6, height: 18), 8))
+        boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: -23, width: frame.width - 6, height: 10), 7.5))
         hudButtonSubtitleLabels[action] = subtitleLabel
         return node
     }
@@ -5651,26 +5844,30 @@ final class GameScene: SKScene {
         shape.lineWidth = 0.75
         node.addChild(shape)
         hudPageShapes[page] = shape
+        if let symbol = hudSymbol(page.symbolName, size: 14) {
+            symbol.position.y = 12
+            node.addChild(symbol)
+        }
         let title = HUDTextLabel(fontNamed: "AvenirNextCondensed-DemiBold")
         title.name = "hud-text:page:\(page.rawValue):title"
         title.sourceText = page.title
-        title.fontSize = 12
+        title.fontSize = 10
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
-        title.position = CGPoint(x: 0, y: 6)
+        title.position = CGPoint(x: 0, y: -4)
         node.addChild(title)
-        let subtitle = HUDTextLabel(fontNamed: "Menlo")
+        let subtitle = HUDTextLabel(fontNamed: "AvenirNext-Medium")
         subtitle.name = "hud-text:page:\(page.rawValue):subtitle"
         subtitle.sourceText = page.subtitle
-        subtitle.fontSize = 8
+        subtitle.fontSize = 7
         subtitle.fontColor = HUDPalette.mutedText
         subtitle.verticalAlignmentMode = .center
         subtitle.horizontalAlignmentMode = .center
-        subtitle.position = CGPoint(x: 0, y: -10)
+        subtitle.position = CGPoint(x: 0, y: -16)
         node.addChild(subtitle)
-        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 3, y: -2, width: frame.width - 6, height: 18), 12))
-        boundedHUDLabels.append((subtitle, CGRect(x: -frame.width / 2 + 3, y: -17, width: frame.width - 6, height: 12), 8))
+        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 3, y: -11, width: frame.width - 6, height: 14), 10))
+        boundedHUDLabels.append((subtitle, CGRect(x: -frame.width / 2 + 3, y: -21, width: frame.width - 6, height: 10), 7))
         return node
     }
 
@@ -5732,7 +5929,7 @@ final class GameScene: SKScene {
     }
 
     private func hudPageColor(_ page: HudPage, active: Bool) -> UIColor {
-        active ? UIColor(red: 0.25, green: 0.26, blue: 0.20, alpha: 1) : HUDPalette.panelRaised
+        active ? UIColor(red: 0.17, green: 0.28, blue: 0.31, alpha: 1) : HUDPalette.panelRaised
     }
 
     private func buttonColor(for action: HudAction) -> UIColor {
@@ -5882,6 +6079,12 @@ final class GameScene: SKScene {
 
     private func updateHUD() {
         applyCameraProjection()
+        for entity in entities.values {
+            entity.label.xScale = entity.node.xScale < 0 ? -1 : 1
+            let selected = selectedIDs.contains(entity.id)
+            entity.label.isHidden = !selected
+            entity.healthTowerNode.alpha = selected || entity.hp < entity.kind.maxHP ? 1 : 0.42
+        }
         let income = incomePerTick(for: .player)
         moneyLabel.sourceText = "$\(playerMoney)"
         incomeLabel.sourceText = "+$\(income)/s  OIL \(oilCount(for: .player))  FLAG \(controlPointCount(for: .player))"
@@ -13220,7 +13423,9 @@ final class GameScene: SKScene {
         let accent = entity.faction == .enemy
             ? UIColor(red: 1.0, green: 0.44, blue: 0.30, alpha: 1.0)
             : UIColor(red: 0.32, green: 0.92, blue: 1.0, alpha: 1.0)
-        let slotPositions: [CGPoint] = [
+        let slotPositions: [CGPoint] = entity.artworkNode != nil ? [
+            CGPoint(x: -23, y: 21), CGPoint(x: -6, y: 9), CGPoint(x: 11, y: -3)
+        ] : [
             CGPoint(x: -22, y: 0),
             CGPoint(x: -5, y: 3),
             CGPoint(x: 12, y: 6)
@@ -13237,7 +13442,7 @@ final class GameScene: SKScene {
             let pad = SKNode()
             pad.name = "carrier-deck-pad:\(index)"
             pad.position = position
-            pad.zRotation = 0.18
+            pad.zRotation = entity.artworkNode != nil ? -0.55 : 0.18
 
             let padBase = SKShapeNode(ellipseOf: CGSize(width: 16, height: 6))
             padBase.fillColor = UIColor.black.withAlphaComponent(0.48)
@@ -16669,6 +16874,16 @@ private extension CGPoint {
 }
 
 private extension UIColor {
+    func blended(with other: UIColor, amount: CGFloat) -> UIColor {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        var otherR: CGFloat = 0, otherG: CGFloat = 0, otherB: CGFloat = 0, otherA: CGFloat = 0
+        getRed(&r, green: &g, blue: &b, alpha: &a)
+        other.getRed(&otherR, green: &otherG, blue: &otherB, alpha: &otherA)
+        let fraction = min(max(amount, 0), 1)
+        return UIColor(red: r + (otherR - r) * fraction, green: g + (otherG - g) * fraction,
+                       blue: b + (otherB - b) * fraction, alpha: a + (otherA - a) * fraction)
+    }
+
     func darker(by amount: CGFloat) -> UIColor {
         var red: CGFloat = 0
         var green: CGFloat = 0

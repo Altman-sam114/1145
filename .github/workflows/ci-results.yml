@@ -14,7 +14,7 @@ jobs:
   ci-results:
     name: Build and package CI results
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
 
     steps:
       - name: Checkout
@@ -36,7 +36,7 @@ jobs:
 
       - name: Static checks
         id: static-checks
-        timeout-minutes: 2
+        timeout-minutes: 3
         continue-on-error: true
         shell: bash
         env:
@@ -47,6 +47,8 @@ jobs:
             set -e
             python3 ci/check_watchdog.py
             python3 ci/check_probe_runner.py
+            python3 ci/check_unit_art.py --self-test
+            python3 ci/check_unit_art.py
             zero_sha="0000000000000000000000000000000000000000"
             if [[ -n "${BASE_SHA:-}" && "$BASE_SHA" != "$zero_sha" ]] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
               git diff --check "$BASE_SHA" HEAD
@@ -87,8 +89,8 @@ jobs:
 
       - name: iOS simulator launch probe
         id: simulator-launch
-        # 1080s shared work + <=90s diagnostics/cleanup < 1260s step deadline.
-        timeout-minutes: 21
+        # 1440s shared work + <=90s diagnostics/cleanup < 1620s step deadline.
+        timeout-minutes: 27
         continue-on-error: true
         shell: bash
         run: |

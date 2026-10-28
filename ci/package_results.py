@@ -96,7 +96,8 @@ def main():
     reports = ["DesertFrontline.xcresult", "simulator-launch.log", "simulator-build.log", "simulator-app.log",
                "simulator-runtimes.json", "simulator-boot-state.json", "simulator-probe-summary.json",
                "ci-regression-results.json", "probes.json", "hud-layout-contract.json", "simulator-launch-help.log",
-               "render-diagnostics.json", "diagnostic-world.png", "diagnostic-hud.png"] + [probe["png"] for probe in probes]
+               "render-diagnostics.json", "diagnostic-world.png", "diagnostic-hud.png",
+               "unit-art-source.json", "unit-art-bundle.json", "unit-art-bundle.log"] + [probe["png"] for probe in probes]
     installation = summary.get("installation", {})
     boot = summary.get("boot", {})
     for record in boot.get("commands", []):

@@ -672,7 +672,7 @@ def alive(pid):
 
 
 class Runner:
-    def __init__(self, directory=Path("ci-results"), budget=1080):
+    def __init__(self, directory=Path("ci-results"), budget=1440):
         self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=True)
         self.started = time.monotonic()
@@ -684,7 +684,7 @@ class Runner:
             "schemaVersion": 2, "version": os.environ.get("CI_VERSION", "unknown"),
             "commitSha": os.environ.get("GITHUB_SHA", ""), "runId": os.environ.get("GITHUB_RUN_ID", ""),
             "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""), "branch": os.environ.get("GITHUB_REF_NAME", ""),
-            "workBudgetSeconds": budget, "cleanupBudgetSeconds": 90, "stepHardLimitSeconds": 1260,
+            "workBudgetSeconds": budget, "cleanupBudgetSeconds": 90, "stepHardLimitSeconds": 1620,
             "status": "running", "currentStage": "initializing", "lastCompletedProbe": None,
             "stages": [], "prewarm": [], "probes": [dict(p, status="not_run") for p in self.probes],
         }
@@ -1166,6 +1166,8 @@ class Runner:
                 info = plistlib.load(source)
             self.bundle = info["CFBundleIdentifier"]
             self.summary["appProduct"] = {"bundleId": self.bundle, "path": str(app)}
+        self.command("unit-art-bundle", [sys.executable, "ci/check_unit_art.py", "--bundle", str(app)],
+                     cap=60, log="unit-art-bundle.log")
         sdk = self.command("simulator-sdk-version", ["/usr/bin/xcrun", "--sdk", "iphonesimulator", "--show-sdk-version"]).strip()
         runtimes = json.loads(self.simctl("installed-runtimes", "list", "runtimes", "--json", log="simulator-runtimes.json"))
         devices = json.loads(self.simctl("available-devices", "list", "devices", "available", "--json"))

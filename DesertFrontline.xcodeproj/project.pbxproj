@@ -10,6 +10,7 @@
 		7A1001012D00000100100001 /* DesertFrontlineApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1002012D00000100100001 /* DesertFrontlineApp.swift */; };
 		7A1001022D00000100100001 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1002022D00000100100001 /* GameView.swift */; };
 		7A1001032D00000100100001 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1002032D00000100100001 /* GameScene.swift */; };
+		7A1001042D00000100100001 /* Art in Resources */ = {isa = PBXBuildFile; fileRef = 7A1002062D00000100100001 /* Art */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +19,7 @@
 		7A1002032D00000100100001 /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
 		7A1002042D00000100100001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7A1002052D00000100100001 /* DesertFrontline.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DesertFrontline.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A1002062D00000100100001 /* Art */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Art; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,6 +48,7 @@
 				7A1002022D00000100100001 /* GameView.swift */,
 				7A1002032D00000100100001 /* GameScene.swift */,
 				7A1002042D00000100100001 /* Assets.xcassets */,
+				7A1002062D00000100100001 /* Art */,
 			);
 			path = DesertFrontline;
 			sourceTree = "<group>";
@@ -116,6 +119,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7A1001042D00000100100001 /* Art in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

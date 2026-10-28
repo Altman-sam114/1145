@@ -9,7 +9,7 @@
   -> GameScene 状态字段
   -> GameEntity / EntityKind / VeterancyRank / BuildOrder / ControlPoint / SupportPower
   -> 移动、生产、经济、战斗、占领、迷雾、任务、胜负规则
-  -> SKNode / SKShapeNode / SKLabelNode 渲染
+  -> SKNode / SKSpriteNode / SKShapeNode / SKLabelNode 渲染
   -> README、测试规范、更新日志记录当前事实
 ```
 
@@ -48,9 +48,9 @@
 
 ### `GameEntity`
 
-实体配置阶段一次性创建并挂载旗杆 / 阵营燕尾旗与相邻的 `healthTowerNode` 六格竖直耐久塔；空格保留深色槽与边缘，填充格由 `updateHealthBar(...)` 的既有 `hp / maxHP` ratio 驱动并沿用绿 / 红阈值，旧水平实体生命条只保留为隐藏兼容节点。塔根根据 footprint 做有限 clamp，并把上缘留在 FOCUS / ATK 世界文字带以下，避免小型陆空目标的标注竞争。新实体在配置完成时立即走同一刷新入口，避免满血单位初始显示为空塔。塔与旗标沿用实体镜像、移动、维修、战损、死亡清理、重开和迷雾父节点隐藏链路，不产生第二份 HP 状态或信息泄露。
+实体配置阶段一次性创建小型菱形阵营标记和 `healthTowerNode` 六格水平生命条。`updateHealthBar(...)` 仍只读既有 `hp / maxHP` ratio；未选中且满血时弱化生命条，选中或受损时恢复，单位短码仅在选中时显示。贴图、标记、条格与原有选择/伤害/迷雾节点共用同一实体生命周期，不保存第二份 HP 或阵营状态。
 
-结构模型仍由 `configureEntityNode(...)` 一次性挂在实体 `base` 下；其中 Shipyard 的既有 dock / crane 继续保留原尺寸与包络，并在同一 `.shipyard` 分支增加两条短内轨、三处低矮龙骨支架、一段窄内侧码头边缘和三个系泊标记。它们只使用 SpriteKit shape、没有独立状态或每帧更新，随实体父节点继承镜像、施工、迷雾、死亡清理和 `SKRM` 重开，不改变 footprint、碰撞、生产、rally 或海岸规则。
+结构模型由 `configureEntityNode(...)` 一次性挂在实体 base 下；HQ、War Factory、Airfield、Shipyard 改用 `addFacilityBody(...)` 与共享 `addIsometricBlock(...)` 绘制顶面、两侧明暗立面、窗带、通风/天线、跑道或吊机。村落复用同一等距体块。它们只改变美术，不改变 footprint、施工 operational 门槛、碰撞、生产、rally、海岸或 SKRM 规则。
 
 选中的玩家存活作战机动实体在同一 `selectionNode` 子树内一次性挂载 `weaponReadinessNode` 与四个低侧固定刻度；`refreshWeaponReadinessVisuals(for:)` 每帧先隐藏 / 恢复所有刻度，再只对玩家、存活、operational、非结构且 `kind.damage > 0` 的当前选中实体读取 `attackTimer`。就绪门槛沿用 `attackTimer <= 0.05` 并显示青绿色全刻度；装填中以 `1 - clamp(attackTimer / max(effectiveAttackCooldown(for:), 0.2), 0...1)` 按段着色琥珀已恢复刻度，未恢复槽位保留深色。节点不进入 `effectsLayer`，随实体镜像、移动、迷雾 / 潜艇隐藏、战损、死亡清理和 skirmish 重开，不创建第二份 readiness / cooldown 状态，也不改变攻击执行；敌军、未知目标、结构、Mechanic、施工和 pending / 空选择始终隐藏。
 
@@ -58,7 +58,7 @@
 
 Carrier 实体在同一实体子树一次性预创建 `carrierDeckAircraftNode` 与三个固定停机位根节点，每个位包含低透明深色甲板底、微型舰载机轮廓和可选琥珀队列条；这些是 SpriteKit 视觉节点，不是新的飞机实体或生产状态。`refreshCarrierDeckAircraftVisuals()` 只读既有 `boundCarrierGuardWing(for:)` 与该航母的 `BuildOrder`：Carrier HOLD 已绑定的最多三个 HEL/JET 停机位提高阵营描边 / 机体亮度，队列中的 HEL/JET 显示琥珀条，空位保持低透明暗色；Carrier 未完工、死亡或被当前迷雾隐藏时整组隐藏。选中 Carrier 的紧凑面板文案为 `Deck 3PAD H/J`，不改变航母生产、护航绑定、起飞特效、攻击、AI、迷雾和三机 strike 链路；节点沿用实体镜像、移动、战损、死亡清理和 skirmish 重开。
 
-Carrier 的静态甲板作业轨和安全/拦阻边线也在同一 `configureEntityNode(...) -> addNavalUnitBody(...) -> entity base` 阶段一次性创建；它们是低对比 SpriteKit shape，只挂实体树，随实体移动、镜像、战争迷雾、死亡和 `SKRM` 重开，不进入 `effectsLayer`，不新增运行态状态、每帧更新、战斗或生产数据流。
+Carrier 的静态舰体优先来自透明纹理；旧 `addNavalUnitBody` 只作资源不可用时的显示兜底，云端 ready 不接受缺图兜底作为验收。动态甲板停机位、队列与护航提示仍由原实体子树负责。
 
 运行态实体：id、kind、faction、hp、destination、path、attackTarget、holdPosition、`guardAnchorCarrierID`、attackMoveDestination、attackTimer、revealedUntil、captureProgress、施工进度、rallyPoint、`veterancyXP`、`killCount` 和各类 SpriteKit 节点。海军实体持有预创建的 `navalWakeNode`，移动更新按实际方向旋转并显示双侧冲洗线、泡沫线和中心扰流，停止时隐藏；航迹作为实体子节点跟随实体可见性，因此敌方实体被迷雾隐藏时不会留下独立效果泄露位置，也不会按帧增加节点。`guardAnchorCarrierID` 用于 HEL/JET 记录当前 Carrier HOLD guard wing 归属；当绑定 Carrier 仍 HOLD 时，移动更新会把该 HEL/JET 的 `holdPosition` 维护到 Carrier 附近稳定站位，战斗目标获取会优先考虑 Carrier 近域内该翼队已知且可攻击的威胁，Carrier HOLD HUD 会用紧凑 `GW ... Hn/Jn Cn` 格式只读显示同一口径的 HEL/JET 组成、去重接触数，并在非零时追加 Air / Sea / Sub / Ground / Mix 类型摘要、`Tgt XXX` 优先接触短码和当前合法交战翼队数 `Eng n`，选中被有效 anchor 绑定的 HEL/JET 时也会只读显示 `CV GUARD`、距 anchor Carrier 的近似距离，以及当前存在合法 Carrier guard contact 时的 `Tgt XXX Air/Sea/Sub/Ground` 优先目标摘要；选中这些 HEL/JET 时会在 anchor Carrier 上显示基于 `carrierGuardThreatRadius` 的只读范围圈，选中玩家 HOLD Carrier 时即使没有绑定翼队也显示该 Carrier 自身同一范围圈，继续复用普通 HOLD 回位、警戒、迷雾和 `canAttack` 链路，不新增巡逻、完整 CAP、截击状态机或战斗加成。
 
@@ -96,7 +96,7 @@ Mechanic 实体另持有预创建的 `mechanicRepairEffectNode`，由阵营化�
 
 小地图下方的 `−` / `+` 是独立的 HUD 命中区域，调用 `adjustCameraZoom(by:)` 复用 `minCameraScale`、`maxCameraScale` 和 `clampCamera`，并刷新小地图 camera box；它们不属于 `HudAction`，不会穿透为世界点击或清理 pending 命令。
 
-`HudPage` 保留全部 26 个 `HudAction` 的五页映射：TACT 九种战术命令，BUILD 六种陆军/建造，AIR 两种飞机，SEA 三种舰艇，SUP 六种支援/设置。`HUDLayout(size:insets:page:)` 是生产绘制、单指命中和云端契约的共同框来源；左侧五页竖轨常驻，底部 dock 按当前页动作总宽收口，顶部 36pt 资源条，任务/消息独立有界，选择/队列共用限宽容器，右侧小地图分 header/legend、直接有界内容、44pt zoom footer。`GameRenderView` 被动读取真实 UIWindow inset与自身bounds，经场景重建同一布局，不使用忽略安全区的 GeometryReader inset。`touchesBegan` 保持双指优先；单指进入同源 route（page/action/zoom/map/inert/world），所有静态面板、rail/dock 间隙与安全框外区域 inert，不穿透世界或清除 pending。切页只重建 HUD，保留选择、队列和互斥 pending；active/armed 用克制金色边线。`HUDPalette` 统一石墨灰/沙金，移除巨型金币、THEATER 与重复 LIVE 装饰；有界文本 fitting 仅影响显示。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名改为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:)` 仍是生产绘制、触摸和云端契约的唯一框来源。分类改为左下横栏，当前动作在底部 dock 收口；28pt 资源栏、左上任务/消息、底部选择/队列和右上小型分带地图互不覆盖。所有可点控件至少 44pt，双指优先 pan/pinch，静态面板与间隙仍 inert，切页保留选择、队列和互斥 pending。`HUDPalette` 统一深海蓝、青绿和沙金，命令用系统符号、生产用共享单位纹理；25 组生产契约还检查小屏 HUD 面积上限和战场中心可路由。
 
 ### `AIDifficulty`
 
@@ -131,8 +131,8 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - HQ、已占领油井、已占领旗点提供持续收入；旗点归属实际变化时，新归属方通过共享 `changeMoney(for:by:)` 获得一次性占领奖金。
 - 建筑覆盖由己方已完工结构和己方已占领旗点提供；旗点覆盖范围小于结构覆盖范围。玩家建造仍需要目标位置可见，SAM Site 走普通陆地结构规则，Shipyard、Sonar Buoy 和 Coastal Battery 仍需要海岸，Oil Derrick 仍需要油田，建筑不能压住旗点中心。
 - 建筑只有 `isOperational` 后才能生产、赚钱、提供基地覆盖、贡献视野、提供支援技能资产或使用自身武器。
-- 陆军来自 War Factory，AA Truck 作为移动防空陆军也来自 War Factory；空军来自 Airfield 或 Carrier，海军来自 Shipyard。`HMV` / `AA` / `TANK` / `ART` / `MECH` 按钮 subtitle 复用 `productionSource(for:faction:)` 显示当前 `WF` 来源或 `need WF`，`HELI` / `JET` 按钮 subtitle 同样显示当前 `AF` / `CV` 来源或 `need AF/CV`，`SHIP` / `SUB` / `CV` 按钮 subtitle 同样显示 `SY` 来源或 `need SY`；这些都是只读来源提示，不改变队列、费用或来源选择。
-- Carrier 是移动空军生产平台，可生产 Helicopter/Fighter、使用空军集结点，并在甲板出机时显示短暂 launch 反馈；单选 Carrier 时，选择信息面板会显示 deck 可生产 Helicopter/Fighter、rally set/unset、当前队列状态、附近 HEL/JET 空中翼队 readiness 和附近 escort 数量 / 需求，Carrier 未 HOLD 时翼队达标显示 `Wing x/2 OK Hn/Jn`、不足显示 `Wing x/2 Need n Hn/Jn`，其中 `Hn` / `Jn` 只读显示附近 Helicopter / Fighter 组成，0 数量类型可省略；Carrier HOLD 时改为只把附近仍 HOLD 且 `guardAnchorCarrierID` 等于该 Carrier id 的 HEL/JET 计入紧凑 `GW x/2 OK Hn/Jn C0`、`GW x/2 Need n Hn/Jn C0` 或非零接触时的 `GW x/2 OK Hn/Jn Cm Air/Sea/Sub/Ground/Mix Tgt XXX Eng n` / `GW x/2 Need n Hn/Jn Cm Air/Sea/Sub/Ground/Mix Tgt XXX Eng n`，其中 `Hn` / `Jn` 只读显示当前绑定 Helicopter / Fighter 组成，0 数量类型可省略，`Eng n` 只在非零时显示并统计当前 `attackTarget` 仍满足 `isCarrierGuardContact(...)` 的绑定 HEL/JET 数量；玩家 Carrier HOLD 和 Red AI 自动 guard wing 都以每艘 Carrier 最多 2 架作为同一需求口径；多选含 HOLD Carrier 时，HOLD 状态行会用紧凑 `CV GW x/y OK/Need Hn/Jn Cn Air/Sea/Sub/Ground/Mix Tgt XXX Eng n` 聚合选中 HOLD Carrier 的绑定翼队总数、需求、HEL/JET 组成、去重合法接触数、非零接触类型、优先接触短码和非零交战翼队数，`C0` 时不追加类型或目标；Carrier HOLD 成功绑定翼队时会显示短暂 `GW Hn/Jn` 甲板 cue，顶部成功消息会显示聚合 `Guard wing n Hn/Jn.` 并在缺员时追加 `Need n`，没有绑定到 wing 时也会显示 `Guard wing 0 Need n`；绑定翼队在 Carrier 仍 HOLD 时会维护 Carrier 附近稳定站位，单选这些 HEL/JET 时显示 `CV GUARD Dn` anchor 距离并在 anchor Carrier 上显示 guard anchor 范围圈；选中玩家 HOLD Carrier 时即使没有绑定翼队也显示自身 guard anchor 范围圈；多选这些 HEL/JET 且未选中 HOLD Carrier 时显示紧凑 `CV GUARD n Hn/Jn Dm` 摘要并显示所有有效 anchor Carrier 范围圈，并优先处理 Carrier 近域内已知可攻击威胁，escort 达标时显示 `Escort x/2 OK`，不足时显示 `Escort x/2 Need n Air/Sea/Ground/Mix` 这类只读缺口类型提示；多选含 Carrier / Battleship 时会显示高价值海军护航满足摘要，不足时同样在 `Need n` 后追加 Air / Sea / Ground / Mix 缺口类型；选中玩家 Carrier / Battleship 时会显示暖色 escort radius ring，`HELI` / `JET` 按钮也会在 Carrier 是实际来源时显示 `CV`，这些不改变 `BuildOrder`、生产来源、集结点、AI、自动巡逻、完整 CAP 或截击状态机。
+- 陆军来自 War Factory，AA Truck 作为移动防空陆军也来自 War Factory；空军来自 Airfield 或 Carrier，海军来自 Shipyard。`Scout` / `AA` / `Tank` / `Arty` / `Repair` 按钮 subtitle 复用 `productionSource(for:faction:)` 显示当前 `WF` 来源或 `need WF`，`Heli` / `Jet` 按钮 subtitle 同样显示当前 `AF` / `CV` 来源或 `need AF/CV`，`Warship` / `Sub` / `Carrier` 按钮 subtitle 同样显示 `SY` 来源或 `need SY`；这些都是只读来源提示，不改变队列、费用或来源选择。
+- Carrier 是移动空军生产平台，可生产 Helicopter/Fighter、使用空军集结点，并在甲板出机时显示短暂 launch 反馈；单选 Carrier 时，选择信息面板会显示 deck 可生产 Helicopter/Fighter、rally set/unset、当前队列状态、附近 HEL/JET 空中翼队 readiness 和附近 escort 数量 / 需求，Carrier 未 HOLD 时翼队达标显示 `Wing x/2 OK Hn/Jn`、不足显示 `Wing x/2 Need n Hn/Jn`，其中 `Hn` / `Jn` 只读显示附近 Helicopter / Fighter 组成，0 数量类型可省略；Carrier HOLD 时改为只把附近仍 HOLD 且 `guardAnchorCarrierID` 等于该 Carrier id 的 HEL/JET 计入紧凑 `GW x/2 OK Hn/Jn C0`、`GW x/2 Need n Hn/Jn C0` 或非零接触时的 `GW x/2 OK Hn/Jn Cm Air/Sea/Sub/Ground/Mix Tgt XXX Eng n` / `GW x/2 Need n Hn/Jn Cm Air/Sea/Sub/Ground/Mix Tgt XXX Eng n`，其中 `Hn` / `Jn` 只读显示当前绑定 Helicopter / Fighter 组成，0 数量类型可省略，`Eng n` 只在非零时显示并统计当前 `attackTarget` 仍满足 `isCarrierGuardContact(...)` 的绑定 HEL/JET 数量；玩家 Carrier HOLD 和 Red AI 自动 guard wing 都以每艘 Carrier 最多 2 架作为同一需求口径；多选含 HOLD Carrier 时，HOLD 状态行会用紧凑 `CV GW x/y OK/Need Hn/Jn Cn Air/Sea/Sub/Ground/Mix Tgt XXX Eng n` 聚合选中 HOLD Carrier 的绑定翼队总数、需求、HEL/JET 组成、去重合法接触数、非零接触类型、优先接触短码和非零交战翼队数，`C0` 时不追加类型或目标；Carrier HOLD 成功绑定翼队时会显示短暂 `GW Hn/Jn` 甲板 cue，顶部成功消息会显示聚合 `Guard wing n Hn/Jn.` 并在缺员时追加 `Need n`，没有绑定到 wing 时也会显示 `Guard wing 0 Need n`；绑定翼队在 Carrier 仍 HOLD 时会维护 Carrier 附近稳定站位，单选这些 HEL/JET 时显示 `CV GUARD Dn` anchor 距离并在 anchor Carrier 上显示 guard anchor 范围圈；选中玩家 HOLD Carrier 时即使没有绑定翼队也显示自身 guard anchor 范围圈；多选这些 HEL/JET 且未选中 HOLD Carrier 时显示紧凑 `CV GUARD n Hn/Jn Dm` 摘要并显示所有有效 anchor Carrier 范围圈，并优先处理 Carrier 近域内已知可攻击威胁，escort 达标时显示 `Escort x/2 OK`，不足时显示 `Escort x/2 Need n Air/Sea/Ground/Mix` 这类只读缺口类型提示；多选含 Carrier / Battleship 时会显示高价值海军护航满足摘要，不足时同样在 `Need n` 后追加 Air / Sea / Ground / Mix 缺口类型；选中玩家 Carrier / Battleship 时会显示暖色 escort radius ring，`Heli` / `Jet` 按钮也会在 Carrier 是实际来源时显示 `CV`，这些不改变 `BuildOrder`、生产来源、集结点、AI、自动巡逻、完整 CAP 或截击状态机。
 
 ### 移动与战斗
 
@@ -169,7 +169,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - SAM Site 与 Fighter 对 Submarine 的既有 `showProjectile(...)` 分支继续使用宽低透明度烟迹、弹道色高亮线和沿弹道移动的发光弹体；AA Truck 则由 `showMobileAASalvo(...)` 以两个法线错位发射点组合两次纯视觉 guided trail、约 0.055 秒错发、双发射闪光和短促雷达环 / 扫描线。该 helper 不调用 `fire`、不写 HP，普通节点约 0.46 秒内清理，capture-only 才可 persistent；未知 Red AA Truck 不派发来源视觉。命中玩家空军或玩家已知敌方空军时仍显示双环与六向火花，不改变伤害、射速、目标选择或防空规则。
 - Fighter 对 `.air` 合法开火时，由窄 helper `showFighterAirMissileSalvo(...)` 从两个对称翼下点调用两次既有 `showGuidedMissileTrail(...)`，第二枚约延迟 0.055 秒；运行时只有攻击者对玩家已知，且目标是玩家单位或对玩家已知时才创建来源轨迹，门槛失败不会回落通用单弹。普通节点完全沿用 guided trail 的有限清理，`prepareCIAirCaptureScene()` 复用同 helper 的 `persistent` 完整双弹构图；统一 `fire(...)` 仍只写一次 HP、最多显示一次伤害飘字和一次 `showAirMissileImpact(...)`。SAM、AA Truck、Carrier intercept、Fighter 对水面 / 建筑 / Submarine 与 Helicopter 分支保持独立。
 - Fighter 对非 Submarine 水面舰艇或建筑合法开火时，只有玩家 Fighter 或玩家已知 Red Fighter 才由 `fire(...)` 派发 `showFighterSurfaceStrike(...)`：两个翼下法线错位发射点沿轻微分离二次曲线显示约 0.055 秒错发的弹体、尾焰、短白烟迹、阵营亮芯和紧凑发射闪光。水面目标组合小型近舷水冲击与舰体火花，建筑目标使用小型闪光 / 尘环 / 碎屑；空战使用独立的 `showFighterAirMissileSalvo(...)` 双 guided trail，Submarine 仍走既有 ASW 链路。新 helper 不调用 `fire`、不写 HP、不创建碰撞，普通节点约 0.7 秒内清理，persistent 只用于 CI capture，一次攻击仍只在统一位置扣一次 HP。
-- Helicopter 对 land、structure 或非 Submarine 水面舰艇合法开火时，只有玩家 Helicopter 或玩家已知 Red Helicopter 才由 `fire(...)` 派发 `showHelicopterRocketSalvo(...)`：入口沿 `updateAirShadow(...)` 的方向偏移计算投影地面锚点，并最多调用一次纯视觉 `showHelicopterRotorWash(...)`；helper 先以 `tile(at:)` / `terrain(at:)` 拒绝 `.water`、`.road`、`.ridge` 和无效点，只在 `.sand` / `.oil` 创建低透明压缩尘环、两侧短尘流与固定颗粒，视觉落点贴近投影且不遮挡火箭、命中、耐久塔或 HUD。双侧 weapon pods 交替发射四枚约 0.045 秒错开的火箭，四条轻微分离二次曲线包含可见弹体 / 尾焰、阵营细亮线、离散白色烟点和双 pod 发射闪光。陆地 / 建筑目标使用紧凑三点闪光、尘环和碎屑，水面目标使用小型近舷水冲击与舰体火花；Submarine 保持既有 tracer 与 ASW hit / 暴露链路。新 helper 不调用 `fire`、不写 HP、不创建碰撞或 splash，普通下洗 root 约 0.52 秒统一移除，persistent 只用于 CI capture，一次攻击仍只在统一位置扣一次 HP。
+- Helicopter 对 land、structure 或非 Submarine 水面舰艇合法开火时，只有玩家 Helicopter 或玩家已知 Red Helicopter 才由 `fire(...)` 派发 `showHelicopterRocketSalvo(...)`：入口沿 `updateAirShadow(...)` 的方向偏移计算投影地面锚点，并最多调用一次纯视觉 `showHelicopterRotorWash(...)`；helper 先以 `tile(at:)` / `terrain(at:)` 拒绝 `.water`、`.road`、`.ridge` 和无效点，只在 `.sand` / `.oil` 创建低透明压缩尘环、两侧短尘流与固定颗粒，视觉落点贴近投影且不遮挡火箭、命中、生命条或 HUD。双侧 weapon pods 交替发射四枚约 0.045 秒错开的火箭，四条轻微分离二次曲线包含可见弹体 / 尾焰、阵营细亮线、离散白色烟点和双 pod 发射闪光。陆地 / 建筑目标使用紧凑三点闪光、尘环和碎屑，水面目标使用小型近舷水冲击与舰体火花；Submarine 保持既有 tracer 与 ASW hit / 暴露链路。新 helper 不调用 `fire`、不写 HP、不创建碰撞或 splash，普通下洗 root 约 0.52 秒统一移除，persistent 只用于 CI capture，一次攻击仍只在统一位置扣一次 HP。
 - 支援技能伤害仍走 `applySupportDamage(...)`，没有虚拟击杀者，因此不会把支援技能击杀计入任何单位 XP；`AIRS` / `BARR` 真实命中潜艇时会短暂设置该潜艇的 `revealedUntil`。
 - Mechanic 自动维修仍由 `updateRepair(dt:)` 统一执行：寻找同阵营、存活、非自身、受损的最近目标，目标距离小于 95 时按每秒 22 修复；实际维修通过预创建双层维修束和十字目标脉冲稳定显示来源与目标，替代该链路原有随机单点 spark。选择面板、受损单位维修来源提示和维修范围圈继续只读复用同一范围，不改变目标选择、维修量、AI、支援或移动 / 战斗规则；construction / support 的既有 spark 调用不变。
 
@@ -201,7 +201,7 @@ AI 参数：指挥间隔、收入加成、每轮建造数、进攻组规模、�
 - HUD 每帧由 `updateHUD()` 汇总金钱、收入、队列、任务、兵力、AI 状态、选择信息和按钮状态。
 - `updateMinimap()` 仍按既有 `isKnownToFaction(...)` 过滤并重建 blip；海军菱形和空军三角额外挂载少量只读朝向齿，优先读取合法已知 `attackTarget`，再读取 `attackMoveDestination` / `destination` / `path.last`，无意图时回退 `node.xScale`。选中的 Blue 海空单位仅在合法已知目标或 `incomingThreatsByTargetID` 存在时显示短红色目标齿 / 琥珀来袭齿，不改变小地图点击、迷雾、命令、战斗或实体状态。
 - 选择信息面板仍由 `singleSelectionInfo(...)` / `groupSelectionInfo(...)` 提供事实 rows；`updateSelectionInfoPanel(...)` 只在写入四/五个单行 label 时集中执行海空高频 token 短码（如 `ASW`、`SON`、`Rld`、`RLY`、`GW`、`Esc`）和基于缓存面板宽度的有界字号 / 水平 fitting。该适配不改颜色索引、目标血条、HP / 目标 / 距离 / ready / incoming / Carrier deck 与 guard 状态，也不改变触控、战斗、声呐、迷雾或生产。
-- `layoutHUD()` 重建时清空节点、按钮/页框、样式与文本引用，按 `HUDLayout` 创建左五页轨与底部当前动作；交互宽高至少 44pt。compact 选择容器限宽 340pt、大屏 420pt；较少动作页的 dock 不保留全宽空卡。`SKRM` 恢复 TACT，`DESERT_CI_HUD_PAGE` 仅覆盖 capture 初始页。
+- `layoutHUD()` 重建清空旧节点、样式、文本与命中字典；分类改为左下横栏，动作 dock 按当前页收口，compact 选择面板限宽 300pt、大屏420pt。SKRM 恢复 tactical；CI 环境页只影响 capture 初始页。
 - 注册标签使用稳定 slot/action/page ID；HUDTextLabel.sourceText 是显式完整源文，生产写入、追加和消息恢复只写该字段，text 只作显示，不从上次显示猜源。fitHUDLabels 每次从 source/base/固定slot锚点重算，最多两次缩字，floor仍min(8,base)，内部留1px量化余量但最终仍测真实bbox。仍超框则对至多前256个完整Character加ellipsis做最多9次二分实测，保留确已合框的候选，不能合框的非空ellipsis准确失败；每标签最多15次frame读取。preferred width为0，不再依赖v5.62已失败的native单行截尾；最后按父局部bbox对齐，不改slot/0.5容差/字体/scale，选择行仍走原独立fitter。
 - 小地图地形、blip、相机框在同一 crop 下，`minimapFrame` 仅代表可点击内容带；投影与逆换算委托 `HUDLayout.mapPoint/worldPoint`，header/footer 不参与聚焦。
 - prewarm 唯一进程可通过 `DESERT_CI_HUD_CONTRACT=1` 运行同源 Swift 五尺寸乘五页契约，记录框/route/标签/重建、静态触摸与切页状态不变和面积比例；每组合roundTrip另以0.72/1/1.58调用真实投影helper并检查world/HUD中心、偏移和逆换算，共75个节点坐标样本，记录cameraProjectionSamples=3。完成后恢复实际尺寸/inset、页、选择、队列、pending、相机两轴scale、world变换、消息与触摸起点，写 `Documents/DesertCI/<launch nonce>/hud-layout-contract.json` 并直接输出路径、bytes/SHA。正式24 launch禁用此入口；它不是真实触摸或多尺寸屏幕认证。
@@ -310,3 +310,11 @@ THEATER 状态卡包含静态绿色 LIVE 指示点，仅为状态卡视觉层级
 ### 当前小地图直接绘制（v5.69）
 
 `addMinimap` 使用普通 `minimapContentNode: SKNode`，不创建 SKCropNode/mask 离屏通道。地形点、动态实体/旗点完整子树的实际包围框经 `addBoundedMinimapNode` 夹入原内容带并留2pt描边余量；相机框与内缩1pt内容框求交。仅边缘符号呈现可略内移，生产 `HUDLayout.mapPoint/worldPoint`、点击/zoom/命令路由及敌军fog/sonar过滤不变。原HUD25的bands类别核对实际普通容器及子图元有限/框内。此窄改动是屏幕故障修复假设，仍以最新云端24正式PNG验收，不能由CPU边界或离屏诊断替代。
+
+## 原创美术资源与材质
+
+`EntityKind.artworkName/artworkWidth` 映射十种机动单位；ImageIO 从 Bundle 的 `Art/Units` 以至多 384px 解码，`croppedArtwork` 一次性归一化透明边距，`unitArtworkTextures` 按种类缓存，同种实体与生产按钮复用。ready 同时验证实际贴图挂载并记录纹理尺寸，缺资源不能以旧形状 fallback 冒充成功。静态资产清单与限制见 [美术说明](../art/v6.0-unit-art.md)。
+
+`drawMap` 的基础菱形改为缓存 `SKSpriteNode` 材质：`terrainSurfaceTexture` 用本地确定性采样烘焙细粒沙/石/路/水纹理，最多五种地形各五个变体，不在每帧重绘。地形逻辑、寻路与 fog tile 未改变；沿岸泡沫减弱，原道路连接、岸线、岩脊与 scenery 仍挂 mapNode。
+
+云端先检查 source manifest/CRC/alpha/hash，模拟器 App 构建后再复核实际 bundle；PNG/JSON、原生屏幕图与实体 ready trace 共同组成证据，不能用资源检查代替 GPU 画面或真实触控。
