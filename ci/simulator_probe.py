@@ -753,6 +753,54 @@ class Runner:
     def simctl(self, name, *arguments, cap=60, **kwargs):
         return self.command(name, ["/usr/bin/xcrun", "simctl", *arguments], cap=cap, **kwargs)
 
+    def check_launch_output_options(self):
+        evidence = {"policy": "launch-help-confirmed-timeout-once-v1", "status": "running", "attempts": []}
+        self.summary["launchOutputOptions"] = evidence
+        try:
+            for attempt in (1, 2):
+                name = "launch-output-options" if attempt == 1 else "launch-output-options:retry"
+                log = "simulator-launch-help.log" if attempt == 1 else "simulator-launch-help-retry.log"
+                record = {"attempt": attempt, "status": "running", "requestedCapSeconds": 10, "process": {}}
+                evidence["attempts"].append(record)
+                try:
+                    text = self.simctl(name, "help", "launch", cap=10, log=log, raw_log=True,
+                                       receipt=record["process"], reserve=install_reserve(self.probes))
+                    process = record["process"]
+                    if (not cli_receipt_complete(process) or process.get("trigger") != "exit"
+                            or process.get("exitCode") != 0):
+                        raise ProbeFailure("Launch help CLI completion/cleanup unconfirmed")
+                    if not all(option in text for option in ("--stdout", "--stderr")):
+                        raise SceneFailure("This Xcode lacks supported launch stdout/stderr file redirection")
+                    record.update(status="success", exitCode=0, retryDecision="not_needed")
+                    evidence["status"] = "success"
+                    return
+                except ProbeFailure as error:
+                    process = record["process"]
+                    # Retry only this read-only query, after its owned CLI group is confirmed gone.
+                    retry = (attempt == 1 and error.code == 124 and process.get("trigger") == "timeout"
+                             and process.get("exitCode") == 124 and cli_receipt_complete(process))
+                    record.update(status="failure", exitCode=error.code, error=str(error),
+                                  retryDecision="retry" if retry else "stop")
+                    if not retry:
+                        raise
+                    print("[launch-help] confirmed CLI timeout; retrying once within the shared deadline", flush=True)
+                except BaseException as error:
+                    code = getattr(error, "code", 130 if isinstance(error, KeyboardInterrupt) else 1)
+                    record.update(status="cancelled" if isinstance(code, int) and code >= 128 else "failure",
+                                  exitCode=code, error=str(error), retryDecision="stop")
+                    raise
+                finally:
+                    path = self.directory / log
+                    if path.is_file():
+                        record["output"], _ = file_evidence(self.directory, log)
+                    self.save()
+        except BaseException as error:
+            code = getattr(error, "code", 130 if isinstance(error, KeyboardInterrupt) else 1)
+            evidence.update(status="cancelled" if isinstance(code, int) and code >= 128 else "failure", error=str(error))
+            raise
+        finally:
+            self.save()
+
     def _boot_command(self, role, arguments, cap):
         evidence = self.summary["boot"]
         reserve = boot_reserve(self.probes)
@@ -1180,9 +1228,7 @@ class Runner:
         udid = self.device["udid"]
         self.boot_device()
         self.install_app(app)
-        help_text = self.simctl("launch-output-options", "help", "launch", cap=10, log="simulator-launch-help.log")
-        if not all(option in help_text for option in ("--stdout", "--stderr")):
-            raise SceneFailure("This Xcode lacks supported launch stdout/stderr file redirection")
+        self.check_launch_output_options()
         for attempt in range(1, 4):
             if attempt > 1:
                 self.remaining(120 + 95 + sum(p["wait"] for p in self.probes))

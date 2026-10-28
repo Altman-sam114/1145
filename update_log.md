@@ -6293,3 +6293,13 @@ C复核（2026-10-24）：本地/远端main974622eb3640ae7ec0969ebc1b6d5e4dec1ba
 - fitSelectionInfoRow改由HUDLayout行slot统一约束宽高，重置基准后按真实glyph框拟合/定位，不仅按typographic center或字宽；原容差、25矩阵和24探针不变，增加每行slot/bounds/font/scale原始证据。没有放宽gate或用旧图填缺项。
 - 正常Git HTTPS在TLS握手失败，未冒称push成功；使用Altman-sam114认证的GitHub官方Git Data API逐对象验证，证明parent roundtrip、24blob、tree与精确7ba2ab3相同后force=false快进main；GitHub真实触发push事件。没有改全局配置、关闭证书校验、用其他SSH账号或重写历史。发布回执保存在本机临时证据目录。
 - 关键文件GameScene及本日志/工作台；本机仅静态检查与Git/API操作，未本机编译、运行或测试。新行拟合尚待云端；全面视觉、真实触控及完整对局目标仍未完成。
+
+### v6.2 / 云端 launch help 瞬时超时的有界恢复（待云端验收）
+
+日期：2026-10-28。
+
+- v6.1正常Git push成功，main精确8898d790e430cdd56f3cd98d87626f0218b41b99，run40704352161/attempt1失败。官方artifact12822649332，ZIP121271bytes，SHA256/API digest为1e39b3bc7c794845446fff1ac4a38c2ecba4abfe19d12fd7659ba09c61bb27d8，CRC及身份一致；generic/simulator均BUILD SUCCEEDED，源和随包十种资源检查通过。
+- 准确故障是安装成功后，只读`simctl help launch`在原10s上限空输出超时124；boot167s、install35s均正常，App尚未启动。HUD缺报告、0/24正式截图、JUnit10/4fail/1skip；本次不能判断v6.1文字修复效果，也不是Swift编译卡死。
+- 保持每次10s上限和原stdout/stderr能力检查，只有watchdog明确timeout且完整进程组清理receipt通过时重试一次；非超时、取消、缺失回收、能力不足、预算不足或第二次失败立即停止。两次原始日志与receipt分别保存，不覆盖失败证据，现有共享预算、boot/install、HUD25和24PNG gate不改。
+- 新增9项直接云端正负方法，调用生产query/command，覆盖正常、一次恢复、二次失败、信号/永久失败、缺失回收、取消、不支持选项及预留预算；是synthetic CLI合同，不冒充真实设备结果。仅本机diff/AST静态检查，实际构建/恢复/画面须新SHA云端包复核。
+- 内置生图第5次仍报gpt-image-2/team通道503；再次核对其他项目确用同一内置工具成功，无另装生图插件或CLI路径。供应路由差异只是候选原因，未验证切换能解决；不改全局设置、不借其他聊天生成、不转收费API。全面美术和交互目标继续进行。

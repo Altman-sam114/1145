@@ -16,7 +16,7 @@
 ## 步骤
 
 1. [完成] 读取当前渲染/HUD/CI；核验 v5.69 官方 ZIP digest/CRC、身份、JUnit、24/24 原生证据；百度桌面遇跳转/验证码，移动端已返回游戏条目；已目视项目原有 Desert Stormfront 参考截图，不采用 AI 汇总或下载站宣传作为权威事实。
-2. [进行中] 已尝试内置生图 4 次，当前会话全部 503；已接续十种既有兵模，增加 384px 透明边距归一化、实际贴图 ready 元数据；新增云端资源校验器及 6 项直接正负例，尚未运行。
+2. [进行中] 已尝试内置生图 5 次，当前会话全部 503；已接续十种既有兵模，增加 384px 透明边距归一化、实际贴图 ready 元数据；云端资源校验器及 6 项直接正负例在v6.0真实通过，尚需v6.1精确包复核。
 3. [进行中] HUD 已改为底部横向分类、窄资源栏、小地图/任务卡收缩；重做水平生命条/小阵营点与四类等距建筑/村落，基础地形新增最多25种一次性细粒材质缓存并弱化岸线泡沫；25组契约新增中心留白及小屏占屏上限。尚未编译/云端验收。
 4. [进行中] v6.0已提交并通过官方 Git Data API 实际发布 `7ba2ab308d7eeff44bbc051726ff0e7ef8da77dc`（v6.0），逐blob/tree/commit SHA一致、main只快进；run `40699552229` / attempt1 / push / main /精确SHA已启动，watch session38212已确认terminal，run completed/failure（13m33s），官方包已核验；当前正修复15个小屏case的selection row文字边界，不放宽任何gate。
 5. [待办] 修复证据暴露的问题，记录长期结论；只有全部所选验收完成后清理本工作台。
@@ -40,10 +40,11 @@
 - 用户指出其他项目能生图后，只读核对相关成功调用与图片：rome / Rustwar / easytech 均用同一 `image_gen.imagegen` 内置工具，当前时段有真实 PNG；没有给其他聊天发送消息，没有启动子智能体。
 - 只读会话设置发现关键差异：本线程 `01a18284-c517-7100-87ad-bb188f2cf57c` 当前 model=`boa-hb/gpt-6.1-sol`；rome 与 Rustwar 为 `boa-xu/gpt-6.1-sol`。这是观察到的路由差异，尚未证明切换即成功。
 - 已向用户询问是否允许仅将本会话切到 `boa-xu/gpt-6.1-sol` 并发送续行消息；未获确认前不改设置或发消息。没有修改全局配置/数据库，没有读出或输出密钥。环境无 `OPENAI_API_KEY`；只读模型发现接口不列图像模型。官方 OpenAI 图片文档两个域名均返回403，不据此臆测可用性。
+- 恢复后第5次直接生成全新透明侦察车仍503，request id `202610281422501166835938268d9d6q5Pz1DH1`，错误明确为 `gpt-image-2` / `team` / distributor无可用通道。再次只读核对Rustwar实际imageGeneration成功记录及easytech/Rustwar美术来源：都使用同一内置工具，无独立插件或CLI/API key路径。工具当前不暴露model/provider切换参数，不向prompt伪加路由参数，不擅自转收费API。两个官方文档域名再次403。
 
 ## 下一步
 
-生图路由调整尚未获得用户明确确认，不切换、不发续行消息；这只限制新增生图，不阻塞现有素材重构。v6.0失败包已完整复核，v6.1行拟合修复及selectionRows实测几何记录已完成静态diff审查；下一动作提交当前三文件授权增量并优先正常Git推送（已fetch/pull成功），跟踪新SHA的云端结果，不重跑已失败原SHA、不用旧图填缺项。后续仍需围绕参考图继续降低HUD干扰、完善地图/单位方向与动态海空表现、真实操作及完整对局验证，不把本轮基线等同总目标完成。
+生图路由调整尚未获得用户明确确认，不切换、不发续行消息；这只限制新增生图，不阻塞现有素材重构。v6.1官方失败包已核验，当前有限步骤：修复只读launch help的有界瞬时超时，保留原cap/选项检查，仅完整确认timeout进程清理后可再执行一次；两次原始输出/receipt分别留存，非超时/取消/不完整清理/不支持选项均不得重试。补直接云端正负例、静态检查，精确提交main再等新SHA。后续仍需HUD25/selectionRows与24原生图复核、真实操作及完整对局，不把本轮基线等同总目标完成。
 
 ## 推送链路与云端证据
 
@@ -63,3 +64,9 @@
 - 本次只改GameScene行拟合与该直接证据，未改经济/AI/战斗、shader贴图、预算、boot策略、24集合或失败阈值。需新实现SHA的云端验收。
 
 - v6.1修复前已重新以单命令HTTP/1.1+low-speed限时执行真实 `git fetch origin` / `git pull --ff-only origin main`，均成功（session35266退出0）；main/HEAD/origin均7ba2ab3。未改全局Git配置，优先恢复正常Git传输。
+
+- v6.1修复已提交并以正常Git push发布 main `8898d790e430cdd56f3cd98d87626f0218b41b99`（3文件，原有无关改动继续保留）；恢复时HEAD/origin/main均为该SHA。新push run `40704352161` / attempt1 / main / 精确SHA已启动，当前in_progress；不重复dispatch。继续调查本会话可用的生图路径，不改全局配置、不向其他会话发送任务、不读取或外传密钥。
+- v6.1 run40704352161已completed/failure（watch session52301退出1）；generic build真实step43s，模拟器step4m39s，不能将绿色continue-on-error步骤当作验收。官方artifact12822649332 /121271bytes /SHA256 `1e39b3bc7c794845446fff1ac4a38c2ecba4abfe19d12fd7659ba09c61bb27d8`，下载session88039，待精确包核对失败点；不在未读报告前盲改或重跑。
+- v6.1官方ZIP已下载，字节数/API digest/全项CRC、main/完整SHA/run/attempt一致。双构建真实BUILD SUCCEEDED，脚本及十种source/bundle资产成功；boot成功167s、install成功35s，之后只读 `xcrun simctl help launch` 10s空输出超时退出124（launch-output-options）。App尚未启动，HUD缺报告、0完成/24not_run，JUnit10/4fail/1skip；不能判断v6.1行拟合效果，更不能误归因为Swift编译或新UI断言。缓存 `/private/tmp/desert-frontline-review-40704352161-attempt1/`。
+- v6.2已编辑：`ci/simulator_probe.py` 局部launch help、`ci/check_probe_runner.py` 对应真实生产方法的9项synthetic边界、`ci/package_results.py` 第二次help日志索引及本日志/工作台。所选验证baseline=diff/AST；direct=新增help正负路径、实际云端launch→HUD25→24PNG（现有完整入口不可切分，不增加别的游戏探针）。不改App玩法、行拟合、资源、boot/install策略、共享预算或正式失败gate。下一步静态审查、fetch/pull、精确暂存本轮5文件并发布新SHA，不运行本机测试。
+- v6.2静态审查完成：`git diff --check`及3个Python文件AST解析通过；未import或执行测试。再次正常HTTP/1.1 fetch / pull --ff-only成功，main/origin仍8898d79；本轮5文件按范围暂存，原Team ID与文档整理继续排除。原workflow仍main push固定整条链路，新增9方法只属当前help故障直接边界。

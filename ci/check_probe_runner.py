@@ -339,6 +339,97 @@ class FakeRunner(Runner):
         self.summary["integrityOutcome"] = "success"
 
 
+class LaunchHelpTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.directory = Path(self.temp.name)
+        self.runner = Runner(self.directory)
+        self.calls = []
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def query(self, responses):
+        def command(argv, seconds, *, stdout, receipt, **kwargs):
+            code, text, overrides = responses[len(self.calls)]
+            self.calls.append((argv, seconds))
+            stdout.write(text.encode())
+            exit_code = 130 if isinstance(code, KeyboardInterrupt) else code
+            receipt.update(unit_cli_receipt(exit_code, cap=seconds, timeout=exit_code == 124))
+            receipt.update(overrides)
+            if isinstance(code, BaseException):
+                raise code
+            return code
+
+        with patch("simulator_probe.run_bounded", side_effect=command):
+            self.runner.check_launch_output_options()
+
+    def test_supported_help_completes_once(self):
+        self.query([(0, "launch --stdout=<file> --stderr=<file>\n", {})])
+        self.assertEqual(self.calls, [(["/usr/bin/xcrun", "simctl", "help", "launch"], 10)])
+        self.assertEqual(self.runner.summary["launchOutputOptions"]["status"], "success")
+        self.assertFalse((self.directory / "simulator-launch-help-retry.log").exists())
+
+    def test_confirmed_timeout_retries_once_and_preserves_both_outputs(self):
+        self.query([(124, "initial CLI stalled\n", {}), (0, "--stdout --stderr\n", {})])
+        evidence = self.runner.summary["launchOutputOptions"]
+        self.assertEqual(evidence["status"], "success")
+        self.assertEqual([item["status"] for item in evidence["attempts"]], ["failure", "success"])
+        self.assertEqual(evidence["attempts"][0]["retryDecision"], "retry")
+        self.assertEqual([cap for _, cap in self.calls], [10, 10])
+        for record, text in zip(evidence["attempts"], ("initial CLI stalled\n", "--stdout --stderr\n")):
+            self.assertEqual((self.directory / record["output"]["path"]).read_text(), text)
+            self.assertEqual(record["output"]["sha256"], hashlib.sha256(text.encode()).hexdigest())
+        self.assertEqual(self.runner.summary["prewarm"], [])
+        self.assertEqual(self.runner.summary["counts"]["notRun"], 24)
+
+    def test_second_timeout_stops_without_third_command(self):
+        with self.assertRaises(ProbeFailure) as error:
+            self.query([(124, "", {}), (124, "", {})])
+        self.assertEqual(error.exception.code, 124)
+        self.assertEqual(len(self.calls), 2)
+        self.assertEqual(self.runner.summary["launchOutputOptions"]["status"], "failure")
+        self.assertEqual(self.runner.summary["launchOutputOptions"]["attempts"][-1]["retryDecision"], "stop")
+
+    def test_permanent_and_signal_exit_are_not_retried(self):
+        for code in (1, 143):
+            with self.subTest(code=code):
+                self.calls.clear()
+                with self.assertRaises(ProbeFailure):
+                    self.query([(code, "command failed\n", {})])
+                self.assertEqual(len(self.calls), 1)
+
+    def test_timeout_without_confirmed_cleanup_is_not_retried(self):
+        with self.assertRaises(ProbeFailure):
+            self.query([(124, "", {"reaped": False})])
+        self.assertEqual(len(self.calls), 1)
+
+    def test_normal_exit_without_confirmed_receipt_is_rejected(self):
+        with self.assertRaises(ProbeFailure):
+            self.query([(0, "--stdout --stderr\n", {"reaped": False})])
+        self.assertEqual(len(self.calls), 1)
+
+    def test_unsupported_options_are_not_retried(self):
+        with self.assertRaises(SceneFailure):
+            self.query([(0, "launch --stdout=<file>\n", {})])
+        self.assertEqual(len(self.calls), 1)
+
+    def test_cancellation_is_not_retried(self):
+        with self.assertRaises(KeyboardInterrupt):
+            self.query([(KeyboardInterrupt(), "", {})])
+        evidence = self.runner.summary["launchOutputOptions"]
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(evidence["status"], "cancelled")
+        self.assertEqual(evidence["attempts"][0]["status"], "cancelled")
+
+    def test_help_preserves_post_install_reserve(self):
+        self.runner.deadline = time.monotonic() + install_reserve(self.runner.probes) + 1
+        with self.assertRaises(ProbeFailure):
+            self.query([])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.runner.summary["launchOutputOptions"]["status"], "failure")
+
+
 class ProbeTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -1936,6 +2027,7 @@ if __name__ == "__main__":
     results = []
     for case, name, execution in (
             (ProbeTests, "scheduler-and-evidence", "fake simulator commands; real short timeout command"),
+            (LaunchHelpTests, "bounded-launch-help", "fake CLI/receipts; production query/retry/deadline; no simulator"),
             (InstallationTests, "bounded-install-policy", "fake clock and simulator commands; production install policy/gate"),
             (BootTests, "same-device-boot-continuation", "fake clock/CLI receipts; production boot/command/deadline and metadata gates; no simulator"),
             (WatchdogReceiptTests, "cli-process-receipts", "real short CLI normal exit and timeout; no simulator"),
