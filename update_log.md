@@ -6319,3 +6319,19 @@ v6.2 官方复核（2026-10-29）：main `99276c262481e9c8b40b37f6461e92c59be254
 - 海岸只在真实邻陆边叠加宽浅水、冲洗与断续细泡沫，不再整格浅水菱形；减弱开阔水纹并保持成对波纹同向。棕榈改为曲线树干/叶片、叶脉/明暗和软影，村落与设施共享门洞、凹入屋顶、通风口及窗框，仍只在map/实体创建时挂节点并受原fog覆盖。
 - 新增生图第7次原创HQ仍503（gpt-image-2/team），无新PNG，不冒称旧素材为新生成；百度桌面检索本轮正常返回游戏条目，参考现有游戏截图的紧凑命令区/自然沙地/陆海空形态，不搬运商业资产。
 - 所选baseline=diff/文档链接；direct=精确新SHA双构建、HUD25与原24正式截图/资源合同，现有固定入口不可切分，不加无关探针、不调预算/门槛；本机不构建/运行/测试，不启动子智能体。关键文件GameScene、README、flow/图示、美术说明、日志与work；现有Team ID与文档流程整理不混入提交。
+
+v6.3 官方复核（2026-10-29）：main `a0f41ccfb9044428262cb6a481faaa2dca293622` / run `40805991371`，两次attempt均保留原包，均不计总CI通过。
+
+- attempt1：artifact12868697108 /532409bytes，digest `e3c42c45ab5c5f8cd43a93166e1f470bd96c58c7ea07f6767bd66ad5795d64d0`，36项未加密/CRC正常；双构建、资源、HUD25成功，原60s prewarm terminate超时，后续simctl log/list/shutdown亦超时，0/24正式图，JUnit10/3failure/1skip。未将缺图泛化nonce错误当作nonce实际重复，未改预算或App。
+- 依据App已ready且多项simctl服务命令超时，只做一次同SHA有界重跑。attempt2：artifact12872633543 /53879938bytes，digest `6cf22410d7a1de38abd4ccd01344426922e82480fac6082e45127a1f79f62af9`，159项未加密/CRC正常；双构建、脚本、资源、HUD25/恢复、24独立正式PNG与scene ready通过，实际画面图标已染青、道路/海岸/棕榈精修生效。
+- attempt2最终失败于boot evidence严格相等比较：实际monotonic相减序列化`1440.0000000000002`与配置1440不相等，真实boot命令均正常exit0、24图完整，但JUnit10/3failure/1skip。不能因画面完整就掩盖证据门禁失败；停止无修复重跑，直接修生产序列化。
+- 两包分别缓存 `/private/tmp/desert-frontline-review-40805991371-attempt1/official/` 和 `/private/tmp/desert-frontline-review-40805991371-attempt2/official/`。本机只读证据/Git/静态检查，未执行本机测试或模拟器操作。
+
+### v6.4 / 启动预算证据浮点序列化修复（待云端验收）
+
+日期：2026-10-29。
+
+- `Runner.boot_device` 的 `deadlineAfterSeconds` 与其他时间字段统一保留6位小数，避免绝对monotonic时间相减的亚微秒舍入噪声破坏原严格预算合同。`validate_boot` 的精确预算检查、独立命令/receipt/hash/身份和deadline校验均不改，不重置/延长真实deadline。
+- 新增1项云端synthetic直接方法，调用生产boot/保存/metadata：非二进制时钟原点复现旧实现的预算差异，验证序列化/原deadline不变；真实deadline增减1ms仍被严格拒绝。不是本机测试，也不冒充真实设备证据。
+- GameScene/美术/操作保持v6.3不变；仅runner、直接回归、日志/work。所选baseline为diff和两个Python AST，direct为云端新边界与真实完整证据链；不加无关玩法、不降gate、不再盲目重跑。
+- 生图：内置通道累计7次503；另通过公开[FLUX Space](https://huggingface.co/spaces/black-forest-labs/flux-3-image-klein)匿名实际生成沙地候选，seed55337666，页面标1024而DOM图像自然尺寸2048，均原样记录。原图导出未成功（CLI403/浏览器下载未触发），模型许可`flux-kommunity-license`正文需认证，尚未接入App；不以页面截图裁切伪造原图、不借其他聊天、不支付或下载运行模型。成功页面与exact prompt/source回执留在 `/private/tmp/desert-image-candidates-20261029/`。

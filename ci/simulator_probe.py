@@ -854,7 +854,7 @@ class Runner:
                         identity={key: self.summary[key] for key in ("branch", "commitSha", "runId", "runAttempt", "version")},
                         selectedDevice={"udid": device["udid"], "runtimeIdentifier": device["runtime"]["identifier"],
                                         "dataPath": device["dataPath"]},
-                        deadlineAfterSeconds=self.deadline - self.started)
+                        deadlineAfterSeconds=round(self.deadline - self.started, 6))
         self.summary["boot"] = evidence
         try:
             help_record = self._boot_command("help", ["help", "bootstatus"], 10)

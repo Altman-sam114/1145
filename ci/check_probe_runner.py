@@ -3,6 +3,7 @@
 import errno
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import plistlib
@@ -1146,6 +1147,30 @@ class BootTests(unittest.TestCase):
                                                                ["bootstatus", runner.device["udid"]]])
         self.assertEqual([call[1] for call in runner.calls], [10, 60, 240])
         self.assertEqual(runner.deadline, deadline)
+
+    def test_boot_deadline_serialization_preserves_strict_budget(self):
+        for shift in (0, -0.001, 0.001):
+            with self.subTest(deadline_shift=shift):
+                self.clock[0] = math.nextafter(1024.0, math.inf)
+                runner = self.runner(budget=1440)
+                # A fractional monotonic origin exposes subtraction noise without altering the budget.
+                self.assertNotEqual(runner.deadline - runner.started, runner.summary["workBudgetSeconds"])
+                runner.deadline += shift
+                deadline = runner.deadline
+                self.boot(runner)
+                self.assertEqual(runner.deadline, deadline)
+                evidence = runner.summary["boot"]
+                self.assertEqual(evidence["deadlineAfterSeconds"], round(deadline - runner.started, 6))
+                saved = json.loads((self.directory / "simulator-probe-summary.json").read_text())
+                self.assertEqual(saved["boot"]["deadlineAfterSeconds"], evidence["deadlineAfterSeconds"])
+                if shift == 0:
+                    self.assertEqual(evidence["deadlineAfterSeconds"], 1440)
+                    validate_boot(saved, runner.probes, self.directory)
+                else:
+                    with self.assertRaises(ProbeFailure):
+                        validate_boot(saved, runner.probes, self.directory)
+                manifest = self.package(runner)
+                self.assertEqual(manifest["simulatorBootOutcome"], "success" if shift == 0 else "failure")
 
     def test_boot_exact_already_booted_normal_high_exit_is_not_signal(self):
         diagnostic = ("An error was encountered processing the command (domain=com.apple.CoreSimulator.SimError, code=405):\n"

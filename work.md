@@ -46,7 +46,7 @@
 
 ## 下一步
 
-v6.2 官方包已完整下载并核验，双构建、HUD25、24 正式探针与资源合同通过；实际图像仍暴露低对比黑色图标、整格公路/浅水菱形和简单棕榈。下一有限增量 v6.3：在同一 GameScene 内把 SF Symbol 真正栅格化为白色纹理后染色；道路底色复用沙地、海岸仅绘真实邻陆边而不是整格浅水框；棕榈/村落补有层次的原生细节。不改 HUD 命中/布局、战斗/经济、迷雾或 CI 预算/门槛。baseline=diff 与文档链接；direct=精确新 SHA 双构建、HUD25、原有24截图和随包资源，复用现有入口、不增加无关探针。真实触摸、完整对局和长期性能仍须后续独立证据。
+下一有限增量 v6.4：仅修复云端boot证据的浮点序列化，将deadline相对秒数与其他时间字段一致保留6位小数，原严格budget gate不放宽；增加生产boot方法的非二进制时钟原点正例与实际deadline偏移负例。本轮只改runner、该直接回归与日志/work，GameScene/美术/HUD保持v6.3原样。baseline=diff/两个Python AST；direct=云端新回归、真实启动/预算门禁以及现有完整入口的双构建/HUD25/24图，首次失败包保留，不再盲目重跑。真实触摸、完整对局和长期性能仍须后续独立证据。
 
 ## 推送链路与云端证据
 
@@ -87,3 +87,12 @@ v6.2 官方包已完整下载并核验，双构建、HUD25、24 正式探针与�
 - v6.3 编辑范围预定：GameScene 的 hudSymbol / terrainSurfaceTexture / addTerrainDetail / addPalm / addVillageScenery 及相关README、flow、日志、工作台；不动单位PNG、工程签名、CI脚本或workflow。
 - v6.3有限实现已落盘：SF Symbol经UIKit真实绘制后缓存；道路/岩脊复用沙地表面（最多15材质），保留孤立道路小段并补只在无正交中介时连到对角道路，避免去除灰格后隐去真实路网；浅水只沿邻陆边、减弱泡沫/波纹；棕榈曲线叶/树干/叶脉/软影、共享建筑增加门洞/屋顶内沿/通风/窗框。README/flow与图示已同步，未引入外部素材或新依赖。下一步diff/链接/范围审查，提交与云端验证。
 - v6.3静态审查：`git diff --check`、`git diff --cached --check`、6份本轮文档17个本地链接/围栏均通过；人工检查CGPoint投影/对角路与共享缓存、fog/实体生命周期。本轮只暂存7文件的实现/当前功能/架构增量与新证据，既有文档流程整理和工程Team ID继续排除。远端API与HEAD仍精确99276c2，无待推旧提交；即将按原main push完整入口执行，不重复dispatch、不本机测试。
+- v6.3已正常commit/push `a0f41ccfb9044428262cb6a481faaa2dca293622`（仅7文件）；HEAD/origin/main一致，push事件触发 run `40805991371` / attempt1 / main / 精确SHA，当前in_progress。watch session72978，30s间隔、日志 `/private/tmp/desert-watch-40805991371.log`；不重复dispatch。等待期间仅检查可用的远程生图通道/旧版证据，不改待验实现。
+- v6.3 attempt1已completed/failure；官方artifact12868697108 /532409bytes /SHA256=`e3c42c45ab5c5f8cd43a93166e1f470bd96c58c7ea07f6767bd66ad5795d64d0` 与API digest一致、36项未加密/CRC正常，缓存 `/private/tmp/desert-frontline-review-40805991371-attempt1/official/`。双构建/资源/HUD25真实通过，App已ready并导出非gate离屏图；失败精确在prewarm-terminate原60s上限(64.261s,exit124)，后续app log/list/shutdown亦超时。0正式图/24not_run，JUnit与manifest均保留失败，不能误说nonce真实重复或美术已验收。
+- 选择一次同SHA受限重跑（attempt2）：已有App-ready/HUD成功及整个simctl服务后续命令超时证据，先验证是否瞬时runner故障，不改源码/限时/失败gate，不新建或切换云端设备；同因再失败即停止机械重跑并继续有证据的调查。原attempt1官方包保留，不用attempt2覆盖。
+- 生图替代调查：通过Hugging Face仓库工具找到官方 `black-forest-labs/flux-3-image-klein` 公开ZERO Space，在浏览器匿名提交原创沙地prompt，页面真实返回1024x1024 /Distilled16steps /seed55337666与原图下载链接；未上传项目图/密钥、未付费、未下载/运行模型、未借用其他聊天。原图CLI下载403、首次浏览器downloadMedia超时，已保存成功页面截图 `/private/tmp/desert-image-candidates-20261029/flux-space-proof.png`；正在用浏览器已加载资产导出。模型API license=other，许可条款与原图质量尚未核对，不将候选并入App或宣称素材ready。
+- 同一run attempt2已实际queued，仍main/a0f41cc；watch session94380，日志 `/private/tmp/desert-watch-40805991371-attempt2.log`。本机待验源码未改；attempt1非gate HUD离屏图确认图标已由黑变青，但不能替代本轮0正式图的缺口。
+- FLUX候选页面与exact prompt/seed/来源回执保存至 `/private/tmp/desert-image-candidates-20261029/generation.json`；DOM自然尺寸实际2048x2048，而页面标注1024x1024，准确保留两者，不冒充原图已拿到。浏览器下载事件未触发，top-level资产导出不包含跨域iframe中的生成图；不通过截屏裁切伪造原图。官方模型元数据许可名flux-kommunity-license，LICENSE.md读取得401；不登录/接受新权限/下载模型来绕过。当前仅证明远程页面生成成功，原图导出和许可是待办，仍不接入项目。
+- v6.3 attempt2已completed/failure，不再重跑：官方artifact12872633543 /53879938bytes /SHA256=`6cf22410d7a1de38abd4ccd01344426922e82480fac6082e45127a1f79f62af9` 与API digest一致，159项未加密/CRC正常；身份main/a0f41cc/run40805991371/attempt2一致，缓存 `/private/tmp/desert-frontline-review-40805991371-attempt2/official/`。双构建/资源/脚本/HUD25/scene ready与24/24实际截图通过，真实boot命令正常退出0，但integrity-gate报boot evidence invalid，JUnit10/3failure/1skip，不能报总CI通过。
+- 已定位不同于attempt1的精确原因：boot.deadlineAfterSeconds=`1440.0000000000002`（由monotonic绝对时间相减），workBudgetSeconds=1440，validate_boot开头严格`!=`导致拒绝；其余时间字段已round(...,6)，此字段漏了。真实boot wait106.17559s正常退出，正式海岸/兵模/图标清晰呈现，不应修改App或放宽预算来掩盖。v6.4只将生产字段统一微秒精度；新增直接时钟边界保证旧实现可失败、真实deadline偏移仍拒绝，保留原验证器与门槛。
+- v6.4已落盘：runner单行round(...,6)，新增1项生产boot/JSON保存/metadata synthetic方法，math.nextafter时钟原点正例与真实deadline±1ms负例；验证器无改动。已安全fetch/pull，HEAD/origin仍a0f41cc；`git diff --check`、两个Python AST、当前两份证据文档链接/围栏通过，没有本机import/运行测试。逐块暂存本轮4文件，既有所有无关文档/Team ID继续排除，随后提交main等待新SHA官方完整包。
