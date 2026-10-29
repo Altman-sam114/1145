@@ -1922,8 +1922,10 @@ final class GameScene: SKScene {
     }
 
     private func terrainSurfaceTexture(for terrain: Terrain, tile: TileCoord) -> SKTexture {
+        // Roads and rock formations sit on sand; their silhouettes, not whole tiles, define the material.
+        let surface: Terrain = terrain == .road || terrain == .ridge ? .sand : terrain
         let material: Int
-        switch terrain {
+        switch surface {
         case .sand: material = 0
         case .road: material = 1
         case .water: material = 2
@@ -1949,14 +1951,14 @@ final class GameScene: SKScene {
             boundary.closeSubpath()
             context.addPath(boundary)
             context.clip()
-            context.setFillColor(color(for: terrain, tile: tile).cgColor)
+            context.setFillColor(color(for: surface, tile: tile).cgColor)
             context.fill(CGRect(origin: .zero, size: size))
             // Fine deterministic material grain is baked once per variant, not per tile or frame.
-            for index in 0..<(terrain == .water ? 800 : 2200) {
+            for index in 0..<(surface == .water ? 800 : 2200) {
                 let light = index.isMultiple(of: 3)
                 context.setFillColor((light ? UIColor.white : UIColor.black).withAlphaComponent(light ? 0.10 : 0.055).cgColor)
                 let point = CGPoint(x: sample() * size.width, y: sample() * size.height)
-                let width = terrain == .water ? 3 + sample() * 6 : 0.6 + sample() * 1.7
+                let width = surface == .water ? 3 + sample() * 6 : 0.6 + sample() * 1.7
                 context.fillEllipse(in: CGRect(x: point.x, y: point.y, width: width, height: 0.5 + sample() * 0.9))
             }
         }
@@ -1978,9 +1980,9 @@ final class GameScene: SKScene {
             ]
             let variation = variations[terrainDetailHash(for: tile) % variations.count]
             return UIColor(
-                red: 0.78 + variation.0,
-                green: 0.70 + variation.1,
-                blue: 0.54 + variation.2,
+                red: 0.80 + variation.0,
+                green: 0.73 + variation.1,
+                blue: 0.57 + variation.2,
                 alpha: 1.0
             )
         case .road:
@@ -1999,44 +2001,37 @@ final class GameScene: SKScene {
         case .water:
             let shoreSegments = shorelineSegments(for: tile)
             if !shoreSegments.isEmpty {
-                let shallowWater = SKShapeNode(
-                    path: diamondPath(width: tileWidth - 5, height: tileHeight - 3)
-                )
-                shallowWater.position = center
-                shallowWater.fillColor = UIColor(red: 0.22, green: 0.64, blue: 0.62, alpha: 0.22)
-                shallowWater.strokeColor = .clear
-                shallowWater.zPosition = zPosition(for: center) + 0.12
-                mapNode.addChild(shallowWater)
-
-                let innerShallow = SKShapeNode(
-                    path: diamondPath(width: tileWidth - 18, height: tileHeight - 10)
-                )
-                innerShallow.position = center
-                innerShallow.fillColor = UIColor(red: 0.36, green: 0.75, blue: 0.70, alpha: 0.12)
-                innerShallow.strokeColor = .clear
-                innerShallow.zPosition = zPosition(for: center) + 0.14
-                mapNode.addChild(innerShallow)
-
                 let hash = terrainDetailHash(for: tile)
                 for segment in shoreSegments {
-                    let start = CGPoint(x: segment.start.x * 0.88, y: segment.start.y * 0.88)
-                    let end = CGPoint(x: segment.end.x * 0.88, y: segment.end.y * 0.88)
+                    let start = segment.start * 0.94
+                    let end = segment.end * 0.94
                     let path = CGMutablePath()
                     path.move(to: start)
                     path.addLine(to: end)
 
+                    let shallows = SKShapeNode(path: path)
+                    shallows.position = center
+                    shallows.strokeColor = UIColor(red: 0.32, green: 0.68, blue: 0.62, alpha: 0.16)
+                    shallows.lineWidth = 17
+                    shallows.lineCap = .round
+                    shallows.zPosition = zPosition(for: center) + 0.14
+                    mapNode.addChild(shallows)
+
                     let wash = SKShapeNode(path: path)
                     wash.position = center
-                    wash.strokeColor = UIColor(red: 0.62, green: 0.94, blue: 0.86, alpha: 0.32)
-                    wash.lineWidth = 4.5
+                    wash.strokeColor = UIColor(red: 0.50, green: 0.78, blue: 0.67, alpha: 0.25)
+                    wash.lineWidth = 7
                     wash.lineCap = .round
                     wash.zPosition = zPosition(for: center) + 0.22
                     mapNode.addChild(wash)
 
-                    let foam = SKShapeNode(path: path)
+                    let foamPath = CGMutablePath()
+                    foamPath.move(to: pointAlongShoreline(from: start, to: end, fraction: 0.12))
+                    foamPath.addLine(to: pointAlongShoreline(from: start, to: end, fraction: 0.76))
+                    let foam = SKShapeNode(path: foamPath)
                     foam.position = center
-                    foam.strokeColor = UIColor.white.withAlphaComponent(0.48)
-                    foam.lineWidth = 1.2
+                    foam.strokeColor = UIColor(red: 0.90, green: 0.93, blue: 0.80, alpha: 0.34)
+                    foam.lineWidth = 0.75
                     foam.lineCap = .round
                     foam.zPosition = zPosition(for: center) + 0.26
                     mapNode.addChild(foam)
@@ -2051,7 +2046,7 @@ final class GameScene: SKScene {
                         let inward = CGPoint(x: -along.x * 0.16, y: -along.y * 0.16)
                         let bubble = SKShapeNode(circleOfRadius: 0.8 + CGFloat((hash + index * 5) % 5) * 0.15)
                         bubble.position = center + along + inward
-                        bubble.fillColor = UIColor.white.withAlphaComponent(0.28 + CGFloat((hash + index * 3) % 3) * 0.08)
+                        bubble.fillColor = UIColor.white.withAlphaComponent(0.14 + CGFloat((hash + index * 3) % 3) * 0.05)
                         bubble.strokeColor = .clear
                         bubble.zPosition = zPosition(for: center) + 0.28
                         mapNode.addChild(bubble)
@@ -2060,23 +2055,23 @@ final class GameScene: SKScene {
             } else if (tile.row + tile.col) % 3 == 0 {
                 let hash = terrainDetailHash(for: tile)
                 let waveLength = CGFloat(22 + hash % 13)
-                let wave = SKShapeNode(rectOf: CGSize(width: waveLength, height: 2), cornerRadius: 1)
+                let wave = SKShapeNode(rectOf: CGSize(width: waveLength, height: 0.8), cornerRadius: 0.4)
                 wave.position = center + CGPoint(x: 2, y: CGFloat((tile.row % 3) - 1) * 5)
-                wave.fillColor = UIColor.white.withAlphaComponent(0.25)
+                wave.fillColor = UIColor.white.withAlphaComponent(0.16)
                 wave.strokeColor = .clear
                 wave.zRotation = ((tile.row + tile.col) % 2 == 0 ? -1 : 1) * (0.28 + CGFloat(hash % 12) * 0.02)
                 wave.zPosition = zPosition(for: center) + 0.2
                 mapNode.addChild(wave)
 
                 if hash % 2 == 0 {
-                    let ripple = SKShapeNode(rectOf: CGSize(width: waveLength * 0.55, height: 1.5), cornerRadius: 0.7)
+                    let ripple = SKShapeNode(rectOf: CGSize(width: waveLength * 0.55, height: 0.65), cornerRadius: 0.3)
                     ripple.position = wave.position + CGPoint(
                         x: CGFloat(hash % 15 - 7),
                         y: CGFloat((hash / 3) % 9 - 4)
                     )
-                    ripple.fillColor = UIColor.white.withAlphaComponent(0.18)
+                    ripple.fillColor = UIColor.white.withAlphaComponent(0.10)
                     ripple.strokeColor = .clear
-                    ripple.zRotation = -wave.zRotation * 0.7
+                    ripple.zRotation = wave.zRotation
                     ripple.zPosition = zPosition(for: center) + 0.2
                     mapNode.addChild(ripple)
                 }
@@ -2084,6 +2079,10 @@ final class GameScene: SKScene {
         case .road:
             let connectionPoints = roadConnectionPoints(for: tile)
             let roadPath = CGMutablePath()
+            if connectionPoints.isEmpty {
+                roadPath.move(to: CGPoint(x: -12, y: 6))
+                roadPath.addLine(to: CGPoint(x: 12, y: -6))
+            }
             for point in connectionPoints {
                 roadPath.move(to: .zero)
                 roadPath.addLine(to: point)
@@ -2091,8 +2090,8 @@ final class GameScene: SKScene {
 
             let shoulder = SKShapeNode(path: roadPath)
             shoulder.position = center
-            shoulder.strokeColor = UIColor(red: 0.25, green: 0.24, blue: 0.21, alpha: 0.50)
-            shoulder.lineWidth = 22
+            shoulder.strokeColor = UIColor(red: 0.45, green: 0.39, blue: 0.28, alpha: 0.28)
+            shoulder.lineWidth = 23
             shoulder.lineCap = .round
             shoulder.lineJoin = .round
             shoulder.zPosition = zPosition(for: center) + 0.14
@@ -2100,8 +2099,8 @@ final class GameScene: SKScene {
 
             let roadBed = SKShapeNode(path: roadPath)
             roadBed.position = center
-            roadBed.strokeColor = UIColor(red: 0.61, green: 0.59, blue: 0.50, alpha: 0.88)
-            roadBed.lineWidth = 14
+            roadBed.strokeColor = UIColor(red: 0.40, green: 0.41, blue: 0.38, alpha: 0.95)
+            roadBed.lineWidth = 16
             roadBed.lineCap = .round
             roadBed.lineJoin = .round
             roadBed.zPosition = zPosition(for: center) + 0.18
@@ -2119,7 +2118,7 @@ final class GameScene: SKScene {
             for point in connectionPoints {
                 let dash = SKShapeNode(rectOf: CGSize(width: 11, height: 2), cornerRadius: 1)
                 dash.position = center + point * 0.48
-                dash.fillColor = UIColor(red: 0.91, green: 0.83, blue: 0.60, alpha: 0.62)
+                dash.fillColor = UIColor(red: 0.90, green: 0.83, blue: 0.64, alpha: 0.44)
                 dash.strokeColor = .clear
                 dash.zRotation = atan2(point.y, point.x)
                 dash.zPosition = zPosition(for: center) + 0.24
@@ -2185,8 +2184,8 @@ final class GameScene: SKScene {
                     blue: 0.24 + CGFloat(index) * 0.010,
                     alpha: 1.0
                 )
-                rock.strokeColor = UIColor(red: 0.14, green: 0.13, blue: 0.12, alpha: 1.0)
-                rock.lineWidth = 1.5
+                rock.strokeColor = UIColor(red: 0.23, green: 0.21, blue: 0.18, alpha: 0.70)
+                rock.lineWidth = 0.65
                 rock.zPosition = zPosition(for: center) + CGFloat(index) * 0.08 + 0.42
                 mapNode.addChild(rock)
 
@@ -2194,7 +2193,7 @@ final class GameScene: SKScene {
                 facet.position = rock.position
                 facet.fillColor = UIColor(red: 0.52, green: 0.45, blue: 0.35, alpha: 0.72)
                 facet.strokeColor = UIColor(red: 0.66, green: 0.56, blue: 0.42, alpha: 0.28)
-                facet.lineWidth = 1
+                facet.lineWidth = 0.5
                 facet.zPosition = rock.zPosition + 0.02
                 mapNode.addChild(facet)
             }
@@ -2233,8 +2232,8 @@ final class GameScene: SKScene {
                 )
                 let dune = SKShapeNode(path: contours)
                 dune.position = center + CGPoint(x: CGFloat(hash % 7 - 3), y: CGFloat((hash / 7) % 5 - 2))
-                dune.strokeColor = UIColor(red: 1.0, green: 0.91, blue: 0.67, alpha: 0.22)
-                dune.lineWidth = 2
+                dune.strokeColor = UIColor(red: 1.0, green: 0.93, blue: 0.74, alpha: 0.17)
+                dune.lineWidth = 0.8
                 dune.lineCap = .round
                 dune.zRotation = hash.isMultiple(of: 2) ? -0.14 : 0.14
                 dune.zPosition = zPosition(for: center) + 0.16
@@ -2451,10 +2450,21 @@ final class GameScene: SKScene {
             (TileCoord(row: tile.row + 1, col: tile.col), CGPoint(x: -tileWidth / 4, y: -tileHeight / 4)),
             (TileCoord(row: tile.row, col: tile.col - 1), CGPoint(x: -tileWidth / 4, y: tileHeight / 4))
         ]
-        return candidates.compactMap { candidate in
+        var points: [CGPoint] = candidates.compactMap { candidate in
             guard isValid(candidate.0), terrain(at: candidate.0) == .road else { return nil }
             return candidate.1
         }
+        // The seeded diagonal road touches tile vertices; avoid adding shortcuts at orthogonal junctions.
+        for (rowStep, colStep) in [(-1, -1), (-1, 1), (1, 1), (1, -1)] {
+            let neighbor = TileCoord(row: tile.row + rowStep, col: tile.col + colStep)
+            let rowNeighbor = TileCoord(row: tile.row + rowStep, col: tile.col)
+            let colNeighbor = TileCoord(row: tile.row, col: tile.col + colStep)
+            guard isValid(neighbor), terrain(at: neighbor) == .road,
+                  terrain(at: rowNeighbor) != .road, terrain(at: colNeighbor) != .road else { continue }
+            points.append(CGPoint(x: CGFloat(colStep - rowStep) * tileWidth / 4,
+                                  y: -CGFloat(rowStep + colStep) * tileHeight / 4))
+        }
+        return points
     }
 
     private func ridgeRockPath(size: CGFloat, lean: CGFloat) -> CGPath {
@@ -2646,21 +2656,62 @@ final class GameScene: SKScene {
     }
 
     private func addPalm(to node: SKNode, at offset: CGPoint, scale: CGFloat) {
-        let trunk = SKShapeNode(rectOf: CGSize(width: 4 * scale, height: 18 * scale), cornerRadius: 1)
-        trunk.position = offset + CGPoint(x: 0, y: 4 * scale)
-        trunk.fillColor = UIColor(red: 0.48, green: 0.31, blue: 0.18, alpha: 1.0)
-        trunk.strokeColor = .clear
-        trunk.zRotation = -0.18
-        node.addChild(trunk)
+        let palm = SKNode()
+        palm.position = offset
+        palm.setScale(scale)
+        node.addChild(palm)
+        let shadow = SKShapeNode(ellipseOf: CGSize(width: 29, height: 9))
+        shadow.position = CGPoint(x: 6, y: -6)
+        shadow.zRotation = -0.3
+        shadow.fillColor = UIColor(red: 0.19, green: 0.25, blue: 0.13, alpha: 0.21)
+        shadow.strokeColor = .clear
+        shadow.zPosition = -0.2
+        palm.addChild(shadow)
 
-        for angle in stride(from: 0.0, to: Double.pi * 2, by: Double.pi / 3) {
-            let leaf = SKShapeNode(ellipseOf: CGSize(width: 19 * scale, height: 6 * scale))
-            leaf.position = offset + CGPoint(x: cos(CGFloat(angle)) * 7 * scale, y: 15 * scale + sin(CGFloat(angle)) * 4 * scale)
-            leaf.fillColor = UIColor(red: 0.11, green: 0.43, blue: 0.20, alpha: 0.96)
+        let trunkPath = CGMutablePath()
+        trunkPath.move(to: CGPoint(x: -2.5, y: -5))
+        trunkPath.addQuadCurve(to: CGPoint(x: 1, y: 19), control: CGPoint(x: 4, y: 7))
+        trunkPath.addLine(to: CGPoint(x: 3, y: 19))
+        trunkPath.addQuadCurve(to: CGPoint(x: 1.5, y: -5), control: CGPoint(x: 7, y: 7))
+        trunkPath.closeSubpath()
+        let trunk = SKShapeNode(path: trunkPath)
+        trunk.fillColor = UIColor(red: 0.48, green: 0.34, blue: 0.19, alpha: 1)
+        trunk.strokeColor = UIColor(red: 0.29, green: 0.25, blue: 0.13, alpha: 0.65)
+        trunk.lineWidth = 0.5
+        palm.addChild(trunk)
+        for index in 0..<4 {
+            let ring = SKShapeNode(rectOf: CGSize(width: 3, height: 0.6))
+            ring.position = CGPoint(x: 1.2 + CGFloat(index) * 0.55, y: CGFloat(index) * 4)
+            ring.fillColor = UIColor(red: 0.78, green: 0.61, blue: 0.36, alpha: 0.65)
+            ring.strokeColor = .clear
+            palm.addChild(ring)
+        }
+
+        let crown = CGPoint(x: 2, y: 19)
+        for index in 0..<7 {
+            let angle = CGFloat(index) * .pi * 2 / 7 + 0.18
+            let tip = crown + CGPoint(x: cos(angle) * 18, y: sin(angle) * 10 - 3)
+            let arch = crown + CGPoint(x: cos(angle) * 10, y: sin(angle) * 7 + 3)
+            let breadth = CGPoint(x: -sin(angle) * 2.5, y: cos(angle) * 1.5)
+            let frond = CGMutablePath()
+            frond.move(to: crown)
+            frond.addQuadCurve(to: tip, control: arch + breadth)
+            frond.addQuadCurve(to: crown, control: arch - breadth)
+            let leaf = SKShapeNode(path: frond)
+            leaf.fillColor = index.isMultiple(of: 2)
+                ? UIColor(red: 0.23, green: 0.44, blue: 0.22, alpha: 1)
+                : UIColor(red: 0.12, green: 0.33, blue: 0.20, alpha: 1)
             leaf.strokeColor = .clear
-            leaf.zRotation = CGFloat(angle)
             leaf.zPosition = 0.2
-            node.addChild(leaf)
+            palm.addChild(leaf)
+            let veinPath = CGMutablePath()
+            veinPath.move(to: crown)
+            veinPath.addQuadCurve(to: tip, control: arch)
+            let vein = SKShapeNode(path: veinPath)
+            vein.strokeColor = UIColor(red: 0.55, green: 0.66, blue: 0.30, alpha: 0.55)
+            vein.lineWidth = 0.45
+            vein.zPosition = 0.21
+            palm.addChild(vein)
         }
     }
 
@@ -3154,6 +3205,37 @@ final class GameScene: SKScene {
         lip.lineWidth = 0.7
         lip.zPosition = 3
         block.addChild(lip)
+        if height >= 8 {
+            let doorBottom = CGPoint(x: width * 0.12, y: -depth * 0.38)
+            let doorSide = CGPoint(x: width * 0.24, y: -depth * 0.26)
+            let doorRise = CGPoint(x: 0, y: min(height * 0.7, 11))
+            let doorway = CGMutablePath()
+            doorway.addLines(between: [doorBottom, doorSide, doorSide + doorRise, doorBottom + doorRise])
+            doorway.closeSubpath()
+            let door = SKShapeNode(path: doorway)
+            door.fillColor = UIColor(red: 0.22, green: 0.28, blue: 0.27, alpha: 1)
+            door.strokeColor = roof.withAlphaComponent(0.55)
+            door.lineWidth = 0.5
+            door.zPosition = 3
+            block.addChild(door)
+
+            let roofInset = SKShapeNode(path: diamondPath(width: width * 0.68, height: depth * 0.68))
+            roofInset.position.y = height
+            roofInset.fillColor = roof.blended(with: .black, amount: 0.07)
+            roofInset.strokeColor = UIColor.black.withAlphaComponent(0.12)
+            roofInset.lineWidth = 0.45
+            roofInset.zPosition = 3.1
+            block.addChild(roofInset)
+            if width >= 28 {
+                let vent = SKShapeNode(path: diamondPath(width: min(width * 0.24, 16), height: min(depth * 0.24, 8)))
+                vent.position = CGPoint(x: -width * 0.12, y: height + depth * 0.05)
+                vent.fillColor = UIColor(red: 0.43, green: 0.47, blue: 0.43, alpha: 1)
+                vent.strokeColor = UIColor.white.withAlphaComponent(0.36)
+                vent.lineWidth = 0.6
+                vent.zPosition = 3.2
+                block.addChild(vent)
+            }
+        }
         if let trim, height >= 10 {
             let glass = CGMutablePath()
             glass.move(to: left + CGPoint(x: 4, y: -4))
@@ -3167,6 +3249,19 @@ final class GameScene: SKScene {
             windows.lineWidth = 0.5
             windows.zPosition = 4
             block.addChild(windows)
+            let mullions = CGMutablePath()
+            for index in 1...3 {
+                let fraction = CGFloat(index) / 4
+                let top = pointAlongShoreline(from: left + CGPoint(x: 4, y: -4),
+                                             to: front + CGPoint(x: -4, y: -4), fraction: fraction)
+                mullions.move(to: top)
+                mullions.addLine(to: top + CGPoint(x: 0, y: -4))
+            }
+            let frames = SKShapeNode(path: mullions)
+            frames.strokeColor = roof.withAlphaComponent(0.85)
+            frames.lineWidth = 0.8
+            frames.zPosition = 4.1
+            block.addChild(frames)
         }
         parent.addChild(block)
         return block
@@ -5779,7 +5874,14 @@ final class GameScene: SKScene {
             guard let image = UIImage(systemName: name, withConfiguration:
                 UIImage.SymbolConfiguration(pointSize: 22, weight: .medium))?.withTintColor(.white, renderingMode: .alwaysOriginal)
             else { return nil }
-            texture = SKTexture(image: image)
+            // UIKit symbol tint is deferred; bake the white pixels before SpriteKit applies its color blend.
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 2
+            format.opaque = false
+            let raster = UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+                image.draw(in: CGRect(origin: .zero, size: image.size))
+            }
+            texture = SKTexture(image: raster)
             texture.filteringMode = .linear
             hudSymbolTextures[name] = texture
         }

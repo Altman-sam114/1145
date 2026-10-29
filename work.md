@@ -16,9 +16,9 @@
 ## 步骤
 
 1. [完成] 读取当前渲染/HUD/CI；核验 v5.69 官方 ZIP digest/CRC、身份、JUnit、24/24 原生证据；百度桌面遇跳转/验证码，移动端已返回游戏条目；已目视项目原有 Desert Stormfront 参考截图，不采用 AI 汇总或下载站宣传作为权威事实。
-2. [进行中] 已尝试内置生图 5 次，当前会话全部 503；已接续十种既有兵模，增加 384px 透明边距归一化、实际贴图 ready 元数据；云端资源校验器及 6 项直接正负例在v6.0真实通过，尚需v6.1精确包复核。
-3. [进行中] HUD 已改为底部横向分类、窄资源栏、小地图/任务卡收缩；重做水平生命条/小阵营点与四类等距建筑/村落，基础地形新增最多25种一次性细粒材质缓存并弱化岸线泡沫；25组契约新增中心留白及小屏占屏上限。尚未编译/云端验收。
-4. [进行中] v6.0已提交并通过官方 Git Data API 实际发布 `7ba2ab308d7eeff44bbc051726ff0e7ef8da77dc`（v6.0），逐blob/tree/commit SHA一致、main只快进；run `40699552229` / attempt1 / push / main /精确SHA已启动，watch session38212已确认terminal，run completed/failure（13m33s），官方包已核验；当前正修复15个小屏case的selection row文字边界，不放宽任何gate。
+2. [完成基线] 已尝试内置生图 7 次，当前会话全部 503；已接续十种既有兵模，增加 384px 透明边距归一化、实际贴图 ready 元数据；v6.2 精确官方包中 source/bundle 十资源和6项直接正负例通过。新生成素材通道仍不可用。
+3. [进行中] HUD 底部分类/窄资源栏/小地图、水平生命条/阵营点、四类设施与村落、材质基线已获v6.2双构建/HUD25/24图技术证据；v6.3按实际画面修正黑图标、道路底色/对角连通、沿边浅水、曲线棕榈与门窗细节，当前尚未提交/云端验收。
+4. [完成v6.2复核] main精确 `99276c262481e9c8b40b37f6461e92c59be2546a` / run40706434687 / attempt1 官方ZIP摘要/CRC/身份与报告通过；不放宽gate、不以旧run替代新实现。下一步v6.3静态自查、逐块提交main并下载新SHA官方包。
 5. [待办] 修复证据暴露的问题，记录长期结论；只有全部所选验收完成后清理本工作台。
 
 ## 编辑范围
@@ -41,10 +41,12 @@
 - 只读会话设置发现关键差异：本线程 `01a18284-c517-7100-87ad-bb188f2cf57c` 当前 model=`boa-hb/gpt-6.1-sol`；rome 与 Rustwar 为 `boa-xu/gpt-6.1-sol`。这是观察到的路由差异，尚未证明切换即成功。
 - 已向用户询问是否允许仅将本会话切到 `boa-xu/gpt-6.1-sol` 并发送续行消息；未获确认前不改设置或发消息。没有修改全局配置/数据库，没有读出或输出密钥。环境无 `OPENAI_API_KEY`；只读模型发现接口不列图像模型。官方 OpenAI 图片文档两个域名均返回403，不据此臆测可用性。
 - 恢复后第5次直接生成全新透明侦察车仍503，request id `202610281422501166835938268d9d6q5Pz1DH1`，错误明确为 `gpt-image-2` / `team` / distributor无可用通道。再次只读核对Rustwar实际imageGeneration成功记录及easytech/Rustwar美术来源：都使用同一内置工具，无独立插件或CLI/API key路径。工具当前不暴露model/provider切换参数，不向prompt伪加路由参数，不擅自转收费API。两个官方文档域名再次403。
+- 恢复后又以SQLite mode=ro仅取这4个线程的rollout路径、仅解析turn_context.model：本线程最新14:21:56仍boa-hb/gpt-6.1-sol；rome、Rustwar、easytech三个成功项目均boa-xu/gpt-6.1-sol，model_provider均magpie。没有读取认证值或修改数据库，路由关联再次确认但未实际切换验证，不把它写成已修复。
+- 相隔约30分钟，第6次改走真实本地carrier引用图的编辑/去背景请求，仍同一gpt-image-2/team通道503，request id `202610281453440502744568268d9d6cMUGKQBv`。无新生成PNG、未修改carrier原图；直出与编辑两种内置路径都已证实当前失败，不继续只改prompt机械重试。
 
 ## 下一步
 
-生图路由调整尚未获得用户明确确认，不切换、不发续行消息；这只限制新增生图，不阻塞现有素材重构。v6.1官方失败包已核验，当前有限步骤：修复只读launch help的有界瞬时超时，保留原cap/选项检查，仅完整确认timeout进程清理后可再执行一次；两次原始输出/receipt分别留存，非超时/取消/不完整清理/不支持选项均不得重试。补直接云端正负例、静态检查，精确提交main再等新SHA。后续仍需HUD25/selectionRows与24原生图复核、真实操作及完整对局，不把本轮基线等同总目标完成。
+v6.2 官方包已完整下载并核验，双构建、HUD25、24 正式探针与资源合同通过；实际图像仍暴露低对比黑色图标、整格公路/浅水菱形和简单棕榈。下一有限增量 v6.3：在同一 GameScene 内把 SF Symbol 真正栅格化为白色纹理后染色；道路底色复用沙地、海岸仅绘真实邻陆边而不是整格浅水框；棕榈/村落补有层次的原生细节。不改 HUD 命中/布局、战斗/经济、迷雾或 CI 预算/门槛。baseline=diff 与文档链接；direct=精确新 SHA 双构建、HUD25、原有24截图和随包资源，复用现有入口、不增加无关探针。真实触摸、完整对局和长期性能仍须后续独立证据。
 
 ## 推送链路与云端证据
 
@@ -70,3 +72,18 @@
 - v6.1官方ZIP已下载，字节数/API digest/全项CRC、main/完整SHA/run/attempt一致。双构建真实BUILD SUCCEEDED，脚本及十种source/bundle资产成功；boot成功167s、install成功35s，之后只读 `xcrun simctl help launch` 10s空输出超时退出124（launch-output-options）。App尚未启动，HUD缺报告、0完成/24not_run，JUnit10/4fail/1skip；不能判断v6.1行拟合效果，更不能误归因为Swift编译或新UI断言。缓存 `/private/tmp/desert-frontline-review-40704352161-attempt1/`。
 - v6.2已编辑：`ci/simulator_probe.py` 局部launch help、`ci/check_probe_runner.py` 对应真实生产方法的9项synthetic边界、`ci/package_results.py` 第二次help日志索引及本日志/工作台。所选验证baseline=diff/AST；direct=新增help正负路径、实际云端launch→HUD25→24PNG（现有完整入口不可切分，不增加别的游戏探针）。不改App玩法、行拟合、资源、boot/install策略、共享预算或正式失败gate。下一步静态审查、fetch/pull、精确暂存本轮5文件并发布新SHA，不运行本机测试。
 - v6.2静态审查完成：`git diff --check`及3个Python文件AST解析通过；未import或执行测试。再次正常HTTP/1.1 fetch / pull --ff-only成功，main/origin仍8898d79；本轮5文件按范围暂存，原Team ID与文档整理继续排除。原workflow仍main push固定整条链路，新增9方法只属当前help故障直接边界。
+- v6.2已正常commit/push main `99276c262481e9c8b40b37f6461e92c59be2546a`（5个本轮文件）；HEAD/origin一致，账号Altman-sam114。精确push run `40706434687` / attempt1 / main /99276c2 已in_progress，接下来等待这一次，不重复dispatch；成功或失败均下载官方精确包复核，不能以新query自测替代实际App/HUD/截图。
+- 当前远端watch exec session54862，日志 `/private/tmp/desert-watch-40706434687.log`；14:50Z静态step、lint、generic build均结束，模拟器step仍在执行（run约20min）。未据持续时间猜测卡死、未重启/追加run，继续等原有27min有界step及上传。原生截图/HUD结果尚未可读，不提前宣称通过。
+- v6.2 watch session54862已真实退出0，run40706434687/attempt1/main/99276c2 completed/success，job21m1s；双构建/模拟器/metadata/upload/final gate均success。官方artifact12825476491，55117259bytes，digest `c706d16f002db28b68a56be7f86c203458b54fe19403320ac5506baf6db59d6c`；正在session50248下载官方ZIP至 `/private/tmp/desert-frontline-review-40706434687-attempt1/`。待digest/CRC/身份/实际命令/报告/24张原生图目视复核，不能仅凭绿色交付或完成总目标。
+- 原gh artifact传输持续低速，仅2653114bytes，已核对owned PID85229的精确argv后TERM结束（session50248退出143），保留前缀，不冒充下载完成。官方302同一签名blob已验证支持206/Content-Range，另保留末尾262144bytes；当前session40492以4并发HTTP Range续传25块并组装 `official-complete.zip`，需完整官方digest/CRC匹配才解包和采用。没有重跑CI或换artifact，不输出/持久化认证值与签名URL。
+
+## 2026-10-29 恢复与 v6.3 画面收敛
+
+- 恢复时 HEAD/origin/main=`99276c262481e9c8b40b37f6461e92c59be2546a`，已重新 fetch / pull --ff-only，安全同步且无新增他人源码改动；原有文档整理/Team ID/未跟踪历史资料继续保留。没有启动子智能体或本机运行游戏。
+- 旧临时传输目录已不在本执行环境，原session不能恢复；改用官方同一 artifact 单次重新下载成功。`/private/tmp/desert-frontline-review-40706434687-attempt1/official-complete.zip` 为55117259bytes，SHA256=`c706d16f002db28b68a56be7f86c203458b54fe19403320ac5506baf6db59d6c`，与GitHub API完全一致，159项未加密、路径安全、CRC正常；原样解包至 `official/`。
+- 身份main/99276c2/run40706434687/attempt1一致；generic 与 simulator 均真实 BUILD SUCCEEDED；JUnit10/0failure/1准确XCTest skip；109 runner方法、5watchdog和6资源正负例零失败。HUD25×9全部true，actualLabelAudit零失败、stateRestored=true，正式24/24，独立nonce/PID/原生图完整性通过；work1088.252s/cleanup20.968s。launch-help本run首查正常退出，不能说已动态执行真实timeout重试。
+- 已实际查看战术、Build/Support、陆战、地形、战列舰齐射、航母打击等原生PNG：单位真实贴图与HUD均呈现，无黑屏/缺层；但SF Symbol呈黑色、道路灰色整格/浅水菱形明显、植被简单。这是下轮修复依据，不宣称商业品质/完整复刻或全部视觉验收完成。
+- 本轮第7次内置 `image_gen` 请求原创HQ仍503，request=`202610290113373220444658268d9d63GV85HId`，gpt-image-2/team 无可用通道；未生成或接入新图，不擅自切路由、付费API或借用其他聊天。百度本轮桌面查询已正常返回Desert Stormfront游戏条目；下载站/百科的宣传细节不作为已核实玩法。
+- v6.3 编辑范围预定：GameScene 的 hudSymbol / terrainSurfaceTexture / addTerrainDetail / addPalm / addVillageScenery 及相关README、flow、日志、工作台；不动单位PNG、工程签名、CI脚本或workflow。
+- v6.3有限实现已落盘：SF Symbol经UIKit真实绘制后缓存；道路/岩脊复用沙地表面（最多15材质），保留孤立道路小段并补只在无正交中介时连到对角道路，避免去除灰格后隐去真实路网；浅水只沿邻陆边、减弱泡沫/波纹；棕榈曲线叶/树干/叶脉/软影、共享建筑增加门洞/屋顶内沿/通风/窗框。README/flow与图示已同步，未引入外部素材或新依赖。下一步diff/链接/范围审查，提交与云端验证。
+- v6.3静态审查：`git diff --check`、`git diff --cached --check`、6份本轮文档17个本地链接/围栏均通过；人工检查CGPoint投影/对角路与共享缓存、fog/实体生命周期。本轮只暂存7文件的实现/当前功能/架构增量与新证据，既有文档流程整理和工程Team ID继续排除。远端API与HEAD仍精确99276c2，无待推旧提交；即将按原main push完整入口执行，不重复dispatch、不本机测试。

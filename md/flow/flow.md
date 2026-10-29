@@ -34,7 +34,7 @@
 4. `GameScene.didMove(to:)` 初始化 world、map、entity、effect、fog、HUD、camera 节点。
    已初始化场景重挂载只排队新几何并使旧ready失效，不再addChild或重置玩法；SKRM仍走独立原重置路径。
    `cameraRig: SKNode` 只持有唯一逻辑相机位置/倍率；`scene.camera=nil`、anchorPoint为(0.5,0.5)，HUD直接挂scene。集中`applyCameraProjection()`令world根scale为逻辑scale倒数、position为负相机位置乘倒数；几何安全点、updateHUD和触摸收尾都复用，只在值变化时写节点。ready记录world-node-affine-v1、实际host/父关系/native camera禁用与world变换，校验逻辑相机世界中心/HUD原点的view投影居中及屏内玩家单位。它仍是CPU证据，正式PNG门槛不变。
-5. 初始化流程依次构建地形、绘制地图、生成控制点、生成初始单位/建筑、布局 HUD、刷新迷雾、刷新 HUD；`drawMap()` 用 tile 坐标与 skirmish seed 的确定性散列选择小幅沙地色差并低密度生成沙丘等高线 / 风纹，只读检查 road 四个正交邻格后按真实连通方向绘制道路肩、内层路床和中心标记，为 ridge 一次性生成不同尺寸 / 偏移的岩体落影、亮暗岩面与碎石，为 oil 增加污环 / 裂纹；水格继续只读检查四个正交邻格，在邻陆水格叠加两级浅水菱形（外层浅青 + 内缘亮青渐变）、青白冲洗带、细泡沫线和沿岸线确定性散布的白色泡点，开阔水格保留稀疏方向波纹并按哈希确定性变化波杆长度 / 角度、约半数追加第二条短波杆；`.sand` / `.oil` 陆地格沿同一四方向边表为水邻边加入缩进、低对比湿沙唇与稀疏断续高光，其中 `.sand` 每个 tile 还按 `terrainDetailHash(for:)` 与 `edge.index` 稀疏选择至多一条短平行潮痕和一个小漂砾，`.ridge` 陆地格按哈希为水邻边加入短暗色礁石轮廓与少量碎片，`.road` 不增加陆地侧岸线装饰。水侧与陆地侧都只创建 `mapNode` 子节点，并受既有 `fogLayer` 覆盖；所有这些节点只在地图构建 / 重开时创建，不进入每帧 update，不改变 terrain、移动速度、寻路、建造、海岸、迷雾或小地图语义。
+5. 初始化流程依次构建地形、绘制地图、生成控制点、生成初始单位/建筑、布局 HUD、刷新迷雾、刷新 HUD；`drawMap()` 用 tile 坐标与 skirmish seed 的确定性散列选择小幅沙地色差并低密度生成沙丘等高线 / 风纹，只读检查 road 四个正交邻格及无正交中介的对角道路后按真实连通方向绘制道路肩、内层路床和中心标记，为 ridge 一次性生成不同尺寸 / 偏移的岩体落影、亮暗岩面与碎石，为 oil 增加污环 / 裂纹；水格继续只读检查四个正交邻格，仅沿真实邻陆边绘制宽浅水带、低对比冲洗带、断续细泡沫线和确定性泡点，不绘整格浅水菱形，开阔水格保留稀疏方向波纹并按哈希确定性变化波杆长度 / 角度、约半数追加第二条短波杆；`.sand` / `.oil` 陆地格沿同一四方向边表为水邻边加入缩进、低对比湿沙唇与稀疏断续高光，其中 `.sand` 每个 tile 还按 `terrainDetailHash(for:)` 与 `edge.index` 稀疏选择至多一条短平行潮痕和一个小漂砾，`.ridge` 陆地格按哈希为水邻边加入短暗色礁石轮廓与少量碎片，`.road` 不增加陆地侧岸线装饰。水侧与陆地侧都只创建 `mapNode` 子节点，并受既有 `fogLayer` 覆盖；所有这些节点只在地图构建 / 重开时创建，不进入每帧 update，不改变 terrain、移动速度、寻路、建造、海岸、迷雾或小地图语义。
 6. `GameScene.update(_:)` 先确认初始化完成、应用外部待处理几何，再推进施工、生产、支援冷却、经济、占领、维修、移动、战斗、AI、迷雾、死亡清理、任务进度、胜负和 HUD。HUD 布局非重入；HUD25 内部尺寸变化不进入外部请求队列，期间真实窗口变化保留到恢复后处理。
 7. 触摸事件在 `touchesBegan/Moved/Ended` 中分流到 HUD、迷你地图、双指平移缩放、框选、建筑预览、支援技能目标、集结点、attack-move、选中、移动和攻击。
 
@@ -50,7 +50,7 @@
 
 实体配置阶段一次性创建小型菱形阵营标记和 `healthTowerNode` 六格水平生命条。`updateHealthBar(...)` 仍只读既有 `hp / maxHP` ratio；未选中且满血时弱化生命条，选中或受损时恢复，单位短码仅在选中时显示。贴图、标记、条格与原有选择/伤害/迷雾节点共用同一实体生命周期，不保存第二份 HP 或阵营状态。
 
-结构模型由 `configureEntityNode(...)` 一次性挂在实体 base 下；HQ、War Factory、Airfield、Shipyard 改用 `addFacilityBody(...)` 与共享 `addIsometricBlock(...)` 绘制顶面、两侧明暗立面、窗带、通风/天线、跑道或吊机。村落复用同一等距体块。它们只改变美术，不改变 footprint、施工 operational 门槛、碰撞、生产、rally、海岸或 SKRM 规则。
+结构模型由 `configureEntityNode(...)` 一次性挂在实体 base 下；HQ、War Factory、Airfield、Shipyard 改用 `addFacilityBody(...)` 与共享 `addIsometricBlock(...)` 绘制顶面、两侧明暗立面、窗带、通风/天线、跑道或吊机。村落复用同一等距体块。共享体块还绘制凹入屋顶、右立面门洞、通风口和窗框，棕榈使用固定曲线树干/叶片、明暗叶脉和地面软影；均在地图/实体创建阶段一次性挂载。它们只改变美术，不改变 footprint、施工 operational 门槛、碰撞、生产、rally、海岸或 SKRM 规则。
 
 选中的玩家存活作战机动实体在同一 `selectionNode` 子树内一次性挂载 `weaponReadinessNode` 与四个低侧固定刻度；`refreshWeaponReadinessVisuals(for:)` 每帧先隐藏 / 恢复所有刻度，再只对玩家、存活、operational、非结构且 `kind.damage > 0` 的当前选中实体读取 `attackTimer`。就绪门槛沿用 `attackTimer <= 0.05` 并显示青绿色全刻度；装填中以 `1 - clamp(attackTimer / max(effectiveAttackCooldown(for:), 0.2), 0...1)` 按段着色琥珀已恢复刻度，未恢复槽位保留深色。节点不进入 `effectsLayer`，随实体镜像、移动、迷雾 / 潜艇隐藏、战损、死亡清理和 skirmish 重开，不创建第二份 readiness / cooldown 状态，也不改变攻击执行；敌军、未知目标、结构、Mechanic、施工和 pending / 空选择始终隐藏。
 
@@ -96,7 +96,7 @@ Mechanic 实体另持有预创建的 `mechanicRepairEffectNode`，由阵营化�
 
 小地图下方的 `−` / `+` 是独立的 HUD 命中区域，调用 `adjustCameraZoom(by:)` 复用 `minCameraScale`、`maxCameraScale` 和 `clampCamera`，并刷新小地图 camera box；它们不属于 `HudAction`，不会穿透为世界点击或清理 pending 命令。
 
-`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名改为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:)` 仍是生产绘制、触摸和云端契约的唯一框来源。分类改为左下横栏，当前动作在底部 dock 收口；28pt 资源栏、左上任务/消息、底部选择/队列和右上小型分带地图互不覆盖。所有可点控件至少 44pt，双指优先 pan/pinch，静态面板与间隙仍 inert，切页保留选择、队列和互斥 pending。`HUDPalette` 统一深海蓝、青绿和沙金，命令用系统符号、生产用共享单位纹理；25 组生产契约还检查小屏 HUD 面积上限和战场中心可路由。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名改为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:)` 仍是生产绘制、触摸和云端契约的唯一框来源。分类改为左下横栏，当前动作在底部 dock 收口；28pt 资源栏、左上任务/消息、底部选择/队列和右上小型分带地图互不覆盖。所有可点控件至少 44pt，双指优先 pan/pinch，静态面板与间隙仍 inert，切页保留选择、队列和互斥 pending。`HUDPalette` 统一深海蓝、青绿和沙金，命令系统符号先用 UIGraphicsImageRenderer 烘焙白色像素再由 SpriteKit 染青，避免 UIKit 延迟 tint 导致黑色图标；生产用共享单位纹理；25 组生产契约还检查小屏 HUD 面积上限和战场中心可路由。
 
 ### `AIDifficulty`
 
@@ -315,6 +315,6 @@ THEATER 状态卡包含静态绿色 LIVE 指示点，仅为状态卡视觉层级
 
 `EntityKind.artworkName/artworkWidth` 映射十种机动单位；ImageIO 从 Bundle 的 `Art/Units` 以至多 384px 解码，`croppedArtwork` 一次性归一化透明边距，`unitArtworkTextures` 按种类缓存，同种实体与生产按钮复用。ready 同时验证实际贴图挂载并记录纹理尺寸，缺资源不能以旧形状 fallback 冒充成功。静态资产清单与限制见 [美术说明](../art/v6.0-unit-art.md)。
 
-`drawMap` 的基础菱形改为缓存 `SKSpriteNode` 材质：`terrainSurfaceTexture` 用本地确定性采样烘焙细粒沙/石/路/水纹理，最多五种地形各五个变体，不在每帧重绘。地形逻辑、寻路与 fog tile 未改变；沿岸泡沫减弱，原道路连接、岸线、岩脊与 scenery 仍挂 mapNode。
+`drawMap` 的基础菱形改为缓存 `SKSpriteNode` 材质：`terrainSurfaceTexture` 用本地确定性采样烘焙细粒沙/油/水纹理，道路和岩脊复用沙地表面，最多三种基础表面各五个变体，不在每帧重绘。地形逻辑、寻路与 fog tile 未改变；沿岸泡沫减弱，原道路连接、岸线、岩脊与 scenery 仍挂 mapNode。
 
 云端先检查 source manifest/CRC/alpha/hash，模拟器 App 构建后再复核实际 bundle；PNG/JSON、原生屏幕图与实体 ready trace 共同组成证据，不能用资源检查代替 GPU 画面或真实触控。

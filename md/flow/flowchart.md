@@ -8,7 +8,7 @@ Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界�
 
 海军实体的 `navalWakeNode` 与选中艏向箭头都在实体配置阶段一次性预创建：Battleship / Carrier 依舰体尺度绘制艏部 V 形浅水冲洗、近 / 远段递减尾流、泡沫边与舰艉推进器扰流，Submarine 仅保留低透明扰动；移动时 `updateNavalWake` 用同一 `localWakeDirection` 与 `xScale` 镜像同时旋转尾流和箭头。选择刷新只让玩家选中、存活且可见的三类海军显示箭头；停止保留最后 rotation，取消选择、死亡、重开和 fog 隐藏继续复用实体父节点生命周期，不新增状态、每帧节点或第 25 次探针。读图：海军 movement direction 分流到既有 wake rotation 与 heading cue rotation，selection / alive / fog 门槛控制 cue 显隐。
 
-`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名改为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:)` 仍是生产绘制、触摸和云端契约的唯一框来源。分类改为左下横栏，当前动作在底部 dock 收口；28pt 资源栏、左上任务/消息、底部选择/队列和右上小型分带地图互不覆盖。所有可点控件至少 44pt，双指优先 pan/pinch，静态面板与间隙仍 inert，切页保留选择、队列和互斥 pending。`HUDPalette` 统一深海蓝、青绿和沙金，命令用系统符号、生产用共享单位纹理；25 组生产契约还检查小屏 HUD 面积上限和战场中心可路由。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名改为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:)` 仍是生产绘制、触摸和云端契约的唯一框来源。分类改为左下横栏，当前动作在底部 dock 收口；28pt 资源栏、左上任务/消息、底部选择/队列和右上小型分带地图互不覆盖。所有可点控件至少 44pt，双指优先 pan/pinch，静态面板与间隙仍 inert，切页保留选择、队列和互斥 pending。`HUDPalette` 统一深海蓝、青绿和沙金，命令系统符号先烘焙白色像素再由 SpriteKit 染青，生产用共享单位纹理；25 组生产契约还检查小屏 HUD 面积上限和战场中心可路由。
 
 Carrier 静态舰体由原创透明纹理承载，动态甲板三个停机位和队列提示仍属于原实体渲染子树，不创建新飞机实体或生产状态。
 
@@ -331,8 +331,12 @@ flowchart LR
   Cache --> Portrait[当前页生产按钮肖像]
   State[原 hp / faction / selection / fog] --> Body
   State --> Markers[小阵营点 / 六格水平生命条]
-  Terrain[原 terrain / tile hash] --> Bake[一次性烘焙最多 25 种细粒材质]
+  Terrain[原 terrain / tile hash] --> Bake[一次性烘焙最多 15 种细粒表面 / 路与岩脊复用沙地]
   Bake --> Map[mapNode SKSpriteNode / 原 fogLayer]
+  Terrain --> Detail[正交及有界对角路连接 / 仅邻陆边浅水 / 曲线棕榈与屋顶门窗]
+  Detail --> Map
+  Symbol[UIKit SF Symbol] --> Raster[白色像素实际栅格化 / SKTexture 缓存与青色混合]
+  Raster --> Screen
   Manifest --> Verify[云端 source 与实际 App bundle 校验]
   Body --> Screen[云端 ready trace 与原生 PNG]
   Portrait --> Screen
