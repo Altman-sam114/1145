@@ -2,13 +2,13 @@
 
 本文用 Mermaid 图把 `md/flow/flow.md` 的核心逻辑可视化。每张图前都有中文读图说明，便于人工快速检查当前项目运行链路。
 
-当前版本视觉增量：实体配置阶段创建小阵营点和六格水平生命条，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；HQ / War Factory / Airfield / Shipyard 使用等距明暗体块、窗带和设施细节；HUD 选择面板在写入行文本时使用集中式海空短码与有界单行 fitting，小地图海军/空军 blip 另增加已知朝向与选中交战微齿；地图构建还沿共享四方向岸线边表为 `.sand` / `.oil` 增加低对比湿沙唇，其中 `.sand` 水邻 tile 按 `terrainDetailHash(for:)` 与 `edge.index` 稀疏增加至多一条短平行潮痕和一个小漂砾，为水邻 `.ridge` 稀疏增加暗色礁石边缘，海军双炮线加入短暂方向化错列与成对水柱反馈，Carrier 对已知 `.air` 目标的既有攻击再使用短时 `CV INTERCEPT` 舰载机、导引光迹与空中命中环，节点只进入 `mapNode` / `effectsLayer` 并继续受 `fogLayer` 覆盖；这些节点仍沿用现有迷雾、选择、告警和死亡清理链路，所有新增 cue 都不改攻击、移动或生产规则。
+当前版本视觉增量：实体配置阶段创建小阵营点和六格水平生命条，为单选 Blue 陆空作战单位预创建由既有 `attackRange` 驱动的低透明等距射程椭圆，为 Carrier 预创建三个固定停机位舰载机轮廓，并为 Submarine 创建低对比度艏艉细节与实体本地 `STEALTH` / `SONAR` / `DETECT` / `CONTACT` cue；十类设施使用原创透明纹理和贴地锚点；HUD 选择面板在写入行文本时使用集中式海空短码与有界单行 fitting，小地图海军/空军 blip 另增加已知朝向与选中交战微齿；地图构建还沿共享四方向岸线边表为 `.sand` / `.oil` 增加低对比湿沙唇，其中 `.sand` 水邻 tile 按 `terrainDetailHash(for:)` 与 `edge.index` 稀疏增加至多一条短平行潮痕和一个小漂砾，为水邻 `.ridge` 稀疏增加暗色礁石边缘，海军双炮线加入短暂方向化错列与成对水柱反馈，Carrier 对已知 `.air` 目标的既有攻击再使用短时 `CV INTERCEPT` 舰载机、导引光迹与空中命中环，节点只进入 `mapNode` / `effectsLayer` 并继续受 `fogLayer` 覆盖；这些节点仍沿用现有迷雾、选择、告警和死亡清理链路，所有新增 cue 都不改攻击、移动或生产规则。
 
 Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界偏移，在有效 `.sand` / `.oil` 投影锚点经 `tile(at:)` / `terrain(at:)` 生成低透明压缩 rotor-wash 尘环、两侧短尘流和固定颗粒；普通 root 约 0.52 秒统一清理，persistent capture 立即保留完整构图，road / ridge / water / 无效点和未知敌方来源不进入该 effects-layer 视觉链。
 
 海军实体的 `navalWakeNode` 与选中艏向箭头都在实体配置阶段一次性预创建：Battleship / Carrier 依舰体尺度绘制艏部 V 形浅水冲洗、近 / 远段递减尾流、泡沫边与舰艉推进器扰流，Submarine 仅保留低透明扰动；移动时 `updateNavalWake` 用同一 `localWakeDirection` 与 `xScale` 镜像同时旋转尾流和箭头。选择刷新只让玩家选中、存活且可见的三类海军显示箭头；停止保留最后 rotation，取消选择、死亡、重开和 fog 隐藏继续复用实体父节点生命周期，不新增状态、每帧节点或第 25 次探针。读图：海军 movement direction 分流到既有 wake rotation 与 heading cue rotation，selection / alive / fog 门槛控制 cue 显隐。
 
-`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名改为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:)` 仍是生产绘制、触摸和云端契约的唯一框来源。分类改为左下横栏，当前动作在底部 dock 收口；28pt 资源栏、左上任务/消息、底部选择/队列和右上小型分带地图互不覆盖。所有可点控件至少 44pt，双指优先 pan/pinch，静态面板与间隙仍 inert，切页保留选择、队列和互斥 pending。`HUDPalette` 统一深海蓝、青绿和沙金，命令系统符号先烘焙白色像素再由 SpriteKit 染青，生产用共享单位纹理；25 组生产契约还检查小屏 HUD 面积上限和战场中心可路由。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名改为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:)` 仍是生产绘制、触摸和云端契约的唯一框来源。分类改为左下横栏，当前动作在底部 dock 收口；28pt 资源栏、左上任务/消息、底部64pt双列选择/队列卡和右上小型分带地图互不覆盖。所有可点控件至少 44pt，双指优先 pan/pinch，静态面板与间隙仍 inert，切页保留选择、队列和互斥 pending。`HUDPalette` 统一深海蓝、青绿和沙金，命令系统符号先烘焙白色像素再由 SpriteKit 染青，生产用共享单位纹理；25 组生产契约还检查小屏 HUD 面积上限和战场中心可路由。
 
 Carrier 静态舰体由原创透明纹理承载，动态甲板三个停机位和队列提示仍属于原实体渲染子树，不创建新飞机实体或生产状态。
 
@@ -40,7 +40,7 @@ flowchart TD
   Loop --> AI["敌方 AI\n补建含声呐浮标、防空阵地和岸防炮、空军压力补防空、已知潜艇压力补 ASW、合法认知 SCAN 巡扫、生产机动防空、长期保留占点队、反夺旗点优先级、旗点防守响应、海岸目标权重、跳过不可生产兵种、支援、混编主攻波次、低血单位撤退回修、受损老兵保护、空闲Carrier警戒翼队、高价值海军护航门槛、attack-move 波次"]
   Loop --> Fog["战争迷雾\n单位/已完工建筑/RAD/脆弱专职 SON/GT/SAM/CB 视野、侦察、潜艇检测、支援命中暴露"]
   Loop --> Mission["任务 / 胜负\n占油、夺旗、海岸资产分项摘要、混编/破生产奖励、已知HQ情报与AMOV面板摘要、HQ 摧毁判定"]
-  Build --> Render["SpriteKit 渲染\n原创陆海空纹理 / 等距设施与村落 / 缓存细粒地形\n原有尾流、阴影、战损、舰载机与战斗特效 / 同一 fogLayer"]
+  Build --> Render["SpriteKit 渲染\n原创陆海空与十类设施纹理 / 精细环境 / 缓存细粒地形\n原有尾流、阴影、战损、舰载机与战斗特效 / 同一 fogLayer"]
   Economy --> Render
   Commands --> Render
   Combat --> Render
@@ -326,14 +326,16 @@ flowchart LR
 ```mermaid
 flowchart LR
   Manifest[Art 清单 / 原创 PNG] --> Decode[ImageIO 至多 384px / 透明边距归一化]
-  Decode --> Cache[按 EntityKind 缓存 SKTexture]
+  Decode --> Cache[按 EntityKind 缓存 20 类实体 SKTexture]
   Cache --> Body[GameEntity.artworkNode]
   Cache --> Portrait[当前页生产按钮肖像]
+  Decode --> Scenery[3 类环境纹理缓存 / 岩石 / 棕榈 / 村落]
+  Scenery --> Map
   State[原 hp / faction / selection / fog] --> Body
   State --> Markers[小阵营点 / 六格水平生命条]
   Terrain[原 terrain / tile hash] --> Bake[一次性烘焙最多 15 种细粒表面 / 路与岩脊复用沙地]
   Bake --> Map[mapNode SKSpriteNode / 原 fogLayer]
-  Terrain --> Detail[正交及有界对角路连接 / 仅邻陆边浅水 / 曲线棕榈与屋顶门窗]
+  Terrain --> Detail[正交及有界对角路连接 / 仅邻陆边浅水 / 原 terrain 和 fog]
   Detail --> Map
   Symbol[UIKit SF Symbol] --> Raster[白色像素实际栅格化 / SKTexture 缓存与青色混合]
   Raster --> Screen

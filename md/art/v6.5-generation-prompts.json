@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "version": "v6.5",
+  "createdDate": "2026-11-06",
+  "tool": "image_gen.imagegen",
+  "mode": "built-in",
+  "transparentBackground": true,
+  "selectedAssets": [
+    {
+      "kind": "hq",
+      "file": "Structures/command-hq.png",
+      "worldWidth": 100,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-916d89ce-d680-47fe-809d-2cf0e34d3bac.png",
+      "deliveryFile": "v6.5-command-hq.png",
+      "prompt": "Use case: stylized-concept. Asset type: production sprite for an original isometric iOS real-time strategy game, Desert Frontline. Primary request: one premium detailed desert military command headquarters, isolated with genuine transparent alpha. Orthographic isometric three-quarter camera, looking down about 35 degrees; front and right walls visible, same angle as miniature RTS vehicles facing lower right. A coherent squat two-storey sand-colored reinforced command building, rooftop satellite dish, radio antennae, dark teal windows, inset double blast door, small attached generator and ventilation units, fine panel seams, subtle sand wear and realistic material highlights. Broad readable silhouette that remains clear at 100 pixels wide. Handcrafted high-quality 3D miniature render, not flat vector. Soft sunlight from upper left. Warm sandstone, olive steel, restrained cyan indicators. Entire building fits with 10% transparent margin, centered. No ground tile, no terrain, no sand base, no scenery, no cast shadow beyond the building footprint, no units, no people, no words, no labels, no numbers, no logo, no watermark. One building only. This is an original game asset, not a copy of an existing game building."
+    },
+    {
+      "kind": "barracks",
+      "file": "Structures/war-factory.png",
+      "worldWidth": 116,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-86a8572d-6aff-4227-8086-4b6de04b4af6.png",
+      "deliveryFile": "v6.5-war-factory.png",
+      "prompt": "Use case: background-extraction. Edit target: the provided war-factory image. Preserve the factory's exact architecture, camera, dimensions, colours, roof, two open bays, crane and every building detail. Remove only ALL surrounding brown glow, haze, shadow spill and background; every pixel outside the actual factory silhouette must have alpha zero. Output a clean precise game sprite cutout on genuine transparent alpha. Keep dark internal bay interiors intact; those are part of the factory. No ground plane, no cast shadow, no new content, no checkerboard painted in. Ensure a clear transparent margin around the entire building.",
+      "referenceImage": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-8a80d53d-fff2-460b-942a-24e52abe2ac6.png",
+      "referencePrompt": "Use case: stylized-concept. Production sprite for original isometric RTS Desert Frontline. One premium, highly detailed military building, handcrafted 3D miniature, orthographic isometric camera looking down 35 degrees, front and right walls visible. Warm sand-colored concrete, olive steel machinery, dark teal glass, subtle dust and wear, crisp panel seams, soft sunlight upper left. Genuine transparent alpha, centered whole subject with clear margin. No terrain tile, no sand base, no water, no people, no words or letters or numbers, no logo, no watermark, no UI. Coherent readable silhouette for 100px-wide display. Original art. Subject: a squat rectangular desert war factory, wide ribbed industrial roof, two large dark open vehicle assembly bays on front facing lower right, small attached office and roof ventilation boxes, one modest overhead gantry, a few recessed cyan indicator lights, subtle yellow hazard trim. Building much wider than tall. No vehicles outside, no other buildings. Keep its architecture distinct from a command HQ."
+    },
+    {
+      "kind": "airfield",
+      "file": "Structures/airfield.png",
+      "worldWidth": 122,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-cc27271d-e664-406a-90cf-1b5101f495b9.png",
+      "deliveryFile": "v6.5-airfield.png",
+      "prompt": "Use case: stylized-concept. Production sprite for original isometric RTS Desert Frontline. One premium, highly detailed military building, handcrafted 3D miniature, orthographic isometric camera looking down 35 degrees, front and right walls visible. Warm sand-colored concrete, olive steel machinery, dark teal glass, subtle dust and wear, crisp panel seams, soft sunlight upper left. Genuine transparent alpha, centered whole subject with clear margin. No terrain tile, no sand base, no water, no people, no words or letters or numbers, no logo, no watermark, no UI. Coherent readable silhouette for 100px-wide display. Original art. Subject: a desert airbase hangar facility, one wide low corrugated metal arched aircraft hangar with large open front facing lower right, short attached sand concrete control tower with dark teal observation windows, rooftop radio and radar, small maintenance annex, concrete apron tightly contained under facility. No plane, no helicopter, no long runway, no other buildings. Wider than tall; no separate ground slab surrounding the whole artwork."
+    },
+    {
+      "kind": "shipyard",
+      "file": "Structures/shipyard.png",
+      "worldWidth": 138,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-2feccac0-bbab-4cee-b9b5-a939460d0d3f.png",
+      "deliveryFile": "v6.5-shipyard.png",
+      "prompt": "Use case: stylized-concept. Production sprite for original isometric RTS Desert Frontline. One premium, highly detailed military building, handcrafted 3D miniature, orthographic isometric camera looking down 35 degrees, front and right walls visible. Warm sand-colored concrete, olive steel machinery, dark teal glass, subtle dust and wear, crisp panel seams, soft sunlight upper left. Genuine transparent alpha, centered whole subject with clear margin. No terrain tile, no sand base, no water, no people, no words or letters or numbers, no logo, no watermark, no UI. Coherent readable silhouette for 100px-wide display. Original art. Subject: a compact naval shipyard facility, low sand-concrete dock warehouse and attached harbor office, steel gantry crane with suspended empty hook, two narrow pier arms extending toward lower right leaving an empty transparent boat-slip between them, fine bollards and safety rails, dark metal dock edge. No ship, no sea or painted water, no other buildings. Strong horizontal silhouette, much wider than tall. Every visible pixel belongs to the building, crane or docks."
+    },
+    {
+      "kind": "oilDerrick",
+      "file": "Structures/oil-derrick.png",
+      "worldWidth": 76,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-5a17c4fa-649b-4749-ab00-030896499d5e.png",
+      "deliveryFile": "v6.5-oil-derrick.png",
+      "prompt": "Use case: stylized-concept. Production sprite for original isometric RTS Desert Frontline. One premium detailed 3D miniature military installation. Orthographic isometric camera, looking down 35 degrees, front and right sides visible. Warm sand concrete, olive steel, dark teal glass, restrained cyan lights, subtle dust/wear, crisp bevels and bolts. Soft sunlight from upper left, neutral exposure for readability at 90px wide. Genuine transparent alpha outside installation silhouette. Entire installation visible with margin, no scenery, no surrounding ground tile, no text, no logo, no watermark, no UI, no people. Original game art. Subject: a compact desert oil extraction pumpjack, articulated olive steel walking beam and horsehead, fine braced metal framework with small yellow safety rails, pump machinery, short pipes leading into two small dark oil tanks and a sand concrete service hut. A credible detailed oil well, visibly distinct from a gun or communications building. Ground-level components stay tight around the pump footprint. No spill painted behind it, no landscape."
+    },
+    {
+      "kind": "radarOutpost",
+      "file": "Structures/radar-outpost.png",
+      "worldWidth": 76,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-4b15f10b-9874-4330-9f22-fa0076bd7477.png",
+      "deliveryFile": "v6.5-radar-outpost.png",
+      "prompt": "Use case: stylized-concept. Production sprite for original isometric RTS Desert Frontline. One premium detailed 3D miniature military installation. Orthographic isometric camera, looking down 35 degrees, front and right sides visible. Warm sand concrete, olive steel, dark teal glass, restrained cyan lights, subtle dust/wear, crisp bevels and bolts. Soft sunlight from upper left, neutral exposure for readability at 90px wide. Genuine transparent alpha outside installation silhouette. Entire installation visible with margin, no scenery, no surrounding ground tile, no text, no logo, no watermark, no UI, no people. Original game art. Subject: compact early-warning radar outpost, one large metal mesh parabolic radar antenna on a low olive steel rotating pedestal, stout sand concrete electronics bunker under it, fine cables, vents and short radio aerial, small cyan monitor lights. A broad mesh dish tilted toward upper right. Do not resemble a tall office building, no globe dome, no vehicles."
+    },
+    {
+      "kind": "sonarBuoy",
+      "file": "Structures/sonar-buoy.png",
+      "worldWidth": 56,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-46403b4e-8df8-43f8-80e9-5a67e7aefb8b.png",
+      "deliveryFile": "v6.5-sonar-buoy.png",
+      "prompt": "Use case: stylized-concept. Production sprite for original isometric RTS Desert Frontline. One premium detailed 3D miniature military installation. Orthographic isometric camera, looking down 35 degrees, front and right sides visible. Warm sand concrete, olive steel, dark teal panels, restrained cyan lights, subtle weathering, crisp material edges. Soft upper-left sunlight. Genuine transparent alpha outside its silhouette. Entire installation visible with transparent margin, no terrain tile, no scenery, no words, no letters, no logo, no watermark, no UI, no people. Original game art, readable at 90px wide. Subject: a compact floating military sonar buoy, olive cylindrical sensor tower rising from a broad low rounded octagonal steel float, bright but restrained cyan sensor band, small aerial mast and two short stabilizer pontoons, yellow edge safety markings, detailed cables and grated access platform. No water or wake painted into the sprite. The silhouette reads as a small marine sensing device, not a ship or building. No concrete bunker."
+    },
+    {
+      "kind": "guardTower",
+      "file": "Structures/guard-tower.png",
+      "worldWidth": 62,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-321b0183-56ee-457d-8845-11959d2f1485.png",
+      "deliveryFile": "v6.5-guard-tower.png",
+      "prompt": "Use case: stylized-concept. Production sprite for original isometric RTS Desert Frontline. One premium detailed 3D miniature military installation. Orthographic isometric camera, looking down 35 degrees, front and right sides visible. Warm sand concrete, olive steel, dark teal glass, restrained cyan lights, subtle dust/wear, crisp bevels and bolts. Soft sunlight from upper left, neutral exposure for readability at 90px wide. Genuine transparent alpha outside installation silhouette. Entire installation visible with margin, no scenery, no surrounding ground tile, no text, no logo, no watermark, no UI, no people. Original game art. Subject: fortified desert guard tower, sand concrete lower bunker with dark inset blast door, one raised enclosed watch cabin, broad slit windows, small roof-mounted defensive twin machine guns, short antenna and two searchlight housings. Strong vertical but squat silhouette, small buttressed footprint. High quality miniature architectural details. No separate base tile, no sand bags outside silhouette."
+    },
+    {
+      "kind": "samSite",
+      "file": "Structures/sam-site.png",
+      "worldWidth": 88,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-1285b7c8-8681-49f8-a064-7a4b1b5e00c3.png",
+      "deliveryFile": "v6.5-sam-site.png",
+      "prompt": "Use case: stylized-concept. Production sprite for original isometric RTS Desert Frontline. One premium detailed 3D miniature military installation. Orthographic isometric camera, looking down 35 degrees, front and right sides visible. Warm sand concrete, olive steel, dark teal panels, restrained cyan lights, subtle weathering, crisp material edges. Soft upper-left sunlight. Genuine transparent alpha outside its silhouette. Entire installation visible with transparent margin, no terrain tile, no scenery, no words, no letters, no logo, no watermark, no UI, no people. Original game art, readable at 90px wide. Subject: fixed desert surface-to-air missile battery, four long olive missile canisters on a compact angled mounting rack, two sleek visible white missile tips, squat armored sand concrete plinth with inset electronics box, small attached tracking radar. Launchers tilted up toward upper right. No truck or wheels, no launch smoke, no missile flying. Low wide profile, clear military-defense silhouette."
+    },
+    {
+      "kind": "coastalBattery",
+      "file": "Structures/coastal-battery.png",
+      "worldWidth": 94,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-2cc10e45-c855-4f51-8e7c-5a066f125b24.png",
+      "deliveryFile": "v6.5-coastal-battery.png",
+      "prompt": "Use case: stylized-concept. Production sprite for original isometric RTS Desert Frontline. One premium detailed 3D miniature military installation. Orthographic isometric camera, looking down 35 degrees, front and right sides visible. Warm sand concrete, olive steel, dark teal panels, restrained cyan lights, subtle weathering, crisp material edges. Soft upper-left sunlight. Genuine transparent alpha outside its silhouette. Entire installation visible with transparent margin, no terrain tile, no scenery, no words, no letters, no logo, no watermark, no UI, no people. Original game art, readable at 90px wide. Subject: fortified coastal artillery battery, broad squat sand concrete bunker with small dark inset armored door, heavy twin naval cannon turret mounted on top, two parallel long gun barrels pointing down toward lower right, olive armored gun mantlet, vents and restrained yellow safety trim, one small rangefinder. No missiles, no people, no sea or surrounding terrain. Distinct readable heavy artillery silhouette."
+    },
+    {
+      "kind": "desertRocks",
+      "file": "Scenery/desert-rocks.png",
+      "worldWidth": 72,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-ee208151-af4a-4e51-a6a0-5dfc3568e6ab.png",
+      "deliveryFile": "v6.5-desert-rocks.png",
+      "prompt": "Use case: stylized-concept. Asset type: original isometric scenery sprite for the mobile RTS Desert Frontline, matching premium sand-concrete military miniatures. Orthographic isometric camera looking down about 35 degrees, soft warm sunlight upper left. Painterly-realistic 3D miniature materials, crisp readable silhouette at 80px wide. Entire subject with clear margin on genuine transparent background, no surrounding ground tile or broad shadow, no text, no UI, no people, no vehicles, no logo. Subject: one natural compact cluster of three low weathered sandstone boulders and a few small pebbles, dark warm umber crevices, layered sedimentary rock, broken organic edges, eroded rounded tops, subtle golden lit faces. Width much greater than height, no needle peaks, no triangular geometric mountains, no plant, no sand floor. Top and side facets have detailed striations."
+    },
+    {
+      "kind": "datePalm",
+      "file": "Scenery/date-palm.png",
+      "worldWidth": 38,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-61bc9f36-0002-469d-a0f4-06eaeb9f6c02.png",
+      "deliveryFile": "v6.5-date-palm.png",
+      "prompt": "Use case: stylized-concept. Asset type: original isometric scenery sprite for the mobile RTS Desert Frontline, matching premium sand-concrete military miniatures. Orthographic isometric camera looking down about 35 degrees, soft warm sunlight upper left. Painterly-realistic 3D miniature materials, crisp readable silhouette at 80px wide. Entire subject with clear margin on genuine transparent background, no surrounding ground tile or broad shadow, no text, no UI, no people, no vehicles, no logo. Subject: one graceful date palm tree, curved textured brown trunk and full crown of slender naturally drooping layered green fronds with gold sunlit tips and deep olive shadow, modest bunches of dates, wind-swept asymmetry. The whole tall trunk and entire crown must fit; no pot, no ground, no grass base, no circular shadow, no other trees. Rich detailed miniature foliage, realistic recognizable palm silhouette."
+    },
+    {
+      "kind": "desertHamlet",
+      "file": "Scenery/desert-hamlet.png",
+      "worldWidth": 78,
+      "sourcePath": "/Users/a114514/.codex/generated_images/01a1af3c-1dbf-7711-8794-a9a7f3df9935/exec-daab903f-90a6-4475-9ccf-bfe8061b0558.png",
+      "deliveryFile": "v6.5-desert-hamlet.png",
+      "prompt": "Use case: stylized-concept. Asset type: original isometric scenery sprite for the mobile RTS Desert Frontline, matching premium sand-concrete military miniatures. Orthographic isometric camera looking down about 35 degrees, soft warm sunlight upper left. Painterly-realistic 3D miniature materials, crisp readable silhouette at 80px wide. Entire subject with clear margin on genuine transparent background, no surrounding ground tile or broad shadow, no text, no UI, no people, no vehicles, no logo. Subject: a small compact cluster of three modest desert village houses, warm pale sandstone/adobe, flat inset roofs, small dark recessed doorways, narrow blue-green shaded windows, roof parapets, tiny pots, worn masonry, one short fabric awning stretched between two houses. Natural irregular footprint. No military hardware, no palm tree, no terrain base, no surrounding scenery. Buildings remain clearly readable from above."
+    }
+  ],
+  "notes": [
+    "Ten earlier mobile-unit source prompts were not supplied; see v6.0-unit-art.md.",
+    "No raster editing or background removal scripts used. Selected PNGs are copied byte-for-byte.",
+    "War factory is a built-in edit of its initial generated candidate."
+  ]
+}

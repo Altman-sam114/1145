@@ -1,6 +1,6 @@
 [
   {"id":"tactical","page":"tactical","marker":"none","focus":"air","wait":8,"png":"simulator-screenshot.png"},
-  {"id":"build","page":"build","marker":"none","focus":"air","wait":4,"png":"simulator-hud-build.png"},
+  {"id":"build","page":"build","marker":"none","focus":"base","wait":4,"png":"simulator-hud-build.png"},
   {"id":"air","page":"air","marker":"none","focus":"air","wait":4,"png":"simulator-hud-air.png"},
   {"id":"naval","page":"naval","marker":"none","focus":"air","wait":4,"png":"simulator-hud-naval.png"},
   {"id":"support","page":"support","marker":"none","focus":"air","wait":4,"png":"simulator-hud-support.png"},

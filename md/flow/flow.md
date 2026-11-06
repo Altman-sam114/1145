@@ -50,7 +50,7 @@
 
 实体配置阶段一次性创建小型菱形阵营标记和 `healthTowerNode` 六格水平生命条。`updateHealthBar(...)` 仍只读既有 `hp / maxHP` ratio；未选中且满血时弱化生命条，选中或受损时恢复，单位短码仅在选中时显示。贴图、标记、条格与原有选择/伤害/迷雾节点共用同一实体生命周期，不保存第二份 HP 或阵营状态。
 
-结构模型由 `configureEntityNode(...)` 一次性挂在实体 base 下；HQ、War Factory、Airfield、Shipyard 改用 `addFacilityBody(...)` 与共享 `addIsometricBlock(...)` 绘制顶面、两侧明暗立面、窗带、通风/天线、跑道或吊机。村落复用同一等距体块。共享体块还绘制凹入屋顶、右立面门洞、通风口和窗框，棕榈使用固定曲线树干/叶片、明暗叶脉和地面软影；均在地图/实体创建阶段一次性挂载。它们只改变美术，不改变 footprint、施工 operational 门槛、碰撞、生产、rally、海岸或 SKRM 规则。
+结构模型由 `configureEntityNode(...)` 一次性挂在实体 base 下；十类设施使用原创透明纹理与 `(0.5, 0.18)` 贴地锚点。岩石、村落和棕榈在原地图入口使用共享环境纹理。旧 `addFacilityBody(...)` / `addIsometricBlock(...)` 等形状代码仅作素材加载失败兜底；CI ready 要求实际贴图，不允许以兜底通过。只改变美术，不改变 footprint、施工 operational 门槛、碰撞、生产、rally、海岸或 SKRM 规则。
 
 选中的玩家存活作战机动实体在同一 `selectionNode` 子树内一次性挂载 `weaponReadinessNode` 与四个低侧固定刻度；`refreshWeaponReadinessVisuals(for:)` 每帧先隐藏 / 恢复所有刻度，再只对玩家、存活、operational、非结构且 `kind.damage > 0` 的当前选中实体读取 `attackTimer`。就绪门槛沿用 `attackTimer <= 0.05` 并显示青绿色全刻度；装填中以 `1 - clamp(attackTimer / max(effectiveAttackCooldown(for:), 0.2), 0...1)` 按段着色琥珀已恢复刻度，未恢复槽位保留深色。节点不进入 `effectsLayer`，随实体镜像、移动、迷雾 / 潜艇隐藏、战损、死亡清理和 skirmish 重开，不创建第二份 readiness / cooldown 状态，也不改变攻击执行；敌军、未知目标、结构、Mechanic、施工和 pending / 空选择始终隐藏。
 
@@ -313,7 +313,9 @@ THEATER 状态卡包含静态绿色 LIVE 指示点，仅为状态卡视觉层级
 
 ## 原创美术资源与材质
 
-`EntityKind.artworkName/artworkWidth` 映射十种机动单位；ImageIO 从 Bundle 的 `Art/Units` 以至多 384px 解码，`croppedArtwork` 一次性归一化透明边距，`unitArtworkTextures` 按种类缓存，同种实体与生产按钮复用。ready 同时验证实际贴图挂载并记录纹理尺寸，缺资源不能以旧形状 fallback 冒充成功。静态资产清单与限制见 [美术说明](../art/v6.0-unit-art.md)。
+`EntityKind.artworkName/artworkDirectory/artworkWidth` 映射十种机动单位与十类设施；ImageIO 从 Bundle 的 `Art/Units` / `Structures` 以至多 384px 解码，`croppedArtwork` 一次性归一化透明边距，`unitArtworkTextures` 按种类缓存，同种实体与生产按钮复用。三类 `Art/Scenery` 共用解码 helper 和独立纹理缓存，仍挂原 `mapNode`。ready 验证全部实体实际挂图、环境纹理可加载并记录纹理尺寸，缺资源不能以旧形状 fallback 冒充成功。来源见 [原兵模说明](../art/v6.0-unit-art.md) 与 [设施及环境说明](../art/v6.5-production-art.md)。
+
+compact 选择卡使用64pt高双列事实槽，队列放标题右侧，生产布局、绘制和文字拟合同源；HUD契约另外验证事实槽互不重叠。所有原控件44pt门槛、pending互斥和恢复检查保持。
 
 `drawMap` 的基础菱形改为缓存 `SKSpriteNode` 材质：`terrainSurfaceTexture` 用本地确定性采样烘焙细粒沙/油/水纹理，道路和岩脊复用沙地表面，最多三种基础表面各五个变体，不在每帧重绘。地形逻辑、寻路与 fog tile 未改变；沿岸泡沫减弱，原道路连接、岸线、岩脊与 scenery 仍挂 mapNode。
 

@@ -1,6 +1,6 @@
 # Desert Frontline
 
-Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shape of Desert Stormfront and the provided reference screenshot. It does not reuse original game art; all map tiles, units, buildings, HUD elements, fog, and effects are generated with SpriteKit shapes.
+Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shape of Desert Stormfront and the provided reference screenshot. Original transparent artwork supplies the mobile units, facilities and selected scenery; SpriteKit draws the terrain, HUD, fog and dynamic effects.
 
 - Tactical HUD visual system: a dark glass command console with a Blue Command resource strip, gold mission card and progress rail, cyan tactical map / selection cards, compact force-status readout, and a dedicated bottom command dock. The five single-row pages retain large, separated touch targets, page/action state highlighting, and existing command semantics while making the battlefield the visual focus.
 
@@ -62,16 +62,16 @@ Desert Frontline is an iOS SpriteKit RTS prototype inspired by the gameplay shap
 
 - Carrier 的舰体使用原创透明贴图，三个动态停机位/队列提示继续叠加在实体子树中；它们只读既有护航与生产状态，不代表新的弹射、拦阻或生产机制。
 
-## Visual Rebuild (Cloud Review Pending)
+## Visual Rebuild
 
-The working visual revision uses ten original transparent land/air/naval sprites, shared 384px texture caching, restrained faction markers, horizontal segmented health bars, shaded isometric facilities and villages, and deterministic fine-grain ground materials. Sprite silhouettes, production portraits, shadows, wakes, damage and fog all remain on the existing entity/render path. Artwork provenance and limits are documented in [the art manifest guide](md/art/v6.0-unit-art.md). This remains a prototype, not a claim of release-quality art or complete Desert Stormfront parity.
+The visual revision uses ten original land/air/naval sprites, ten facility sprites, and detailed sandstone, palm and village scenery, with shared 384px texture caching, restrained faction markers, horizontal segmented health bars and deterministic fine-grain ground materials. Facilities have a ground anchor aligned to their existing entity tile. Sprite silhouettes, production portraits, shadows, wakes, damage and fog remain on the existing render path. Artwork sources and limits are documented in [the original unit guide](md/art/v6.0-unit-art.md) and [the facility and scenery guide](md/art/v6.5-production-art.md). This remains a prototype; individual cloud verification results belong in the update log.
 
 ## Controls
 
 Single-unit selection cards use a compact role tag (`LAND`, `AIR`, `SEA`, `SUB`, or `BASE`) before the unit name, so land, air, surface naval, submarine, and structure roles are immediately visible while reading HP and combat rows.
 The same role tag uses a stable presentation color: sand green for land, sky blue for air, cyan for surface naval, violet for submarine, and sand gold for structures; incoming-threat red still takes priority.
 
-The battlefield HUD uses a 28pt resource strip, horizontal page tabs at the lower left, and only current-page actions in the bottom dock. Compact mission/message cards sit at the upper left, selection/queue facts sit beside the page tabs, and a smaller upper-right minimap retains separate legend, clickable map and 44pt zoom bands. Commands use rasterized light-cyan symbols and production portraits. Drawing and hit routing share the same safe-area frames; two-finger pan/pinch keeps priority over HUD commands.
+The battlefield HUD uses a 28pt resource strip, horizontal page tabs at the lower left, and only current-page actions in the bottom dock. On compact screens the 64pt selection card arranges four facts in two columns, with the queue beside its title, leaving more room for combat. Compact mission/message cards sit at the upper left, and the upper-right minimap retains separate legend, clickable map and 44pt zoom bands. Commands use rasterized light-cyan symbols and production portraits. Drawing and hit routing share the same safe-area frames; two-finger pan/pinch keeps priority over HUD commands.
 
 - Tap `Orders`, `Build`, `Air`, `Fleet`, or `Support` in the bottom page bar to switch the bottom action dock: tactical orders and HQ focus; land production and structure placement; aircraft production; naval production; or support powers plus AI difficulty and skirmish restart.
 - Command-bar hit areas are isolated from the visual shapes: tapping a page/action frame invokes only that existing command, while the row's gaps are consumed without changing pending modes or touching the map.

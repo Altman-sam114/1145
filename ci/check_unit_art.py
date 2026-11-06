@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify original unit sprites in the checkout and the actual built app."""
+"""Verify original entity sprites in the checkout and the actual built app."""
 import argparse
 import binascii
 import hashlib
@@ -15,6 +15,13 @@ ROOT = Path(__file__).resolve().parent.parent
 KINDS = {"humvee": "scout", "tank": "tank", "artillery": "artillery",
          "mechanic": "repair-truck", "aaTruck": "mobile-aa", "helicopter": "helicopter",
          "fighter": "fighter", "battleship": "battleship", "carrier": "carrier", "submarine": "submarine"}
+STRUCTURES = {"hq": "command-hq", "barracks": "war-factory", "airfield": "airfield", "shipyard": "shipyard",
+              "oilDerrick": "oil-derrick", "radarOutpost": "radar-outpost", "sonarBuoy": "sonar-buoy",
+              "guardTower": "guard-tower", "samSite": "sam-site", "coastalBattery": "coastal-battery"}
+SCENERY = {"desertRocks": "desert-rocks", "datePalm": "date-palm", "desertHamlet": "desert-hamlet"}
+ASSET_PATHS = {**{kind: f"Units/{name}.png" for kind, name in KINDS.items()},
+               **{kind: f"Structures/{name}.png" for kind, name in STRUCTURES.items()},
+               **{kind: f"Scenery/{name}.png" for kind, name in SCENERY.items()}}
 
 
 def inspect_png(data):
@@ -117,11 +124,11 @@ def verify(art):
     if not document.is_relative_to(ROOT) or not document.is_file():
         raise ValueError("Art provenance document missing")
     assets = manifest["assets"]
-    if len(assets) != len(KINDS) or {a["kind"] for a in assets} != set(KINDS):
-        raise ValueError("Expected exactly ten land/air/naval unit assets")
+    if len(assets) != len(ASSET_PATHS) or {a["kind"] for a in assets} != set(ASSET_PATHS):
+        raise ValueError("Expected ten mobile units, ten structures and three scenery assets")
     reports = []
     for asset in assets:
-        name = f"Units/{KINDS[asset['kind']]}.png"
+        name = ASSET_PATHS[asset['kind']]
         path = art / name
         if asset["file"] != name or path.is_symlink():
             raise ValueError("Unexpected asset path")
@@ -205,7 +212,7 @@ def main():
     try:
         report["assets"] = verify(args.bundle / "Art" if args.bundle else ROOT / "DesertFrontline/Art")
         report["status"] = "success"
-        print(f"Unit art {mode}: ten RGBA sprites, digests, bounds and transparency verified", flush=True)
+        print(f"Entity art {mode}: {len(report['assets'])} RGBA sprites, digests, bounds and transparency verified", flush=True)
     except (OSError, ValueError, KeyError, TypeError, zlib.error) as error:
         report["error"] = str(error)
         print(f"Unit art {mode}: failure: {error}", flush=True)

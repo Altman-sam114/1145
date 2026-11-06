@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.0",
+  "version": "v6.5",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.0-unit-art.md",
+  "promptDocument": "md/art/v6.5-production-art.md",
   "assets": [
     {
       "kind": "humvee",
@@ -105,6 +105,150 @@
       "width": 1536,
       "height": 1024,
       "worldWidth": 88
+    },
+    {
+      "kind": "hq",
+      "file": "Structures/command-hq.png",
+      "sourceFile": "v6.5-command-hq.png",
+      "generationFile": "exec-916d89ce-d680-47fe-809d-2cf0e34d3bac.png",
+      "bytes": 2044283,
+      "sha256": "36acfaa09b6802b1502c3e7d39106f06cfc8552c2828c24b243533c28fec5c9d",
+      "width": 1312,
+      "height": 1199,
+      "worldWidth": 100
+    },
+    {
+      "kind": "barracks",
+      "file": "Structures/war-factory.png",
+      "sourceFile": "v6.5-war-factory.png",
+      "generationFile": "exec-86a8572d-6aff-4227-8086-4b6de04b4af6.png",
+      "bytes": 2677079,
+      "sha256": "90fc1d8e9dd12b876a0a073b3534c2a3d3649f796514b7aade455e9bd1865221",
+      "width": 1536,
+      "height": 1024,
+      "worldWidth": 116
+    },
+    {
+      "kind": "airfield",
+      "file": "Structures/airfield.png",
+      "sourceFile": "v6.5-airfield.png",
+      "generationFile": "exec-cc27271d-e664-406a-90cf-1b5101f495b9.png",
+      "bytes": 2126383,
+      "sha256": "4d395fb20a7a8e653a1bcf46ec1a03b4425502cb63738dfb412e57e81bb735af",
+      "width": 1672,
+      "height": 941,
+      "worldWidth": 122
+    },
+    {
+      "kind": "shipyard",
+      "file": "Structures/shipyard.png",
+      "sourceFile": "v6.5-shipyard.png",
+      "generationFile": "exec-2feccac0-bbab-4cee-b9b5-a939460d0d3f.png",
+      "bytes": 2047482,
+      "sha256": "c5e0ee695ca2a81869f3eec923e1ef6a09bc9232c3b061e09cc07c8b93bb71cb",
+      "width": 1774,
+      "height": 887,
+      "worldWidth": 138
+    },
+    {
+      "kind": "oilDerrick",
+      "file": "Structures/oil-derrick.png",
+      "sourceFile": "v6.5-oil-derrick.png",
+      "generationFile": "exec-5a17c4fa-649b-4749-ab00-030896499d5e.png",
+      "bytes": 2453845,
+      "sha256": "822b58a713af4efdd0f16246925d701811c024637e71b3172f73677fb847d621",
+      "width": 1536,
+      "height": 1024,
+      "worldWidth": 76
+    },
+    {
+      "kind": "radarOutpost",
+      "file": "Structures/radar-outpost.png",
+      "sourceFile": "v6.5-radar-outpost.png",
+      "generationFile": "exec-4b15f10b-9874-4330-9f22-fa0076bd7477.png",
+      "bytes": 2110559,
+      "sha256": "20eaf8f411658d1d879bd10be566e9ab967e446fdf9486eeefe4527f9e0b7a17",
+      "width": 1312,
+      "height": 1199,
+      "worldWidth": 76
+    },
+    {
+      "kind": "sonarBuoy",
+      "file": "Structures/sonar-buoy.png",
+      "sourceFile": "v6.5-sonar-buoy.png",
+      "generationFile": "exec-46403b4e-8df8-43f8-80e9-5a67e7aefb8b.png",
+      "bytes": 1258458,
+      "sha256": "7f35e305603d7ab8d27d3928c8ecd433ea906bf35c3c502498e6ad67e2050d4b",
+      "width": 1312,
+      "height": 1199,
+      "worldWidth": 56
+    },
+    {
+      "kind": "guardTower",
+      "file": "Structures/guard-tower.png",
+      "sourceFile": "v6.5-guard-tower.png",
+      "generationFile": "exec-321b0183-56ee-457d-8845-11959d2f1485.png",
+      "bytes": 1799896,
+      "sha256": "2e564e1840916c65c384025ead3fcff761530f6938ce6600c48238a7369fcffa",
+      "width": 1312,
+      "height": 1199,
+      "worldWidth": 62
+    },
+    {
+      "kind": "samSite",
+      "file": "Structures/sam-site.png",
+      "sourceFile": "v6.5-sam-site.png",
+      "generationFile": "exec-1285b7c8-8681-49f8-a064-7a4b1b5e00c3.png",
+      "bytes": 2113777,
+      "sha256": "cb5289b3ee172ecdaa18a41c387ecce13f41d5bc918c7d5e76687d3d65296f11",
+      "width": 1536,
+      "height": 1024,
+      "worldWidth": 88
+    },
+    {
+      "kind": "coastalBattery",
+      "file": "Structures/coastal-battery.png",
+      "sourceFile": "v6.5-coastal-battery.png",
+      "generationFile": "exec-2cc10e45-c855-4f51-8e7c-5a066f125b24.png",
+      "bytes": 2705831,
+      "sha256": "8a65e8a3265043a5adb780aa420af4c0f404ae922db637f4682ad4c50b4de929",
+      "width": 1536,
+      "height": 1024,
+      "worldWidth": 94
+    },
+    {
+      "kind": "desertRocks",
+      "file": "Scenery/desert-rocks.png",
+      "sourceFile": "v6.5-desert-rocks.png",
+      "generationFile": "exec-ee208151-af4a-4e51-a6a0-5dfc3568e6ab.png",
+      "bytes": 1897409,
+      "sha256": "9fafdb8bc5d2bb1ff54b830f3ff10fb3d7914f68d52bb73a533ce246f8772083",
+      "width": 1774,
+      "height": 887,
+      "worldWidth": 72
+    },
+    {
+      "kind": "datePalm",
+      "file": "Scenery/date-palm.png",
+      "sourceFile": "v6.5-date-palm.png",
+      "generationFile": "exec-61bc9f36-0002-469d-a0f4-06eaeb9f6c02.png",
+      "bytes": 1350033,
+      "sha256": "d94af0bce008f0a1b24bacf83ebdc31be3f7ab36bf5fc7bfafa169bd71b94624",
+      "width": 1199,
+      "height": 1312,
+      "worldWidth": 38
+    },
+    {
+      "kind": "desertHamlet",
+      "file": "Scenery/desert-hamlet.png",
+      "sourceFile": "v6.5-desert-hamlet.png",
+      "generationFile": "exec-daab903f-90a6-4475-9ccf-bfe8061b0558.png",
+      "bytes": 2321467,
+      "sha256": "d6e58d82666b456ab57234bd9a5f91ff52d2fa20b5a92690eed365959be6b59f",
+      "width": 1536,
+      "height": 1024,
+      "worldWidth": 78
     }
-  ]
+  ],
+  "updatedDate": "2026-11-06"
 }

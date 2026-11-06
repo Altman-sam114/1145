@@ -6327,7 +6327,7 @@ v6.3 官方复核（2026-10-29）：main `a0f41ccfb9044428262cb6a481faaa2dca2936
 - attempt2最终失败于boot evidence严格相等比较：实际monotonic相减序列化`1440.0000000000002`与配置1440不相等，真实boot命令均正常exit0、24图完整，但JUnit10/3failure/1skip。不能因画面完整就掩盖证据门禁失败；停止无修复重跑，直接修生产序列化。
 - 两包分别缓存 `/private/tmp/desert-frontline-review-40805991371-attempt1/official/` 和 `/private/tmp/desert-frontline-review-40805991371-attempt2/official/`。本机只读证据/Git/静态检查，未执行本机测试或模拟器操作。
 
-### v6.4 / 启动预算证据浮点序列化修复（待云端验收）
+### v6.4 / 启动预算证据浮点序列化修复
 
 日期：2026-10-29。
 
@@ -6335,3 +6335,21 @@ v6.3 官方复核（2026-10-29）：main `a0f41ccfb9044428262cb6a481faaa2dca2936
 - 新增1项云端synthetic直接方法，调用生产boot/保存/metadata：非二进制时钟原点复现旧实现的预算差异，验证序列化/原deadline不变；真实deadline增减1ms仍被严格拒绝。不是本机测试，也不冒充真实设备证据。
 - GameScene/美术/操作保持v6.3不变；仅runner、直接回归、日志/work。所选baseline为diff和两个Python AST，direct为云端新边界与真实完整证据链；不加无关玩法、不降gate、不再盲目重跑。
 - 生图：内置通道累计7次503；另通过公开[FLUX Space](https://huggingface.co/spaces/black-forest-labs/flux-3-image-klein)匿名实际生成沙地候选，seed55337666，页面标1024而DOM图像自然尺寸2048，均原样记录。原图导出未成功（CLI403/浏览器下载未触发），模型许可`flux-kommunity-license`正文需认证，尚未接入App；不以页面截图裁切伪造原图、不借其他聊天、不支付或下载运行模型。成功页面与exact prompt/source回执留在 `/private/tmp/desert-image-candidates-20261029/`。
+
+
+v6.4 官方复核（2026-11-06补齐）：main `a53d342798892e2b9a0a7dfbc29ffc7e3b8dc665` / run `40819582266` / attempt1，artifact `12874910247`，53,881,516 bytes / 158项未加密，SHA256 `9dda0f1ffd7b5b69ab3cb6313de15772eae7ff1ece208e647442c919778ddf0a` 与API一致，CRC与身份正常。缓存 `/private/tmp/desert-frontline-review-40819582266-attempt1/official/`。
+
+- generic与simulator真实BUILD SUCCEEDED；110 runner方法、5 watchdog与6资源正负例通过；JUnit10/0failure/1准确XCTest skip，十种source/bundle事实相同。HUD25成功、stateRestored=true，24/24独立原生图完整。work798.709s/cleanup38.861s，严格boot预算门禁通过，未改validator阈值。
+- 目视战术/生产/陆战/海岸/航母图：图标正常、兵模落地、道路海岸改善；选择卡仍遮挡战斗，几何建筑/岩石/村落与车辆风格不一致。云端修复通过不等于完整复刻、真实触摸或长期性能验收。
+
+### v6.5 / 统一设施与环境美术、压低战斗信息卡（待云端验收）
+
+日期：2026-11-06。
+
+- 本轮内置image_gen实际成功生成十类设施、三类环境图，另对工厂做一次同工具编辑；选定13张RGBA原图逐字节复制到项目和用户指定目录，完整提示词与来源见 `md/art/v6.5-generation-prompts.json`。既有十种车辆/海空单位继续复用，当前23资源清单/source/bundle合同同步扩展；不再沿用旧503作为当前结论。
+- 十类设施进入原实体贴图/生命条/施工/迷雾链路，建筑锚点对齐原tile；岩石、棕榈、村落只替换原mapNode环境入口，不改变地形、道路、寻路、海岸或经济/战斗。384px共享缓存，不创建逐帧美术节点。
+- 小屏选择卡92pt降为64pt，四项事实双列、队列移至标题右侧，原44pt控件/26动作/5页不变；生产HUD契约新增事实槽互不重叠检查，原文字拟合、恢复与失败gate不放宽。
+- 百度移动站查询真实返回200与Desert Stormfront/Noble Master相关条目；只用于参考定位，不采用下载站关于更新或玩法的未核实宣传。未下载商业素材或引入第三方运行依赖。
+- 选定baseline=diff/相关JSON、Python AST与文档链接；direct=云端generic/simulator构建、23资源随包检查、HUD25与原24正式截图（现有入口不可切分）。不本机构建/运行/测试，不启动子智能体；工程Team ID及原有无关文档整理不混入提交。
+
+- 为让新HQ/工厂/机场有正式屏幕证据，将原build探针从重复air构图改为base焦点，仍为24项、原page/marker/等待/完整性门槛不变；GameScene仅CI分支选择原始HQ与基地相机，fixture事实要求四类初始设施实际挂图。ci/probes.json纳入本轮编辑和JSON静态检查，不新增探针或改验证器。

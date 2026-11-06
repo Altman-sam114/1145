@@ -338,6 +338,16 @@ private enum EntityKind: CaseIterable, Hashable {
 
     var artworkName: String? {
         switch self {
+        case .hq: "command-hq"
+        case .barracks: "war-factory"
+        case .airfield: "airfield"
+        case .shipyard: "shipyard"
+        case .oilDerrick: "oil-derrick"
+        case .radarOutpost: "radar-outpost"
+        case .sonarBuoy: "sonar-buoy"
+        case .guardTower: "guard-tower"
+        case .samSite: "sam-site"
+        case .coastalBattery: "coastal-battery"
         case .humvee: "scout"
         case .tank: "tank"
         case .artillery: "artillery"
@@ -348,12 +358,22 @@ private enum EntityKind: CaseIterable, Hashable {
         case .battleship: "battleship"
         case .carrier: "carrier"
         case .submarine: "submarine"
-        default: nil
         }
     }
 
+    var artworkDirectory: String { isStructure ? "Structures" : "Units" }
+
     var artworkWidth: CGFloat {
         switch self {
+        case .hq: 100
+        case .barracks: 116
+        case .airfield: 122
+        case .shipyard: 138
+        case .oilDerrick, .radarOutpost: 76
+        case .sonarBuoy: 56
+        case .guardTower: 62
+        case .samSite: 88
+        case .coastalBattery: 94
         case .humvee: 58
         case .tank, .mechanic, .aaTruck: 66
         case .artillery: 74
@@ -362,7 +382,6 @@ private enum EntityKind: CaseIterable, Hashable {
         case .battleship: 106
         case .carrier: 128
         case .submarine: 88
-        default: footprint
         }
     }
 
@@ -714,7 +733,9 @@ private struct HUDLayout {
         let mission = CGRect(x: safe.minX, y: top.minY - 46, width: compact ? 280 : 360, height: 40)
         let message = CGRect(x: safe.minX, y: mission.minY - 24, width: compact ? 320 : 440, height: 18)
         let selection = CGRect(x: rail.maxX + 8, y: dock.maxY + 6,
-                               width: min(compact ? 300 : 420, safe.maxX - rail.maxX - 8), height: compact ? 92 : 140)
+                               width: min(compact ? 300 : 420, safe.maxX - rail.maxX - 8), height: compact ? 64 : 140)
+        let selectionContentWidth = selection.width - 20
+        let queueWidth = selectionContentWidth * 0.38
         panels = ["resources": top, "rail": rail, "dock": dock, "mission": mission,
                   "message": message, "selection": selection, "minimap": mapPanel]
 
@@ -742,14 +763,21 @@ private struct HUDLayout {
             "missionTitle": CGRect(x: mission.minX + 10, y: mission.maxY - 17, width: mission.width - 20, height: 12),
             "missionDetail": CGRect(x: mission.minX + 10, y: mission.minY + 11, width: mission.width - 20, height: 11),
             "messageText": message.insetBy(dx: 8, dy: 2),
-            "selectionTitle": CGRect(x: selection.minX + 10, y: selection.maxY - 20, width: selection.width - 20, height: 16),
-            "selected": CGRect(x: selection.minX + 10, y: selection.maxY - 34, width: selection.width - 20, height: 12),
-            "queue": CGRect(x: selection.minX + 10, y: selection.minY + (compact ? 6 : 11), width: selection.width - 20, height: compact ? 10 : 12)
+            "selectionTitle": CGRect(x: selection.minX + 10, y: selection.maxY - (compact ? 18 : 20),
+                                     width: compact ? selectionContentWidth - queueWidth - 6 : selectionContentWidth,
+                                     height: compact ? 14 : 16),
+            "selected": CGRect(x: selection.minX + 10, y: selection.maxY - (compact ? 31 : 34),
+                               width: selectionContentWidth, height: compact ? 10 : 12),
+            "queue": CGRect(x: compact ? selection.maxX - 10 - queueWidth : selection.minX + 10,
+                            y: compact ? selection.maxY - 18 : selection.minY + 11,
+                            width: compact ? queueWidth : selectionContentWidth, height: 12)
         ]
         for index in 0..<(compact ? 4 : 5) {
-            slots["row\(index)"] = CGRect(x: selection.minX + 10,
-                y: selection.maxY - 45 - CGFloat(index) * (compact ? 10 : 16),
-                width: selection.width - 20, height: compact ? 10 : 14)
+            let columnWidth = (selectionContentWidth - 8) / 2
+            slots["row\(index)"] = CGRect(
+                x: selection.minX + 10 + (compact ? CGFloat(index % 2) * (columnWidth + 8) : 0),
+                y: selection.maxY - (compact ? 43 : 45) - CGFloat(compact ? index / 2 : index) * (compact ? 11 : 16),
+                width: compact ? columnWidth : selectionContentWidth, height: compact ? 10 : 14)
         }
         self.slots = slots
         var pages: [HudPage: CGRect] = [:]
@@ -1173,6 +1201,8 @@ final class GameScene: SKScene {
 
     private var entities: [Int: GameEntity] = [:]
     private var unitArtworkTextures: [EntityKind: SKTexture] = [:]
+    private var sceneryArtworkTextures: [String: SKTexture] = [:]
+    private static let sceneryArtworkNames = ["desert-rocks", "date-palm", "desert-hamlet"]
     private var terrainSurfaceTextures: [Int: SKTexture] = [:]
     private var hudSymbolTextures: [String: SKTexture] = [:]
     private var controlPoints: [BattlefieldControlPoint] = []
@@ -1397,6 +1427,9 @@ final class GameScene: SKScene {
     }
 
     private func initialCameraPosition() -> CGPoint {
+        if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "base" {
+            return tileCenter(TileCoord(row: 16, col: 7)) + CGPoint(x: 50, y: 20)
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "air" {
             return tileCenter(TileCoord(row: 15, col: 16))
         }
@@ -1534,6 +1567,11 @@ final class GameScene: SKScene {
             }
         }
         switch ciFixtureBranch {
+        case "base":
+            let facilities: [EntityKind] = [.hq, .barracks, .airfield, .oilDerrick]
+            return ["headquarters": chosen(.hq), "facilities": facilities.allSatisfy { kind in
+                entities.values.contains { $0.kind == kind && $0.faction == .player && $0.isAlive && $0.artworkNode?.parent != nil }
+            }]
         case "air":
             var checks = ["aircraft": count(.fighter, .player) >= 2 && count(.fighter, .enemy) >= 2 && chosen(.helicopter),
                           "fighterTarget": attacks(.fighter, .fighter)]
@@ -1644,10 +1682,11 @@ final class GameScene: SKScene {
             "geometry": !pendingGeometry && !hudGeometryDirty && !isLayingOutHUD && !isWritingHUDContract &&
                 projectionValid && hasWindowSafeArea && size.width > size.height && abs(view.bounds.width - size.width) < 1 &&
                 abs(view.bounds.height - size.height) < 1 && window.safeAreaInsets == windowSafeAreaInsets,
-            "map": terrain.count == rows && mapNode.children.count >= rows * cols,
+            "map": terrain.count == rows && mapNode.children.count >= rows * cols &&
+                Self.sceneryArtworkNames.allSatisfy({ sceneryArtworkTexture(named: $0) != nil }),
             "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count &&
                 EntityKind.allCases.filter({ $0.artworkName != nil }).allSatisfy({ unitArtworkTexture(for: $0) != nil }) &&
-                attached.filter({ !$0.kind.isStructure }).allSatisfy({ $0.artworkNode?.parent != nil }),
+                attached.allSatisfy({ $0.artworkNode?.parent != nil }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
                 moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty &&
@@ -1691,10 +1730,14 @@ final class GameScene: SKScene {
                                     "ignoresSiblingOrder": view.ignoresSiblingOrder,
                                     "viewClass": String(describing: type(of: view))],
             "projection": projection,
-            "artwork": ["policy": "rgba384-alpha-crop-v1", "attachedSprites": attached.filter({ $0.artworkNode != nil }).count,
+            "artwork": ["policy": "rgba384-grounded-v2", "attachedSprites": attached.filter({ $0.artworkNode != nil }).count,
+                        "sceneryTextures": Self.sceneryArtworkNames.compactMap { name -> [String: Any]? in
+                            guard let texture = sceneryArtworkTextures[name] else { return nil }
+                            return ["file": "Art/Scenery/\(name).png", "width": texture.size().width, "height": texture.size().height]
+                        },
                         "textures": EntityKind.allCases.compactMap { kind -> [String: Any]? in
                             guard let name = kind.artworkName, let texture = unitArtworkTextures[kind] else { return nil }
-                            return ["kind": kind.shortCode, "file": "Art/Units/\(name).png",
+                            return ["kind": kind.shortCode, "file": "Art/\(kind.artworkDirectory)/\(name).png",
                                     "width": texture.size().width, "height": texture.size().height,
                                     "worldWidth": kind.artworkWidth]
                         }],
@@ -2160,6 +2203,13 @@ final class GameScene: SKScene {
             addLandShorelineDetails(for: tile, terrain: terrain, at: center)
         case .ridge:
             let hash = terrainDetailHash(for: tile)
+            if let rocks = makeSceneryArtwork("desert-rocks", width: 72 + CGFloat(hash % 5) * 3, at: center) {
+                rocks.xScale = hash.isMultiple(of: 2) ? 1 : -1
+                rocks.zPosition = zPosition(for: center) + 0.42
+                mapNode.addChild(rocks)
+                addLandShorelineDetails(for: tile, terrain: terrain, at: center)
+                return
+            }
             for index in 0..<3 {
                 let size = CGFloat(20 + index * 5 + (hash + index * 3) % 6)
                 let offset = CGPoint(
@@ -2615,6 +2665,10 @@ final class GameScene: SKScene {
     }
 
     private func addVillageScenery(to node: SKNode, tile: TileCoord) {
+        if let village = makeSceneryArtwork("desert-hamlet", width: 78 + CGFloat(terrainDetailHash(for: tile) % 3) * 4) {
+            node.addChild(village)
+            return
+        }
         let offsets = [
             CGPoint(x: -19, y: -2), CGPoint(x: 3, y: 8), CGPoint(x: 21, y: -4),
             CGPoint(x: -2, y: -12)
@@ -2656,6 +2710,11 @@ final class GameScene: SKScene {
     }
 
     private func addPalm(to node: SKNode, at offset: CGPoint, scale: CGFloat) {
+        if let palm = makeSceneryArtwork("date-palm", width: 38 * scale, at: offset) {
+            palm.anchorPoint = CGPoint(x: 0.5, y: 0.02)
+            node.addChild(palm)
+            return
+        }
         let palm = SKNode()
         palm.position = offset
         palm.setScale(scale)
@@ -2971,7 +3030,20 @@ final class GameScene: SKScene {
     private func unitArtworkTexture(for kind: EntityKind) -> SKTexture? {
         if let cached = unitArtworkTextures[kind] { return cached }
         guard let name = kind.artworkName,
-              let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Art/Units"),
+              let texture = decodedArtworkTexture(named: name, directory: kind.artworkDirectory) else { return nil }
+        unitArtworkTextures[kind] = texture
+        return texture
+    }
+
+    private func sceneryArtworkTexture(named name: String) -> SKTexture? {
+        if let cached = sceneryArtworkTextures[name] { return cached }
+        guard let texture = decodedArtworkTexture(named: name, directory: "Scenery") else { return nil }
+        sceneryArtworkTextures[name] = texture
+        return texture
+    }
+
+    private func decodedArtworkTexture(named name: String, directory: String) -> SKTexture? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Art/\(directory)"),
               let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
                 kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -2980,8 +3052,17 @@ final class GameScene: SKScene {
               ] as CFDictionary) else { return nil }
         let texture = SKTexture(cgImage: croppedArtwork(image))
         texture.filteringMode = .linear
-        unitArtworkTextures[kind] = texture
         return texture
+    }
+
+    private func makeSceneryArtwork(_ name: String, width: CGFloat, at position: CGPoint = .zero) -> SKSpriteNode? {
+        guard let texture = sceneryArtworkTexture(named: name) else { return nil }
+        let sprite = SKSpriteNode(texture: texture)
+        sprite.name = "scenery-art:\(name)"
+        sprite.size = CGSize(width: width, height: width * texture.size().height / max(texture.size().width, 1))
+        sprite.anchorPoint = CGPoint(x: 0.5, y: 0.18)
+        sprite.position = position
+        return sprite
     }
 
     private func croppedArtwork(_ image: CGImage) -> CGImage {
@@ -3009,10 +3090,16 @@ final class GameScene: SKScene {
     private func addUnitArtwork(for entity: GameEntity, to base: SKNode) -> Bool {
         guard let texture = unitArtworkTexture(for: entity.kind) else { return false }
         let sprite = SKSpriteNode(texture: texture)
-        sprite.name = "unit-art:\(entity.kind.artworkName ?? "")"
+        sprite.name = "entity-art:\(entity.kind.artworkName ?? "")"
         let width = entity.kind.artworkWidth
         sprite.size = CGSize(width: width, height: width * texture.size().height / max(texture.size().width, 1))
-        sprite.position.y = entity.kind.domain == .air ? 24 : 8
+        if entity.kind.isStructure {
+            // Keep the building's ground footprint on its entity tile, not its roof at the tile center.
+            sprite.anchorPoint = CGPoint(x: 0.5, y: 0.18)
+            sprite.position.y = 0
+        } else {
+            sprite.position.y = entity.kind.domain == .air ? 24 : 8
+        }
         sprite.color = entity.faction.color
         sprite.colorBlendFactor = entity.faction == .enemy ? 0.14 : 0.025
         base.addChild(sprite)
@@ -5665,6 +5752,14 @@ final class GameScene: SKScene {
                 for value in normal { value.node.sourceText = value.source }
                 _ = auditLabels("restored", reference: normal, audit: &labelAudit)
                 var selectionRows: [[String: Any]] = []
+                if layout.compact {
+                    let facts = ["selectionTitle", "selected", "queue", "row0", "row1", "row2", "row3"]
+                    for (index, key) in facts.enumerated() {
+                        for other in facts.dropFirst(index + 1) {
+                            expect(disjoint(layout.slots[key]!, layout.slots[other]!), "labels", "facts/\(key)/\(other)")
+                        }
+                    }
+                }
                 for (index, row) in selectionInfoRowLabels.enumerated() where !(row.text?.isEmpty ?? true) {
                     let slot = layout.slots["row\(index)"]!
                     expect(slot.insetBy(dx: -0.5, dy: -0.5).contains(row.frame), "labels", "row\(index)")
@@ -10280,6 +10375,15 @@ final class GameScene: SKScene {
 
     private func prepareCICaptureScene() {
         guard isCICaptureMode else { return }
+        if ProcessInfo.processInfo.environment["DESERT_CI_CAMERA_FOCUS"] == "base" {
+            cameraRig.position = initialCameraPosition()
+            if let headquarters = entities.values.first(where: { $0.faction == .player && $0.kind == .hq && $0.isAlive }) {
+                selectedIDs = [headquarters.id]
+                refreshSelection()
+            }
+            ciFixtureBranch = "base"
+            return
+        }
         if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "enemy-touch-assist" {
             prepareCIEnemyTouchAssistCaptureScene()
             ciFixtureBranch = "enemy-touch-assist"
