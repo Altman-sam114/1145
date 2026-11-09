@@ -1220,9 +1220,11 @@ final class GameScene: SKScene {
     private var entities: [Int: GameEntity] = [:]
     private var unitArtworkTextures: [EntityKind: SKTexture] = [:]
     private var tankDirectionTextures: [SKTexture] = []
-    private var battleshipDirectionTextures: [SKTexture] = []
-    private var ciBattleshipDirectionCases: [[String: Any]] = []
-    private var ciBattleshipDirectionRestored = false
+    private let directionalNavalKinds: [EntityKind] = [.battleship, .carrier, .submarine]
+    private var navalDirectionTextures: [EntityKind: [SKTexture]] = [:]
+    private var ciNavalDirectionMasks: [String: [String: Int]] = [:]
+    private var ciNavalDirectionSubjects: [String: String] = [:]
+    private var ciNavalDirectionRestored = false
     private let directionalAirKinds: [EntityKind] = [.fighter, .helicopter]
     private var airDirectionTextures: [EntityKind: [SKTexture]] = [:]
     private var ciAirDirectionCases: [String: [[String: Any]]] = [:]
@@ -1458,7 +1460,7 @@ final class GameScene: SKScene {
         if isCICaptureMode {
             auditTankDirectionArtwork()
             auditAirDirectionArtwork()
-            auditBattleshipDirectionArtwork()
+            auditNavalDirectionArtwork()
             auditTacticalOverlayRendering()
         }
         if isCICaptureMode { ciFixtureCamera = cameraRig.position }
@@ -1763,7 +1765,7 @@ final class GameScene: SKScene {
                 attached.allSatisfy({ $0.artworkNode?.parent != nil }) &&
                 ciTankDirectionRestored && ciTankDirectionCases.count == 8 && tankArtworkPosesValid() &&
                 ciAirDirectionRestored && airArtworkPosesValid() &&
-                ciBattleshipDirectionRestored && battleshipArtworkPosesValid() &&
+                ciNavalDirectionRestored && navalArtworkPosesValid() &&
                 ciOverlayChecks.count == 4 && ciOverlayChecks.values.allSatisfy({ $0 }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
@@ -1782,7 +1784,7 @@ final class GameScene: SKScene {
                 ciBeacon("readiness-pending", extra: ["checks": checks, "fixtureChecks": fixtureChecks, "essentialText": essentialHUDTextCompleteness(),
                                                     "tacticalOverlays": ["checks": ciOverlayChecks, "mirrors": ciOverlayMirrors],
                                                     "airDirections": airArtworkEvidence(),
-                                                    "battleshipDirections": ["cases": ciBattleshipDirectionCases, "restored": ciBattleshipDirectionRestored],
+                                                    "navalDirections": navalArtworkEvidence(),
                                                     "fogSurface": fogSurfaceChecks,
                                                     "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
@@ -1822,9 +1824,7 @@ final class GameScene: SKScene {
                                            "textureCount": tankDirectionTextures.count, "cases": ciTankDirectionCases,
                                            "stateRestored": ciTankDirectionRestored, "posesValid": tankArtworkPosesValid()],
                         "airDirections": airArtworkEvidence(),
-                        "battleshipDirections": ["policy": "battleship-eight-v1", "file": "Art/Directions/battleship-eight.png",
-                                                "textureCount": battleshipDirectionTextures.count, "cases": ciBattleshipDirectionCases,
-                                                "stateRestored": ciBattleshipDirectionRestored, "posesValid": battleshipArtworkPosesValid()],
+                        "navalDirections": navalArtworkEvidence(),
                         "effectTextures": Self.effectArtworkNames.compactMap { name -> [String: Any]? in
                             guard let texture = effectArtworkTextures[name] else { return nil }
                             return ["file": "Art/Effects/\(name).png", "width": texture.size().width, "height": texture.size().height]
@@ -3287,58 +3287,91 @@ final class GameScene: SKScene {
         }
     }
 
-    private func loadBattleshipDirectionArtwork() -> Bool {
-        if battleshipDirectionTextures.count == 8 { return true }
-        guard let textures = directionArtworkTextures(named: "battleship-eight") else { return false }
-        battleshipDirectionTextures = textures
+    private func loadNavalDirectionArtwork(for kind: EntityKind) -> Bool {
+        if navalDirectionTextures[kind]?.count == 8 { return true }
+        guard directionalNavalKinds.contains(kind), let name = kind.artworkName,
+              let textures = directionArtworkTextures(named: "\(name)-eight") else { return false }
+        navalDirectionTextures[kind] = textures
         return true
     }
 
-    private func refreshBattleshipArtworkFacings() {
-        for entity in entities.values where entity.isAlive && entity.kind == .battleship {
-            updateDirectionalArtworkFacing(entity, direction: artworkFacingDirection(for: entity), textures: battleshipDirectionTextures)
+    private func navalArtworkCellSize(for kind: EntityKind) -> CGSize {
+        let side: CGFloat = kind == .carrier ? 176 : (kind == .submarine ? 116 : 160)
+        return CGSize(width: side, height: side)
+    }
+
+    private func refreshNavalArtworkFacings() {
+        for entity in entities.values where entity.isAlive && directionalNavalKinds.contains(entity.kind) {
+            guard let textures = navalDirectionTextures[entity.kind] else { continue }
+            updateDirectionalArtworkFacing(entity, direction: artworkFacingDirection(for: entity), textures: textures)
         }
     }
 
-    private func battleshipArtworkPosesValid() -> Bool {
-        let ships = entities.values.filter { $0.isAlive && $0.kind == .battleship }
-        return battleshipDirectionTextures.count == 8 && !ships.isEmpty && ships.allSatisfy { ship in
-            guard let sprite = ship.artworkNode, (0..<8).contains(ship.artworkHeading) else { return false }
-            return sprite.texture === battleshipDirectionTextures[ship.artworkHeading] &&
-                sprite.size == CGSize(width: 160, height: 160) && sprite.anchorPoint == CGPoint(x: 0.5, y: 0.5) &&
-                sprite.position == CGPoint(x: 0, y: 8) && ship.node.xScale * sprite.xScale == 1
-        }
-    }
-
-    private func auditBattleshipDirectionArtwork() {
-        ciBattleshipDirectionCases.removeAll()
-        ciBattleshipDirectionRestored = false
-        guard battleshipDirectionTextures.count == 8,
-              let ship = entities.values.first(where: { $0.kind == .battleship && $0.isAlive }),
-              let sprite = ship.artworkNode else { return }
-        let saved = (ship.artworkHeading, ship.node.xScale, sprite.texture, sprite.xScale)
-        let geometry = (sprite.size, sprite.anchorPoint, sprite.position, ship.node.position)
-        for index in 0..<8 {
-            let angle = CGFloat(index) * .pi / 4
-            var mirrors: [Bool] = []
-            for sign in [CGFloat(1), CGFloat(-1)] {
-                ship.node.xScale = sign
-                updateDirectionalArtworkFacing(ship, direction: CGPoint(x: cos(angle), y: sin(angle)), textures: battleshipDirectionTextures)
-                mirrors.append(ship.artworkHeading == index && sprite.texture === battleshipDirectionTextures[index] &&
-                               sprite.xScale * ship.node.xScale == 1)
+    private func navalArtworkPosesValid() -> Bool {
+        directionalNavalKinds.allSatisfy { kind in
+            guard let textures = navalDirectionTextures[kind], textures.count == 8 else { return false }
+            return entities.values.filter({ $0.isAlive && $0.kind == kind }).allSatisfy { ship in
+                guard let sprite = ship.artworkNode, (0..<8).contains(ship.artworkHeading) else { return false }
+                return sprite.texture === textures[ship.artworkHeading] && sprite.size == navalArtworkCellSize(for: kind) &&
+                    sprite.anchorPoint == CGPoint(x: 0.5, y: 0.5) && sprite.position == CGPoint(x: 0, y: 8) &&
+                    ship.node.xScale * sprite.xScale == 1
             }
-            ciBattleshipDirectionCases.append(["heading": index, "positive": mirrors[0], "negative": mirrors[1],
-                                              "geometry": sprite.size == geometry.0 && sprite.anchorPoint == geometry.1 &&
-                                                  sprite.position == geometry.2 && ship.node.position == geometry.3])
         }
-        ship.artworkHeading = saved.0
-        ship.node.xScale = saved.1
-        sprite.texture = saved.2
-        sprite.xScale = saved.3
-        ciBattleshipDirectionRestored = ship.artworkHeading == saved.0 && ship.node.xScale == saved.1 &&
-            sprite.texture === saved.2 && sprite.xScale == saved.3 && sprite.size == geometry.0 &&
-            sprite.anchorPoint == geometry.1 && sprite.position == geometry.2 && ship.node.position == geometry.3 &&
-            ciBattleshipDirectionCases.allSatisfy { $0["positive"] as? Bool == true && $0["negative"] as? Bool == true && $0["geometry"] as? Bool == true }
+    }
+
+    private func navalArtworkEvidence() -> [String: Any] {
+        var counts: [String: Int] = [:]
+        for kind in directionalNavalKinds {
+            if let name = kind.artworkName { counts[name] = navalDirectionTextures[kind]?.count ?? 0 }
+        }
+        // Bit i records the actual heading-i audit, retaining all 8 samples without
+        // growing the bounded scene beacon for each additional naval model.
+        return ["policy": "naval-eight-v1", "masks": ciNavalDirectionMasks, "subjects": ciNavalDirectionSubjects,
+                "textureCounts": counts, "stateRestored": ciNavalDirectionRestored, "posesValid": navalArtworkPosesValid()]
+    }
+
+    private func auditNavalDirectionArtwork() {
+        ciNavalDirectionMasks.removeAll()
+        ciNavalDirectionSubjects.removeAll()
+        ciNavalDirectionRestored = false
+        var restored: [Bool] = []
+        for kind in directionalNavalKinds {
+            let live = entities.values.first(where: { $0.kind == kind && $0.isAlive })
+            let ship = live ?? GameEntity(id: -1, kind: kind, faction: .player, position: .zero)
+            if live == nil { configureEntityNode(ship) }
+            guard let textures = navalDirectionTextures[kind], textures.count == 8,
+                  let sprite = ship.artworkNode, let name = kind.artworkName else { return }
+            ciNavalDirectionSubjects[name] = live == nil ? "detached-renderer" : "entity"
+            let saved = (ship.artworkHeading, ship.node.xScale, sprite.texture, sprite.xScale)
+            let geometry = (sprite.size, sprite.anchorPoint, sprite.position, ship.node.position)
+            var positive = 0, negative = 0, geometryMask = 0
+            for index in 0..<8 {
+                let angle = CGFloat(index) * .pi / 4
+                var geometryValid = true
+                for sign in [CGFloat(1), CGFloat(-1)] {
+                    ship.node.xScale = sign
+                    updateDirectionalArtworkFacing(ship, direction: CGPoint(x: cos(angle), y: sin(angle)), textures: textures)
+                    let correct = ship.artworkHeading == index && sprite.texture === textures[index] &&
+                        sprite.xScale * ship.node.xScale == 1
+                    if correct {
+                        if sign > 0 { positive |= 1 << index } else { negative |= 1 << index }
+                    }
+                    geometryValid = geometryValid && sprite.size == geometry.0 && sprite.anchorPoint == geometry.1 &&
+                        sprite.position == geometry.2 && ship.node.position == geometry.3
+                }
+                if geometryValid { geometryMask |= 1 << index }
+            }
+            ciNavalDirectionMasks[name] = ["positive": positive, "negative": negative, "geometry": geometryMask]
+            ship.artworkHeading = saved.0
+            ship.node.xScale = saved.1
+            sprite.texture = saved.2
+            sprite.xScale = saved.3
+            restored.append(ship.artworkHeading == saved.0 && ship.node.xScale == saved.1 &&
+                sprite.texture === saved.2 && sprite.xScale == saved.3 && sprite.size == geometry.0 &&
+                sprite.anchorPoint == geometry.1 && sprite.position == geometry.2 && ship.node.position == geometry.3 &&
+                positive == 255 && negative == 255 && geometryMask == 255)
+        }
+        ciNavalDirectionRestored = restored.count == directionalNavalKinds.count && restored.allSatisfy { $0 }
     }
 
     private func tankArtworkPosesValid() -> Bool {
@@ -3509,10 +3542,11 @@ final class GameScene: SKScene {
             sprite.position = CGPoint(x: 0, y: 24)
             sprite.xScale = entity.node.xScale < 0 ? -1 : 1
         }
-        if entity.kind == .battleship, loadBattleshipDirectionArtwork() {
+        if directionalNavalKinds.contains(entity.kind), loadNavalDirectionArtwork(for: entity.kind),
+           let textures = navalDirectionTextures[entity.kind] {
             entity.artworkHeading = entity.faction == .enemy ? 5 : 7
-            sprite.texture = battleshipDirectionTextures[entity.artworkHeading]
-            sprite.size = CGSize(width: 160, height: 160)
+            sprite.texture = textures[entity.artworkHeading]
+            sprite.size = navalArtworkCellSize(for: entity.kind)
             sprite.anchorPoint = CGPoint(x: 0.5, y: 0.5)
             sprite.position = CGPoint(x: 0, y: 8)
             sprite.xScale = entity.node.xScale < 0 ? -1 : 1
@@ -6782,7 +6816,7 @@ final class GameScene: SKScene {
     private func updateHUD() {
         refreshTankArtworkFacings()
         refreshAirArtworkFacings()
-        refreshBattleshipArtworkFacings()
+        refreshNavalArtworkFacings()
         applyCameraProjection()
         for entity in entities.values {
             entity.label.xScale = entity.node.xScale < 0 ? -1 : 1
@@ -14190,7 +14224,12 @@ final class GameScene: SKScene {
         let accent = entity.faction == .enemy
             ? UIColor(red: 1.0, green: 0.44, blue: 0.30, alpha: 1.0)
             : UIColor(red: 0.32, green: 0.92, blue: 1.0, alpha: 1.0)
-        let slotPositions: [CGPoint] = entity.artworkNode != nil ? [
+        // Eight-heading artwork already contains parked jets. Keep live wing/queue
+        // cues in a small selected-unit rail instead of painting fixed-angle jets on it.
+        let directional = navalDirectionTextures[.carrier]?.count == 8
+        let slotPositions: [CGPoint] = directional ? [
+            CGPoint(x: -18, y: -53), CGPoint(x: 0, y: -53), CGPoint(x: 18, y: -53)
+        ] : entity.artworkNode != nil ? [
             CGPoint(x: -23, y: 21), CGPoint(x: -6, y: 9), CGPoint(x: 11, y: -3)
         ] : [
             CGPoint(x: -22, y: 0),
@@ -14209,7 +14248,7 @@ final class GameScene: SKScene {
             let pad = SKNode()
             pad.name = "carrier-deck-pad:\(index)"
             pad.position = position
-            pad.zRotation = entity.artworkNode != nil ? -0.55 : 0.18
+            pad.zRotation = directional ? 0 : (entity.artworkNode != nil ? -0.55 : 0.18)
 
             let padBase = SKShapeNode(ellipseOf: CGSize(width: 16, height: 6))
             padBase.fillColor = UIColor.black.withAlphaComponent(0.48)
@@ -14294,9 +14333,11 @@ final class GameScene: SKScene {
                 entity.carrierDeckAircraftQueueBars[index].isHidden = !isQueued
             }
 
+            let directional = navalDirectionTextures[.carrier]?.count == 8
+            entity.carrierDeckAircraftNode.xScale = directional && entity.node.xScale < 0 ? -1 : 1
             entity.carrierDeckAircraftNode.isHidden = !entity.isAlive ||
-                !entity.isOperational ||
-                entity.node.isHidden
+                !entity.isOperational || entity.node.isHidden ||
+                (directional && !selectedIDs.contains(entity.id))
         }
     }
 

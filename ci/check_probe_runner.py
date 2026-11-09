@@ -88,9 +88,11 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          artwork=dict(tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
                      textureCount=8, stateRestored=True, posesValid=True,
                      cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)]),
-                      battleshipDirections=dict(policy="battleship-eight-v1", file="Art/Directions/battleship-eight.png",
-                          textureCount=8, stateRestored=True, posesValid=True,
-                          cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)]),
+                      navalDirections=dict(policy="naval-eight-v1", stateRestored=True, posesValid=True,
+                          subjects={kind: "entity" for kind in ("battleship", "carrier", "submarine")},
+                          textureCounts={kind: 8 for kind in ("battleship", "carrier", "submarine")},
+                          masks={kind: dict(positive=255, negative=255, geometry=255)
+                                 for kind in ("battleship", "carrier", "submarine")}),
                       airDirections=dict(policy="air-eight-v1", stateRestored=True, posesValid=True,
                           subjects={kind: "entity" for kind in ("fighter", "helicopter")},
                           textureCounts={kind: 8 for kind in ("fighter", "helicopter")},
@@ -1793,29 +1795,33 @@ class SceneEvidenceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "fog surface"):
                     latest_ready(records, self.definition)
 
-    def test_battleship_artwork_rejects_missing_views_bad_mirrors_and_unrestored_state(self):
-        for defect in ("missing", "bad-type", "missing-view", "duplicate-view", "bool-heading",
-                       "wrong-count", "wrong-file", "wrong-policy", "unrestored", "fallback",
-                       "positive", "negative", "geometry", "numeric-check"):
-            with self.subTest(defect=defect):
-                scene = self.scene()["scene"]
-                records = self.records(scene)
-                ready = records[-1]
-                atlas = ready["artwork"]["battleshipDirections"]
-                if defect == "missing": ready["artwork"].pop("battleshipDirections")
-                elif defect == "bad-type": ready["artwork"]["battleshipDirections"] = []
-                elif defect == "missing-view": atlas["cases"].pop()
-                elif defect == "duplicate-view": atlas["cases"][1]["heading"] = 0
-                elif defect == "bool-heading": atlas["cases"][0]["heading"] = False
-                elif defect == "wrong-count": atlas["textureCount"] = 7
-                elif defect == "wrong-file": atlas["file"] = "Art/Units/battleship.png"
-                elif defect == "wrong-policy": atlas["policy"] = "mirrored-two-view"
-                elif defect == "unrestored": atlas["stateRestored"] = False
-                elif defect == "fallback": atlas["posesValid"] = False
-                elif defect == "numeric-check": atlas["cases"][0]["negative"] = 1
-                else: atlas["cases"][0][defect] = False
-                with self.assertRaisesRegex(ValueError, "battleship direction artwork"):
-                    latest_ready(records, self.definition)
+    def test_naval_artwork_rejects_incomplete_heading_masks_bad_mirrors_and_unrestored_state(self):
+        for kind in ("battleship", "carrier", "submarine"):
+            for defect in ("missing", "bad-type", "missing-kind", "extra-kind", "missing-mask", "extra-mask", "bool-mask",
+                           "wrong-count", "bool-count", "wrong-policy", "missing-subject", "wrong-subject", "unrestored", "fallback",
+                           "positive", "negative", "geometry", "overflow"):
+                with self.subTest(kind=kind, defect=defect):
+                    records = self.records(self.scene()["scene"])
+                    ready = records[-1]
+                    atlas = ready["artwork"]["navalDirections"]
+                    if defect == "missing": ready["artwork"].pop("navalDirections")
+                    elif defect == "bad-type": ready["artwork"]["navalDirections"] = []
+                    elif defect == "missing-kind": atlas["masks"].pop(kind)
+                    elif defect == "extra-kind": atlas["masks"]["scout"] = dict(positive=255, negative=255, geometry=255)
+                    elif defect == "missing-mask": atlas["masks"][kind].pop("negative")
+                    elif defect == "extra-mask": atlas["masks"][kind]["extra"] = 255
+                    elif defect == "bool-mask": atlas["masks"][kind]["negative"] = True
+                    elif defect == "wrong-count": atlas["textureCounts"][kind] = 7
+                    elif defect == "bool-count": atlas["textureCounts"][kind] = True
+                    elif defect == "wrong-policy": atlas["policy"] = "mirrored-two-view"
+                    elif defect == "missing-subject": atlas["subjects"].pop(kind)
+                    elif defect == "wrong-subject": atlas["subjects"][kind] = "fake"
+                    elif defect == "unrestored": atlas["stateRestored"] = False
+                    elif defect == "fallback": atlas["posesValid"] = False
+                    elif defect == "overflow": atlas["masks"][kind]["positive"] = 511
+                    else: atlas["masks"][kind][defect] = 127
+                    with self.assertRaisesRegex(ValueError, "naval direction artwork"):
+                        latest_ready(records, self.definition)
 
     def test_air_artwork_rejects_missing_views_bad_mirrors_and_unrestored_state(self):
         for kind in ("fighter", "helicopter"):

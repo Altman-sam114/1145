@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.12",
+  "version": "v6.13",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.12-naval-directions.md",
+  "promptDocument": "md/art/v6.13-naval-directions.md",
   "assets": [
     {
       "kind": "humvee",
@@ -336,7 +336,33 @@
       "rows": 2,
       "decodeMaxPixels": 1536,
       "worldCell": 160
+    },
+    {
+      "kind": "carrierDirections",
+      "file": "Directions/carrier-eight.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.13-carrier-eight.png",
+      "bytes": 657689,
+      "sha256": "17ef68a35427dba2d7ac8e5d2b325883813924cf5a02bc9cae9a6964e47e411e",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "worldCell": 176
+    },
+    {
+      "kind": "submarineDirections",
+      "file": "Directions/submarine-eight.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.13-submarine-eight.png",
+      "bytes": 474383,
+      "sha256": "400d36d4b5a3d5bc0f8ac8f153ea337326986f8f88d7522830cefd4132dbd4f5",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "worldCell": 116
     }
   ],
-  "updatedDate": "2026-11-09"
+  "updatedDate": "2026-11-10"
 }

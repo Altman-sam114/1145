@@ -123,18 +123,21 @@ def latest_ready(records, definition):
                    or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
                    for index, case in enumerate(cases))):
         raise ValueError("Scene ready tank direction artwork missing, mirrored incorrectly or not restored")
-    directions = artwork.get("battleshipDirections") if isinstance(artwork, dict) else None
-    cases = directions.get("cases") if isinstance(directions, dict) else None
-    if (not isinstance(directions, dict) or directions.get("policy") != "battleship-eight-v1"
-            or directions.get("file") != "Art/Directions/battleship-eight.png"
-            or type(directions.get("textureCount")) is not int or directions["textureCount"] != 8
-            or directions.get("stateRestored") is not True or directions.get("posesValid") is not True
-            or not isinstance(cases, list) or len(cases) != 8
-            or any(not isinstance(case, dict) or type(case.get("heading")) is not int
-                   or case["heading"] != index
-                   or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
-                   for index, case in enumerate(cases))):
-        raise ValueError("Scene ready battleship direction artwork missing, mirrored incorrectly or not restored")
+    naval = artwork.get("navalDirections")
+    naval_kinds = {"battleship", "carrier", "submarine"}
+    masks = naval.get("masks") if isinstance(naval, dict) else None
+    subjects = naval.get("subjects") if isinstance(naval, dict) else None
+    texture_counts = naval.get("textureCounts") if isinstance(naval, dict) else None
+    if (not isinstance(naval, dict) or naval.get("policy") != "naval-eight-v1"
+            or naval.get("stateRestored") is not True or naval.get("posesValid") is not True
+            or not isinstance(subjects, dict) or set(subjects) != naval_kinds
+            or any(value not in ("entity", "detached-renderer") for value in subjects.values())
+            or not isinstance(texture_counts, dict) or set(texture_counts) != naval_kinds
+            or any(type(value) is not int or value != 8 for value in texture_counts.values())
+            or not isinstance(masks, dict) or set(masks) != naval_kinds
+            or any(not isinstance(mask, dict) or set(mask) != {"positive", "negative", "geometry"}
+                   or any(type(value) is not int or value != 255 for value in mask.values()) for mask in masks.values())):
+        raise ValueError("Scene ready naval direction artwork missing, mirrored incorrectly or not restored")
     air = artwork.get("airDirections")
     air_cases = air.get("cases") if isinstance(air, dict) else None
     air_counts = air.get("textureCounts") if isinstance(air, dict) else None

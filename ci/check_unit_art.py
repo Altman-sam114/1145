@@ -21,7 +21,7 @@ STRUCTURES = {"hq": "command-hq", "barracks": "war-factory", "airfield": "airfie
 SCENERY = {"desertRocks": "desert-rocks", "datePalm": "date-palm", "desertHamlet": "desert-hamlet"}
 EFFECTS = {"waterImpact": "water-impact", "impactBurst": "impact-burst"}
 DIRECTIONS = {"tankDirections": "tank-eight", "fighterDirections": "fighter-eight", "helicopterDirections": "helicopter-eight",
-              "battleshipDirections": "battleship-eight"}
+              "battleshipDirections": "battleship-eight", "carrierDirections": "carrier-eight", "submarineDirections": "submarine-eight"}
 ASSET_PATHS = {**{kind: f"Units/{name}.png" for kind, name in KINDS.items()},
                **{kind: f"Structures/{name}.png" for kind, name in STRUCTURES.items()},
                **{kind: f"Scenery/{name}.png" for kind, name in SCENERY.items()},
@@ -158,7 +158,7 @@ def verify(art):
         raise ValueError("Art provenance document missing")
     assets = manifest["assets"]
     if len(assets) != len(ASSET_PATHS) or {a["kind"] for a in assets} != set(ASSET_PATHS):
-        raise ValueError("Expected ten units, ten structures, three scenery, two effects and four directional atlases")
+        raise ValueError("Expected ten units, ten structures, three scenery, two effects and six directional atlases")
     reports = []
     for asset in assets:
         name = ASSET_PATHS[asset['kind']]
