@@ -6490,3 +6490,11 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 实际失败为新增单标题分类与原两行就绪检查未同步：HUD contract producer成功且恢复，essentialText/模型/地图/迷雾/投影均通过，hud=false导致prewarm就绪超时。另launch-help首次60秒超时后原同条件恢复成功。work464.096s、cleanup21.302s，不是编译卡死或截图恢复失败（后者尚未执行）。
 - 删除分类空副标题节点及其审计注册；就绪按分类/命令真实节点名字检查精确title或title+subtitle、非空白、显隐与alpha。新增hudText policy与实际计数，parser拒绝缺分类/缺命令状态/隐藏/旧结构/数值冒充；审计要求分类title和命令两行，新增缺标题与旧subtitle负例。预算、资源、24图和其他门槛不变。
 - 修复为本次UI改动的直接后续，将重新等待main精确SHA云端与原图，不回退本机运行。
+
+
+### v6.16 / 合并HUD文字规则并补失败定位（待云端）
+
+- v6.15 run42689909487/attempt1原包160855bytes、artifact13707117889、SHA256 baac3cd41dcf71887ce3d40aa09f541de28986fdedca2e868fa266f32d9736de，精确SHA40be549283a9057c4ebdbf78ff359aa88e6bc842已核对。双build、122脚本回归、31source/bundle通过；正式0/24，work511.049s/cleanup47.714s。首boot-wait超时后同设备恢复成功，最终失败仍为prewarm readiness。
+- 原生hud已true；HUD producer stateRestored=false。源码审计另有expectedIDs仍强制五个已删除的分类subtitle，这是确定存在的必败条件；不能将未采集的报告冒称审计通过。
+- 将就绪检查与Swift文字审计合并到同一hudControlTextIDs/expectedHUDControlTextIDs规则，完整保留命令两行、分类单标题、精确ID/非空白/可见/数量以及恢复/布局全部门槛。补有界失败诊断，输出首个文字问题与前三个失败case，避免只看到超时；不是通过证据。
+- 再次按main精确SHA云端复核，不本机测试；若仍失败以新增原始诊断决定下一步，不盲放宽合同或预算。

@@ -1749,13 +1749,10 @@ final class GameScene: SKScene {
         let controlsHaveText = (Array(hudButtonShapes.values) + Array(hudPageShapes.values)).allSatisfy { shape in
             guard let parent = shape.parent, parent.parent === hudNode, !parent.isHidden,
                   let name = parent.name else { return false }
-            let isPage = name.hasPrefix("hud-page:")
-            guard isPage || name.hasPrefix("hud:") else { return false }
-            let prefix = isPage ? "hud-text:page:\(name.dropFirst(9))" : "hud-text:action:\(name.dropFirst(4))"
-            let parts = isPage ? ["title"] : ["title", "subtitle"]
+            let expected = hudControlTextIDs(for: name)
             let labels = parent.children.compactMap { $0 as? SKLabelNode }
-            return Set(labels.compactMap(\.name)) == Set(parts.map { "\(prefix):\($0)" }) &&
-                labels.count == parts.count && labels.allSatisfy {
+            return !expected.isEmpty && Set(labels.compactMap(\.name)) == expected &&
+                labels.count == expected.count && labels.allSatisfy {
                     !($0.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) && !$0.isHidden && $0.alpha > 0
                 }
         }
@@ -5701,6 +5698,22 @@ final class GameScene: SKScene {
         entity.selectionNode.addChild(entity.navalHeadingCueNode)
     }
 
+    private func hudControlTextIDs(for name: String) -> Set<String> {
+        if name.hasPrefix("hud-page:") { return ["hud-text:page:\(name.dropFirst(9)):title"] }
+        if name.hasPrefix("hud:") {
+            let prefix = "hud-text:action:\(name.dropFirst(4))"
+            return ["\(prefix):title", "\(prefix):subtitle"]
+        }
+        return []
+    }
+
+    private var expectedHUDControlTextIDs: Set<String> {
+        var result = Set<String>()
+        for page in HudPage.allCases { result.formUnion(hudControlTextIDs(for: "hud-page:\(page.rawValue)")) }
+        for action in hudPage.actions { result.formUnion(hudControlTextIDs(for: "hud:\(action.rawValue)")) }
+        return result
+    }
+
     private func layoutHUD() {
         guard !isLayingOutHUD else { hudGeometryDirty = true; return }
         if !isWritingHUDContract { ciInvalidateReady("hud-rebuild") }
@@ -6050,13 +6063,9 @@ final class GameScene: SKScene {
             let startFailures = audit.failureCount
             let before = labelSnapshots()
             let ids = before.map(\.id)
-            let expectedIDs = HudPage.allCases.flatMap { page in
-                ["hud-text:page:\(page.rawValue):title", "hud-text:page:\(page.rawValue):subtitle"]
-            } + hudPage.actions.flatMap { action in
-                ["hud-text:action:\(action.rawValue):title", "hud-text:action:\(action.rawValue):subtitle"]
-            }
+            let expectedIDs = expectedHUDControlTextIDs
             var registryValid = !before.isEmpty && boundedHUDLabels.count <= 64 && !ids.contains("") &&
-                Set(ids).count == ids.count && Set(expectedIDs).isSubset(of: Set(ids))
+                Set(ids).count == ids.count && expectedIDs.isSubset(of: Set(ids))
             if !registryValid {
                 labelFailure(phase, "registry-identities", before.first, audit: &audit)
             }
@@ -6430,6 +6439,17 @@ final class GameScene: SKScene {
             try data.write(to: url, options: .atomic)
             ciHUDRestored = restored
             ciHUDReport = ["path": url.path, "bytes": data.count, "sha256": SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()]
+            if !passed {
+                let failedCases = matrix.filter { $0["status"] as? String != "success" }.prefix(3).map { entry -> [String: Any] in
+                    ["fixture": entry["fixture"] ?? "", "page": entry["page"] ?? "",
+                     "failures": Array((entry["failures"] as? [String] ?? []).prefix(3))]
+                }
+                ciBeacon("hud-contract-diagnostic", extra: ["stateRestored": restored,
+                    "actualLabelFailures": actualLabelAudit.failureCount,
+                    "firstLabelIssue": actualLabelAudit.details.first.map {
+                        ["id": $0["id"] ?? "", "phase": $0["phase"] ?? "", "reason": $0["reason"] ?? ""]
+                    } ?? [:], "failedCases": failedCases])
+            }
             ciBeacon("hud-contract-written", extra: ["report": ciHUDReport!, "stateRestored": restored, "status": passed ? "success" : "failure"])
         } catch {
             ciBeacon("hud-contract-failure", extra: ["error": String(describing: error)])

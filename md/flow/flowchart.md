@@ -422,3 +422,5 @@ flowchart LR
     C -->|失败| F
     E --> G[metadata独立复核]
 ```
+
+HUD初始化与文字契约共用`hudControlTextIDs(for:)`：分类单标题、命令标题加状态；原生ready与审计都从这一规则核对实际文字节点。失败诊断只用于定位，不进入通过条件。

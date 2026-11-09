@@ -349,3 +349,5 @@ fog tile使用精确tileWidth×tileHeight菱形并关闭形状边缘抗锯齿，
 截图读取经`capture_scene_screenshot`：固定设备/PID/nonce/ready，首次45秒，只有确认回收的watchdog超时才允许原180秒总预算内第二次读取；候选按nonce/attempt独立命名，成功验证PNG后原子移动至正式路径，再沿用原规范化流程。`screenCapture`记录原始输出、进程回执和rawImage摘要，metadata独立复核；普通失败/取消/场景变化不重试。HUD分类删除重复副标题，保留标签注册/拟合与44pt命中；沙地/水纹在原5种材质缓存中烘焙，不新增实时节点或玩法状态。
 
 HUD分类节点现在只包含一个title，命令仍包含title/subtitle。CI就绪检查按节点名字核对精确文字集合、非空白/显隐/alpha，并在hudText附实际5个分类文字与2×命令数；parser和HUD审计同步单标题结构，不能用空/透明副标题满足旧两行计数。其余布局、44pt命中与路由不变。
+
+`hudControlTextIDs(for:)`是原生就绪与Swift文字审计的共同规则：hud-page控件只有title，hud动作保留title/subtitle；`expectedHUDControlTextIDs`从五页与当前动作生成审计集合。失败时额外输出有界hud-contract-diagnostic（前三个case与首条文字失败），不替代ready/完整报告，不放宽恢复检查。
