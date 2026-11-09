@@ -114,6 +114,23 @@ def latest_ready(records, definition):
                    or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
                    for index, case in enumerate(cases))):
         raise ValueError("Scene ready tank direction artwork missing, mirrored incorrectly or not restored")
+    overlay = ready.get("tacticalOverlays")
+    overlay_checks = overlay.get("checks") if isinstance(overlay, dict) else None
+    mirrors = overlay.get("mirrors") if isinstance(overlay, dict) else None
+    if (not isinstance(overlay, dict) or overlay.get("policy") != "tactical-overlay-v1"
+            or not isinstance(overlay_checks, dict) or set(overlay_checks) != {"endpoints", "reuse", "reattached", "restored"}
+            or any(value is not True for value in overlay_checks.values())
+            or not isinstance(mirrors, list) or len(mirrors) != 2):
+        raise ValueError("Scene ready tactical overlay lifecycle missing or failed")
+    for sign, sample in zip((1, -1), mirrors):
+        if (not isinstance(sample, dict) or type(sample.get("scale")) not in (int, float) or sample["scale"] != sign
+                or type(sample.get("nodes")) is not int or sample["nodes"] != 3
+                or any(not isinstance(sample.get(key), dict) or set(sample[key]) != {"x", "y"}
+                       or any(type(value) not in (int, float) or not math.isfinite(value) for value in sample[key].values())
+                       for key in ("actual", "expected"))
+                or math.hypot(sample["actual"]["x"] - sample["expected"]["x"],
+                              sample["actual"]["y"] - sample["expected"]["y"]) >= 0.01):
+            raise ValueError("Scene ready tactical overlay mirror endpoint mismatch")
     size, view, insets = ready.get("sceneSize", {}), ready.get("viewSize", {}), ready.get("insets", {})
     if (not all(finite(size.get(key)) and finite(view.get(key)) and abs(size[key] - view[key]) < 1 for key in ("width", "height"))
             or size["width"] <= size["height"] or set(insets) != {"top", "left", "bottom", "right"}

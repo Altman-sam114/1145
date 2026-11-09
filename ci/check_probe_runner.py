@@ -86,6 +86,10 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          artwork=dict(tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
                      textureCount=8, stateRestored=True, posesValid=True,
                      cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)])),
+         tacticalOverlays=dict(policy="tactical-overlay-v1",
+                               checks=dict(endpoints=True, reuse=True, reattached=True, restored=True),
+                               mirrors=[dict(scale=sign, nodes=3, expected=dict(x=80, y=-30), actual=dict(x=80, y=-30))
+                                        for sign in (1, -1)]),
          camera=dict(x=43, y=-666.5, scale=1),
          projection=dict(policy="world-node-affine-v1",
                          bindings=dict(nativeCameraDisabled=True, hudAttached=True, worldAttached=True, hostScene=True),
@@ -1759,6 +1763,24 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "numeric-check": atlas["cases"][0]["negative"] = 1
                 else: atlas["cases"][0][defect] = False
                 with self.assertRaisesRegex(ValueError, "tank direction artwork"):
+                    latest_ready(records, self.definition)
+
+    def test_tactical_overlay_rejects_mirrored_endpoints_and_lifecycle_failures(self):
+        for defect in ("missing", "endpoints", "reuse", "reattached", "restored", "numeric-check",
+                       "missing-mirror", "wrong-sign", "offset", "nonfinite", "bool-point", "extra-node"):
+            with self.subTest(defect=defect):
+                records = self.records(self.scene()["scene"])
+                overlay = records[-1]["tacticalOverlays"]
+                if defect == "missing": records[-1].pop("tacticalOverlays")
+                elif defect in overlay["checks"]: overlay["checks"][defect] = False
+                elif defect == "numeric-check": overlay["checks"]["endpoints"] = 1
+                elif defect == "missing-mirror": overlay["mirrors"].pop()
+                elif defect == "wrong-sign": overlay["mirrors"][1]["scale"] = 1
+                elif defect == "offset": overlay["mirrors"][1]["actual"]["x"] += 1
+                elif defect == "nonfinite": overlay["mirrors"][1]["actual"]["y"] = float("nan")
+                elif defect == "bool-point": overlay["mirrors"][1]["expected"]["x"] = True
+                elif defect == "extra-node": overlay["mirrors"][1]["nodes"] = 4
+                with self.assertRaisesRegex(ValueError, "tactical overlay"):
                     latest_ready(records, self.definition)
 
     def test_scene_render_configuration_cannot_hide_behind_ready(self):

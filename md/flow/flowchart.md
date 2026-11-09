@@ -359,3 +359,23 @@ flowchart LR
   Portrait --> Screen
   Map --> Screen
 ```
+
+## 战术提示与效果生命周期
+
+读图说明：原命令、选择和合法目标只投影成视觉；缓存节点修正父镜像并随原实体生命期，短弹迹不触发新伤害。云端CPU证据检查坐标和节点，最终清晰度仍看正式屏幕图。
+
+```mermaid
+flowchart LR
+  Facts[原选择 / destination / 已知attackTarget / hp] --> Intent[三份实体指令节点 / convert世界端点]
+  Facts --> Focus[四份共享集火节点 / 空心括线 / 标签和HP]
+  Reset[SKRM清空effectsLayer] --> Reattach[重挂同一focus根]
+  Reattach --> Focus
+  Fire[原fire结算] --> Visual[短暖色弹迹 / 视觉移动后移除]
+  Move[原海军direction与xScale] --> Foam[预建断续低对比泡沫]
+  Intent --> Screen[原fog与正式屏幕]
+  Focus --> Screen
+  Visual --> Screen
+  Foam --> Screen
+  Intent --> Audit[云端两镜像端点 / 节点身份 / 重挂与状态恢复]
+  Focus --> Audit
+```

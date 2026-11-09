@@ -1,7 +1,7 @@
 {
   "tool": "image_gen.imagegen",
   "generatedDate": "2026-11-09",
-  "status": "original RGBA integrated; cloud validation pending",
+  "status": "original RGBA integrated; exact-SHA cloud evidence recorded in update_log.md",
   "rejectedDraft": {
     "name": "tank-eight-directions-draft",
     "source": "/Users/a114514/.codex/generated_images/01a1bf33-9f3b-7eb1-b00a-fe8e9ef1ed4e/exec-5b7e0b48-92dc-4f0e-a468-5f6a19288585.png",

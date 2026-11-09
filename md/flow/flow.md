@@ -328,3 +328,9 @@ compact 选择卡使用64pt高双列事实槽，队列放标题右侧，生产�
 坦克另一次解码1536px的4×2原始透明图集，八个UV格共享atlas，固定74世界格与地面pivot；原单幅仍服务生产头像。updateHUD开头的refreshTankArtworkFacings只读destination/合法已知attackTarget，原updateTankArtworkFacing有界选择视角、保留停止朝向并补偿父镜像。artworkHeading仅为渲染索引，玩家/AI同一实体链路，HUD/战损/灰尘/迷雾/死亡/SKRM无平行状态。
 
 CI初始化在原fixture结束前，用同一生产方向函数检查八向和两种父镜像、精确恢复；ready的units门槛与artwork.tankDirections保留八个实测case和posesValid。source/bundle逐格拒绝空白/实底/重复alpha，scene_evidence同时校验方向协议；正式原24图仍需实际核对。
+
+## 战术提示渲染
+
+每个实体一次性预建三份commandIntent形状，刷新只更新路径/端点与显隐，取消选择不销毁；目标世界坐标经commandIntentNode.convert从entityLayer变换，抵消原实体父镜像。集火提示复用四份场景节点，改为空心括线/紧凑标签与细HP条，configureFocusFireMarker在SKRM移除effects子树后重挂同一根。所有意图、已知目标、HP、选择和消亡仍读原状态。
+
+普通showProjectile只创建短暖色弹迹、0.09…0.28s视觉移动及0.04s淡出，不添加伤害回调；原fire/导弹/火箭/海军齐射执行保持。海军预建泡沫路径改为断续低对比样式，原direction/xScale/迷雾/停止显隐不变；防空威胁警示保留原强度。CI auditTacticalOverlayRendering在原fixture后复核正负父镜像端点、3/4节点身份复用、根重挂和指令/战斗/选择恢复，ready的tacticalOverlays由runner/metadata独立校验有符号坐标。它不代替实际触摸、完整SKRM对局或FPS测量。

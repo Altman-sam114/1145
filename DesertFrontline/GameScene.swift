@@ -1132,6 +1132,9 @@ private final class GameEntity {
     let productionNode = SKNode()
     let rallyNode = SKNode()
     let commandIntentNode = SKNode()
+    let commandIntentLine = SKShapeNode()
+    let commandIntentTip = SKShapeNode()
+    let commandIntentCross = SKShapeNode()
     let veterancyNode = SKNode()
     let captureNode = SKNode()
     let constructionNode = SKNode()
@@ -1200,6 +1203,10 @@ final class GameScene: SKScene {
     private let entityLayer = SKNode()
     private let effectsLayer = SKNode()
     private let focusFireMarkerNode = SKNode()
+    private let focusFireOutline = SKShapeNode()
+    private let focusFireCaption = SKLabelNode(fontNamed: "AvenirNextCondensed-DemiBold")
+    private let focusFireHealthBack = SKShapeNode()
+    private let focusFireHealthFill = SKShapeNode()
     private let fogLayer = SKNode()
     private let hudNode = SKNode()
     private let cameraRig = SKNode()
@@ -1215,6 +1222,8 @@ final class GameScene: SKScene {
     private var tankDirectionTextures: [SKTexture] = []
     private var ciTankDirectionCases: [[String: Any]] = []
     private var ciTankDirectionRestored = false
+    private var ciOverlayChecks: [String: Bool] = [:]
+    private var ciOverlayMirrors: [[String: Any]] = []
     private var sceneryArtworkTextures: [String: SKTexture] = [:]
     private static let sceneryArtworkNames = ["desert-rocks", "date-palm", "desert-hamlet"]
     private var effectArtworkTextures: [String: SKTexture] = [:]
@@ -1406,6 +1415,7 @@ final class GameScene: SKScene {
         effectsLayer.addChild(focusFireMarkerNode)
         focusFireMarkerNode.zPosition = worldCombatFocusMarkerZ
         focusFireMarkerNode.isHidden = true
+        configureFocusFireMarker()
         worldNode.addChild(fogLayer)
 
         addChild(cameraRig)
@@ -1437,7 +1447,10 @@ final class GameScene: SKScene {
         ciEndStage("fog")
         ciBeacon("fixture-start")
         prepareCICaptureScene()
-        if isCICaptureMode { auditTankDirectionArtwork() }
+        if isCICaptureMode {
+            auditTankDirectionArtwork()
+            auditTacticalOverlayRendering()
+        }
         if isCICaptureMode { ciFixtureCamera = cameraRig.position }
         ciEndStage("fixture")
         updateHUD()
@@ -1711,7 +1724,8 @@ final class GameScene: SKScene {
                 EntityKind.allCases.filter({ $0.artworkName != nil }).allSatisfy({ unitArtworkTexture(for: $0) != nil }) &&
                 Self.effectArtworkNames.allSatisfy({ effectArtworkTexture(named: $0) != nil }) &&
                 attached.allSatisfy({ $0.artworkNode?.parent != nil }) &&
-                ciTankDirectionRestored && ciTankDirectionCases.count == 8 && tankArtworkPosesValid(),
+                ciTankDirectionRestored && ciTankDirectionCases.count == 8 && tankArtworkPosesValid() &&
+                ciOverlayChecks.count == 4 && ciOverlayChecks.values.allSatisfy({ $0 }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
                 moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty &&
@@ -1727,6 +1741,7 @@ final class GameScene: SKScene {
             if failure != ciLastReadinessFailure {
                 ciLastReadinessFailure = failure
                 ciBeacon("readiness-pending", extra: ["checks": checks, "fixtureChecks": fixtureChecks, "essentialText": essentialHUDTextCompleteness(),
+                                                    "tacticalOverlays": ["checks": ciOverlayChecks, "mirrors": ciOverlayMirrors],
                                                     "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
             ciReadyFrames.removeAll()
@@ -1757,6 +1772,7 @@ final class GameScene: SKScene {
                                     "ignoresSiblingOrder": view.ignoresSiblingOrder,
                                     "viewClass": String(describing: type(of: view))],
             "projection": projection,
+            "tacticalOverlays": ["policy": "tactical-overlay-v1", "checks": ciOverlayChecks, "mirrors": ciOverlayMirrors],
             "artwork": ["policy": "rgba384-grounded-v2", "attachedSprites": attached.filter({ $0.artworkNode != nil }).count,
                         "tankDirections": ["policy": "tank-eight-v1", "file": "Art/Directions/tank-eight.png",
                                            "textureCount": tankDirectionTextures.count, "cases": ciTankDirectionCases,
@@ -3360,7 +3376,7 @@ final class GameScene: SKScene {
         for range in [entity.landAirCombatRangeNode, entity.sonarCoverageNode, entity.escortCoverageNode,
                       entity.navalGunRangeNode, entity.repairCoverageNode, entity.carrierGuardAnchorCoverageNode,
                       entity.airDefenseThreatCoverageNode] {
-            range.alpha = 0.52
+            range.alpha = range === entity.airDefenseThreatCoverageNode ? 0.52 : 0.34
         }
 
         let healthBack = SKShapeNode(rectOf: CGSize(width: entity.kind.footprint, height: 5), cornerRadius: 1)
@@ -3433,6 +3449,12 @@ final class GameScene: SKScene {
         entity.commandIntentNode.zPosition = 25
         entity.commandIntentNode.isHidden = true
         entity.node.addChild(entity.commandIntentNode)
+        for shape in [entity.commandIntentLine, entity.commandIntentTip, entity.commandIntentCross] {
+            shape.lineCap = .round
+            shape.fillColor = .clear
+            entity.commandIntentNode.addChild(shape)
+        }
+        entity.commandIntentCross.isHidden = true
 
         entity.veterancyNode.position = CGPoint(x: 0, y: entity.kind.footprint * 0.52 + 30)
         entity.veterancyNode.zPosition = 27
@@ -5259,7 +5281,7 @@ final class GameScene: SKScene {
         let nearEndX = sternX + nearLength
         let farEndX = sternX + wakeLength
         let farSpread = wakeSpread * (isCarrier ? 0.58 : 0.55)
-        let waterColor = UIColor(red: 0.48, green: 0.94, blue: 1.0, alpha: 1.0)
+        let waterColor = UIColor(red: 0.62, green: 0.78, blue: 0.80, alpha: 1.0)
 
         let sideStartY: [CGFloat] = [-2.8, 3.5]
         let sideNearY: [CGFloat] = [-(wakeSpread + 0.8), wakeSpread - 0.7]
@@ -5284,26 +5306,26 @@ final class GameScene: SKScene {
         }
 
         let nearWash = SKShapeNode(path: nearWashPath)
-        nearWash.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.10 : (isCarrier ? 0.25 : 0.23))
-        nearWash.lineWidth = isSubmarine ? 5 : (isCarrier ? 11 : 8.5)
+        nearWash.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.10 : (isCarrier ? 0.18 : 0.16))
+        nearWash.lineWidth = isSubmarine ? 5 : (isCarrier ? 5 : 4)
         nearWash.lineCap = .round
         entity.navalWakeNode.addChild(nearWash)
 
         let farWash = SKShapeNode(path: farWashPath)
-        farWash.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.065 : (isCarrier ? 0.13 : 0.12))
-        farWash.lineWidth = isSubmarine ? 3.5 : (isCarrier ? 6.5 : 5.0)
+        farWash.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.065 : (isCarrier ? 0.09 : 0.08))
+        farWash.lineWidth = isSubmarine ? 3.5 : (isCarrier ? 4.5 : 3.5)
         farWash.lineCap = .round
         entity.navalWakeNode.addChild(farWash)
 
-        let nearFoam = SKShapeNode(path: nearWashPath)
-        nearFoam.strokeColor = UIColor(white: 0.96, alpha: isSubmarine ? 0.12 : (isCarrier ? 0.72 : 0.68))
-        nearFoam.lineWidth = isSubmarine ? 1.0 : (isCarrier ? 2.0 : 1.7)
+        let nearFoam = SKShapeNode(path: nearWashPath.copy(dashingWithPhase: 0, lengths: [4, 3, 1.5, 4]))
+        nearFoam.strokeColor = UIColor(white: 0.96, alpha: isSubmarine ? 0.12 : (isCarrier ? 0.34 : 0.30))
+        nearFoam.lineWidth = isSubmarine ? 1.0 : (isCarrier ? 1.1 : 0.95)
         nearFoam.lineCap = .round
         entity.navalWakeNode.addChild(nearFoam)
 
-        let farFoam = SKShapeNode(path: farWashPath)
-        farFoam.strokeColor = UIColor(white: 0.96, alpha: isSubmarine ? 0.07 : (isCarrier ? 0.40 : 0.34))
-        farFoam.lineWidth = isSubmarine ? 0.8 : (isCarrier ? 1.25 : 1.05)
+        let farFoam = SKShapeNode(path: farWashPath.copy(dashingWithPhase: 1, lengths: [3, 5]))
+        farFoam.strokeColor = UIColor(white: 0.96, alpha: isSubmarine ? 0.07 : (isCarrier ? 0.18 : 0.15))
+        farFoam.lineWidth = isSubmarine ? 0.8 : (isCarrier ? 0.8 : 0.7)
         farFoam.lineCap = .round
         entity.navalWakeNode.addChild(farFoam)
 
@@ -5321,14 +5343,14 @@ final class GameScene: SKScene {
         }
 
         let bowWash = SKShapeNode(path: bowPath)
-        bowWash.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.09 : (isCarrier ? 0.22 : 0.20))
-        bowWash.lineWidth = isSubmarine ? 3.5 : (isCarrier ? 7 : 5.5)
+        bowWash.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.09 : (isCarrier ? 0.15 : 0.13))
+        bowWash.lineWidth = isSubmarine ? 3.5 : (isCarrier ? 5 : 4)
         bowWash.lineCap = .round
         entity.navalWakeNode.addChild(bowWash)
 
-        let bowFoam = SKShapeNode(path: bowPath)
-        bowFoam.strokeColor = UIColor(white: 0.98, alpha: isSubmarine ? 0.10 : (isCarrier ? 0.64 : 0.58))
-        bowFoam.lineWidth = isSubmarine ? 0.8 : (isCarrier ? 1.7 : 1.4)
+        let bowFoam = SKShapeNode(path: bowPath.copy(dashingWithPhase: 0, lengths: [3, 2, 1, 3]))
+        bowFoam.strokeColor = UIColor(white: 0.98, alpha: isSubmarine ? 0.10 : (isCarrier ? 0.30 : 0.26))
+        bowFoam.lineWidth = isSubmarine ? 0.8 : (isCarrier ? 1.0 : 0.85)
         bowFoam.lineCap = .round
         entity.navalWakeNode.addChild(bowFoam)
 
@@ -5341,8 +5363,8 @@ final class GameScene: SKScene {
             let churn = SKShapeNode(ellipseOf: CGSize(width: churnWidth * scale, height: churnHeight * scale))
             churn.position = CGPoint(x: sternX + 4 + CGFloat(index) * churnSpacing, y: churnY[index])
             churn.zRotation = index.isMultiple(of: 2) ? -0.12 : 0.16
-            churn.fillColor = UIColor(white: 0.98, alpha: isSubmarine ? 0.10 : (0.48 - CGFloat(index) * 0.07))
-            churn.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.055 : 0.24 - CGFloat(index) * 0.035)
+            churn.fillColor = UIColor(white: 0.98, alpha: isSubmarine ? 0.10 : (0.24 - CGFloat(index) * 0.04))
+            churn.strokeColor = waterColor.withAlphaComponent(isSubmarine ? 0.055 : 0.10 - CGFloat(index) * 0.015)
             churn.lineWidth = isSubmarine ? 0.45 : 0.8
             entity.navalWakeNode.addChild(churn)
         }
@@ -13787,7 +13809,6 @@ final class GameScene: SKScene {
             entity.carrierGuardAnchorCoverageNode.isHidden = !shouldShowCarrierGuardAnchorCoverage(for: entity)
             if !selectedIDs.contains(entity.id) {
                 entity.commandIntentNode.isHidden = true
-                entity.commandIntentNode.removeAllChildren()
             }
         }
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive }
@@ -14153,88 +14174,113 @@ final class GameScene: SKScene {
         return "FOCUS \(focus.count) \(focus.target.kind.shortCode) \(percent)%"
     }
 
-    private func refreshFocusFireMarker(for selected: [GameEntity]) {
-        focusFireMarkerNode.removeAllChildren()
+    private func configureFocusFireMarker() {
+        // SKRM clears effectsLayer. Reattach the same retained render tree afterward.
+        if focusFireMarkerNode.parent == nil { effectsLayer.addChild(focusFireMarkerNode) }
+        guard focusFireOutline.parent == nil else { return }
+        for shape in [focusFireOutline, focusFireHealthBack, focusFireHealthFill] {
+            shape.fillColor = .clear
+            shape.strokeColor = .clear
+            focusFireMarkerNode.addChild(shape)
+        }
+        focusFireOutline.lineWidth = 1.25
+        focusFireOutline.lineCap = .round
+        focusFireOutline.lineJoin = .round
+        focusFireCaption.fontSize = 10
+        focusFireCaption.verticalAlignmentMode = .center
+        focusFireCaption.horizontalAlignmentMode = .center
+        focusFireMarkerNode.addChild(focusFireCaption)
+    }
 
+    private func auditTacticalOverlayRendering() {
+        guard let unit = entities.values.first(where: { $0.faction == .player && $0.kind == .tank && $0.isAlive }) else { return }
+        let saved = (unit.destination, unit.attackMoveDestination, unit.attackTarget, unit.node.xScale,
+                     unit.commandIntentNode.isHidden)
+        let core = (unit.hp, unit.attackTimer, unit.path, unit.holdPosition, selectedIDs)
+        let nodes = unit.commandIntentNode.children
+        let expected = unit.node.position + CGPoint(x: 80, y: 30)
+        unit.attackTarget = nil
+        unit.attackMoveDestination = nil
+        unit.destination = expected
+        var endpoints = true
+        var reused = nodes.count == 3
+        ciOverlayMirrors.removeAll()
+        for sign in [CGFloat(1), CGFloat(-1)] {
+            unit.node.xScale = sign
+            updateCommandIntentMarker(for: unit)
+            let actual = entityLayer.convert(unit.commandIntentTip.position, from: unit.commandIntentNode)
+            endpoints = endpoints && actual.distance(to: expected) < 0.01 && unit.commandIntentLine.path != nil
+            reused = reused && unit.commandIntentNode.children.count == nodes.count &&
+                zip(nodes, unit.commandIntentNode.children).allSatisfy { $0.0 === $0.1 }
+            ciOverlayMirrors.append(["scale": sign, "nodes": unit.commandIntentNode.children.count,
+                                     "expected": ["x": expected.x, "y": expected.y],
+                                     "actual": ["x": actual.x, "y": actual.y]])
+        }
+        unit.destination = saved.0
+        unit.attackMoveDestination = saved.1
+        unit.attackTarget = saved.2
+        unit.node.xScale = saved.3
+        let selected = selectedIDs.compactMap { entities[$0] }.filter(\.isAlive)
+        refreshCommandIntentVisuals(for: selected)
+        refreshFocusFireMarker(for: selected)
+        let focusNodes = focusFireMarkerNode.children
+        // Exercise the same detachment that effectsLayer clearing performs during SKRM.
+        focusFireMarkerNode.removeFromParent()
+        refreshFocusFireMarker(for: selected)
+        reused = reused && focusNodes.count == 4 && focusFireMarkerNode.children.count == focusNodes.count &&
+            zip(focusNodes, focusFireMarkerNode.children).allSatisfy { $0.0 === $0.1 }
+        let commandsRestored = unit.destination == saved.0 && unit.attackMoveDestination == saved.1 &&
+            unit.attackTarget?.id == saved.2?.id && unit.node.xScale == saved.3
+        let stateRestored = unit.commandIntentNode.isHidden == saved.4 && unit.hp == core.0 &&
+            unit.attackTimer == core.1 && unit.path == core.2 && unit.holdPosition == core.3 && selectedIDs == core.4
+        ciOverlayChecks = ["endpoints": endpoints, "reuse": reused,
+                           "reattached": focusFireMarkerNode.parent === effectsLayer,
+                           "restored": commandsRestored && stateRestored]
+    }
+
+    private func refreshFocusFireMarker(for selected: [GameEntity]) {
+        configureFocusFireMarker()
         guard let focus = sharedFocusFireTarget(for: selected) else {
             focusFireMarkerNode.isHidden = true
             return
         }
-
         let target = focus.target
-        let color = UIColor(red: 1.0, green: 0.28, blue: 0.22, alpha: 1.0)
+        let color = UIColor(red: 0.98, green: 0.48, blue: 0.32, alpha: 0.88)
         let footprint = max(28, target.kind.footprint)
         focusFireMarkerNode.position = target.node.position
         focusFireMarkerNode.zPosition = worldCombatFocusMarkerZ
 
-        let outer = SKShapeNode(ellipseOf: CGSize(width: footprint * 1.9, height: footprint * 1.05))
-        outer.strokeColor = color
-        outer.fillColor = color.withAlphaComponent(0.08)
-        outer.lineWidth = 2.5
-        outer.glowWidth = 1.2
-        focusFireMarkerNode.addChild(outer)
-
-        let inner = SKShapeNode(ellipseOf: CGSize(width: footprint * 1.15, height: footprint * 0.62))
-        inner.strokeColor = color.withAlphaComponent(0.85)
-        inner.fillColor = .clear
-        inner.lineWidth = 1.6
-        focusFireMarkerNode.addChild(inner)
-
-        let cross = CGMutablePath()
-        let armX = footprint * 0.95
-        let armY = footprint * 0.55
-        cross.move(to: CGPoint(x: -armX, y: 0))
-        cross.addLine(to: CGPoint(x: armX, y: 0))
-        cross.move(to: CGPoint(x: 0, y: -armY))
-        cross.addLine(to: CGPoint(x: 0, y: armY))
-        let crossNode = SKShapeNode(path: cross)
-        crossNode.strokeColor = color
-        crossNode.lineWidth = 2.2
-        crossNode.lineCap = .round
-        focusFireMarkerNode.addChild(crossNode)
-
-        let targetRatio = min(1, max(0, target.hp / max(target.kind.maxHP, 1)))
-        let targetPercent = Int(targetRatio * 100)
-        let label = SKLabelNode(fontNamed: "Menlo-Bold")
-        label.text = "FOCUS \(focus.count) \(target.kind.shortCode) \(targetPercent)%"
-        label.fontSize = 11
-        label.fontColor = color
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.position = CGPoint(x: 0, y: focusFireLabelY(for: target, footprint: footprint))
-        focusFireMarkerNode.addChild(label)
-
-        let segmentCount = 8
-        let barWidth = max(58, footprint * 1.55)
-        let gap: CGFloat = 2
-        let segmentWidth = (barWidth - CGFloat(segmentCount - 1) * gap) / CGFloat(segmentCount)
-        let filledSegments = Int(ceil(targetRatio * CGFloat(segmentCount)))
-        let segmentColor: UIColor
-        if targetRatio > 0.55 {
-            segmentColor = UIColor(red: 0.34, green: 0.94, blue: 0.30, alpha: 1.0)
-        } else if targetRatio > 0.25 {
-            segmentColor = UIColor(red: 1.0, green: 0.72, blue: 0.20, alpha: 1.0)
-        } else {
-            segmentColor = color
+        // Open corner brackets leave the actual hull visible through the target cue.
+        let halfWidth = footprint * 0.95
+        let halfHeight = footprint * 0.52
+        let corner = min(10, halfWidth * 0.30)
+        let path = CGMutablePath()
+        for sideX in [CGFloat(-1), CGFloat(1)] {
+            for sideY in [CGFloat(-1), CGFloat(1)] {
+                path.move(to: CGPoint(x: sideX * (halfWidth - corner), y: sideY * halfHeight))
+                path.addLine(to: CGPoint(x: sideX * halfWidth, y: sideY * halfHeight))
+                path.addLine(to: CGPoint(x: sideX * halfWidth, y: sideY * (halfHeight - corner * 0.65)))
+            }
         }
+        focusFireOutline.path = path
+        focusFireOutline.strokeColor = color
+
+        let ratio = min(1, max(0, target.hp / max(target.kind.maxHP, 1)))
+        focusFireCaption.text = "\(target.kind.shortCode) \(Int(ratio * 100))%  ×\(focus.count)"
+        focusFireCaption.fontColor = color
+        focusFireCaption.position = CGPoint(x: 0, y: focusFireLabelY(for: target, footprint: footprint))
+
+        let width = max(48, footprint * 1.35)
         let barY = focusFireHealthBarY(for: footprint)
-        for index in 0..<segmentCount {
-            let segment = SKShapeNode(
-                rectOf: CGSize(width: segmentWidth, height: 6),
-                cornerRadius: 1
-            )
-            segment.position = CGPoint(
-                x: -barWidth * 0.5 + segmentWidth * 0.5 + CGFloat(index) * (segmentWidth + gap),
-                y: barY
-            )
-            segment.fillColor = index < filledSegments
-                ? segmentColor
-                : UIColor.black.withAlphaComponent(0.62)
-            segment.strokeColor = color.withAlphaComponent(0.42)
-            segment.lineWidth = 0.8
-            focusFireMarkerNode.addChild(segment)
-        }
-
+        focusFireHealthBack.path = CGPath(rect: CGRect(x: -width / 2, y: -1.4, width: width, height: 2.8), transform: nil)
+        focusFireHealthBack.position = CGPoint(x: 0, y: barY)
+        focusFireHealthBack.fillColor = UIColor.black.withAlphaComponent(0.48)
+        focusFireHealthFill.path = CGPath(rect: CGRect(x: 0, y: -1.1, width: width, height: 2.2), transform: nil)
+        focusFireHealthFill.position = CGPoint(x: -width / 2, y: barY)
+        focusFireHealthFill.xScale = max(0.001, ratio)
+        focusFireHealthFill.fillColor = ratio > 0.55
+            ? UIColor(red: 0.57, green: 0.82, blue: 0.52, alpha: 0.88)
+            : ratio > 0.25 ? HUDPalette.gold : color
         focusFireMarkerNode.isHidden = false
     }
 
@@ -14264,7 +14310,6 @@ final class GameScene: SKScene {
         for entity in entities.values {
             guard selectedMobileIDs.contains(entity.id) else {
                 entity.commandIntentNode.isHidden = true
-                entity.commandIntentNode.removeAllChildren()
                 continue
             }
             updateCommandIntentMarker(for: entity)
@@ -14272,8 +14317,6 @@ final class GameScene: SKScene {
     }
 
     private func updateCommandIntentMarker(for entity: GameEntity) {
-        entity.commandIntentNode.removeAllChildren()
-
         enum IntentKind {
             case attack
             case attackMove
@@ -14309,23 +14352,23 @@ final class GameScene: SKScene {
         switch intent.kind {
         case .attack:
             color = UIColor(red: 1.0, green: 0.30, blue: 0.20, alpha: 1.0)
-            lineWidth = 2.4
-            dash = [7, 5]
+            lineWidth = 1.1
+            dash = [5, 6]
         case .attackMove:
             color = UIColor(red: 1.0, green: 0.58, blue: 0.20, alpha: 1.0)
-            lineWidth = 2.3
-            dash = [8, 4]
-        case .move:
-            color = UIColor(red: 0.24, green: 1.0, blue: 0.62, alpha: 1.0)
-            lineWidth = 2.1
+            lineWidth = 1.05
             dash = [6, 5]
+        case .move:
+            color = UIColor(red: 0.45, green: 0.83, blue: 0.66, alpha: 1.0)
+            lineWidth = 1.0
+            dash = [4, 6]
         case .hold:
             color = UIColor(red: 1.0, green: 0.86, blue: 0.34, alpha: 1.0)
-            lineWidth = 1.8
-            dash = [3, 4]
+            lineWidth = 1.0
+            dash = [3, 5]
         }
 
-        let localPoint = intent.point - entity.node.position
+        let localPoint = entity.commandIntentNode.convert(intent.point, from: entityLayer)
         let solidPath = CGMutablePath()
         solidPath.move(to: .zero)
         solidPath.addLine(to: localPoint)
@@ -14335,32 +14378,30 @@ final class GameScene: SKScene {
         } else {
             strokedPath = solidPath
         }
-        let line = SKShapeNode(path: strokedPath)
-        line.strokeColor = color.withAlphaComponent(0.88)
+        let line = entity.commandIntentLine
+        line.path = strokedPath
+        line.strokeColor = color.withAlphaComponent(0.52)
         line.lineWidth = lineWidth
-        line.glowWidth = 0.8
-        line.lineCap = .round
-        entity.commandIntentNode.addChild(line)
 
-        let tip = SKShapeNode(ellipseOf: CGSize(width: intent.kind == .attack ? 18 : 14, height: intent.kind == .attack ? 12 : 9))
+        let tip = entity.commandIntentTip
+        let tipWidth: CGFloat = intent.kind == .attack ? 12 : 10
+        tip.path = CGPath(ellipseIn: CGRect(x: -tipWidth / 2, y: -3.5, width: tipWidth, height: 7), transform: nil)
         tip.position = localPoint
-        tip.fillColor = color.withAlphaComponent(0.14)
-        tip.strokeColor = color
-        tip.lineWidth = 2
-        tip.glowWidth = 0.6
-        entity.commandIntentNode.addChild(tip)
+        tip.fillColor = .clear
+        tip.strokeColor = color.withAlphaComponent(0.78)
+        tip.lineWidth = 1.1
 
+        let crossNode = entity.commandIntentCross
+        crossNode.isHidden = intent.kind != .attack
         if intent.kind == .attack {
             let cross = CGMutablePath()
-            cross.move(to: CGPoint(x: localPoint.x - 6, y: localPoint.y))
-            cross.addLine(to: CGPoint(x: localPoint.x + 6, y: localPoint.y))
-            cross.move(to: CGPoint(x: localPoint.x, y: localPoint.y - 5))
-            cross.addLine(to: CGPoint(x: localPoint.x, y: localPoint.y + 5))
-            let crossNode = SKShapeNode(path: cross)
-            crossNode.strokeColor = color
-            crossNode.lineWidth = 1.8
-            crossNode.lineCap = .round
-            entity.commandIntentNode.addChild(crossNode)
+            cross.move(to: CGPoint(x: localPoint.x - 3, y: localPoint.y))
+            cross.addLine(to: CGPoint(x: localPoint.x + 3, y: localPoint.y))
+            cross.move(to: CGPoint(x: localPoint.x, y: localPoint.y - 2.5))
+            cross.addLine(to: CGPoint(x: localPoint.x, y: localPoint.y + 2.5))
+            crossNode.path = cross
+            crossNode.strokeColor = color.withAlphaComponent(0.78)
+            crossNode.lineWidth = 1.0
         }
 
         entity.commandIntentNode.isHidden = false
@@ -15174,17 +15215,35 @@ final class GameScene: SKScene {
             return
         }
 
-        let path = CGMutablePath()
-        path.move(to: start)
-        path.addLine(to: end)
-        let tracer = SKShapeNode(path: path)
-        tracer.strokeColor = projectileColor(for: kind)
-        tracer.lineWidth = kind == .battleship || kind == .artillery || kind == .coastalBattery || kind == .samSite ? 4 : 2
-        tracer.glowWidth = 2
-        tracer.zPosition = 250
-        effectsLayer.addChild(tracer)
+        let travel = end - start
+        guard travel.length > 1 else { return }
+        let direction = travel.normalized
+        let heavy = kind == .tank || kind == .artillery || kind == .battleship || kind == .coastalBattery
+        let length: CGFloat = heavy ? 11 : 6
+        let root = SKNode()
+        root.name = "projectile-tracer:\(kind.shortCode)"
+        root.position = persistent ? start + travel * 0.55 : start
+        root.zRotation = atan2(direction.y, direction.x)
+        root.zPosition = 250
+        let shell = SKShapeNode(rectOf: CGSize(width: length, height: heavy ? 1.7 : 1.1), cornerRadius: 0.5)
+        shell.position.x = -length / 2
+        shell.fillColor = UIColor(red: 1.0, green: 0.91, blue: 0.67, alpha: 1.0)
+        shell.strokeColor = UIColor(white: 0.20, alpha: 0.46)
+        shell.lineWidth = 0.35
+        root.addChild(shell)
+        let tail = CGMutablePath()
+        tail.move(to: CGPoint(x: -length - (heavy ? 12 : 5), y: 0))
+        tail.addLine(to: CGPoint(x: -length, y: 0))
+        let afterglow = SKShapeNode(path: tail)
+        afterglow.strokeColor = UIColor(red: 0.94, green: 0.76, blue: 0.40, alpha: 0.30)
+        afterglow.lineWidth = heavy ? 0.9 : 0.6
+        afterglow.lineCap = .round
+        root.addChild(afterglow)
+        effectsLayer.addChild(root)
         guard !persistent else { return }
-        tracer.run(.sequence([.fadeOut(withDuration: 0.16), .removeFromParent()]))
+        // A visual flight only; the existing firing path still owns every damage event.
+        let duration = min(0.28, max(0.09, Double(travel.length) / 1200))
+        root.run(.sequence([.move(to: end, duration: duration), .fadeOut(withDuration: 0.04), .removeFromParent()]))
     }
 
     private func showFighterAirMissileSalvo(
