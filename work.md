@@ -8,7 +8,7 @@
 
 ## 现场与归属
 
-- main HEAD/origin/main=706c23443629243e8d095a14dd01e886a4632bb6；本轮另有38bd6ef9f14fb923568509d2169237dae67a920e，均正常push。origin=https://github.com/Altman-sam114/1145.git，gh账户Altman-sam114。
+- main HEAD/origin/main=3a0fa1808bb85a3f8e760faa024dbfee3f8cb972；前序增量706c234与38bd6ef9f14fb923568509d2169237dae67a920e，均正常push。origin=https://github.com/Altman-sam114/1145.git，gh账户Altman-sam114。
 - 原有AGENTS/工程Team ID两行/README/flow/图/test/prompt索引/log文档整理及未跟踪历史提示词/v6归档/Unity分析保留，不stash/覆盖/混入；起始备份 /private/tmp/desert-v6.11-baseline/ 与 /private/tmp/desert-v6.12-baseline/。
 - 本轮源码/资源/CI协议均已提交且精确SHA验收；验收补记、README旧事实纠正和工作台留本地，不为纯文档再次触发固定完整CI。
 
@@ -42,3 +42,26 @@
 - 验收：三舰8向×正负父镜像、固定尺寸/锚点/位置、状态完整恢复、29→31资源source/bundle一致、generic/device与sim双build、原始正式证据逐张验收；本机仅diff/AST/JSON与资源元数据。
 
 - v6.13本机静态通过：3Python AST、2JSON、31资源digest、28文档链接/围栏、git diff --check；ready结构估算7115/8000。五次生图与原RGBA/提示词已保存。新增航母选中信息行，避免固定角度指示叠到转向甲板。下一步精确暂存本轮增量、main提交/push并等待下载同SHA官方结果包，未完成云端验收前不清理工作台。
+
+- v6.13实现已正常提交/push：main 3a0fa1808bb85a3f8e760faa024dbfee3f8cb972，15个逐文件/逐块授权文件，原工程Team ID/文档整理/归档未混入。现有workflow所有main push自动跑固定完整链路；等待同SHA run出现并复核双build、原包身份/摘要与24正式图。本轮未修改workflow、未放宽预算、未本机测试。
+
+- 云端run42651313363/attempt1已启动，head=3a0fa1808bb85a3f8e760faa024dbfee3f8cb972。只读取状态，不再重复dispatch；下载/复核脚本已准备/private/tmp/desert-review-v6.13.py，最终证据目标/private/tmp/desert-frontline-review-42651313363-attempt1/。原24原生探针不裁剪。
+
+- 云端进度：Static checks于16:08:41UTC通过（141s），Project lint通过；generic iOS build已启动，尚未收到模拟器/截图验收。等待同run，不运行本机测试或重复触发。
+
+- 云端generic iOS设备编译已通过；当前进入iOS simulator launch probe。未拿到原包前不推断31bundle、方向/原图通过。
+
+- v6.13云端失败已下载原包并核对：run42651313363/attempt1/artifact13691641823，16,129,981bytes，SHA256 f975b8b490add65721753dba3d887b628afef9027a18d6e75026662ee3f2e724。双BUILD SUCCEEDED、静态117runner/31source=bundle、25HUD通过；仅5/24正式PNG，MOVE已ready/三舰masks255，但simctl io screenshot卡180s/124，后18未运行。work781.685/cleanup47.081。不能宣称全验收，失败证据保留/private/tmp/desert-frontline-review-42651313363-attempt1/。
+- [进行中] v6.14截图有界恢复：只读simctl io screenshot最多2次，同设备/同PID/同nonce/同ready，前次owned CLI确认reap+group cleanup后才能重试，独立输出文件避免迟到旧结果；原每截图180s总体和work1440/cleanup90不变。编辑范围ci/simulator_probe.py/check_probe_runner.py、直接测试规范/flow/图/log/work，游戏源码与资源不再改动。精确下一步实现直接负例与独立metadata验收后云端验证，不本机运行测试。
+
+## 本次继续执行（2026-11-10）
+
+- 已重新核对main/远端、最新失败run和原生PNG；fetch/pull安全完成，原有文档/Team ID/归档保留，无子智能体。
+- 本轮收敛为同一批可验收增量：[进行中] 完成已有截图恢复与独立metadata负例；[待办] 原创侦察车/火炮/防空车/维修车八向素材与共享方向入口；[待办] HUD层次及地形材质打磨；[待办] 同SHA云端双build、资源/方向/HUD/截图恢复合同与24正式PNG逐张复核。
+- 百度实际入口不可访问，官方NobleMaster itch页面可访问；只借鉴玩法/易操作目标，不下载原作商用美术。使用已读取的imagegen技能与内置工具，最终素材另存用户指定generated_images/1和项目Art目录。
+- 新增编辑范围：GameScene（仅HUD/材质/方向渲染）、Art/Directions/manifest、ci/check_unit_art.py/scene_evidence.py及直接合同、ci/package_results.py证据清单，相关README/flow/test/log/work。baseline仍保留已有修改归属；CI现无选择输入，固定24截图链路用于本次跨陆海空视觉验收。
+- 验收不会把CPU合同当真实触控或长期性能，完整复刻/多人/战役/全动画仍是持续目标，不能宣称本轮全部完成。
+
+- [完成代码/待云端] 截图恢复和独立metadata负例、manifest日志/失败候选、HUD文字/主命令层次与缓存地形细纹。本机3Python AST与diff通过，不运行任何本地测试。
+- [素材质量阻塞] 内置imagegen共8次：四类八向候选已出图，侦察车斜向修正；透明输出存在彩边，维修车仍白底，均未接入。候选路径为generated_images/1/v6.14-*-eight-candidate.png，提示词已落盘。已异步询问是否允许图像处理清理，未收到明确回答前不做工具外图片编辑；独立代码验证继续。
+- 本次先提交截图/HUD/材质可验收增量，云端固定24链路将一并复核前轮完整海军八向。不将素材待办混成已完成内容。

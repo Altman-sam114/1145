@@ -345,3 +345,5 @@ HUD采用正常宽度Avenir Next标题、石墨色面板与柔和边框；分类
 三类海军使用同一1536px/4×2解码入口与按kind缓存；战列舰160、航母176、潜艇116世界格，均中心锚点/高度8，原单幅继续作生产头像。坦克、空军和海军共用updateDirectionalArtworkFacing及artworkFacingDirection，只读原destination/己方已知存活target，不改动作与战斗。航母图内已含静态停机，因此原三份实时护航/队列cue移到舰体下方选中信息行并抵消父镜像，避免固定角度图形覆盖八向甲板；cue仍只读原guard wing/buildOrders，没有新资产计数。原renderer各自pivot与层级保留；原fixture在同一入口检查三舰八向/两父镜像/两次几何/精确恢复。ready附navalDirections：每kind正/负/几何mask逐方向置位，完整值255；明确entity或detached-renderer并核对实际存活舰体姿态。位掩码保留所有八向采样，避免随模型种类增长越过既有8000字节单行预算；不放宽原门槛。六个图集/31资源来源见[完整海军美术](../art/v6.13-naval-directions.md)。
 
 fog tile使用精确tileWidth×tileHeight菱形并关闭形状边缘抗锯齿，去掉原1pt重叠造成的双层alpha格线。updateFog的0/0.48/0.86与visible/explored/support集合、敌军/潜艇合法性完全沿原代码；不加滤波或新可见性系统。仅云端ciFogSurfaceChecks逐节点核对实际path边界/位置、raster设置、与原集合一致的alpha，ready/runner/metadata保留shared-edge-fog-v1证据。实际是否消线且无裂缝仍以正式PNG目视为准。
+
+截图读取经`capture_scene_screenshot`：固定设备/PID/nonce/ready，首次45秒，只有确认回收的watchdog超时才允许原180秒总预算内第二次读取；候选按nonce/attempt独立命名，成功验证PNG后原子移动至正式路径，再沿用原规范化流程。`screenCapture`记录原始输出、进程回执和rawImage摘要，metadata独立复核；普通失败/取消/场景变化不重试。HUD分类删除重复副标题，保留标签注册/拟合与44pt命中；沙地/水纹在原5种材质缓存中烘焙，不新增实时节点或玩法状态。

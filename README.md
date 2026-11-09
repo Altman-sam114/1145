@@ -290,3 +290,5 @@ The following records the v5.58 policy; v5.61 replaces only its intermediate fre
 
 - The production minimap now uses an ordinary node tree instead of an offscreen crop/mask pass. Terrain dots and full entity/flag symbol bounds stay within the existing content band; only edge symbols move slightly inward. The camera footprint intersects that band, while world coordinates, tap-to-focus mapping, zoom, fog/sonar filtering and command routing stay unchanged.
 - The original HUD25 bands checks also inspect the real direct container and child bounds. Both builds, 100 CI regression methods, five watchdog checks and all 24 unchanged formal screen probes still require latest-SHA cloud acceptance. This tests a rendering-path hypothesis found in the v5.54-to-v5.55 diff; it is not yet a confirmed black-screen fix or completion of the UI/art overhaul. No local build or tests run.
+
+- Command tabs use a single clear label; Advance and available Target commands have a warm accent. Sand and water use cached fine relief textures. The 44pt controls and existing gesture routes remain available.

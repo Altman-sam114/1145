@@ -409,3 +409,16 @@ flowchart LR
   Hull --> Evidence[三舰八向x两镜像逐位mask / 实际姿态 / 几何恢复 / 原生PNG]
   Tiles --> Evidence
 ```
+
+截图读取仍处于正式采集与规范化之间：同一个ready场景首次45秒，只有owned CLI超时且回收完成才在原180秒总预算内重读一次。候选输出按nonce和attempt隔离；两次都不重启App或设备，结果包独立核对回执和原始日志。
+
+```mermaid
+flowchart LR
+    A[同PID / nonce / ready] --> B[首次读取 最多45秒]
+    B -->|有效PNG| E[正式路径与原规范化]
+    B -->|超时且完成回收| C[原180秒内仅重读一次]
+    B -->|其他失败| F[停止并留证]
+    C -->|有效PNG| E
+    C -->|失败| F
+    E --> G[metadata独立复核]
+```

@@ -834,13 +834,13 @@ private final class HUDTextLabel: SKLabelNode {
 }
 
 private enum HUDPalette {
-    static let panel = UIColor(red: 0.075, green: 0.095, blue: 0.105, alpha: 0.96)
-    static let panelRaised = UIColor(red: 0.13, green: 0.16, blue: 0.17, alpha: 0.98)
-    static let panelDeep = UIColor(red: 0.045, green: 0.060, blue: 0.065, alpha: 0.97)
+    static let panel = UIColor(red: 0.10, green: 0.12, blue: 0.12, alpha: 0.96)
+    static let panelRaised = UIColor(red: 0.16, green: 0.18, blue: 0.18, alpha: 0.96)
+    static let panelDeep = UIColor(red: 0.065, green: 0.080, blue: 0.080, alpha: 0.97)
     static let border = UIColor(red: 0.43, green: 0.57, blue: 0.60, alpha: 0.65)
-    static let borderSoft = UIColor(red: 0.36, green: 0.43, blue: 0.44, alpha: 0.32)
+    static let borderSoft = UIColor(red: 0.55, green: 0.60, blue: 0.56, alpha: 0.24)
     static let gold = UIColor(red: 0.94, green: 0.77, blue: 0.45, alpha: 1.0)
-    static let cyan = UIColor(red: 0.38, green: 0.83, blue: 0.83, alpha: 1.0)
+    static let cyan = UIColor(red: 0.52, green: 0.77, blue: 0.74, alpha: 1.0)
     static let warning = UIColor(red: 1.0, green: 0.42, blue: 0.27, alpha: 1.0)
     static let text = UIColor(red: 0.90, green: 0.94, blue: 0.91, alpha: 1.0)
     static let mutedText = UIColor(red: 0.62, green: 0.73, blue: 0.70, alpha: 1.0)
@@ -2098,6 +2098,40 @@ final class GameScene: SKScene {
             context.clip()
             context.setFillColor(color(for: surface, tile: tile).cgColor)
             context.fill(CGRect(origin: .zero, size: size))
+            // Bake broad relief and small wind/water ridges into the cached
+            // material. No per-frame work or extra map nodes are needed.
+            let reliefColors = [UIColor.white.withAlphaComponent(0.035).cgColor,
+                                UIColor.black.withAlphaComponent(0.025).cgColor] as CFArray
+            if let relief = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: reliefColors, locations: [0, 1]) {
+                context.drawLinearGradient(relief, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
+            }
+            if surface == .sand || surface == .water {
+                let water = surface == .water
+                for _ in 0..<(water ? 12 : 18) {
+                    let x = 26 + sample() * (size.width - 70)
+                    let y = 24 + sample() * (size.height - 48)
+                    let span = (water ? 8 : 14) + sample() * (water ? 24 : 35)
+                    let ridge = CGMutablePath()
+                    ridge.move(to: CGPoint(x: x, y: y))
+                    ridge.addCurve(to: CGPoint(x: x + span, y: y + 1.5),
+                                   control1: CGPoint(x: x + span * 0.3, y: y - 2.5),
+                                   control2: CGPoint(x: x + span * 0.7, y: y + 3.5))
+                    context.addPath(ridge)
+                    context.setLineWidth(water ? 0.7 : 0.9)
+                    context.setLineCap(.round)
+                    context.setStrokeColor((water ? UIColor.white : UIColor(red: 0.44, green: 0.34, blue: 0.20, alpha: 1))
+                        .withAlphaComponent(water ? 0.06 : 0.045).cgColor)
+                    context.strokePath()
+                    if !water {
+                        context.saveGState()
+                        context.translateBy(x: 0, y: 1.2)
+                        context.addPath(ridge)
+                        context.setStrokeColor(UIColor.white.withAlphaComponent(0.10).cgColor)
+                        context.strokePath()
+                        context.restoreGState()
+                    }
+                }
+            }
             // Fine deterministic material grain is baked once per variant, not per tile or frame.
             for index in 0..<(surface == .water ? 800 : 2200) {
                 let light = index.isMultiple(of: 3)
@@ -5686,11 +5720,11 @@ final class GameScene: SKScene {
         for key in ["resources", "rail", "dock", "mission", "message", "selection", "minimap"] {
             let frame = layout.panels[key]!
             let shadow = SKShapeNode(rect: frame.offsetBy(dx: 0, dy: -2), cornerRadius: 8)
-            shadow.fillColor = UIColor.black.withAlphaComponent(0.22)
+            shadow.fillColor = UIColor.black.withAlphaComponent(0.16)
             shadow.strokeColor = .clear
             hudNode.addChild(shadow)
             if key == "message" { messageSurfaces.append(shadow) }
-            let panel = SKShapeNode(rect: frame, cornerRadius: key == "resources" ? 5 : 8)
+            let panel = SKShapeNode(rect: frame, cornerRadius: 6)
             panel.name = "hud-panel:\(key)"
             panel.fillColor = key == "dock" || key == "rail" ? HUDPalette.panelDeep : HUDPalette.panel
             panel.strokeColor = HUDPalette.borderSoft
@@ -6522,7 +6556,7 @@ final class GameScene: SKScene {
         let node = SKNode()
         node.name = "hud:\(action.rawValue)"
         node.position = CGPoint(x: frame.midX, y: frame.midY)
-        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 7)
+        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 5)
         shape.fillColor = buttonColor(for: action)
         shape.strokeColor = HUDPalette.borderSoft
         shape.lineWidth = 0.75
@@ -6550,7 +6584,7 @@ final class GameScene: SKScene {
         let title = HUDTextLabel(fontNamed: "AvenirNext-DemiBold")
         title.name = "hud-text:action:\(action.rawValue):title"
         title.sourceText = action.title
-        title.fontSize = frame.width < 66 ? 9 : 10
+        title.fontSize = frame.width < 66 ? 9.5 : 10.5
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
@@ -6560,13 +6594,13 @@ final class GameScene: SKScene {
         let subtitleLabel = HUDTextLabel(fontNamed: "AvenirNext-Medium")
         subtitleLabel.name = "hud-text:action:\(action.rawValue):subtitle"
         subtitleLabel.sourceText = subtitle(for: action)
-        subtitleLabel.fontSize = 7.5
+        subtitleLabel.fontSize = 8
         subtitleLabel.fontColor = HUDPalette.mutedText
         subtitleLabel.verticalAlignmentMode = .center
         subtitleLabel.horizontalAlignmentMode = .center
         subtitleLabel.position = CGPoint(x: 0, y: -18)
         node.addChild(subtitleLabel)
-        boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: frame.height < 48 ? -21 : -23, width: frame.width - 6, height: 10), 7.5))
+        boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: frame.height < 48 ? -21 : -23, width: frame.width - 6, height: 10), 8))
         hudButtonSubtitleLabels[action] = subtitleLabel
         return node
     }
@@ -6575,7 +6609,7 @@ final class GameScene: SKScene {
         let node = SKNode()
         node.name = "hud-page:\(page.rawValue)"
         node.position = CGPoint(x: frame.midX, y: frame.midY)
-        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 7)
+        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 5)
         shape.fillColor = hudPageColor(page, active: page == hudPage)
         shape.strokeColor = HUDPalette.borderSoft
         shape.lineWidth = 0.75
@@ -6588,28 +6622,29 @@ final class GameScene: SKScene {
         accent.strokeColor = .clear
         node.addChild(accent)
         if let symbol = hudSymbol(page.symbolName, size: 14) {
-            symbol.position.y = 12
+            symbol.position.y = 8
             node.addChild(symbol)
         }
         let title = HUDTextLabel(fontNamed: "AvenirNext-DemiBold")
         title.name = "hud-text:page:\(page.rawValue):title"
         title.sourceText = page.title
-        title.fontSize = 9
+        title.fontSize = 10
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
-        title.position = CGPoint(x: 0, y: -4)
+        title.position = CGPoint(x: 0, y: -11)
         node.addChild(title)
         let subtitle = HUDTextLabel(fontNamed: "AvenirNext-Medium")
         subtitle.name = "hud-text:page:\(page.rawValue):subtitle"
-        subtitle.sourceText = page.subtitle
+        // One clear name per tab; the action cards carry the contextual facts.
+        subtitle.sourceText = ""
         subtitle.fontSize = 7
         subtitle.fontColor = HUDPalette.mutedText
         subtitle.verticalAlignmentMode = .center
         subtitle.horizontalAlignmentMode = .center
         subtitle.position = CGPoint(x: 0, y: -16)
         node.addChild(subtitle)
-        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 3, y: -11, width: frame.width - 6, height: 14), 9))
+        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 3, y: -18, width: frame.width - 6, height: 14), 10))
         boundedHUDLabels.append((subtitle, CGRect(x: -frame.width / 2 + 3, y: -21, width: frame.width - 6, height: 10), 7))
         return node
     }
@@ -6638,7 +6673,9 @@ final class GameScene: SKScene {
                 (action == .cycleTarget && !isTargetCycleAvailable)
             shape.fillColor = buttonColor(for: action)
             shape.alpha = unavailable ? 0.66 : 1
-            shape.strokeColor = armed ? HUDPalette.gold.withAlphaComponent(0.7) : HUDPalette.borderSoft
+            let primary = action == .attackMove || (action == .cycleTarget && !unavailable)
+            shape.strokeColor = armed ? HUDPalette.gold.withAlphaComponent(0.7) :
+                (primary ? HUDPalette.gold.withAlphaComponent(0.30) : HUDPalette.borderSoft)
             shape.lineWidth = armed ? 1 : 0.5
             shape.glowWidth = 0
             if let accent = shape.parent?.childNode(withName: "hud:state-accent") as? SKShapeNode {
@@ -6646,7 +6683,7 @@ final class GameScene: SKScene {
                 accent.fillColor = armed ? HUDPalette.gold : HUDPalette.cyan.withAlphaComponent(0.6)
             }
             if let symbol = shape.parent?.childNode(withName: "hud:action-symbol") as? SKSpriteNode {
-                symbol.color = armed ? HUDPalette.gold : HUDPalette.cyan
+                symbol.color = armed || primary ? HUDPalette.gold : HUDPalette.cyan
             }
         }
         refreshHudPageStyles()
@@ -6665,11 +6702,15 @@ final class GameScene: SKScene {
     }
 
     private func hudPageColor(_ page: HudPage, active: Bool) -> UIColor {
-        active ? UIColor(red: 0.20, green: 0.24, blue: 0.24, alpha: 1) : .clear
+        active ? UIColor(red: 0.23, green: 0.26, blue: 0.24, alpha: 1) : .clear
     }
 
     private func buttonColor(for action: HudAction) -> UIColor {
-        isHudActionArmed(action) ? UIColor(red: 0.27, green: 0.25, blue: 0.16, alpha: 1) : HUDPalette.panelRaised
+        if isHudActionArmed(action) { return UIColor(red: 0.28, green: 0.25, blue: 0.17, alpha: 1) }
+        if action == .attackMove || (action == .cycleTarget && isTargetCycleAvailable) {
+            return UIColor(red: 0.22, green: 0.23, blue: 0.18, alpha: 1)
+        }
+        return HUDPalette.panelRaised
     }
 
     private func subtitle(for action: HudAction) -> String {

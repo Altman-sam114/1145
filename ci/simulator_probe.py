@@ -35,6 +35,9 @@ INSTALL_CLEANUP_RESERVE = 2
 INSTALL_POLICY = "same-device-install-180-once-v1"
 BOOT_POLICY = "same-device-monitor-continuation-v2"
 BOOT_OUTPUT_LIMIT = 1024 * 1024
+SCREENSHOT_POLICY = "same-scene-screenshot-180-once-v1"
+SCREENSHOT_BUDGET = 180
+SCREENSHOT_FIRST_CAP = 45
 
 
 class ProbeFailure(Exception):
@@ -63,6 +66,7 @@ def validate_scene_evidence(probes, summary, directory):
         validate_scene(summary, warm[0], directory, probes[0], f"prewarm:{warm[0]['attempt']}")
         for definition, record in zip(probes, records):
             validate_scene(summary, record, directory, definition, f"probe:{definition['id']}")
+            validate_screenshot_capture(summary, record, directory)
         validate_page_images(records)
     except (ValueError, KeyError, OSError, TypeError) as error:
         raise SceneFailure(str(error)) from error
@@ -105,6 +109,46 @@ def cli_receipt_complete(receipt):
             and "error" not in check
             and type(check.get("errno")) is int and check["errno"] == errno.ESRCH
             and isinstance(check.get("diagnostic"), str) and bool(check["diagnostic"]))
+
+
+def validate_screenshot_capture(summary, record, directory):
+    evidence = record.get("screenCapture", {})
+    scene = record.get("scene", {})
+    attempts = evidence.get("attempts")
+    if (evidence.get("policy") != SCREENSHOT_POLICY or evidence.get("status") != "success"
+            or evidence.get("budgetSeconds") != SCREENSHOT_BUDGET
+            or evidence.get("pid") != record.get("pid") or evidence.get("nonce") != scene.get("nonce")
+            or evidence.get("deviceUDID") != summary.get("selectedDevice", {}).get("udid")
+            or evidence.get("readySequence") != scene.get("ready", {}).get("sequence")
+            or type(evidence.get("elapsedSeconds")) not in (int, float)
+            or not 0 <= evidence["elapsedSeconds"] <= SCREENSHOT_BUDGET
+            or not isinstance(attempts, list) or len(attempts) not in (1, 2)):
+        raise SceneFailure("Screenshot capture identity, budget or completion invalid")
+    for index, attempt in enumerate(attempts, 1):
+        process = attempt.get("process", {})
+        cap = attempt.get("requestedCapSeconds")
+        expected = f"capture-{scene['nonce']}-{index}.png"
+        argv = attempt.get("argv", [])
+        if (type(attempt.get("attempt")) is not int or attempt["attempt"] != index or attempt.get("candidate") != expected
+                or len(argv) != 4 or argv[:3] != ["io", evidence["deviceUDID"], "screenshot"]
+                or Path(argv[-1]).name != expected or not Path(argv[-1]).is_absolute()
+                or type(cap) not in (int, float) or not 0 < cap <= (SCREENSHOT_FIRST_CAP if index == 1 else SCREENSHOT_BUDGET)
+                or process.get("limitSeconds", 0) > cap or not cli_receipt_complete(process)
+                or process.get("elapsedSeconds", 0) > evidence["elapsedSeconds"] + 0.01
+                or process.get("exitCode") != attempt.get("exitCode")):
+            raise SceneFailure("Screenshot capture command/cleanup receipt invalid")
+        output = attempt.get("output", {})
+        actual, _ = file_evidence(directory, output.get("path"))
+        if output.get("path") != f"capture-{scene['nonce']}-{index}.log" or actual != output:
+            raise SceneFailure("Screenshot capture raw output missing or changed")
+        last = index == len(attempts)
+        if last:
+            if (attempt.get("status") != "success" or process.get("trigger") != "exit" or attempt.get("exitCode") != 0
+                    or attempt.get("image") != record.get("rawImage")):
+                raise SceneFailure("Screenshot capture did not produce the current raw PNG")
+        elif (attempt.get("status") != "failure" or attempt.get("retryDecision") != "retry"
+              or attempt.get("exitCode") != 124 or process.get("trigger") != "timeout"):
+            raise SceneFailure("Screenshot retry lacks a clean watchdog timeout")
 
 
 def install_retry_reason(code, diagnostic, receipt):
@@ -1175,6 +1219,73 @@ class Runner:
             validate_normalization(record)
             self.remaining()
 
+    def capture_scene_screenshot(self, definition, record, path):
+        started = time.monotonic()
+        local_deadline = started + SCREENSHOT_BUDGET
+        scene = record["scene"]
+        evidence = dict(policy=SCREENSHOT_POLICY, status="running", budgetSeconds=SCREENSHOT_BUDGET,
+                        deviceUDID=self.device["udid"], pid=record["pid"], nonce=scene["nonce"],
+                        readySequence=scene["ready"]["sequence"], attempts=[])
+        record["screenCapture"] = evidence
+        try:
+            for index in (1, 2):
+                self.remaining(2)
+                # A retry is another screen read of this exact live scene, never a
+                # relaunch, reboot, alternate renderer or substitute image.
+                if not alive(record["pid"]) or latest_ready(trace_records(self.summary, scene, self.directory), definition) != scene["ready"]:
+                    raise SceneFailure("Screenshot scene changed or app exited before capture")
+                cap = min(SCREENSHOT_FIRST_CAP if index == 1 else SCREENSHOT_BUDGET,
+                          local_deadline - time.monotonic() - 2)
+                if cap <= 0:
+                    raise ProbeFailure("Screenshot shared 180s budget exhausted", 124)
+                candidate = self.directory / f"capture-{scene['nonce']}-{index}.png"
+                if candidate.exists():
+                    raise SceneFailure("Screenshot candidate already exists")
+                log = f"capture-{scene['nonce']}-{index}.log"
+                args = ["io", self.device["udid"], "screenshot", str(candidate.resolve())]
+                attempt = dict(attempt=index, candidate=candidate.name, argv=args, requestedCapSeconds=cap,
+                               status="running", process={})
+                evidence["attempts"].append(attempt)
+                try:
+                    name = f"probe:{definition['id']}:screenshot" + (":retry" if index == 2 else "")
+                    self.simctl(name, *args, cap=cap, receipt=attempt["process"], log=log, raw_log=True)
+                    if (not cli_receipt_complete(attempt["process"]) or attempt["process"].get("trigger") != "exit"
+                            or attempt["process"].get("exitCode") != 0):
+                        raise SceneFailure("Screenshot CLI cleanup/completion unconfirmed")
+                    attempt["image"] = png_info(candidate)
+                    if not alive(record["pid"]) or latest_ready(trace_records(self.summary, scene, self.directory), definition) != scene["ready"]:
+                        raise SceneFailure("Screenshot scene changed or app exited during capture")
+                    if time.monotonic() >= local_deadline:
+                        raise ProbeFailure("Screenshot shared 180s budget exhausted", 124)
+                    candidate.replace(path)
+                    attempt.update(status="success", exitCode=0, retryDecision="completed" if index == 2 else "not_needed")
+                    evidence["status"] = "success"
+                    return
+                except ProbeFailure as error:
+                    process = attempt["process"]
+                    retry = (index == 1 and type(error) is ProbeFailure and error.code == 124
+                             and process.get("trigger") == "timeout" and process.get("exitCode") == 124
+                             and cli_receipt_complete(process) and time.monotonic() + 2 < local_deadline)
+                    attempt.update(status="failure", exitCode=error.code, error=str(error), retryDecision="retry" if retry else "stop")
+                    if not retry:
+                        raise
+                    print("[screenshot] owned CLI timeout cleaned; retrying same ready scene once within original 180s", flush=True)
+                except BaseException as error:
+                    code = getattr(error, "code", 130 if isinstance(error, KeyboardInterrupt) else 1)
+                    attempt.update(status="cancelled" if type(code) is int and code >= 128 else "failure",
+                                   exitCode=code, error=str(error), retryDecision="stop")
+                    raise
+                finally:
+                    if (self.directory / log).is_file():
+                        attempt["output"], _ = file_evidence(self.directory, log)
+                    self.save()
+        except BaseException as error:
+            evidence.update(status="failure", error=str(error))
+            raise
+        finally:
+            evidence["elapsedSeconds"] = round(time.monotonic() - started, 6)
+            self.save()
+
     def capture(self, definition, index):
         record = self.summary["probes"][index]
         started = time.monotonic()
@@ -1193,7 +1304,7 @@ class Runner:
             self.save()
             self.wait_scene(record, definition, definition["wait"])
             path = self.directory / definition["png"]
-            self.simctl(f"probe:{definition['id']}:screenshot", "io", self.device["udid"], "screenshot", str(path), cap=180)
+            self.capture_scene_screenshot(definition, record, path)
             self.normalize_screenshot(f"probe:{definition['id']}", path, record)
             try:
                 validate_page_images(self.summary["probes"])

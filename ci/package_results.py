@@ -115,6 +115,14 @@ def main():
             path = evidence.get("path")
             if path and Path(path).name == path:
                 reports.append(path)
+    for record in summary.get("probes", []):
+        for attempt in record.get("screenCapture", {}).get("attempts", []):
+            path = attempt.get("output", {}).get("path")
+            if path and Path(path).name == path:
+                reports.append(path)
+            candidate = attempt.get("candidate")
+            if candidate and Path(candidate).name == candidate and (results / candidate).is_file():
+                reports.append(candidate)
     manifest = dict(identity, shortSha=identity["commitSha"][:12], workflowName=os.environ["WORKFLOW_NAME"],
                     createdAt=datetime.datetime.now(datetime.timezone.utc).isoformat(), projectName="Desert Frontline",
                     scheme="DesertFrontline", destination="generic/platform=iOS",
@@ -166,6 +174,10 @@ def main():
               f"status={scene.get('status', 'unknown')} lastStage={scene.get('lastStage', 'unavailable')} "
               f"sealed={scene.get('sealed', False)} stdout={scene.get('stdout', {})} stderr={scene.get('stderr', {})}"
               for scene in scenes]
+    lines += [f"- Screenshot {record.get('id', 'unknown')}: status={record.get('screenCapture', {}).get('status', 'not_run')} "
+              f"attempts={len(record.get('screenCapture', {}).get('attempts', []))} "
+              f"elapsed={record.get('screenCapture', {}).get('elapsedSeconds', 'unavailable')}s"
+              for record in summary.get("probes", [])]
     (results / "ci-failure-summary.md").write_text("\n".join(lines) + "\n")
     artifact_name = (f"desert-frontline-ci-{identity['version']}-{identity['branch'].lower().replace('/', '-')}-"
                      f"{identity['commitSha'][:12]}-run{identity['runId']}-attempt{identity['runAttempt']}")

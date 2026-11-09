@@ -22,6 +22,7 @@ import zlib
 from simulator_probe import (HUD_CHECKS, HUD_FIXTURES, HUD_PAGES, Runner, ProbeFailure, SceneFailure,
                              BOOT_POLICY, boot_monitor_semantics, boot_reserve, boot_wait_classification, validate_boot,
                              INSTALL_CAP, INSTALL_POLICY, INSTALL_RECOVERY_CAP, cli_receipt_complete, install_reserve,
+                             SCREENSHOT_POLICY, validate_screenshot_capture,
                              load_probes, png_info, select_device, validate_hud_contract, validate_installation,
                              validate_results, validate_scene_evidence)
 from scene_evidence import (ACTIONS, CHECKS, STAGES, TRACE_LIMIT, file_evidence, latest_ready,
@@ -353,6 +354,10 @@ class FakeRunner(Runner):
         if args[0] == "io":
             color = list(ACTIONS).index(self.current_definition["page"]) + 120
             Path(args[-1]).write_bytes(png_bytes(color))
+            if kwargs.get("receipt") is not None:
+                kwargs["receipt"].update(unit_cli_receipt(cap=kwargs.get("cap", 45)), elapsedSeconds=0)
+            if kwargs.get("log"):
+                (self.directory / kwargs["log"]).write_text("synthetic screenshot CLI schema fixture only\n")
 
     def work(self):
         boot_fixture(self)
@@ -2153,6 +2158,109 @@ class SceneEvidenceTests(unittest.TestCase):
         self.assertTrue((self.directory / records[1]["scene"]["stdout"]["path"]).is_file())
         self.assertIn("identical PNG", records[1]["error"])
         self.assertEqual(self.package(self.runner)["sceneReadinessOutcome"], "failure")
+
+    def screenshot_context(self):
+        self.runner.current_definition = self.definition
+        self.runner.summary["selectedDevice"] = self.runner.device
+        record = self.scene()
+        return record, self.directory / self.definition["png"]
+
+    def test_screenshot_timeout_retries_once_same_scene_and_isolates_late_output(self):
+        clock, calls = [0.0], []
+        with patch("simulator_probe.time.monotonic", side_effect=lambda: clock[0]):
+            self.runner = FakeRunner(self.directory)
+            record, path = self.screenshot_context()
+            original = self.runner.simctl
+            def transient(name, *args, **kwargs):
+                calls.append(args[-1])
+                if len(calls) == 1:
+                    Path(args[-1]).write_bytes(b"partial-first-output")
+                    (self.directory / kwargs["log"]).write_text("synthetic owned CLI timeout\n")
+                    kwargs["receipt"].update(unit_cli_receipt(124, kwargs["cap"], timeout=True))
+                    clock[0] += kwargs["cap"] + 0.5
+                    raise ProbeFailure("synthetic screenshot timeout", 124)
+                return original(name, *args, **kwargs)
+            self.runner.simctl = transient
+            deadline = self.runner.deadline
+            self.runner.capture_scene_screenshot(self.definition, record, path)
+            record["rawImage"] = png_info(path)
+            validate_screenshot_capture(self.runner.summary, record, self.directory)
+            self.assertEqual(len(calls), 2)
+            self.assertNotEqual(calls[0], calls[1])
+            self.assertEqual(Path(calls[0]).read_bytes(), b"partial-first-output")
+            self.assertEqual(record["screenCapture"]["elapsedSeconds"], 45.5)
+            self.assertEqual(self.runner.deadline, deadline)
+            self.assertEqual(record["screenCapture"]["pid"], record["pid"])
+            self.assertEqual(record["screenCapture"]["nonce"], record["scene"]["nonce"])
+
+    def test_screenshot_retry_rejects_unclean_non_timeout_and_changed_scene(self):
+        for defect in ("unclean", "non-timeout", "cancel", "dead-app", "changed-scene", "second-timeout"):
+            with self.subTest(defect=defect):
+                clock, calls = [0.0], []
+                with patch("simulator_probe.time.monotonic", side_effect=lambda: clock[0]):
+                    self.runner = FakeRunner(self.directory)
+                    record, path = self.screenshot_context()
+                    def failed(name, *args, **kwargs):
+                        calls.append(args[-1])
+                        code = 130 if defect == "cancel" else 1 if defect == "non-timeout" else 124
+                        kwargs["receipt"].update(unit_cli_receipt(code, kwargs["cap"], timeout=code == 124))
+                        if defect == "unclean": kwargs["receipt"]["reaped"] = False
+                        (self.directory / kwargs["log"]).write_text("synthetic failed CLI\n")
+                        clock[0] += kwargs["cap"] + 0.5
+                        raise ProbeFailure("synthetic screenshot failure", code)
+                    self.runner.simctl = failed
+                    ready = record["scene"]["ready"]
+                    with patch("simulator_probe.alive", side_effect=[True, False] if defect == "dead-app" else lambda _: True), \
+                         patch("simulator_probe.latest_ready", side_effect=[ready, None] if defect == "changed-scene" else lambda *_: ready):
+                        with self.assertRaises(ProbeFailure):
+                            self.runner.capture_scene_screenshot(self.definition, record, path)
+                    self.assertEqual(len(calls), 2 if defect == "second-timeout" else 1)
+                    self.assertEqual(record["screenCapture"]["status"], "failure")
+
+    def test_screenshot_metadata_rejects_changed_identity_budget_cleanup_and_output(self):
+        record, path = self.screenshot_context()
+        self.runner.capture_scene_screenshot(self.definition, record, path)
+        record["rawImage"] = png_info(path)
+        validate_screenshot_capture(self.runner.summary, record, self.directory)
+        for defect in ("policy", "pid", "nonce", "device", "sequence", "budget", "elapsed", "cap", "cleanup", "image", "output", "argv", "candidate", "bool-index"):
+            with self.subTest(defect=defect):
+                altered = json.loads(json.dumps(record));e = altered["screenCapture"];a = e["attempts"][0]
+                if defect == "policy": e["policy"] = "unbounded-retry"
+                elif defect == "pid": e["pid"] += 1
+                elif defect == "nonce": e["nonce"] = "0" * 32
+                elif defect == "device": e["deviceUDID"] = "different-device"
+                elif defect == "sequence": e["readySequence"] += 1
+                elif defect == "budget": e["budgetSeconds"] = 181
+                elif defect == "elapsed": e["elapsedSeconds"] = 181
+                elif defect == "cap": a["requestedCapSeconds"] = 180
+                elif defect == "cleanup": a["process"]["reaped"] = False
+                elif defect == "image": a["image"]["sha256"] = "0" * 64
+                elif defect == "output": a["output"]["sha256"] = "0" * 64
+                elif defect == "argv": a["argv"][1] = "different-device"
+                elif defect == "candidate": a["candidate"] = "stale.png"
+                elif defect == "bool-index": a["attempt"] = True
+                with self.assertRaises((ProbeFailure, ValueError)):
+                    validate_screenshot_capture(self.runner.summary, altered, self.directory)
+
+    def test_screenshot_package_independently_rechecks_receipts_and_raw_logs(self):
+        self.runner.work()
+        self.runner.summary.update(status="success", integrityOutcome="success")
+        manifest = self.package(self.runner)
+        self.assertEqual(manifest["sceneReadinessOutcome"], "success")
+        first = self.runner.summary["probes"][0]
+        baseline = json.loads(json.dumps(first["screenCapture"]))
+        log = baseline["attempts"][0]["output"]["path"]
+        self.assertIn(f"ci-results/{log}", manifest["projectSpecificReports"])
+        for defect in ("missing", "cleanup", "identity", "log"):
+            with self.subTest(defect=defect):
+                first["screenCapture"] = json.loads(json.dumps(baseline))
+                if defect == "missing": first.pop("screenCapture")
+                elif defect == "cleanup": first["screenCapture"]["attempts"][0]["process"]["reaped"] = False
+                elif defect == "identity": first["screenCapture"]["nonce"] = "0" * 32
+                elif defect == "log": (self.directory / log).write_text("changed raw screenshot log\n")
+                manifest = self.package(self.runner)
+                self.assertEqual(manifest["sceneReadinessOutcome"], "failure")
+                self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
 
     def test_scene_readiness_failure_stops_before_screenshot_and_keeps_trace(self):
         def not_ready(*args, **kwargs):
