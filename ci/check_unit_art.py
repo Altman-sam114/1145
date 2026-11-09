@@ -20,7 +20,7 @@ STRUCTURES = {"hq": "command-hq", "barracks": "war-factory", "airfield": "airfie
               "guardTower": "guard-tower", "samSite": "sam-site", "coastalBattery": "coastal-battery"}
 SCENERY = {"desertRocks": "desert-rocks", "datePalm": "date-palm", "desertHamlet": "desert-hamlet"}
 EFFECTS = {"waterImpact": "water-impact", "impactBurst": "impact-burst"}
-DIRECTIONS = {"tankDirections": "tank-eight"}
+DIRECTIONS = {"tankDirections": "tank-eight", "fighterDirections": "fighter-eight", "helicopterDirections": "helicopter-eight"}
 ASSET_PATHS = {**{kind: f"Units/{name}.png" for kind, name in KINDS.items()},
                **{kind: f"Structures/{name}.png" for kind, name in STRUCTURES.items()},
                **{kind: f"Scenery/{name}.png" for kind, name in SCENERY.items()},
@@ -139,7 +139,7 @@ def verify_transparency(info):
 def verify_directional_cells(info):
     cells = info.get("cells", [])
     if len(cells) != 8 or len({cell["alphaSha256"] for cell in cells}) != 8:
-        raise ValueError("Expected eight distinct populated tank views")
+        raise ValueError("Expected eight distinct populated directional views")
     for cell in cells:
         verify_transparency(cell)
 
@@ -157,7 +157,7 @@ def verify(art):
         raise ValueError("Art provenance document missing")
     assets = manifest["assets"]
     if len(assets) != len(ASSET_PATHS) or {a["kind"] for a in assets} != set(ASSET_PATHS):
-        raise ValueError("Expected ten units, ten structures, three scenery, two effects and one tank atlas")
+        raise ValueError("Expected ten units, ten structures, three scenery, two effects and three directional atlases")
     reports = []
     for asset in assets:
         name = ASSET_PATHS[asset['kind']]
@@ -167,14 +167,14 @@ def verify(art):
         data = path.read_bytes()
         if len(data) != asset["bytes"] or hashlib.sha256(data).hexdigest() != asset["sha256"]:
             raise ValueError(f"Asset digest mismatch: {name}")
-        directional = asset["kind"] == "tankDirections"
+        directional = asset["kind"] in DIRECTIONS
         info = inspect_png(data, atlas_grid=(4, 2) if directional else None)
         if [info["width"], info["height"]] != [asset["width"], asset["height"]]:
             raise ValueError(f"Asset dimensions mismatch: {name}")
         verify_transparency(info)
         if directional:
             if (asset.get("columns"), asset.get("rows"), asset.get("decodeMaxPixels")) != (4, 2, 1536):
-                raise ValueError("Unexpected tank atlas layout / decode budget")
+                raise ValueError("Unexpected directional atlas layout / decode budget")
             verify_directional_cells(info)
         reports.append(dict(kind=asset["kind"], file=name, sha256=asset["sha256"], bytes=len(data), **info))
     return reports

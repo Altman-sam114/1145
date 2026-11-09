@@ -6421,7 +6421,7 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 下一轮明确改进：炮击/指令叠层过粗，海军尾流较几何，部分固定marker在HUD后；源码还确认commandIntentNode未补偿父镜像且每帧重建节点，focusFireMarker在SKRM的effectsLayer.removeAllChildren后未重挂。只按这些实际问题继续，不重跑已验收SHA。
 
 
-### v6.10 / 战斗叠层清理与镜像指令修复（待云端验收）
+### v6.10 / 战斗叠层清理与镜像指令修复（云端已复核）
 
 日期：2026-11-09。
 
@@ -6430,3 +6430,16 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 云端同一生产入口检查两种父镜像的真实端点、节点身份复用、根重挂和原指令/战斗/选择恢复；ready/runner/metadata共同校验有符号坐标与完整证据，增加12类直接拒绝负例。原HUD25/详情50/24图和26资源/坦克8向门槛不放宽。
 - 本机只做静态检查；新SHA云端双构建、直接合同与正式画面待验证，不宣称真实触控、完整SKRM、长期FPS或整体高档品质已验收。固定command marker被HUD遮挡问题保留后续处理。
 - 空军候选另有4次内置生成/编辑，银白稿有边缘残片，哑光石墨灰加边距稿较干净；原图和完整提示词保留用户目录v6.10-candidates，未接入本轮游戏。
+
+- 正式 `main` SHA `90aaaf93e557930510aa8a389fa618afab72649e`，run `42589790371` / attempt1 / artifact `13662086373`；原ZIP 64,648,183bytes、159项未加密，SHA256 `32abd88cee00825cfcde06c04677ba1ced2286f0bbcf4e55c09a977c7bed93ec` 与API一致，CRC与身份通过。证据 `/private/tmp/desert-frontline-review-42589790371-attempt1/{ci-results.zip,official/,review.json}`。
+- generic约41s，generic/simulator均真实 `BUILD SUCCEEDED`；113 runner方法通过，JUnit10项/0failure/1准确XCTest skip；26资源source/bundle一致，25HUD与恢复、24正式图和两镜像端点/节点复用/根重挂/状态恢复均通过。work1041.926s / cleanup14.502s，boot等待156.608s，未发生构建卡死。
+- 全24原生PNG逐张目视：陆战短弹迹与海军低对比尾流改善，没有黑屏或图集实底；三种固定命令标记仍被底栏遮挡，窄体标题与密集边框仍需优化。尚不覆盖真实物理触控、完整对局与长期性能。
+
+### v6.11 / 空军八方向与 HUD 层次调整（待云端验收）
+
+日期：2026-11-09。
+
+- 选用前轮4次内置生成/编辑后的战斗机图集；本轮直升机经3次内置生成/编辑，修正格边距、彩色碎片与金色边线，最终原RGBA复制仓库及用户指定目录。完整提示词和摘要见 `md/art/v6.11-generation-prompts.json` 与 `md/art/v6.11-air-directions.md`，没有外部商业素材或脚本重绘。
+- 两机型共享原图集解码与玩家/AI姿态入口，固定格/高度、停止保留朝向并抵消父镜像；只读移动或合法已知攻击目标，不改阴影/选择/战损/迷雾/死亡/SKRM、飞行或伤害数值。临时渲染样本仅供缺该机型的云端fixture检查，不入实体表/场景，并与实际entity明确区分。
+- HUD标题改正常宽度Avenir Next，面板改石墨色与柔边，当前分类用金色底线，pending保留金色边/底线，STOP/Target可用状态改细青色底线；原44pt命中/布局/完整文字/路由保持。固定命令图的MOVE/AMOV位置与ATK目标布局调整，新增真实节点含caption屏内无遮挡合同，不改玩家实际命令位置。
+- 本机仅静态检查，3Python AST、28资源路径/digest、文档链接和diff通过；新ready静态估算低于原8000bytes门槛。新SHA双构建、28资源/两空军八向两镜像与恢复、25HUD/50详情/24正式图尚待云端，不宣称完整复刻、真实触控或全军方向/动画完成。

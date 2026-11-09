@@ -615,6 +615,8 @@ THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，
 
 ## 原创单位资源验证
 
+空军方向资源沿用坦克逐格透明/不同alpha门槛，source/bundle增加fighter/helicopter图集；ready的airDirections需两机型各8项、两父镜像、固定几何、准确恢复与实际存活实体posesValid。subject明确区分实际entity与该场景缺此机型时未入场的detached-renderer，后者不证明实际飞行。三个固定命令截图另要求真实marker含caption累积框在安全区内且不与可见HUD面板相交；缺失、数值代替布尔、未恢复或错误subject均拒绝。CPU合同仍不能替代原生PNG目视和真实操作。
+
 资源或加载链路改变时，云端执行 `python3 ci/check_unit_art.py --self-test` 和 source 校验；App 构建后执行 `python3 ci/check_unit_art.py --bundle <actual_app_path>`，同一 SHA/run/attempt 的 `unit-art-source.json`、`unit-art-bundle.json` 与 bundle 日志纳入原结果包。历史清单文件名保留，实际覆盖十种机动单位、十类设施、三类环境与两类战斗特效资源；校验精确目录/文件名、字节数/SHA256、RGBA8、PNG CRC/scanline、透明角点/面积及主体范围。正负例覆盖五种 PNG filter、空白/实底、CRC、截断、错误色型与尾随数据。只在云端运行，不在本机 import 或执行 checker。
 
 纹理存在、alpha 和 hash 正确不等于画面美观；兵模/HUD/地形改造仍须核对 ready 中的实际贴图挂载和官方原生 PNG。HUD 契约新增小屏面积与战场中心留白，原 25 组尺寸/页面、路由、恢复与 24 张正式截图仍保留。

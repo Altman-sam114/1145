@@ -331,6 +331,10 @@ CI初始化在原fixture结束前，用同一生产方向函数检查八向和�
 
 ## 战术提示渲染
 
+空军使用同一 `directionArtworkTextures` 解码两个4×2图集，`refreshAirArtworkFacings`只读移动/合法已知目标并保留停止朝向，固定世界格与高度，补偿父镜像。`auditAirDirectionArtwork`检查两机型八向/两镜像/几何及恢复；有实体时用实体，没有时配置未挂入场景/注册表的临时实体并明确记录detached-renderer，不改变对局。ready同时核对实际存活空军姿态，source/bundle逐格检查三个方向图集。细节与来源见[空军美术](../art/v6.11-air-directions.md)。
+
+HUD采用正常宽度Avenir Next标题、石墨色面板与柔和边框；分类当前页用金色底线，pending用金色边/底线，可用STOP/Target用青色细线，不再常驻粗橙色整框。节点在布局阶段预建，刷新只改颜色/显隐；原HUDLayout/44pt命中、文字拟合与pending路由不变。仅固定云端air fixture移动MOVE/AMOV取样点及ATK目标位置，真实操作落点不变；ciCommandMarkerUnobscured通过实际节点含caption的累积框与SpriteKit坐标转换检查屏内安全区及HUD面板不相交。
+
 每个实体一次性预建三份commandIntent形状，刷新只更新路径/端点与显隐，取消选择不销毁；目标世界坐标经commandIntentNode.convert从entityLayer变换，抵消原实体父镜像。集火提示复用四份场景节点，改为空心括线/紧凑标签与细HP条，configureFocusFireMarker在SKRM移除effects子树后重挂同一根。所有意图、已知目标、HP、选择和消亡仍读原状态。
 
 普通showProjectile只创建短暖色弹迹、0.09…0.28s视觉移动及0.04s淡出，不添加伤害回调；原fire/导弹/火箭/海军齐射执行保持。海军预建泡沫路径改为断续低对比样式，原direction/xScale/迷雾/停止显隐不变；防空威胁警示保留原强度。CI auditTacticalOverlayRendering在原fixture后复核正负父镜像端点、3/4节点身份复用、根重挂和指令/战斗/选择恢复，ready的tacticalOverlays由runner/metadata独立校验有符号坐标。它不代替实际触摸、完整SKRM对局或FPS测量。

@@ -76,7 +76,7 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
     branch = (definition["marker"] if definition["marker"] not in
               ("none", "move", "attack-move", "attack-target", "combat-ui", "incoming-ui") else
               "coast-default" if definition["focus"] == "coast" else definition["focus"])
-    emit("ready", checks={key: True for key in CHECKS}, fixtureChecks={"syntheticSchemaOnly": True},
+    emit("ready", checks={key: True for key in CHECKS}, fixtureChecks={"syntheticSchemaOnly": True, **({"commandUnobscured": True} if definition["marker"] in ("move", "attack-move", "attack-target") else {})},
          fixtureBranch=branch, completedStages=sorted(STAGES), frames=frames, geometryRevision=1,
          page=definition["page"], marker=definition["marker"], focus=definition["focus"],
          counts=dict(mapNodes=1, entities=1, playerUnits=1, visiblePlayerUnits=1, fogNodes=1,
@@ -85,7 +85,12 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False, viewClass="GameRenderView"),
          artwork=dict(tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
                      textureCount=8, stateRestored=True, posesValid=True,
-                     cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)])),
+                     cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)]),
+                      airDirections=dict(policy="air-eight-v1", stateRestored=True, posesValid=True,
+                          subjects={kind: "entity" for kind in ("fighter", "helicopter")},
+                          textureCounts={kind: 8 for kind in ("fighter", "helicopter")},
+                          cases={kind: [dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)]
+                                 for kind in ("fighter", "helicopter")})),
          tacticalOverlays=dict(policy="tactical-overlay-v1",
                                checks=dict(endpoints=True, reuse=True, reattached=True, restored=True),
                                mirrors=[dict(scale=sign, nodes=3, expected=dict(x=80, y=-30), actual=dict(x=80, y=-30))
@@ -1764,6 +1769,44 @@ class SceneEvidenceTests(unittest.TestCase):
                 else: atlas["cases"][0][defect] = False
                 with self.assertRaisesRegex(ValueError, "tank direction artwork"):
                     latest_ready(records, self.definition)
+
+    def test_air_artwork_rejects_missing_views_bad_mirrors_and_unrestored_state(self):
+        for kind in ("fighter", "helicopter"):
+            for defect in ("missing", "bad-type", "missing-kind", "missing-view", "duplicate-view", "bool-heading",
+                           "wrong-count", "bool-count", "wrong-policy", "missing-subject", "wrong-subject", "unrestored", "fallback",
+                           "positive", "negative", "geometry", "numeric-check"):
+                with self.subTest(kind=kind, defect=defect):
+                    records = self.records(self.scene()["scene"])
+                    atlas = records[-1]["artwork"]["airDirections"]
+                    if defect == "missing": records[-1]["artwork"].pop("airDirections")
+                    elif defect == "bad-type": records[-1]["artwork"]["airDirections"] = []
+                    elif defect == "missing-kind": atlas["cases"].pop(kind)
+                    elif defect == "missing-view": atlas["cases"][kind].pop()
+                    elif defect == "duplicate-view": atlas["cases"][kind][1]["heading"] = 0
+                    elif defect == "bool-heading": atlas["cases"][kind][0]["heading"] = False
+                    elif defect == "wrong-count": atlas["textureCounts"][kind] = 7
+                    elif defect == "bool-count": atlas["textureCounts"][kind] = True
+                    elif defect == "missing-subject": atlas["subjects"].pop(kind)
+                    elif defect == "wrong-subject": atlas["subjects"][kind] = "fake"
+                    elif defect == "wrong-policy": atlas["policy"] = "mirrored-two-view"
+                    elif defect == "unrestored": atlas["stateRestored"] = False
+                    elif defect == "fallback": atlas["posesValid"] = False
+                    elif defect == "numeric-check": atlas["cases"][kind][0]["negative"] = 1
+                    else: atlas["cases"][kind][0][defect] = False
+                    with self.assertRaisesRegex(ValueError, "air direction artwork"):
+                        latest_ready(records, self.definition)
+
+    def test_command_marker_requires_actual_unobscured_bounds(self):
+        for marker in ("move", "attack-move", "attack-target"):
+            definition = dict(self.definition, marker=marker)
+            scene = scene_fixture(self.runner, definition, "probe:tactical")
+            records = self.records(scene)
+            self.assertIsNotNone(latest_ready(records, definition))
+            for value in (None, False, 1):
+                with self.subTest(marker=marker, value=value):
+                    records[-1]["fixtureChecks"]["commandUnobscured"] = value
+                    with self.assertRaises(ValueError):
+                        latest_ready(records, definition)
 
     def test_tactical_overlay_rejects_mirrored_endpoints_and_lifecycle_failures(self):
         for defect in ("missing", "endpoints", "reuse", "reattached", "restored", "numeric-check",

@@ -114,6 +114,25 @@ def latest_ready(records, definition):
                    or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
                    for index, case in enumerate(cases))):
         raise ValueError("Scene ready tank direction artwork missing, mirrored incorrectly or not restored")
+    air = artwork.get("airDirections")
+    air_cases = air.get("cases") if isinstance(air, dict) else None
+    air_counts = air.get("textureCounts") if isinstance(air, dict) else None
+    subjects = air.get("subjects") if isinstance(air, dict) else None
+    if (not isinstance(air, dict) or air.get("policy") != "air-eight-v1"
+            or air.get("stateRestored") is not True or air.get("posesValid") is not True
+            or not isinstance(air_cases, dict) or set(air_cases) != {"fighter", "helicopter"}
+            or not isinstance(subjects, dict) or set(subjects) != {"fighter", "helicopter"}
+            or any(value not in ("entity", "detached-renderer") for value in subjects.values())
+            or not isinstance(air_counts, dict) or set(air_counts) != {"fighter", "helicopter"}
+            or any(type(value) is not int or value != 8 for value in air_counts.values())
+            or any(not isinstance(cases, list) or len(cases) != 8
+                   or any(not isinstance(case, dict) or type(case.get("heading")) is not int
+                          or case["heading"] != index
+                          or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
+                          for index, case in enumerate(cases)) for cases in air_cases.values())):
+        raise ValueError("Scene ready air direction artwork missing, mirrored incorrectly or not restored")
+    if definition["marker"] in {"move", "attack-move", "attack-target"} and fixture_checks.get("commandUnobscured") is not True:
+        raise ValueError("Scene command marker obscured by HUD or offscreen")
     overlay = ready.get("tacticalOverlays")
     overlay_checks = overlay.get("checks") if isinstance(overlay, dict) else None
     mirrors = overlay.get("mirrors") if isinstance(overlay, dict) else None

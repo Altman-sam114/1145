@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.9",
+  "version": "v6.11",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.9-tank-directions.md",
+  "promptDocument": "md/art/v6.11-air-directions.md",
   "assets": [
     {
       "kind": "humvee",
@@ -297,6 +297,32 @@
         "S",
         "SE"
       ]
+    },
+    {
+      "kind": "fighterDirections",
+      "file": "Directions/fighter-eight.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.10-candidates/fighter-eight-padded.png",
+      "bytes": 604998,
+      "sha256": "f7a5aef394fed9a9476bc0782460913a972a8def622c95ab8e82aa887c0bfc15",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "worldCell": 112
+    },
+    {
+      "kind": "helicopterDirections",
+      "file": "Directions/helicopter-eight.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.11-candidates/helicopter-eight-matte.png",
+      "bytes": 760365,
+      "sha256": "36f5573bbeeb0cae30401853006fb1ef04be0a9ef8e06fe716b135f00b59b403",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "worldCell": 120
     }
   ],
   "updatedDate": "2026-11-09"

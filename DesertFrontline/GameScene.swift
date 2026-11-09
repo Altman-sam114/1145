@@ -834,11 +834,11 @@ private final class HUDTextLabel: SKLabelNode {
 }
 
 private enum HUDPalette {
-    static let panel = UIColor(red: 0.070, green: 0.115, blue: 0.145, alpha: 0.95)
-    static let panelRaised = UIColor(red: 0.12, green: 0.18, blue: 0.21, alpha: 0.98)
-    static let panelDeep = UIColor(red: 0.035, green: 0.067, blue: 0.09, alpha: 0.97)
+    static let panel = UIColor(red: 0.075, green: 0.095, blue: 0.105, alpha: 0.96)
+    static let panelRaised = UIColor(red: 0.13, green: 0.16, blue: 0.17, alpha: 0.98)
+    static let panelDeep = UIColor(red: 0.045, green: 0.060, blue: 0.065, alpha: 0.97)
     static let border = UIColor(red: 0.43, green: 0.57, blue: 0.60, alpha: 0.65)
-    static let borderSoft = UIColor(red: 0.28, green: 0.39, blue: 0.43, alpha: 0.60)
+    static let borderSoft = UIColor(red: 0.36, green: 0.43, blue: 0.44, alpha: 0.32)
     static let gold = UIColor(red: 0.94, green: 0.77, blue: 0.45, alpha: 1.0)
     static let cyan = UIColor(red: 0.38, green: 0.83, blue: 0.83, alpha: 1.0)
     static let warning = UIColor(red: 1.0, green: 0.42, blue: 0.27, alpha: 1.0)
@@ -1220,6 +1220,11 @@ final class GameScene: SKScene {
     private var entities: [Int: GameEntity] = [:]
     private var unitArtworkTextures: [EntityKind: SKTexture] = [:]
     private var tankDirectionTextures: [SKTexture] = []
+    private let directionalAirKinds: [EntityKind] = [.fighter, .helicopter]
+    private var airDirectionTextures: [EntityKind: [SKTexture]] = [:]
+    private var ciAirDirectionCases: [String: [[String: Any]]] = [:]
+    private var ciAirDirectionSubjects: [String: String] = [:]
+    private var ciAirDirectionRestored = false
     private var ciTankDirectionCases: [[String: Any]] = []
     private var ciTankDirectionRestored = false
     private var ciOverlayChecks: [String: Bool] = [:]
@@ -1449,6 +1454,7 @@ final class GameScene: SKScene {
         prepareCICaptureScene()
         if isCICaptureMode {
             auditTankDirectionArtwork()
+            auditAirDirectionArtwork()
             auditTacticalOverlayRendering()
         }
         if isCICaptureMode { ciFixtureCamera = cameraRig.position }
@@ -1588,6 +1594,19 @@ final class GameScene: SKScene {
         ciBeacon("geometry-invalidated", extra: ["reason": reason])
     }
 
+    private func ciCommandMarkerUnobscured(_ marker: String) -> Bool {
+        guard let node = effectsLayer.childNode(withName: "ci:marker:\(marker)"), let layout = hudLayout else { return false }
+        let frame = node.calculateAccumulatedFrame()
+        let corners = [CGPoint(x: frame.minX, y: frame.minY), CGPoint(x: frame.maxX, y: frame.maxY)]
+            .map { effectsLayer.convert($0, to: hudNode) }
+        let projected = CGRect(x: min(corners[0].x, corners[1].x), y: min(corners[0].y, corners[1].y),
+                               width: abs(corners[1].x - corners[0].x), height: abs(corners[1].y - corners[0].y)).insetBy(dx: -4, dy: -4)
+        return projected.width > 0 && projected.height > 0 && layout.safe.contains(projected) &&
+            layout.panels.allSatisfy { key, panel in
+                (key == "message" && messageLabel.alpha <= 0.01) || !panel.intersects(projected)
+            }
+    }
+
     private func ciFixtureChecks(marker: String) -> [String: Bool] {
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive && $0.node.parent === entityLayer }
         func count(_ kind: EntityKind, _ faction: Faction) -> Int {
@@ -1613,6 +1632,7 @@ final class GameScene: SKScene {
                           "fighterTarget": attacks(.fighter, .fighter)]
             if ["move", "attack-move", "attack-target"].contains(marker) {
                 checks["commandNode"] = effectsLayer.childNode(withName: "ci:marker:\(marker)") != nil
+                checks["commandUnobscured"] = ciCommandMarkerUnobscured(marker)
             }
             return checks
         case "land":
@@ -1725,6 +1745,7 @@ final class GameScene: SKScene {
                 Self.effectArtworkNames.allSatisfy({ effectArtworkTexture(named: $0) != nil }) &&
                 attached.allSatisfy({ $0.artworkNode?.parent != nil }) &&
                 ciTankDirectionRestored && ciTankDirectionCases.count == 8 && tankArtworkPosesValid() &&
+                ciAirDirectionRestored && airArtworkPosesValid() &&
                 ciOverlayChecks.count == 4 && ciOverlayChecks.values.allSatisfy({ $0 }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
@@ -1742,6 +1763,7 @@ final class GameScene: SKScene {
                 ciLastReadinessFailure = failure
                 ciBeacon("readiness-pending", extra: ["checks": checks, "fixtureChecks": fixtureChecks, "essentialText": essentialHUDTextCompleteness(),
                                                     "tacticalOverlays": ["checks": ciOverlayChecks, "mirrors": ciOverlayMirrors],
+                                                    "airDirections": airArtworkEvidence(),
                                                     "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
             ciReadyFrames.removeAll()
@@ -1777,6 +1799,7 @@ final class GameScene: SKScene {
                         "tankDirections": ["policy": "tank-eight-v1", "file": "Art/Directions/tank-eight.png",
                                            "textureCount": tankDirectionTextures.count, "cases": ciTankDirectionCases,
                                            "stateRestored": ciTankDirectionRestored, "posesValid": tankArtworkPosesValid()],
+                        "airDirections": airArtworkEvidence(),
                         "effectTextures": Self.effectArtworkNames.compactMap { name -> [String: Any]? in
                             guard let texture = effectArtworkTextures[name] else { return nil }
                             return ["file": "Art/Effects/\(name).png", "width": texture.size().width, "height": texture.size().height]
@@ -3086,27 +3109,141 @@ final class GameScene: SKScene {
         return texture
     }
 
-    private func loadTankDirectionArtwork() -> Bool {
-        if tankDirectionTextures.count == 8 { return true }
-        guard let url = Bundle.main.url(forResource: "tank-eight", withExtension: "png", subdirectory: "Art/Directions"),
+    private func directionArtworkTextures(named name: String) -> [SKTexture]? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Art/Directions"),
               let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
                 kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceThumbnailMaxPixelSize: 1536,
                 kCGImageSourceShouldCacheImmediately: true
-              ] as CFDictionary) else { return false }
-        // Keep equal cells and their shared ground pivot. Cropping each silhouette would
-        // enlarge narrow front/rear views and make the vehicle jump when it turns.
+              ] as CFDictionary) else { return nil }
+        // Equal cells preserve physical scale across narrow front/rear and wide side views.
         let atlas = SKTexture(cgImage: image)
         atlas.filteringMode = .linear
-        tankDirectionTextures = (0..<8).map { index in
+        return (0..<8).map { index in
             let frame = CGRect(x: CGFloat(index % 4) / 4, y: index < 4 ? 0.5 : 0,
                                width: 0.25, height: 0.5)
             let texture = SKTexture(rect: frame, in: atlas)
             texture.filteringMode = .linear
             return texture
         }
+    }
+
+    private func loadTankDirectionArtwork() -> Bool {
+        if tankDirectionTextures.count == 8 { return true }
+        guard let textures = directionArtworkTextures(named: "tank-eight") else { return false }
+        tankDirectionTextures = textures
         return true
+    }
+
+    private func loadAirDirectionArtwork(for kind: EntityKind) -> Bool {
+        if airDirectionTextures[kind]?.count == 8 { return true }
+        guard directionalAirKinds.contains(kind), let name = kind.artworkName,
+              let textures = directionArtworkTextures(named: "\(name)-eight") else { return false }
+        airDirectionTextures[kind] = textures
+        return true
+    }
+
+    private func airArtworkCellSize(for kind: EntityKind) -> CGSize {
+        let side: CGFloat = kind == .fighter ? 112 : 120
+        return CGSize(width: side, height: side)
+    }
+
+    private func updateAirArtworkFacing(_ entity: GameEntity, direction: CGPoint?) {
+        guard let textures = airDirectionTextures[entity.kind], textures.count == 8,
+              let sprite = entity.artworkNode else { return }
+        if let direction, direction.length > 0.01 {
+            let angle = atan2(direction.y, direction.x)
+            let step = CGFloat.pi / 4
+            let previous = CGFloat(entity.artworkHeading) * step
+            if abs(atan2(sin(angle - previous), cos(angle - previous))) > step / 2 + 0.06 {
+                entity.artworkHeading = Int(floor((angle + 2 * .pi + step / 2) / step)) % 8
+            }
+        }
+        let texture = textures[entity.artworkHeading]
+        if sprite.texture !== texture { sprite.texture = texture }
+        let mirror: CGFloat = entity.node.xScale < 0 ? -1 : 1
+        if sprite.xScale != mirror { sprite.xScale = mirror }
+    }
+
+    private func refreshAirArtworkFacings() {
+        for entity in entities.values where entity.isAlive && directionalAirKinds.contains(entity.kind) {
+            let direction: CGPoint?
+            if let destination = entity.destination {
+                direction = destination - entity.node.position
+            } else if let target = entity.attackTarget, target.isAlive,
+                      isKnownToFaction(target, observer: entity.faction) {
+                direction = target.node.position - entity.node.position
+            } else {
+                direction = nil
+            }
+            updateAirArtworkFacing(entity, direction: direction)
+        }
+    }
+
+    private func airArtworkPosesValid() -> Bool {
+        directionalAirKinds.allSatisfy { kind in
+            let aircraft = entities.values.filter { $0.isAlive && $0.kind == kind }
+            guard let textures = airDirectionTextures[kind], textures.count == 8 else { return false }
+            return aircraft.allSatisfy { entity in
+                guard let sprite = entity.artworkNode, (0..<8).contains(entity.artworkHeading) else { return false }
+                return sprite.texture === textures[entity.artworkHeading] && sprite.size == airArtworkCellSize(for: kind) &&
+                    sprite.anchorPoint == CGPoint(x: 0.5, y: 0.5) && sprite.position == CGPoint(x: 0, y: 24) &&
+                    entity.node.xScale * sprite.xScale == 1
+            }
+        }
+    }
+
+    private func airArtworkEvidence() -> [String: Any] {
+        var counts: [String: Int] = [:]
+        for kind in directionalAirKinds {
+            if let name = kind.artworkName { counts[name] = airDirectionTextures[kind]?.count ?? 0 }
+        }
+        return ["policy": "air-eight-v1", "cases": ciAirDirectionCases, "subjects": ciAirDirectionSubjects,
+                "stateRestored": ciAirDirectionRestored, "posesValid": airArtworkPosesValid(), "textureCounts": counts]
+    }
+
+    private func auditAirDirectionArtwork() {
+        ciAirDirectionCases.removeAll()
+        ciAirDirectionSubjects.removeAll()
+        ciAirDirectionRestored = false
+        var restored: [Bool] = []
+        for kind in directionalAirKinds {
+            // Some launch fixtures contain no fighter. Exercise its real renderer on a
+            // detached entity without adding a unit to the match or changing fog/economy.
+            let live = entities.values.first(where: { $0.kind == kind && $0.isAlive })
+            let aircraft = live ?? GameEntity(id: -1, kind: kind, faction: .player, position: .zero)
+            if live == nil { configureEntityNode(aircraft) }
+            guard let textures = airDirectionTextures[kind], textures.count == 8,
+                  let sprite = aircraft.artworkNode, let name = kind.artworkName else { return }
+            ciAirDirectionSubjects[name] = live == nil ? "detached-renderer" : "entity"
+            let saved = (aircraft.artworkHeading, aircraft.node.xScale, sprite.texture, sprite.xScale)
+            let geometry = (sprite.size, sprite.anchorPoint, sprite.position, aircraft.node.position)
+            var cases: [[String: Any]] = []
+            for index in 0..<8 {
+                let angle = CGFloat(index) * .pi / 4
+                var mirrors: [Bool] = []
+                for sign in [CGFloat(1), CGFloat(-1)] {
+                    aircraft.node.xScale = sign
+                    updateAirArtworkFacing(aircraft, direction: CGPoint(x: cos(angle), y: sin(angle)))
+                    mirrors.append(aircraft.artworkHeading == index && sprite.texture === textures[index] &&
+                                   sprite.xScale * aircraft.node.xScale == 1)
+                }
+                cases.append(["heading": index, "positive": mirrors[0], "negative": mirrors[1],
+                              "geometry": sprite.size == geometry.0 && sprite.anchorPoint == geometry.1 &&
+                                  sprite.position == geometry.2 && aircraft.node.position == geometry.3])
+            }
+            aircraft.artworkHeading = saved.0
+            aircraft.node.xScale = saved.1
+            sprite.texture = saved.2
+            sprite.xScale = saved.3
+            restored.append(aircraft.artworkHeading == saved.0 && aircraft.node.xScale == saved.1 &&
+                sprite.texture === saved.2 && sprite.xScale == saved.3 && sprite.size == geometry.0 &&
+                sprite.anchorPoint == geometry.1 && sprite.position == geometry.2 && aircraft.node.position == geometry.3 &&
+                cases.allSatisfy { $0["positive"] as? Bool == true && $0["negative"] as? Bool == true && $0["geometry"] as? Bool == true })
+            ciAirDirectionCases[name] = cases
+        }
+        ciAirDirectionRestored = restored.count == directionalAirKinds.count && restored.allSatisfy { $0 }
     }
 
     private func updateTankArtworkFacing(_ entity: GameEntity, direction: CGPoint?) {
@@ -3300,6 +3437,15 @@ final class GameScene: SKScene {
             sprite.size = CGSize(width: 74, height: 74)
             sprite.anchorPoint = CGPoint(x: 0.5, y: 0.25)
             sprite.position = .zero
+            sprite.xScale = entity.node.xScale < 0 ? -1 : 1
+        }
+        if directionalAirKinds.contains(entity.kind), loadAirDirectionArtwork(for: entity.kind),
+           let textures = airDirectionTextures[entity.kind] {
+            entity.artworkHeading = entity.faction == .enemy ? 5 : 7
+            sprite.texture = textures[entity.artworkHeading]
+            sprite.size = airArtworkCellSize(for: entity.kind)
+            sprite.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            sprite.position = CGPoint(x: 0, y: 24)
             sprite.xScale = entity.node.xScale < 0 ? -1 : 1
         }
         sprite.color = entity.faction.color
@@ -5445,21 +5591,21 @@ final class GameScene: SKScene {
             panel.name = "hud-panel:\(key)"
             panel.fillColor = key == "dock" || key == "rail" ? HUDPalette.panelDeep : HUDPalette.panel
             panel.strokeColor = HUDPalette.borderSoft
-            panel.lineWidth = 0.75
+            panel.lineWidth = 0.5
             hudNode.addChild(panel)
             if key == "message" { messageSurfaces.append(panel) }
             let edge = SKShapeNode(rect: CGRect(x: frame.minX + 8, y: frame.maxY - 1.5,
                                                 width: frame.width - 16, height: 0.7))
-            edge.fillColor = (key == "mission" ? HUDPalette.gold : HUDPalette.cyan).withAlphaComponent(0.28)
+            edge.fillColor = (key == "mission" ? HUDPalette.gold : UIColor.white).withAlphaComponent(key == "mission" ? 0.35 : 0.08)
             edge.strokeColor = .clear
             hudNode.addChild(edge)
             if key == "message" { messageSurfaces.append(edge) }
         }
-        moneyLabel = makeHUDLabel(slot: "money", font: "AvenirNextCondensed-DemiBold", size: 18, color: HUDPalette.gold)
+        moneyLabel = makeHUDLabel(slot: "money", font: "AvenirNext-DemiBold", size: 16, color: HUDPalette.gold)
         incomeLabel = makeHUDLabel(slot: "income", size: 10)
         forcesLabel = makeHUDLabel(slot: "forces", size: 10, color: HUDPalette.cyan)
         aiStatusLabel = makeHUDLabel(slot: "ai", size: 9, color: HUDPalette.mutedText)
-        missionTitleLabel = makeHUDLabel(slot: "missionTitle", font: "AvenirNextCondensed-DemiBold", size: layout.compact ? 11 : 12, color: HUDPalette.gold)
+        missionTitleLabel = makeHUDLabel(slot: "missionTitle", font: "AvenirNext-DemiBold", size: layout.compact ? 11 : 12, color: HUDPalette.gold)
         missionDetailLabel = makeHUDLabel(slot: "missionDetail", size: 9)
         messageLabel = makeHUDLabel(slot: "messageText", size: 9)
         messageLabel.sourceText = lastMessage.0
@@ -6139,7 +6285,7 @@ final class GameScene: SKScene {
 
     private func addMinimap(frame: CGRect) {
         if !isWritingHUDContract { ciBeacon("minimap-start") }
-        let title = makeHUDLabel(slot: "mapTitle", font: "AvenirNextCondensed-DemiBold", size: 10, color: HUDPalette.gold)
+        let title = makeHUDLabel(slot: "mapTitle", font: "AvenirNext-DemiBold", size: 10, color: HUDPalette.gold)
         title.sourceText = "TACTICAL MAP  /  N"
 
         // Bound primitives directly so the HUD needs no offscreen mask render pass.
@@ -6176,13 +6322,13 @@ final class GameScene: SKScene {
     private func addZoomButton(frame: CGRect, title: String) {
         let button = SKShapeNode(rect: frame, cornerRadius: 5)
         button.name = "hud:zoom:\(title)"
-        button.fillColor = HUDPalette.panelRaised
-        button.strokeColor = HUDPalette.border
+        button.fillColor = HUDPalette.panelRaised.withAlphaComponent(0.65)
+        button.strokeColor = HUDPalette.borderSoft
         button.lineWidth = 0.75
         hudNode.addChild(button)
-        let label = SKLabelNode(fontNamed: "AvenirNextCondensed-DemiBold")
+        let label = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
         label.text = title
-        label.fontSize = 23
+        label.fontSize = 18
         label.fontColor = HUDPalette.text
         label.horizontalAlignmentMode = .center
         label.verticalAlignmentMode = .center
@@ -6192,7 +6338,7 @@ final class GameScene: SKScene {
 
     private func addSelectionInfoPanel(frame: CGRect, compact: Bool) {
         selectionInfoRowBaseFontSize = compact ? 9.5 : 10.5
-        selectionInfoTitleLabel = makeHUDLabel(slot: "selectionTitle", font: "AvenirNextCondensed-DemiBold", size: 12, color: HUDPalette.gold)
+        selectionInfoTitleLabel = makeHUDLabel(slot: "selectionTitle", font: "AvenirNext-DemiBold", size: 11, color: HUDPalette.gold)
         let disclosure = hudLayout!.slots["detailsToggle"]!
         if let symbol = hudSymbol(selectionDetailsExpanded ? "chevron.down" : "info.circle", size: 15) {
             symbol.position = CGPoint(x: disclosure.midX, y: disclosure.midY + 4)
@@ -6273,12 +6419,18 @@ final class GameScene: SKScene {
         let node = SKNode()
         node.name = "hud:\(action.rawValue)"
         node.position = CGPoint(x: frame.midX, y: frame.midY)
-        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 5)
+        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 7)
         shape.fillColor = buttonColor(for: action)
         shape.strokeColor = HUDPalette.borderSoft
         shape.lineWidth = 0.75
         node.addChild(shape)
         hudButtonShapes[action] = shape
+        let accent = SKShapeNode(rectOf: CGSize(width: frame.width - 18, height: 1.5), cornerRadius: 0.75)
+        accent.name = "hud:state-accent"
+        accent.position.y = -frame.height / 2 + 1.5
+        accent.strokeColor = .clear
+        accent.isHidden = true
+        node.addChild(accent)
 
         if let kind = action.buildKind, let texture = unitArtworkTexture(for: kind) {
             let preview = SKSpriteNode(texture: texture)
@@ -6287,14 +6439,15 @@ final class GameScene: SKScene {
             preview.position.y = frame.height < 48 ? 10 : 12
             node.addChild(preview)
         } else if let symbol = hudSymbol(action.symbolName, size: 15) {
+            symbol.name = "hud:action-symbol"
             symbol.position.y = frame.height < 48 ? 11 : 13
             node.addChild(symbol)
         }
 
-        let title = HUDTextLabel(fontNamed: "AvenirNextCondensed-DemiBold")
+        let title = HUDTextLabel(fontNamed: "AvenirNext-DemiBold")
         title.name = "hud-text:action:\(action.rawValue):title"
         title.sourceText = action.title
-        title.fontSize = frame.width < 66 ? 11 : 12
+        title.fontSize = frame.width < 66 ? 9 : 10
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
@@ -6319,20 +6472,26 @@ final class GameScene: SKScene {
         let node = SKNode()
         node.name = "hud-page:\(page.rawValue)"
         node.position = CGPoint(x: frame.midX, y: frame.midY)
-        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 5)
+        let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 7)
         shape.fillColor = hudPageColor(page, active: page == hudPage)
         shape.strokeColor = HUDPalette.borderSoft
         shape.lineWidth = 0.75
         node.addChild(shape)
         hudPageShapes[page] = shape
+        let accent = SKShapeNode(rectOf: CGSize(width: frame.width - 18, height: 2), cornerRadius: 1)
+        accent.name = "hud:tab-accent"
+        accent.position.y = -frame.height / 2 + 1.5
+        accent.fillColor = HUDPalette.gold
+        accent.strokeColor = .clear
+        node.addChild(accent)
         if let symbol = hudSymbol(page.symbolName, size: 14) {
             symbol.position.y = 12
             node.addChild(symbol)
         }
-        let title = HUDTextLabel(fontNamed: "AvenirNextCondensed-DemiBold")
+        let title = HUDTextLabel(fontNamed: "AvenirNext-DemiBold")
         title.name = "hud-text:page:\(page.rawValue):title"
         title.sourceText = page.title
-        title.fontSize = 10
+        title.fontSize = 9
         title.fontColor = HUDPalette.text
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
@@ -6347,7 +6506,7 @@ final class GameScene: SKScene {
         subtitle.horizontalAlignmentMode = .center
         subtitle.position = CGPoint(x: 0, y: -16)
         node.addChild(subtitle)
-        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 3, y: -11, width: frame.width - 6, height: 14), 10))
+        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 3, y: -11, width: frame.width - 6, height: 14), 9))
         boundedHUDLabels.append((subtitle, CGRect(x: -frame.width / 2 + 3, y: -21, width: frame.width - 6, height: 10), 7))
         return node
     }
@@ -6369,28 +6528,22 @@ final class GameScene: SKScene {
 
     private func refreshHudButtonStyles() {
         for (action, shape) in hudButtonShapes {
-            shape.fillColor = buttonColor(for: action)
-            let unavailableContextAction =
-                (action == .stop && !isStopOrderAvailable) ||
+            let armed = isHudActionArmed(action)
+            let contextual = (action == .stop && isStopOrderAvailable) ||
+                (action == .cycleTarget && isTargetCycleAvailable)
+            let unavailable = (action == .stop && !isStopOrderAvailable) ||
                 (action == .cycleTarget && !isTargetCycleAvailable)
-            shape.alpha = unavailableContextAction ? 0.66 : 1.0
-
-            if action == .cycleTarget && isTargetCycleAvailable {
-                shape.strokeColor = UIColor(red: 1.0, green: 0.48, blue: 0.32, alpha: 1.0)
-                shape.lineWidth = 1.5
-                shape.glowWidth = 0
-            } else if action == .stop && isStopOrderAvailable {
-                shape.strokeColor = UIColor(red: 1.0, green: 0.64, blue: 0.44, alpha: 1.0)
-                shape.lineWidth = 1.5
-                shape.glowWidth = 0
-            } else if isHudActionArmed(action) {
-                shape.strokeColor = UIColor(red: 1.0, green: 0.84, blue: 0.26, alpha: 1.0)
-                shape.lineWidth = 2
-                shape.glowWidth = 0
-            } else {
-                shape.strokeColor = HUDPalette.borderSoft
-                shape.lineWidth = 0.75
-                shape.glowWidth = 0
+            shape.fillColor = buttonColor(for: action)
+            shape.alpha = unavailable ? 0.66 : 1
+            shape.strokeColor = armed ? HUDPalette.gold.withAlphaComponent(0.7) : HUDPalette.borderSoft
+            shape.lineWidth = armed ? 1 : 0.5
+            shape.glowWidth = 0
+            if let accent = shape.parent?.childNode(withName: "hud:state-accent") as? SKShapeNode {
+                accent.isHidden = !armed && !contextual
+                accent.fillColor = armed ? HUDPalette.gold : HUDPalette.cyan.withAlphaComponent(0.6)
+            }
+            if let symbol = shape.parent?.childNode(withName: "hud:action-symbol") as? SKSpriteNode {
+                symbol.color = armed ? HUDPalette.gold : HUDPalette.cyan
             }
         }
         refreshHudPageStyles()
@@ -6398,19 +6551,18 @@ final class GameScene: SKScene {
 
     private func refreshHudPageStyles() {
         for (page, shape) in hudPageShapes {
-            let isActive = page == hudPage
-            let containsArmedAction = page.actions.contains { isHudActionArmed($0) }
-            shape.fillColor = hudPageColor(page, active: isActive)
-            shape.strokeColor = isActive || containsArmedAction
-                ? HUDPalette.gold
-                : HUDPalette.panelDeep
-            shape.lineWidth = isActive ? 1.75 : (containsArmedAction ? 1.5 : 0.75)
+            let active = page == hudPage
+            let armed = page.actions.contains { isHudActionArmed($0) }
+            shape.fillColor = hudPageColor(page, active: active)
+            shape.strokeColor = armed ? HUDPalette.gold.withAlphaComponent(0.6) : .clear
+            shape.lineWidth = armed ? 0.75 : 0
             shape.glowWidth = 0
+            shape.parent?.childNode(withName: "hud:tab-accent")?.isHidden = !active && !armed
         }
     }
 
     private func hudPageColor(_ page: HudPage, active: Bool) -> UIColor {
-        active ? UIColor(red: 0.17, green: 0.28, blue: 0.31, alpha: 1) : HUDPalette.panelRaised
+        active ? UIColor(red: 0.20, green: 0.24, blue: 0.24, alpha: 1) : .clear
     }
 
     private func buttonColor(for action: HudAction) -> UIColor {
@@ -6560,6 +6712,7 @@ final class GameScene: SKScene {
 
     private func updateHUD() {
         refreshTankArtworkFacings()
+        refreshAirArtworkFacings()
         applyCameraProjection()
         for entity in entities.values {
             entity.label.xScale = entity.node.xScale < 0 ? -1 : 1
@@ -11790,6 +11943,10 @@ final class GameScene: SKScene {
             aircraft.attackMoveDestination = nil
             aircraft.path.removeAll()
         }
+        if ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] == "attack-target" {
+            enemyFighter.node.position.y += 88
+            enemyFighter.node.zPosition = entityZPosition(enemyFighter)
+        }
         updateFog(force: true)
         refreshSelection()
         enemySAM.node.zPosition = entityZPosition(enemySAM)
@@ -11819,12 +11976,12 @@ final class GameScene: SKScene {
         switch ProcessInfo.processInfo.environment["DESERT_CI_COMMAND_MARKER"] {
         case "move":
             showMoveMarker(
-                at: playerAnchor + CGPoint(x: -120, y: -150),
+                at: cameraRig.position + CGPoint(x: -160, y: 0) * cameraRig.xScale,
                 persistent: true
             )
         case "attack-move":
             showAttackMoveMarker(
-                at: (playerAnchor + enemyAnchor) * 0.5 + CGPoint(x: 0, y: -150),
+                at: cameraRig.position + CGPoint(x: -30, y: 0) * cameraRig.xScale,
                 persistent: true
             )
         case "attack-target":

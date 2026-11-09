@@ -362,6 +362,20 @@ flowchart LR
 
 ## 战术提示与效果生命周期
 
+读图说明：空军与坦克共用图集解码，空军读原移动/已知攻击目标选择八向，最后抵消父镜像；云端样本明确区分实际实体与未入场的渲染样本。
+
+```mermaid
+flowchart LR
+  Atlas[原创战斗机 / 直升机4x2透明图集] --> Decode[共用1536px解码 / 等大UV格]
+  Facts[原destination / 已知存活attackTarget] --> Facing[八分区迟滞 / 停止保留视觉索引]
+  Decode --> Facing
+  Facing --> Sprite[原artworkNode / 固定世界格与高度 / 抵消父镜像]
+  Sprite --> Lifecycle[原阴影 / 选择 / 血条 / 战损 / fog / 死亡 / SKRM]
+  Sprite --> Audit[云端两机型八向x两镜像 / 固定几何 / 恢复]
+  Audit --> Subject[实际entity或明确detached-renderer / 不加入对局]
+  Lifecycle --> PNG[正式原生PNG目视]
+```
+
 读图说明：原命令、选择和合法目标只投影成视觉；缓存节点修正父镜像并随原实体生命期，短弹迹不触发新伤害。云端CPU证据检查坐标和节点，最终清晰度仍看正式屏幕图。
 
 ```mermaid
