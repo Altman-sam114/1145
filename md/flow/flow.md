@@ -96,7 +96,7 @@ Mechanic 实体另持有预创建的 `mechanicRepairEffectNode`，由阵营化�
 
 小地图下方的 `−` / `+` 是独立的 HUD 命中区域，调用 `adjustCameraZoom(by:)` 复用 `minCameraScale`、`maxCameraScale` 和 `clampCamera`，并刷新小地图 camera box；它们不属于 `HudAction`，不会穿透为世界点击或清理 pending 命令。
 
-`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名改为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:)` 仍是生产绘制、触摸和云端契约的唯一框来源。分类改为左下横栏，当前动作在底部 dock 收口；28pt 资源栏、左上任务/消息、底部选择/队列和右上小型分带地图互不覆盖。所有可点控件至少 44pt，双指优先 pan/pinch，静态面板与间隙仍 inert，切页保留选择、队列和互斥 pending。`HUDPalette` 统一深海蓝、青绿和沙金，命令系统符号先用 UIGraphicsImageRenderer 烘焙白色像素再由 SpriteKit 染青，避免 UIKit 延迟 tint 导致黑色图标；生产用共享单位纹理；25 组生产契约还检查小屏 HUD 面积上限和战场中心可路由。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:detailsExpanded:)` 是绘制、触摸和云端契约的唯一框来源。小屏默认44pt选择卡只显示单位/数量、HP与当前状态，44pt Info/Close经同一route切换100pt五事实与队列；平板默认52pt、展开156pt。切页/详情切换保留选择、生产与互斥pending，SKRM收起详情。底部56pt动作区保留44pt控件，任务卡32pt，小地图去除重复图例边带。短消息由单调时钟驱动，3.2s后在0.45s内连背景完全淡出，隐形区域归还world路由；提示期限不因HUD重建重置。双指仍优先pan/pinch，其他可见静态面板与间隙仍inert。`HUDPalette`与共享命令符号/生产纹理沿用；25组生产契约增加50次详情状态检查、五项事实互不重叠、hidden-toast路由和精确恢复，原标签/投影/失败门槛保留。
 
 ### `AIDifficulty`
 

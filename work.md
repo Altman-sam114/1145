@@ -2,44 +2,39 @@
 
 ## 目标与边界
 
-- 总目标：从最新main持续推进Desert Stormfront风格RTS，统一高质量画面与易用UI，修复云端构建/验证；使用原创素材。当前有限增量为v6.5设施/环境美术与紧凑选择卡。
-- 验收：十种机动单位+十种设施+三类环境真实透明图随包且挂载；小屏选择卡64pt并保留四项事实与至少44pt控件；精确实现SHA云端双构建、资源/HUD契约及24张正式原生图通过并目视复核。
-- 不改经济/伤害/AI/寻路，不建平行玩法系统；不本机编译、运行、探针、模拟器操作，不启动子智能体。全方向动画、真实触摸、完整对局与长期性能不以固定截图冒充。
+- 总目标：从最新main持续推进Desert Stormfront风格RTS，重构美术和易用UI、修复云端构建；用户要求原创生图、只云端测试、不启动子智能体。
+- 当前有限增量v6.6：默认选择卡44pt、可点44pt详情控件查看全部五项事实；缩短下方命令区与小地图边带、顶部目标卡；短提示完全淡出且隐形时不吞战场触摸。
+- 验收：所有26动作、5页、经济/生产/战斗/迷雾/AI逻辑沿用；5尺寸×5页维持原九类HUD门槛，并补展开/收起的布局、文字、pending与状态恢复证据；一张既有selection-cycle原生图展示展开状态。精确SHA云端双构建、资源合同、HUD与24张官方原图核对。
+- 本轮不改实体美术/伤害/寻路/经济/AI，不以固定截图冒充真实触摸、全方向动画、完整对局或长期性能。完整复刻与高品质原型总目标仍进行中。
 
 ## 现场与归属
 
-- main / HEAD / origin/main = a53d342798892e2b9a0a7dfbc29ffc7e3b8dc665；2026-11-06已fetch和pull --ff-only成功，origin=https://github.com/Altman-sam114/1145.git，账号Altman-sam114。提交前再次确认。
-- 起始保留：AGENTS、README、flow/图、test、prompt索引、update_log、work的既有文档整理；工程Team ID两行；未跟踪历史提示词、v6归档和Unity分析。不覆盖、不stash、不混入本轮提交。
-- 本任务沿用v6.0至v6.4已发布渲染/CI链路。旧临时传输已失效，v6.4官方包本轮重新取得并完成核验。版本过程已写update_log，不再把旧run作新实现证据。
+- main / HEAD / origin/main=d2a339633d0e6a1609a860b85466853ff1835232；2026-11-09已fetch，远端未前移。origin=https://github.com/Altman-sam114/1145.git，活动账号Altman-sam114。
+- 保留起始既有AGENTS/README/flow/图/test/prompt索引/log文档整理、工程Team ID两行、未跟踪历史提示词/v6归档/Unity分析；不覆盖、不stash、不混入本轮提交。需要提交前再次安全同步main。
+- v6.0至v6.5实现与生图均已在main。13张本轮新生成图、提示词与用户指定目录副本均已落盘；不再把旧503当当前不可用结论。
 
 ## 步骤
 
-1. [完成] 读入口/工作台/规范、Git/源码/云端核对；百度移动站搜索200，原页面和正文保存/private/tmp/desert-baidu-reference-20261106.*，不采信未核实下载站宣传。
-2. [完成] v6.4原包SHA256/API digest/CRC/身份/JUnit/HUD/实际PNG核验，云端修复已有正式成功证据。
-3. [完成实现，待验证] 内置image_gen生成13种新素材，工厂另编辑一次；字节原样复制项目与用户目录，提示词/来源/尺寸/hash已落盘。EntityKind全部20种实体共用解码/缓存，设施贴地anchor；三类环境替换原mapNode入口；compact选择卡92→64pt、双列四事实、队列右上。
-4. [完成] diff/相关AST、JSON、8文档32本地链接/围栏通过；逐块暂存26文件，排除原有无关文档/Team ID。已再次fetch/pull main，远端一致；准备提交与推送。
-5. [待办] 推送新SHA，等待云端固定完整入口，下载精确官方包核对双构建、23资源、HUD25、24原生图与实际比例/遮挡。失败依据证据定向修复，不盲目重跑或改gate。
-6. [待办] 记录正式结论；完成所选验收后收口，若总目标仍有必需工作则保留精确下一步。
+1. [完成] 恢复入口/Git/云端；下载精确v6.5官方包，核对摘要/CRC/身份/JUnit/23资源/25HUD/24图与trace，逐张目视24图。结论已写update_log。
+2. [完成实现，待云端] 选择卡44pt/详情100pt（平板52/156）、命令/任务/小地图紧凑边带、提示期限/背景同步淡出与隐形路由；沿用原输入和实体状态，SKRM收起详情。
+3. [完成静态，待云端执行] 25组合各新增两次生产路由、五事实框/文字/恢复/隐形提示；runner/metadata严格校验两态，1个synthetic方法含14负例并重绑真实fixture摘要，避免因旧hash提前报错；selection-cycle固定图实际经Info路由展开。diff/2Python AST/2JSON/8文档39本地链接与围栏通过，未执行本机测试。
+4. [进行中] 自查调用链与实际diff，逐块暂存本轮内容；2026-11-09 fetch/pull --ff-only已完成且main未前移。准备main提交/正常push，等待精确新run。
+5. [待办] 下载新SHA官方结果包，核对双构建/相关合同与全部正式图；有证据才修复，不盲目重跑。
+6. [待办] 根据实图继续有限改进或收口；必需验收未完成不清理工作台、不标总目标完成。
 
 ## 本轮编辑范围
 
-- GameScene：artworkName/Directory/Width、共享384px解码与缓存、设施anchor、scenery入口、ready真实挂图证据、HUDLayout compact双列槽与互不重叠检查。
-- Art：新增Structures十图、Scenery三图，unit-art-manifest扩为23；ci/check_unit_art.py同步精确路径集合，保留原CRC/alpha/hash门槛与现有6项PNG正负例。
-- md/art/v6.5-generation-prompts.json、v6.5-production-art.md、v6.0来源说明补历史状态；README/flow/flowchart/test/log/work只提交本轮事实增量，原文档整理不提交。工程与workflow/runner预算不改。
+- 计划：DesertFrontline/GameScene.swift（HUDLayout/HUDRoute/选择详情/提示/重置/现有CI fixture与契约），ci/simulator_probe.py（详情证据协议校验）、ci/check_probe_runner.py（相应fixture与直接负例）。必要README/flow/图/test/log/work只提交本轮事实，不提交原有整理。
+- 不改workflow/runner预算、设备策略、工程Team ID，不增加无关玩法/完整回归。
 
-## 证据与验证选择
+## 证据与验证
 
-- 本机仅git diff --check、相关Python AST/JSON与文档本地链接/路径检查、只读GitHub证据；未执行checker、App、Swift/Xcode或任何本机测试。
-- baseline：所有改动diff；ci/check_unit_art.py AST、Art清单与提示词JSON、本轮文档链接。direct：云端generic iOS device build+simulator build、实际bundle23资源、HUD25矩阵与24正式截图。全面实体/环境/界面重构涉及完整画面；当前入口不可切分，本轮复用现有集合、不额外增加无关玩法。
-- v6.4：run40819582266/attempt1/main/a53d342；artifact12874910247，53,881,516 bytes /158项未加密，SHA256=9dda0f1ffd7b5b69ab3cb6313de15772eae7ff1ece208e647442c919778ddf0a与API一致、CRC/路径正常；缓存/private/tmp/desert-frontline-review-40819582266-attempt1/official/。双BUILD SUCCEEDED、JUnit10/0failure/1准确XCTest skip、110 runner+5watchdog+6资源正负例通过；HUD25成功/恢复true，24/24完整；work798.709s/cleanup38.861s，严格boot预算gate通过。
-- v6.4目视战术/Build/陆战/海岸/航母：图标、车辆/舰船贴图正常；选择卡过高、几何设施/岩石/村落不协调，构成本轮修复依据。不把CPU/资源合同当作美观、触控或完整对局证据。
-- 生图本轮成功：内置image_gen，未用CLI/收费API或其他聊天。13选定原图保存DesertFrontline/Art/{Structures,Scenery}及/Users/a114514/.codex/generated_images/1/v6.5-*.png；未脚本编辑图像。预览雾光部分是alpha0的RGB值，需云端RGBA实际呈现确认。旧7次503与FLUX许可/导出调查是历史状态，未将FLUX候选并入App。
+- v6.5 run42168783661/attempt1/main/d2a3396，artifact13480423270；62,752,584bytes/158项未加密，SHA256=7bc066814158f02aabf6c083dfa8197b01221eacca203f6e49bc511793e62c99，与官方一致，CRC正常。
+- 缓存/private/tmp/desert-frontline-review-42168783661-attempt1/{ci-results.zip,official/,review.json}；两份BUILD SUCCEEDED、JUnit10/0fail/1准确XCTest skip、110runner+5watchdog+6资源方法通过，23source/bundle一致、HUD25成功/恢复true、24/24独立原图且20实体/3环境挂载。work636.890s/cleanup10.764s。
+- 目视：新设施/环境与兵模统一，但常驻说明、两排底部区和小地图冗余边带仍遮挡；据此做v6.6。当前静态HUD纹理不是全方向动画；真实触控、完整对局与长期性能尚无本轮证据。
+- v6.6所选baseline=git diff --check、相关Python AST/JSON、文档链接。direct=新UI状态/隐形提示路由和五尺寸25组合、云端双构建/资源/原24图；因全面HUD涉及全部页面并使用现有固定入口，无新增无关回归。本机不import或执行CI脚本、不运行Swift/Xcode/App/simctl。
 
 ## 阻塞与精确下一步
 
-- 当前无须用户确认的阻塞。官方artifact首次gh下载TLS超时已用官方302+4路Range获取同一原包，摘要完整匹配后才使用；不重跑旧CI。
-- 下一步：完成静态和逐块审查，安全同步main，精确暂存/提交v6.5；推送后记录完整SHA/run并等官方包。不可清理工作台或标总目标完成，直到必需验收完成。
-
-- 为让新HQ/工厂/机场有正式屏幕证据，将原build探针从重复air构图改为base焦点，仍为24项、原page/marker/等待/完整性门槛不变；GameScene仅CI分支选择原始HQ与基地相机，fixture事实要求四类初始设施实际挂图。ci/probes.json纳入本轮编辑和JSON静态检查，不新增探针或改验证器。
-
-- 提交前自查：共享实体/环境加载、isOperational/fog/死亡/SKRM沿用原链路；全部23清单路径与Art文件夹资源引用一致。只读旧ready测算新增元数据约4471bytes，低于原8000-byte门槛（仅静态估算，真实云端仍严格校验）。未本机运行测试。
+- 当前无须用户确认的阻塞；官方ZIP本次gh api成功，未重跑旧CI。
+- 下一步实现默认44pt/详情披露、提示淡出并同步生产路由；保留原失败gate，补直接有界状态证据，目视新图后再决定后续美术增量。

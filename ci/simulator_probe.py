@@ -599,7 +599,7 @@ def validate_hud_contract(summary, directory):
                 or type(item.get("cameraProjectionSamples")) is not int or item["cameraProjectionSamples"] != 3):
             raise ProbeFailure(f"HUD contract assertions failed/incomplete: {key}")
         panels, controls = item.get("panels", {}), item.get("controls", {})
-        required_controls = {f"page:{page}" for page in HUD_PAGES} | {"zoomOut", "zoomIn", "map"}
+        required_controls = {f"page:{page}" for page in HUD_PAGES} | {"zoomOut", "zoomIn", "map", "detailsToggle"}
         if (set(panels) != {"resources", "rail", "dock", "mission", "message", "selection", "minimap"}
                 or not required_controls <= set(controls) or not any(key.startswith("action:") for key in controls)
                 or not rectangle(item.get("safeFrame"))
@@ -608,6 +608,21 @@ def validate_hud_contract(summary, directory):
                 or item["panelAreaFraction"] >= 1):
             raise ProbeFailure(f"HUD contract frame/area evidence incomplete: {key}")
         label_audit(item.get("labelAudit"), ["normal", "long1", "short", "long2", "restored", "rebuilt"], str(key), controls)
+        disclosure = item.get("disclosure", {})
+        states = disclosure.get("states", []) if isinstance(disclosure, dict) else []
+        if (not isinstance(disclosure, dict) or type(disclosure.get("toggleCount")) is not int or disclosure["toggleCount"] != 2
+                or disclosure.get("stateRestored") is not True or disclosure.get("toastPassthrough") is not True
+                or not isinstance(states, list) or len(states) != 2):
+            raise ProbeFailure(f"HUD disclosure/expired-toast evidence incomplete: {key}")
+        for state, expanded in zip(states, (True, False)):
+            if (not isinstance(state, dict) or state.get("expanded") is not expanded
+                    or type(state.get("rowCount")) is not int or state["rowCount"] != (5 if expanded else 0)
+                    or not rectangle(state.get("selectionFrame")) or not rectangle(state.get("toggleFrame"))
+                    or not finite_positive(state.get("panelAreaFraction")) or state["panelAreaFraction"] >= 1
+                    or not isinstance(state.get("checks"), dict)
+                    or set(state["checks"]) != {"state", "geometry", "labels", "rows", "centerClear"}
+                    or any(value is not True for value in state["checks"].values())):
+                raise ProbeFailure(f"HUD disclosure state assertions failed/incomplete: {key}/{expanded}")
     return report
 
 

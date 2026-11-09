@@ -620,3 +620,5 @@ THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，
 纹理存在、alpha 和 hash 正确不等于画面美观；兵模/HUD/地形改造仍须核对 ready 中的实际贴图挂载和官方原生 PNG。HUD 契约新增小屏面积与战场中心留白，原 25 组尺寸/页面、路由、恢复与 24 张正式截图仍保留。
 
 当前有界预算以 workflow/runner 为准：1440s 共享工作、至多90s清理、27min模拟器 step，job55min；static step3min容纳直接相关资源检查。该预算是为完整原生证据预留收尾，不代表慢 build 的根因已确定，也不替代 watchdog 的原退出/取消回收语义。
+
+选择摘要/详情改变时，每个原HUD组合还必须通过生产`consumeHUDTouch`完成展开、收起，记录两态`disclosure`：44pt控件、五行实际文字框与事实槽不重叠、选择/队列/pending不变、战场中心可路由及恢复。短提示文字与背景透明后应归还world路由。runner与metadata要求完整两态和明确的`toastPassthrough`，相关负例即使顶层success也必须拒绝。当前原生`selection-cycle`固定图还要求详情实际展开；这些CPU路由调用仍不是真实UITouch或完整对局证据。

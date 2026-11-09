@@ -215,11 +215,15 @@ def hud_fixture(runner):
             # Deliberate placeholders: Python validates schema, not these fake rectangles.
             rectangle = {"x": 0, "y": 0, "width": 1, "height": 1}
             controls = {f"page:{tab}": rectangle for tab in HUD_PAGES}
-            controls.update({key: rectangle for key in ("zoomOut", "zoomIn", "map", "action:unit-placeholder")})
+            controls.update({key: rectangle for key in ("zoomOut", "zoomIn", "map", "detailsToggle", "action:unit-placeholder")})
             report["matrix"].append(dict(fixture=fixture, page=page, size={"width": width, "height": height}, insets=insets,
                 checks={key: True for key in HUD_CHECKS}, failures=[], status="success", safeFrame=rectangle,
                 panels={key: rectangle for key in ("resources", "rail", "dock", "mission", "message", "selection", "minimap")},
                 controls=controls, panelArea=1, viewportArea=2, panelAreaFraction=0.5, cameraProjectionSamples=3,
+                disclosure=dict(toggleCount=2, stateRestored=True, toastPassthrough=True, states=[
+                    dict(expanded=expanded, selectionFrame=rectangle, toggleFrame=rectangle, rowCount=5 if expanded else 0,
+                         panelAreaFraction=0.5, checks={key: True for key in ("state", "geometry", "labels", "rows", "centerClear")})
+                    for expanded in (True, False)]),
                 labelAudit=label_audit(controls, ["normal", "long1", "short", "long2", "restored", "rebuilt"])))
     report["actualLabelAudit"] = label_audit(report["matrix"][0]["controls"], ["actual-normal", "actual-restored"])
     write_hud_fixture(runner, report)
@@ -641,6 +645,40 @@ class ProbeTests(unittest.TestCase):
         for value in (True, 2, 4):
             with self.subTest(cameraProjectionSamples=value):
                 self.mutate_hud(lambda report: report["matrix"][0].update(cameraProjectionSamples=value))
+
+    def test_hud_disclosure_and_expired_toast_cannot_be_false_green(self):
+        mutations = {
+            "missing-disclosure": lambda row: row.pop("disclosure"),
+            "wrong-type": lambda row: row.update(disclosure=[]),
+            "missing-control": lambda row: row["controls"].pop("detailsToggle"),
+            "incomplete-toggles": lambda row: row["disclosure"].update(toggleCount=True),
+            "state-not-restored": lambda row: row["disclosure"].update(stateRestored=False),
+            "invisible-touch-shield": lambda row: row["disclosure"].update(toastPassthrough=False),
+            "missing-state": lambda row: row["disclosure"]["states"].pop(),
+            "duplicate-state": lambda row: row["disclosure"]["states"][1].update(expanded=True),
+            "missing-row": lambda row: row["disclosure"]["states"][0].update(rowCount=4),
+            "boolean-row-count": lambda row: row["disclosure"]["states"][0].update(rowCount=True),
+            "missing-geometry": lambda row: row["disclosure"]["states"][0].pop("selectionFrame"),
+            "hidden-world-center": lambda row: row["disclosure"]["states"][0]["checks"].update(centerClear=False),
+            "pending-order-changed": lambda row: row["disclosure"]["states"][0]["checks"].update(state=False),
+            "failed-labels": lambda row: row["disclosure"]["states"][0]["checks"].update(labels=False),
+        }
+        for name, mutation in mutations.items():
+            with self.subTest(case=name):
+                runner = self.complete()
+                validate_hud_contract(runner.summary, self.directory)
+                report = json.loads((self.directory / "hud-layout-contract.json").read_text())
+                mutation(report["matrix"][0])
+                write_hud_fixture(runner, report)
+                warm = runner.summary["prewarm"][0]
+                descriptor = dict(runner.summary["hudContract"], path=warm["scene"]["ready"]["hudReport"]["path"])
+                warm["scene"] = scene_fixture(runner, runner.probes[0], "prewarm:1", nonce=warm["scene"]["nonce"],
+                                              extra_ready={"hudReport": descriptor}, sealed=True)
+                reason = "HUD contract frame/area" if name == "missing-control" else "HUD disclosure"
+                with self.assertRaisesRegex(ProbeFailure, reason):
+                    validate_hud_contract(runner.summary, self.directory)
+                with self.assertRaisesRegex(ProbeFailure, reason):
+                    validate_results(runner.probes, runner.summary, self.directory)
 
     def test_hud_missing_report(self):
         runner = self.complete()

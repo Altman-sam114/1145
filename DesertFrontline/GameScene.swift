@@ -697,19 +697,20 @@ private enum HudPage: String, CaseIterable {
 }
 
 private enum HUDRoute: Equatable {
-    case page(HudPage), action(HudAction), zoomOut, zoomIn, map, inert, world
+    case page(HudPage), action(HudAction), zoomOut, zoomIn, map, details, inert, world
 }
 
 /// Production drawing, touch routing and the cloud contract share these frames.
 private struct HUDLayout {
     let safe: CGRect
     let compact: Bool
+    let detailsExpanded: Bool
     let panels: [String: CGRect]
     let slots: [String: CGRect]
     let pages: [HudPage: CGRect]
     let actions: [HudAction: CGRect]
 
-    init(size: CGSize, insets: UIEdgeInsets, page: HudPage) {
+    init(size: CGSize, insets: UIEdgeInsets, page: HudPage, detailsExpanded: Bool) {
         let safe = CGRect(x: -size.width / 2 + insets.left + 6,
                           y: -size.height / 2 + insets.bottom + 6,
                           width: size.width - insets.left - insets.right - 12,
@@ -717,32 +718,36 @@ private struct HUDLayout {
         self.safe = safe
         let compact = safe.height < 500
         self.compact = compact
+        self.detailsExpanded = detailsExpanded
         let top = CGRect(x: safe.minX, y: safe.maxY - 28, width: safe.width, height: 28)
         let actionGap: CGFloat = compact ? 4 : 6
         let buttonWidth = min(compact ? 76 : 100, (safe.width - 12 - CGFloat(page.actions.count - 1) * actionGap) / CGFloat(page.actions.count))
         let dockWidth = 12 + CGFloat(page.actions.count) * buttonWidth + CGFloat(page.actions.count - 1) * actionGap
-        let dock = CGRect(x: safe.minX, y: safe.minY, width: dockWidth, height: compact ? 60 : 76)
+        let dock = CGRect(x: safe.minX, y: safe.minY, width: dockWidth, height: compact ? 56 : 76)
         let pageGap: CGFloat = 4
         let railWidth: CGFloat = compact ? 252 : 332
-        let rail = CGRect(x: safe.minX, y: dock.maxY + 6, width: railWidth, height: compact ? 52 : 60)
+        let rail = CGRect(x: safe.minX, y: dock.maxY + 6, width: railWidth, height: compact ? 44 : 52)
         let pageWidth = (railWidth - 8 - 4 * pageGap) / 5
         let mapWidth: CGFloat = compact ? 140 : 184
         let mapHeight: CGFloat = compact ? 60 : 108
-        let mapPanel = CGRect(x: safe.maxX - mapWidth, y: top.minY - 6 - mapHeight - 88,
-                              width: mapWidth, height: mapHeight + 88)
-        let mission = CGRect(x: safe.minX, y: top.minY - 46, width: compact ? 280 : 360, height: 40)
+        let mapPanel = CGRect(x: safe.maxX - mapWidth, y: top.minY - 6 - mapHeight - 68,
+                              width: mapWidth, height: mapHeight + 68)
+        let missionHeight: CGFloat = compact ? 32 : 40
+        let mission = CGRect(x: safe.minX, y: top.minY - 6 - missionHeight,
+                             width: compact ? 252 : 360, height: missionHeight)
         let message = CGRect(x: safe.minX, y: mission.minY - 24, width: compact ? 320 : 440, height: 18)
         let selection = CGRect(x: rail.maxX + 8, y: dock.maxY + 6,
-                               width: min(compact ? 300 : 420, safe.maxX - rail.maxX - 8), height: compact ? 64 : 140)
+                               width: min(compact ? 320 : 420, safe.maxX - rail.maxX - 8),
+                               height: detailsExpanded ? (compact ? 100 : 156) : (compact ? 44 : 52))
         let selectionContentWidth = selection.width - 20
-        let queueWidth = selectionContentWidth * 0.38
+        let disclosure = CGRect(x: selection.maxX - 44, y: selection.maxY - 44, width: 44, height: 44)
         panels = ["resources": top, "rail": rail, "dock": dock, "mission": mission,
                   "message": message, "selection": selection, "minimap": mapPanel]
 
-        let content = CGRect(x: mapPanel.minX + 6, y: mapPanel.minY + 56,
+        let content = CGRect(x: mapPanel.minX + 6, y: mapPanel.minY + 52,
                              width: mapWidth - 12, height: mapHeight)
-        let header = CGRect(x: mapPanel.minX + 6, y: content.maxY + 4, width: mapWidth - 12, height: 24)
-        let footer = CGRect(x: mapPanel.minX + 6, y: mapPanel.minY + 6, width: mapWidth - 12, height: 44)
+        let header = CGRect(x: mapPanel.minX + 6, y: content.maxY + 2, width: mapWidth - 12, height: 12)
+        let footer = CGRect(x: mapPanel.minX + 6, y: mapPanel.minY + 4, width: mapWidth - 12, height: 44)
         let mapOut = CGRect(x: footer.maxX - 92, y: footer.minY, width: 44, height: 44)
         let mapIn = CGRect(x: footer.maxX - 44, y: footer.minY, width: 44, height: 44)
         let innerTop = top.insetBy(dx: 12, dy: 3)
@@ -751,8 +756,7 @@ private struct HUDLayout {
         let forcesWidth = innerTop.width * 0.15
         var slots: [String: CGRect] = [
             "map": content, "mapHeader": header, "mapFooter": footer,
-            "mapTitle": CGRect(x: header.minX, y: header.maxY - 12, width: header.width, height: 12),
-            "mapLegend": CGRect(x: header.minX, y: header.minY, width: header.width, height: 10),
+            "mapTitle": header,
             "zoomOut": mapOut, "zoomIn": mapIn,
             "mapScale": CGRect(x: footer.minX, y: footer.minY, width: max(20, mapOut.minX - footer.minX - 4), height: 44),
             "money": CGRect(x: innerTop.minX, y: innerTop.minY, width: moneyWidth - 6, height: innerTop.height),
@@ -760,30 +764,34 @@ private struct HUDLayout {
             "forces": CGRect(x: innerTop.minX + moneyWidth + incomeWidth, y: innerTop.minY, width: forcesWidth - 6, height: innerTop.height),
             "ai": CGRect(x: innerTop.minX + moneyWidth + incomeWidth + forcesWidth, y: innerTop.minY,
                          width: innerTop.width - moneyWidth - incomeWidth - forcesWidth, height: innerTop.height),
-            "missionTitle": CGRect(x: mission.minX + 10, y: mission.maxY - 17, width: mission.width - 20, height: 12),
-            "missionDetail": CGRect(x: mission.minX + 10, y: mission.minY + 11, width: mission.width - 20, height: 11),
+            "missionTitle": CGRect(x: mission.minX + 10, y: mission.maxY - (compact ? 14 : 17), width: mission.width - 20, height: compact ? 11 : 12),
+            "missionDetail": CGRect(x: mission.minX + 10, y: mission.minY + (compact ? 7 : 11), width: mission.width - 20, height: compact ? 9 : 11),
             "messageText": message.insetBy(dx: 8, dy: 2),
             "selectionTitle": CGRect(x: selection.minX + 10, y: selection.maxY - (compact ? 18 : 20),
-                                     width: compact ? selectionContentWidth - queueWidth - 6 : selectionContentWidth,
+                                     width: selectionContentWidth - 44,
                                      height: compact ? 14 : 16),
             "selected": CGRect(x: selection.minX + 10, y: selection.maxY - (compact ? 31 : 34),
-                               width: selectionContentWidth, height: compact ? 10 : 12),
-            "queue": CGRect(x: compact ? selection.maxX - 10 - queueWidth : selection.minX + 10,
-                            y: compact ? selection.maxY - 18 : selection.minY + 11,
-                            width: compact ? queueWidth : selectionContentWidth, height: 12)
+                               width: selectionContentWidth - 44, height: compact ? 10 : 12),
+            "detailsToggle": disclosure,
+            "detailsText": CGRect(x: disclosure.minX, y: disclosure.minY + 4, width: disclosure.width, height: 10)
         ]
-        for index in 0..<(compact ? 4 : 5) {
-            let columnWidth = (selectionContentWidth - 8) / 2
-            slots["row\(index)"] = CGRect(
-                x: selection.minX + 10 + (compact ? CGFloat(index % 2) * (columnWidth + 8) : 0),
-                y: selection.maxY - (compact ? 43 : 45) - CGFloat(compact ? index / 2 : index) * (compact ? 11 : 16),
-                width: compact ? columnWidth : selectionContentWidth, height: compact ? 10 : 14)
+        if detailsExpanded {
+            slots["queue"] = CGRect(x: selection.minX + 10, y: selection.minY + (compact ? 4 : 11),
+                                    width: selectionContentWidth, height: compact ? 10 : 12)
+            for index in 0..<5 {
+                let twoColumns = compact && index < 4
+                let columnWidth = (selectionContentWidth - 8) / 2
+                slots["row\(index)"] = CGRect(
+                    x: selection.minX + 10 + (twoColumns ? CGFloat(index % 2) * (columnWidth + 8) : 0),
+                    y: selection.maxY - (compact ? 57 : 60) - CGFloat(compact ? index / 2 : index) * (compact ? 13 : 16),
+                    width: twoColumns ? columnWidth : selectionContentWidth, height: compact ? 11 : 14)
+            }
         }
         self.slots = slots
         var pages: [HudPage: CGRect] = [:]
         for (index, tab) in HudPage.allCases.enumerated() {
-            pages[tab] = CGRect(x: rail.minX + 4 + CGFloat(index) * (pageWidth + pageGap), y: rail.minY + 4,
-                               width: pageWidth, height: rail.height - 8)
+            pages[tab] = CGRect(x: rail.minX + 4 + CGFloat(index) * (pageWidth + pageGap), y: rail.minY,
+                               width: pageWidth, height: rail.height)
         }
         self.pages = pages
         var actions: [HudAction: CGRect] = [:]
@@ -794,13 +802,14 @@ private struct HUDLayout {
         self.actions = actions
     }
 
-    func route(at point: CGPoint) -> HUDRoute {
+    func route(at point: CGPoint, messageVisible: Bool = true) -> HUDRoute {
+        if slots["detailsToggle"]!.contains(point) { return .details }
         if let page = HudPage.allCases.first(where: { pages[$0]?.contains(point) == true }) { return .page(page) }
         if let action = HudAction.allCases.first(where: { actions[$0]?.contains(point) == true }) { return .action(action) }
         if slots["zoomOut"]!.contains(point) { return .zoomOut }
         if slots["zoomIn"]!.contains(point) { return .zoomIn }
         if slots["map"]!.contains(point) { return .map }
-        if !safe.contains(point) || panels.values.contains(where: { $0.contains(point) }) { return .inert }
+        if !safe.contains(point) || panels.contains(where: { ($0.key != "message" || messageVisible) && $0.value.contains(point) }) { return .inert }
         return .world
     }
 
@@ -1257,6 +1266,8 @@ final class GameScene: SKScene {
     private var selectedLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
     private var queueLabel = HUDTextLabel(fontNamed: "Menlo")
     private var messageLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
+    private var messageExpiresAt: TimeInterval = 0
+    private var messageSurfaces: [SKNode] = []
     private var missionTitleLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
     private var missionDetailLabel = HUDTextLabel(fontNamed: "Menlo")
     private var missionProgressConnectors: [SKShapeNode] = []
@@ -1265,6 +1276,7 @@ final class GameScene: SKScene {
     private var aiStatusLabel = HUDTextLabel(fontNamed: "Menlo")
     private var selectionInfoTitleLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
     private var selectionInfoRowLabels: [SKLabelNode] = []
+    private var selectionDetailsExpanded = false
     private var selectionTargetHealthBack = SKShapeNode()
     private var selectionTargetHealthFill = SKShapeNode()
     private let selectionInfoNeutralColor = UIColor(white: 0.90, alpha: 1.0)
@@ -1421,7 +1433,7 @@ final class GameScene: SKScene {
         if isCICaptureMode { ciFixtureCamera = cameraRig.position }
         ciEndStage("fixture")
         updateHUD()
-        showMessage("Capture oil and flags, secure the coast, build combined forces, destroy the enemy HQ.", color: .white)
+        showMessage("Tap a unit, then tap ground to move. Secure the oil fields.", color: .white)
         sceneInitializationComplete = true
         ciEndStage("initialization")
     }
@@ -1502,6 +1514,7 @@ final class GameScene: SKScene {
 
     override func update(_ currentTime: TimeInterval) {
         guard sceneInitializationComplete else { return }
+        updateMessageVisibility()
         applyRequestedHUDGeometry()
         if isCICaptureMode {
             lastUpdateTime = currentTime
@@ -1599,7 +1612,7 @@ final class GameScene: SKScene {
         case "damage-state": return ["threeDomains": chosen(.tank) && chosen(.fighter) && chosen(.battleship), "damaged": selected.count == 3 && selected.allSatisfy { $0.hp / $0.kind.maxHP < 0.62 }]
         case "stop-command": return ["fourUnits": selected.count == 4 && chosen(.carrier), "idle": selected.allSatisfy { $0.destination == nil && $0.attackTarget == nil && $0.attackMoveDestination == nil && $0.holdPosition == nil }]
         case "target-cycle": return ["targetedGroup": selected.count >= 4 && selected.allSatisfy { $0.attackTarget != nil }]
-        case "selection-cycle": return ["cluster": count(.humvee, .player) > 0 && count(.tank, .player) > 0 && count(.artillery, .player) > 0, "singleSelection": selected.count == 1 && selected[0].holdPosition != nil]
+        case "selection-cycle": return ["cluster": count(.humvee, .player) > 0 && count(.tank, .player) > 0 && count(.artillery, .player) > 0, "singleSelection": selected.count == 1 && selected[0].holdPosition != nil, "details": selectionDetailsExpanded && selectionInfoRowLabels.count == 5]
         case "enemy-touch-assist": return ["twoAA": selected.count == 2 && selected.allSatisfy { $0.kind == .aaTruck }, "sharedFighter": attacks(.aaTruck, .fighter) && Set(selected.compactMap { $0.attackTarget?.id }).count == 1]
         default: return ["knownBranch": false]
         }
@@ -5213,8 +5226,9 @@ final class GameScene: SKScene {
         boundedHUDLabels.removeAll()
         missionProgressConnectors.removeAll()
         missionProgressNodes.removeAll()
+        messageSurfaces.removeAll()
 
-        let layout = HUDLayout(size: size, insets: windowSafeAreaInsets, page: hudPage)
+        let layout = HUDLayout(size: size, insets: windowSafeAreaInsets, page: hudPage, detailsExpanded: selectionDetailsExpanded)
         hudLayout = layout
         hudCommandStripFrame = layout.panels["dock"]!
         hudPageFrames = layout.pages
@@ -5231,30 +5245,36 @@ final class GameScene: SKScene {
             shadow.fillColor = UIColor.black.withAlphaComponent(0.22)
             shadow.strokeColor = .clear
             hudNode.addChild(shadow)
+            if key == "message" { messageSurfaces.append(shadow) }
             let panel = SKShapeNode(rect: frame, cornerRadius: key == "resources" ? 5 : 8)
             panel.name = "hud-panel:\(key)"
             panel.fillColor = key == "dock" || key == "rail" ? HUDPalette.panelDeep : HUDPalette.panel
             panel.strokeColor = HUDPalette.borderSoft
             panel.lineWidth = 0.75
             hudNode.addChild(panel)
+            if key == "message" { messageSurfaces.append(panel) }
             let edge = SKShapeNode(rect: CGRect(x: frame.minX + 8, y: frame.maxY - 1.5,
                                                 width: frame.width - 16, height: 0.7))
             edge.fillColor = (key == "mission" ? HUDPalette.gold : HUDPalette.cyan).withAlphaComponent(0.28)
             edge.strokeColor = .clear
             hudNode.addChild(edge)
+            if key == "message" { messageSurfaces.append(edge) }
         }
         moneyLabel = makeHUDLabel(slot: "money", font: "AvenirNextCondensed-DemiBold", size: 18, color: HUDPalette.gold)
         incomeLabel = makeHUDLabel(slot: "income", size: 10)
         forcesLabel = makeHUDLabel(slot: "forces", size: 10, color: HUDPalette.cyan)
         aiStatusLabel = makeHUDLabel(slot: "ai", size: 9, color: HUDPalette.mutedText)
-        missionTitleLabel = makeHUDLabel(slot: "missionTitle", font: "AvenirNextCondensed-DemiBold", size: 12, color: HUDPalette.gold)
+        missionTitleLabel = makeHUDLabel(slot: "missionTitle", font: "AvenirNextCondensed-DemiBold", size: layout.compact ? 11 : 12, color: HUDPalette.gold)
         missionDetailLabel = makeHUDLabel(slot: "missionDetail", size: 9)
         messageLabel = makeHUDLabel(slot: "messageText", size: 9)
         messageLabel.sourceText = lastMessage.0
         messageLabel.fontColor = lastMessage.1
         messageLabel.alpha = lastMessage.2
+        setMessageOpacity(lastMessage.2)
         selectedLabel = makeHUDLabel(slot: "selected", size: 9, color: HUDPalette.mutedText)
-        queueLabel = makeHUDLabel(slot: "queue", size: 9, color: HUDPalette.gold)
+        queueLabel = selectionDetailsExpanded
+            ? makeHUDLabel(slot: "queue", size: 9, color: HUDPalette.gold)
+            : HUDTextLabel(fontNamed: "AvenirNext-Medium")
 
         let mission = layout.panels["mission"]!
         let step = (mission.width - 24) / CGFloat(MissionStage.allCases.count - 1)
@@ -5262,13 +5282,13 @@ final class GameScene: SKScene {
             let x = mission.minX + 12 + CGFloat(index) * step
             if index < MissionStage.allCases.count - 1 {
                 let line = SKShapeNode(rectOf: CGSize(width: step - 6, height: 1.5), cornerRadius: 0.75)
-                line.position = CGPoint(x: x + step / 2, y: mission.minY + 7)
+                line.position = CGPoint(x: x + step / 2, y: mission.minY + (layout.compact ? 3 : 7))
                 line.strokeColor = .clear
                 hudNode.addChild(line)
                 missionProgressConnectors.append(line)
             }
-            let dot = SKShapeNode(circleOfRadius: 2.5)
-            dot.position = CGPoint(x: x, y: mission.minY + 7)
+            let dot = SKShapeNode(circleOfRadius: layout.compact ? 1.5 : 2.5)
+            dot.position = CGPoint(x: x, y: mission.minY + (layout.compact ? 3 : 7))
             dot.lineWidth = 0.5
             hudNode.addChild(dot)
             missionProgressNodes.append(dot)
@@ -5385,6 +5405,7 @@ final class GameScene: SKScene {
         let actualSize = size
         let actualInsets = windowSafeAreaInsets
         let actualPage = hudPage
+        let actualDetailsExpanded = selectionDetailsExpanded
         let actualSelection = selectedIDs
         let actualQueue = buildOrders
         let actualPending = (pendingConstructionKind, pendingSupportPower, isSettingRallyPoint, isSettingAttackMove)
@@ -5629,6 +5650,7 @@ final class GameScene: SKScene {
                 windowSafeAreaInsets = fixtureInsets
                 size = fixtureSize
                 hudPage = page
+                selectionDetailsExpanded = false
                 pendingConstructionKind = pageIndex == 1 ? .barracks : nil
                 pendingSupportPower = pageIndex == 4 ? .reconSweep : nil
                 isSettingRallyPoint = pageIndex == 2
@@ -5648,7 +5670,7 @@ final class GameScene: SKScene {
                 var controls: [String: CGRect] = [:]
                 for (tab, frame) in layout.pages { controls["page:\(tab.rawValue)"] = frame }
                 for (action, frame) in layout.actions { controls["action:\(action.rawValue)"] = frame }
-                for key in ["zoomOut", "zoomIn", "map"] { controls[key] = layout.slots[key]! }
+                for key in ["zoomOut", "zoomIn", "map", "detailsToggle"] { controls[key] = layout.slots[key]! }
                 let orderedControls = controls.keys.sorted()
                 for (index, key) in orderedControls.enumerated() {
                     let frame = controls[key]!
@@ -5689,7 +5711,7 @@ final class GameScene: SKScene {
                     if key.hasPrefix("map") || key.hasPrefix("zoom") { parent = "minimap" }
                     else if key.hasPrefix("mission") { parent = "mission" }
                     else if key == "messageText" { parent = "message" }
-                    else if key == "selectionTitle" || key == "selected" || key == "queue" || key.hasPrefix("row") { parent = "selection" }
+                    else if key == "selectionTitle" || key == "selected" || key == "queue" || key.hasPrefix("row") || key.hasPrefix("details") { parent = "selection" }
                     else { parent = "resources" }
                     expect(layout.panels[parent]!.contains(frame), "containers", key)
                 }
@@ -5699,7 +5721,7 @@ final class GameScene: SKScene {
                 for (action, frame) in layout.actions {
                     expect(layout.route(at: CGPoint(x: frame.midX, y: frame.midY)) == .action(action), "routing", action.rawValue)
                 }
-                for (key, route) in [("zoomOut", HUDRoute.zoomOut), ("zoomIn", .zoomIn), ("map", .map)] {
+                for (key, route) in [("zoomOut", HUDRoute.zoomOut), ("zoomIn", .zoomIn), ("map", .map), ("detailsToggle", .details)] {
                     let frame = layout.slots[key]!
                     expect(layout.route(at: CGPoint(x: frame.midX, y: frame.midY)) == route, "routing", key)
                 }
@@ -5707,8 +5729,9 @@ final class GameScene: SKScene {
                 for key in panelKeys {
                     let frame = layout.panels[key]!
                     let point = CGPoint(x: frame.minX + 2, y: frame.minY + 2)
-                    expect(layout.route(at: point) == .inert, "routing", "inert/\(key)")
-                    expect(consumeHUDTouch(at: point) && fingerprint() == state, "pending", key)
+                    let visible = key != "message" || messageLabel.alpha > 0.01
+                    expect(layout.route(at: point, messageVisible: messageLabel.alpha > 0.01) == (visible ? .inert : .world), "routing", "inert/\(key)")
+                    expect(consumeHUDTouch(at: point) == visible && fingerprint() == state, "pending", key)
                 }
                 let world = CGPoint(x: layout.safe.midX, y: layout.panels["message"]!.minY - 10)
                 expect(layout.route(at: world) == .world && !consumeHUDTouch(at: world), "routing", "world")
@@ -5753,7 +5776,7 @@ final class GameScene: SKScene {
                 _ = auditLabels("restored", reference: normal, audit: &labelAudit)
                 var selectionRows: [[String: Any]] = []
                 if layout.compact {
-                    let facts = ["selectionTitle", "selected", "queue", "row0", "row1", "row2", "row3"]
+                    let facts = ["selectionTitle", "selected", "detailsText"]
                     for (index, key) in facts.enumerated() {
                         for other in facts.dropFirst(index + 1) {
                             expect(disjoint(layout.slots[key]!, layout.slots[other]!), "labels", "facts/\(key)/\(other)")
@@ -5780,8 +5803,52 @@ final class GameScene: SKScene {
                 expect(count == nodeCount(hudNode), "rebuild", "node-count")
                 expect(Set(hudButtonHitFrames.keys) == Set(page.actions) && hudPageHitFrames.count == 5 && hudButtonShapes.count == page.actions.count,
                        "rebuild", "stale-targets")
+                let savedMessageOpacity = messageLabel.alpha
+                let toastPoint = CGPoint(x: layout.panels["message"]!.midX, y: layout.panels["message"]!.midY)
+                setMessageOpacity(0)
+                let toastPassthrough = layout.route(at: toastPoint, messageVisible: false) == .world &&
+                    !consumeHUDTouch(at: toastPoint) && fingerprint() == state && messageSurfaces.allSatisfy { $0.alpha == 0 }
+                setMessageOpacity(savedMessageOpacity)
+                expect(toastPassthrough, "routing", "expired-toast-passthrough")
+                var disclosureStates: [[String: Any]] = []
+                for expanded in [true, false] {
+                    let toggle = hudLayout!.slots["detailsToggle"]!
+                    let consumed = consumeHUDTouch(at: CGPoint(x: toggle.midX, y: toggle.midY))
+                    let revealed = hudLayout!
+                    let selection = revealed.panels["selection"]!
+                    let toggleFrame = revealed.slots["detailsToggle"]!
+                    let rowCount = selectionInfoRowLabels.count
+                    let statePreserved = consumed && selectionDetailsExpanded == expanded && fingerprint() == state
+                    let rowsFit = selectionInfoRowLabels.enumerated().allSatisfy { index, row in
+                        guard let slot = revealed.slots["row\(index)"] else { return false }
+                        return selection.contains(slot) && ((row.text?.isEmpty ?? true) || slot.insetBy(dx: -0.5, dy: -0.5).contains(row.frame))
+                    }
+                    let factKeys = ["selectionTitle", "selected", "detailsText"] + (expanded ? ["queue"] + (0..<5).map { "row\($0)" } : [])
+                    let factsDisjoint = factKeys.enumerated().allSatisfy { index, key in
+                        factKeys.dropFirst(index + 1).allSatisfy { disjoint(revealed.slots[key]!, revealed.slots[$0]!) }
+                    }
+                    let labelsFit = boundedHUDLabels.allSatisfy { item in
+                        (item.node.sourceText?.isEmpty ?? true) || item.frame.insetBy(dx: -0.5, dy: -0.5).contains(item.node.frame)
+                    } && rowsFit && factsDisjoint
+                    let otherPanelsClear = revealed.panels.filter { $0.key != "selection" }.values.allSatisfy { disjoint(selection, $0) }
+                    let fraction = revealed.panels.values.reduce(CGFloat.zero) { $0 + $1.width * $1.height } / (fixtureSize.width * fixtureSize.height)
+                    let geometry = revealed.safe.contains(selection) && selection.contains(toggleFrame) &&
+                        toggleFrame.width >= 44 && toggleFrame.height >= 44 && otherPanelsClear &&
+                        (!revealed.compact || fraction <= (expanded ? 0.54 : 0.46))
+                    let centerClear = revealed.route(at: .zero) == .world
+                    let rowsPresent = rowCount == (expanded ? 5 : 0) && (queueLabel.parent === hudNode) == expanded
+                    let values = ["state": statePreserved, "geometry": geometry, "labels": labelsFit,
+                                  "rows": rowsPresent, "centerClear": centerClear]
+                    for (key, passed) in values { expect(passed, key == "labels" ? "labels" : "pending", "details/\(expanded)/\(key)") }
+                    disclosureStates.append(["expanded": expanded, "selectionFrame": rectJSON(selection), "toggleFrame": rectJSON(toggleFrame),
+                                             "rowCount": rowCount, "panelAreaFraction": fraction, "checks": values])
+                }
+                let afterDisclosure = labelSnapshots()
+                let disclosureRestored = !selectionDetailsExpanded && afterDisclosure.count == normal.count &&
+                    zip(normal, afterDisclosure).allSatisfy { sameFit($0.0, $0.1, sameObject: false) }
+                expect(disclosureRestored, "rebuild", "details-restored")
                 let panelArea = layout.panels.values.reduce(CGFloat.zero) { $0 + $1.width * $1.height }
-                expect(!layout.compact || panelArea / (fixtureSize.width * fixtureSize.height) <= 0.56,
+                expect(!layout.compact || panelArea / (fixtureSize.width * fixtureSize.height) <= 0.46,
                        "containers", "compact-hud-density")
                 expect(layout.route(at: .zero) == .world, "routing", "battlefield-center-clear")
                 matrix.append(["fixture": fixtureID, "page": page.rawValue,
@@ -5791,6 +5858,7 @@ final class GameScene: SKScene {
                                "panelArea": panelArea, "viewportArea": fixtureSize.width * fixtureSize.height,
                                "panelAreaFraction": panelArea / (fixtureSize.width * fixtureSize.height),
                                "cameraProjectionSamples": cameraProjectionSamples,
+                               "disclosure": ["toggleCount": 2, "stateRestored": disclosureRestored, "toastPassthrough": toastPassthrough, "states": disclosureStates],
                                "selectionRows": selectionRows,
                                "labelAudit": auditJSON(labelAudit, labels: normal, registeredCount: labelCount),
                                "checks": checks, "failures": failures, "status": failures.isEmpty ? "success" : "failure"])
@@ -5805,6 +5873,7 @@ final class GameScene: SKScene {
         windowSafeAreaInsets = actualInsets
         size = actualSize
         hudPage = actualPage
+        selectionDetailsExpanded = actualDetailsExpanded
         cameraRig.position = actualCamera.0
         cameraRig.xScale = actualCamera.1
         cameraRig.yScale = actualCamera.2
@@ -5828,7 +5897,7 @@ final class GameScene: SKScene {
         let labelsRestored = actualLabelCount > 0 && actualLabelCount <= 64 &&
             restorePhaseNames == ["actual-normal", "actual-restored"] && preserved &&
             actualLabelAudit.phases.last?["referenceMatchedCount"] as? Int == actualLabelCount
-        let restored = fingerprint() == originalState && size == actualSize && hudPage == actualPage &&
+        let restored = fingerprint() == originalState && size == actualSize && hudPage == actualPage && selectionDetailsExpanded == actualDetailsExpanded &&
             windowSafeAreaInsets == actualInsets && cameraRig.position == actualCamera.0 &&
             cameraRig.xScale == actualCamera.1 && cameraRig.yScale == actualCamera.2 &&
             worldNode.position == actualWorld.0 && worldNode.xScale == actualWorld.1 && worldNode.yScale == actualWorld.2 &&
@@ -5865,9 +5934,7 @@ final class GameScene: SKScene {
     private func addMinimap(frame: CGRect) {
         if !isWritingHUDContract { ciBeacon("minimap-start") }
         let title = makeHUDLabel(slot: "mapTitle", font: "AvenirNextCondensed-DemiBold", size: 10, color: HUDPalette.gold)
-        title.sourceText = "SECTOR  /  N"
-        let legend = makeHUDLabel(slot: "mapLegend", size: 8, color: HUDPalette.mutedText)
-        legend.sourceText = "LAND   AIR   SEA"
+        title.sourceText = "TACTICAL MAP  /  N"
 
         // Bound primitives directly so the HUD needs no offscreen mask render pass.
         minimapContentNode = SKNode()
@@ -5920,7 +5987,15 @@ final class GameScene: SKScene {
     private func addSelectionInfoPanel(frame: CGRect, compact: Bool) {
         selectionInfoRowBaseFontSize = compact ? 9.5 : 10.5
         selectionInfoTitleLabel = makeHUDLabel(slot: "selectionTitle", font: "AvenirNextCondensed-DemiBold", size: 12, color: HUDPalette.gold)
-        for index in 0..<(compact ? 4 : 5) {
+        let disclosure = hudLayout!.slots["detailsToggle"]!
+        if let symbol = hudSymbol(selectionDetailsExpanded ? "chevron.down" : "info.circle", size: 15) {
+            symbol.position = CGPoint(x: disclosure.midX, y: disclosure.midY + 4)
+            hudNode.addChild(symbol)
+        }
+        let detailsLabel = makeHUDLabel(slot: "detailsText", size: 8, color: HUDPalette.cyan)
+        detailsLabel.sourceText = selectionDetailsExpanded ? "Close" : "Info"
+        detailsLabel.horizontalAlignmentMode = .center
+        for index in 0..<(selectionDetailsExpanded ? 5 : 0) {
             let rowFrame = hudLayout!.slots["row\(index)"]!
             let row = SKLabelNode(fontNamed: "AvenirNext-Medium")
             row.name = "hud-row:\(index)"
@@ -5932,7 +6007,7 @@ final class GameScene: SKScene {
             hudNode.addChild(row)
             selectionInfoRowLabels.append(row)
         }
-        selectionTargetHealthBarFrame = CGRect(x: frame.minX + 10, y: frame.minY + 5, width: frame.width - 20, height: 3)
+        selectionTargetHealthBarFrame = CGRect(x: frame.minX + 10, y: frame.minY + 5, width: frame.width - 64, height: 3)
         selectionTargetHealthBack = SKShapeNode(rectOf: selectionTargetHealthBarFrame.size, cornerRadius: 1)
         selectionTargetHealthBack.position = CGPoint(x: selectionTargetHealthBarFrame.midX, y: selectionTargetHealthBarFrame.midY)
         selectionTargetHealthBack.fillColor = HUDPalette.panelDeep
@@ -6003,10 +6078,10 @@ final class GameScene: SKScene {
             let preview = SKSpriteNode(texture: texture)
             let scale = min(36 / max(texture.size().width, 1), 24 / max(texture.size().height, 1))
             preview.size = CGSize(width: texture.size().width * scale, height: texture.size().height * scale)
-            preview.position.y = 12
+            preview.position.y = frame.height < 48 ? 10 : 12
             node.addChild(preview)
         } else if let symbol = hudSymbol(action.symbolName, size: 15) {
-            symbol.position.y = 13
+            symbol.position.y = frame.height < 48 ? 11 : 13
             node.addChild(symbol)
         }
 
@@ -6019,7 +6094,7 @@ final class GameScene: SKScene {
         title.horizontalAlignmentMode = .center
         title.position = CGPoint(x: 0, y: -4)
         node.addChild(title)
-        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 4, y: -11, width: frame.width - 8, height: 14), title.fontSize))
+        boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 4, y: frame.height < 48 ? -10 : -11, width: frame.width - 8, height: frame.height < 48 ? 12 : 14), title.fontSize))
         let subtitleLabel = HUDTextLabel(fontNamed: "AvenirNext-Medium")
         subtitleLabel.name = "hud-text:action:\(action.rawValue):subtitle"
         subtitleLabel.sourceText = subtitle(for: action)
@@ -6029,7 +6104,7 @@ final class GameScene: SKScene {
         subtitleLabel.horizontalAlignmentMode = .center
         subtitleLabel.position = CGPoint(x: 0, y: -18)
         node.addChild(subtitleLabel)
-        boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: -23, width: frame.width - 6, height: 10), 7.5))
+        boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: frame.height < 48 ? -21 : -23, width: frame.width - 6, height: 10), 7.5))
         hudButtonSubtitleLabels[action] = subtitleLabel
         return node
     }
@@ -6355,6 +6430,11 @@ final class GameScene: SKScene {
             let summary = playerQueue.prefix(3).map { "\($0.kind.shortCode) \(Int(ceil($0.remaining)))s" }.joined(separator: "  ")
             queueLabel.sourceText = "Queue: \(summary)"
         }
+        if !playerQueue.isEmpty { forcesLabel.sourceText = "BLUE \(mobileCount(for: .player))  Q\(playerQueue.count)" }
+        if !selectionDetailsExpanded && pendingConstructionKind == nil && pendingSupportPower == nil &&
+            !isSettingRallyPoint && !isSettingAttackMove {
+            selectedLabel.sourceText = collapsedSelectionStatus(for: selected)
+        }
 
         updateSelectionInfoPanel(selected: selected)
 
@@ -6535,6 +6615,11 @@ final class GameScene: SKScene {
     private func updateSelectionInfoPanel(selected: [GameEntity]) {
         let content = selectionInfoContent(for: selected)
         selectionInfoTitleLabel.sourceText = content.title
+        if !selectionDetailsExpanded && pendingConstructionKind == nil && pendingSupportPower == nil &&
+            !isSettingRallyPoint && !isSettingAttackMove {
+            selectionInfoTitleLabel.sourceText = selected.count == 1 ? selected[0].kind.displayName :
+                (selected.isEmpty ? "Battlefield" : "\(selected.count) units selected")
+        }
         if incomingThreatSummary(for: selected) != nil {
             selectionInfoTitleLabel.fontColor = HUDPalette.warning
         } else if selected.count == 1, let entity = selected.first {
@@ -6550,6 +6635,29 @@ final class GameScene: SKScene {
             label.fontColor = rowColors[index]
         }
         updateSelectionTargetHealthBar(selected: selected)
+    }
+
+    private func collapsedSelectionStatus(for selected: [GameEntity]) -> String {
+        guard !selected.isEmpty else { return "Tap a unit, then tap ground to move." }
+        let health = Int(selected.reduce(CGFloat.zero) { $0 + $1.hp })
+        let maximum = Int(selected.reduce(CGFloat.zero) { $0 + $1.kind.maxHP })
+        let status: String
+        if let incoming = incomingThreatSummary(for: selected) {
+            status = "\(incoming.attackerCount) incoming"
+        } else if let primary = primaryCombatTarget(for: selected) {
+            status = "Target \(primary.target.kind.shortCode) \(Int(primary.target.hp / max(1, primary.target.kind.maxHP) * 100))%"
+        } else if let building = selected.first(where: { $0.kind.isStructure && !$0.isOperational }) {
+            status = "Building \(Int(ceil(building.buildProgressRemaining)))s"
+        } else if let order = buildOrders.first(where: { $0.faction == .player && selectedIDs.contains($0.sourceID) }) {
+            status = "\(order.kind.shortCode) ready in \(Int(ceil(order.remaining)))s"
+        } else if selected.contains(where: { $0.holdPosition != nil }) {
+            status = "Holding position"
+        } else if selected.contains(where: { $0.destination != nil || $0.attackMoveDestination != nil }) {
+            status = "Moving"
+        } else {
+            status = selected.allSatisfy({ $0.kind.isStructure }) ? "Operational" : "Ready"
+        }
+        return "HP \(health)/\(maximum)  ·  \(status)"
     }
 
     private func compactSelectionInfoRow(_ text: String) -> String {
@@ -6614,7 +6722,8 @@ final class GameScene: SKScene {
 
     private func selectionInfoRowColors(for selected: [GameEntity]) -> [UIColor] {
         var colors = Array(repeating: selectionInfoNeutralColor, count: selectionInfoRowLabels.count)
-        guard pendingConstructionKind == nil,
+        guard colors.count >= 4,
+              pendingConstructionKind == nil,
               pendingSupportPower == nil,
               !isSettingRallyPoint,
               !isSettingAttackMove,
@@ -6696,7 +6805,7 @@ final class GameScene: SKScene {
     }
 
     private func updateSelectionTargetHealthBar(selected: [GameEntity]) {
-        guard let primary = primaryCombatTarget(for: selected) else {
+        guard !selectionDetailsExpanded, let primary = primaryCombatTarget(for: selected) else {
             selectionTargetHealthBack.isHidden = true
             selectionTargetHealthFill.isHidden = true
             return
@@ -8124,7 +8233,7 @@ final class GameScene: SKScene {
 
     @discardableResult
     private func consumeHUDTouch(at point: CGPoint, tapCount: Int = 1) -> Bool {
-        guard let route = hudLayout?.route(at: point), route != .world else { return false }
+        guard let route = hudLayout?.route(at: point, messageVisible: messageLabel.alpha > 0.01), route != .world else { return false }
         touchStartScene = nil
         touchStartWorld = nil
         panStartCamera = nil
@@ -8135,6 +8244,10 @@ final class GameScene: SKScene {
         case .action(let action): handleHudAction(action, tapCount: tapCount)
         case .zoomOut: adjustCameraZoom(by: 0.12)
         case .zoomIn: adjustCameraZoom(by: -0.12)
+        case .details:
+            selectionDetailsExpanded.toggle()
+            layoutHUD()
+            updateHUD()
         case .map:
             isUsingMinimap = true
             cameraRig.position = clampCamera(worldPoint(fromMinimap: point))
@@ -8989,6 +9102,7 @@ final class GameScene: SKScene {
         pendingSupportPower = nil
         structureBuildCursor = 0
         hudPage = .tactical
+        selectionDetailsExpanded = false
         supportCooldowns.removeAll()
         supportRevealTiles.removeAll()
         isSettingRallyPoint = false
@@ -10726,6 +10840,9 @@ final class GameScene: SKScene {
         updateFog(force: true)
         selectPlayerEntity(at: tapPoint, showFeedback: false)
         selectPlayerEntity(at: tapPoint, persistentMarker: true)
+        if let frame = hudLayout?.slots["detailsToggle"] {
+            consumeHUDTouch(at: CGPoint(x: frame.midX, y: frame.midY))
+        }
     }
 
     private func prepareCIEnemyTouchAssistCaptureScene() {
@@ -14274,8 +14391,20 @@ final class GameScene: SKScene {
         fitHUDLabels()
         messageLabel.fontColor = color
         messageLabel.removeAllActions()
-        messageLabel.alpha = 1
-        messageLabel.run(.sequence([.wait(forDuration: 3.2), .fadeAlpha(to: victoryState == nil ? 0.25 : 1, duration: 0.45)]))
+        messageExpiresAt = ProcessInfo.processInfo.systemUptime + 3.2
+        setMessageOpacity(1)
+    }
+
+    private func setMessageOpacity(_ alpha: CGFloat) {
+        messageLabel.alpha = alpha
+        for surface in messageSurfaces { surface.alpha = alpha }
+    }
+
+    private func updateMessageVisibility() {
+        let alpha = victoryState == nil
+            ? CGFloat(min(1, max(0, (messageExpiresAt + 0.45 - ProcessInfo.processInfo.systemUptime) / 0.45)))
+            : 1
+        setMessageOpacity(alpha)
     }
 
     private func showMoveMarker(at point: CGPoint, persistent: Bool = false) {

@@ -6342,7 +6342,7 @@ v6.4 官方复核（2026-11-06补齐）：main `a53d342798892e2b9a0a7dfbc29ffc7e
 - generic与simulator真实BUILD SUCCEEDED；110 runner方法、5 watchdog与6资源正负例通过；JUnit10/0failure/1准确XCTest skip，十种source/bundle事实相同。HUD25成功、stateRestored=true，24/24独立原生图完整。work798.709s/cleanup38.861s，严格boot预算门禁通过，未改validator阈值。
 - 目视战术/生产/陆战/海岸/航母图：图标正常、兵模落地、道路海岸改善；选择卡仍遮挡战斗，几何建筑/岩石/村落与车辆风格不一致。云端修复通过不等于完整复刻、真实触摸或长期性能验收。
 
-### v6.5 / 统一设施与环境美术、压低战斗信息卡（待云端验收）
+### v6.5 / 统一设施与环境美术、压低战斗信息卡
 
 日期：2026-11-06。
 
@@ -6353,3 +6353,19 @@ v6.4 官方复核（2026-11-06补齐）：main `a53d342798892e2b9a0a7dfbc29ffc7e
 - 选定baseline=diff/相关JSON、Python AST与文档链接；direct=云端generic/simulator构建、23资源随包检查、HUD25与原24正式截图（现有入口不可切分）。不本机构建/运行/测试，不启动子智能体；工程Team ID及原有无关文档整理不混入提交。
 
 - 为让新HQ/工厂/机场有正式屏幕证据，将原build探针从重复air构图改为base焦点，仍为24项、原page/marker/等待/完整性门槛不变；GameScene仅CI分支选择原始HQ与基地相机，fixture事实要求四类初始设施实际挂图。ci/probes.json纳入本轮编辑和JSON静态检查，不新增探针或改验证器。
+
+v6.5 官方复核（2026-11-09）：main `d2a339633d0e6a1609a860b85466853ff1835232` / run `42168783661` / attempt1，artifact `13480423270`，62,752,584 bytes / 158项未加密，SHA256 `7bc066814158f02aabf6c083dfa8197b01221eacca203f6e49bc511793e62c99` 与API digest一致，CRC、branch/SHA/run/attempt、PNG及直接trace摘要均一致。原包缓存 `/private/tmp/desert-frontline-review-42168783661-attempt1/official/`，只读复核记录为同级 `review.json`。
+
+- generic及simulator日志均真实`BUILD SUCCEEDED`，分别约35s /34.960s；110 runner方法、5 watchdog与6资源正负例通过。JUnit10项、0failure、1项准确XCTest skip；source与实际bundle的23资源逐项一致。
+- HUD25组合九类检查全通过，实际文字审计0失败，`stateRestored=true`；24/24正式图、独立PID/nonce、20种实体及3种环境真实挂载通过。work636.890s /cleanup10.764s，总模拟器阶段约10分48秒；本次正常首次boot96.161s、安装71.857s，没有编译卡死证据。
+- 已逐张目视24张正式原图：HQ/工厂/机场/船厂、岩石/村落/棕榈与陆海空兵模正确呈现，64pt选择卡有效。但常驻顶部说明、密集底部区和小地图冗余边带仍占战场，构成下一轮HUD改进依据。双方向静态兵模、真实触控、完整对局和长期性能的证据边界不变，不将固定图说成完整复刻或发行品质验收。
+
+### v6.6 / 摘要选择卡与按需详情（待云端验收）
+
+日期：2026-11-09。
+
+- 根据v6.5正式24图目视，默认小屏选择卡64→44pt、分类区52→44pt、动作dock60→56pt、任务40→32pt，小地图去掉20pt重复边带；所有命令、分类、缩放及新Info/Close命中仍至少44pt。
+- 默认卡改为单位/数量、HP和当前动作/威胁摘要，Info通过生产HUDRoute展开100pt五项事实及完整队列，Close收起；平板对应52/156pt。生产中顶栏保留全局队列数；状态仍来自既有GameEntity/BuildOrder，未建立第二份玩法。切页和详情保留pending，SKRM收起详情。
+- 短提示的文字、面板/阴影/边光共享单调时钟期限，3.2s后0.45s内完全淡出，隐形时触摸归还world；HUD重建不重置提示期限，胜负提示常驻。
+- 原25尺寸/页面、九类检查与文字审计保留；每组合新增展开→收起两次生产路由、五事实槽互不重叠、文字边界、pending/队列/选择、中心留白、精确恢复与隐形提示穿透。renderer与runner/metadata协议同步，新增一个直接synthetic方法含14种假绿拒绝；原生selection-cycle固定图另要求展开详情，仍是原24图。
+- 本机仅diff、相关Python AST与文档链接静态检查；未执行本机测试、构建、App或设备操作。新实现尚待精确SHA云端双构建/合同及正式图，不先宣称画面、真实触控或完整对局通过。未改workflow、runner预算、设备策略、美术资源与玩法。
