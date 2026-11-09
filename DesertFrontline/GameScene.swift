@@ -6452,14 +6452,16 @@ final class GameScene: SKScene {
         refreshIncomingThreatVisuals(for: selected)
         refreshCommandIntentVisuals(for: selected)
         refreshFocusFireMarker(for: selected)
-        if let pendingConstructionKind {
-            selectedLabel.sourceText = "Place \(pendingConstructionKind.displayName): tap valid ground."
+        let hasPendingCommand = pendingConstructionKind != nil || pendingSupportPower != nil ||
+            isSettingRallyPoint || isSettingAttackMove
+        if pendingConstructionKind != nil {
+            selectedLabel.sourceText = "Tap valid ground to build."
         } else if isSettingRallyPoint {
-            selectedLabel.sourceText = "Set rally point: tap map for selected factory or carrier."
+            selectedLabel.sourceText = "Tap map to set rally point."
         } else if isSettingAttackMove {
-            selectedLabel.sourceText = "Attack move: tap map for selected combat units."
-        } else if let pendingSupportPower {
-            selectedLabel.sourceText = "Target \(pendingSupportPower.displayName): tap map."
+            selectedLabel.sourceText = "Tap map to advance and engage."
+        } else if pendingSupportPower != nil {
+            selectedLabel.sourceText = "Tap map to choose the target."
         } else if selected.isEmpty {
             selectedLabel.sourceText = "Tap a unit, then tap ground or enemy to command."
         } else if selected.count == 1, let entity = selected.first {
@@ -6473,7 +6475,9 @@ final class GameScene: SKScene {
         } else {
             selectedLabel.sourceText = "\(selected.count) units selected"
         }
-        if let threatSummary = airDefenseThreatSummaryLine(for: selected) {
+        // A pending card's title already identifies the command. Keep its next step legible;
+        // threat facts remain in the selected-unit detail rows and battlefield indicators.
+        if !hasPendingCommand, let threatSummary = airDefenseThreatSummaryLine(for: selected) {
             selectedLabel.sourceText = "\(selectedLabel.sourceText ?? "")  |  \(threatSummary)"
         }
         if pendingConstructionKind == nil,

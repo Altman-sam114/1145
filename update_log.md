@@ -6385,3 +6385,16 @@ v6.6 官方复核（2026-11-09）：main `f7c9b54b8a2dd97f0889632e343278e2f6c13d
 - showArtworkImpact复用原384px解码/裁边及缓存，原水柱/舰体命中/反潜喷溅/陆空爆炸入口使用自然位图并有界清理；保留原fog、已知目标、发射延迟与单次伤害。舰载机三机编队、发射/拦截复用现有飞机纹理；收细六处炮弹/导弹/火箭轨迹、烟尾与光晕，潜艇接触标签抵消水平镜像。
 - 相关固定图的fixture要求实际水柱/火焰挂载及三架纹理舰载机；原25HUD/50详情/24原图保持，直接协议负例增加三类关键文本假绿拒绝（仍1方法，合17分例）。不改workflow、超时预算、设备策略或玩法。
 - 本机仅diff、相关Python AST/JSON与文档静态检查；尚待精确新SHA云端双构建、25资源alpha/随包、关键文本/25HUD/50详情/24原生图及目视，不提前宣称画面或真实交互验收。
+
+v6.7 官方失败复核（2026-11-09）：main `2a2235bad2b05b252479101de0cf11dedabb6b06` / run `42578898847` / attempt1 / artifact `13656407685`，142,799bytes /33项未加密，SHA256 `ea13e9678c2ee812acec95dedb041b305ed81e6c0b5905fd28904ffdaa892007` 与API一致、ZIP CRC/身份正确。缓存 `/private/tmp/desert-frontline-review-42578898847-attempt1/official/`。
+
+- generic和simulator均真实`BUILD SUCCEEDED`，111 runner方法通过；模拟器boot40.553s、安装成功，work194.121s/cleanup5.935s。失败是`hud-contract-read-and-validate`，不是Swift编译卡死；JUnit10/4failure/1准确XCTest skip，24正式图全部未运行，不能以旧图替代。
+- HUD恢复true，25组合中375/393/402高小屏的air/rally与naval/attack-move共6组selected全文false；任务标题/正文已完整，新增门槛正确拦截。原因是pending长句还追加防空摘要，后续修复应缩短操作指令、保留命令标题和必要事实，不放宽gate。
+
+### v6.8 / 待命指令可读性修复（待云端验收）
+
+日期：2026-11-09。
+
+- 四类pending摘要改成简短的下一步操作，原命令/设施/支援名称仍由卡片标题说明；pending不再拼接选中空军的防空摘要，详情和战场提示沿用原事实。未改选择、pending互斥、触摸路由、AI、战斗或SKRM。
+- 保留关键全文与全部原HUD/资源/正式图gate；本轮新SHA双构建、25HUD/50详情/24截图及v6.7特效目视尚待云端。
+- 内置image_gen两次生成/编辑八方向坦克候选并保存用户目录及完整提示词；首图方向重复且底色alpha非零，第二次已改为八个不同朝向及alpha0背景。运行时图集、锚点和转向尚未实现/验证，本轮不纳入游戏或宣称八方向已完成。

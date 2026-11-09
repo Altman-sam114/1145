@@ -2,43 +2,38 @@
 
 ## 目标与边界
 
-- 总目标：从最新main继续Desert Stormfront风格RTS，全面改善UI/兵模/地图与陆海空战斗，修复云端构建；原创生图、只云端测试、不启动子智能体。
-- 当前有限增量v6.7：修正v6.6实图任务正文/默认摘要被过度截断的问题，补正常关键文本完整显示门槛；接入两张新生成水柱/火焰烟尘，细化海空特效、复用飞机贴图取代舰载机箭头，降低粗弹道光晕。
-- 验收：原26动作/5页/44pt控件/详情50态/25HUD/24原生图保留；关键任务和默认指令可完整读；25资源source/bundle与20实体+3环境+2效果实际加载/相关固定图挂载；新SHA云端双构建、JUnit/日志/manifest及逐张目视通过。
-- 不改伤害、AI、经济、寻路、目标合法性、单次伤害/可见性链路；不本机构建/运行/探针/测试，不开子智能体。完整复刻、全方向动画、真实UITouch、完整对局和长期性能不冒称已完成。
+- 总目标沿用：从最新main持续改善Desert Stormfront风格RTS的UI、兵模、地图和陆海空表现，修复云端构建；使用原创生图，只云端编译/运行/探针，不启动子智能体。
+- 当前有限增量v6.8：据v6.7官方失败包修复小屏pending指令被截断；保留关键全文与原布局/路由门槛，核验v6.7新特效的实际正式画面。八方向坦克图集先作候选，未达标不接入。
+- 验收：新SHA云端generic+simulator构建、25资源source/bundle、25HUD/50详情状态/关键全文与24正式图，逐张核验。完整复刻、全方向动作、真实UITouch、完整对局和长期性能仍未完成，不能冒称发行品质。
+- 不改伤害、AI、经济、寻路、目标/迷雾合法性或单次结算；不放宽任何失败gate/预算，不做无关重构。
 
 ## 现场与归属
 
-- main / HEAD / origin/main=f7c9b54b8a2dd97f0889632e343278e2f6c13d95。2026-11-09已fetch，提交前再次确认和pull --ff-only。origin=https://github.com/Altman-sam114/1145.git，账号Altman-sam114。
-- 起始既有AGENTS/README/flow/图/test/prompt索引/log文档整理、工程Team ID两行、未跟踪历史提示词/v6归档/Unity分析保留；文档只暂存本轮事实，不混入原有整理；不stash/覆盖。
-- v6.0至v6.6均在main；v6.5美术/64pt卡正式验收，v6.6技术成功但目视发现任务正文与少数摘要高度问题，本轮必须修复。
+- main HEAD/origin/main缓存=2a2235bad2b05b252479101de0cf11dedabb6b06；origin=https://github.com/Altman-sam114/1145.git，活跃账号Altman-sam114。
+- 恢复时已有AGENTS/工程Team ID两行/README/flow/图/test/prompt索引/log文档整理及未跟踪历史提示词/v6归档/Unity分析。全部保留，不stash或混入提交；初始diff备份/private/tmp/desert-v6.8-starting-worktree.patch。
+- 2026-11-09本轮fetch/pull --ff-only均已成功，main与origin/main未前移。此前间歇TLS/HTTP2错误，用单次HTTP1.1及有界连接诊断恢复，未改全局配置。
 
 ## 步骤
 
-1. [完成] v6.6原包核验与24图逐张目视，技术通过/真实一次查询恢复/文字问题已写update_log。
-2. [完成实现，待云端] 任务卡36pt、关键字槽12pt、正常源文完整显示门槛；两图接原效果入口、原飞机纹理替换舰载机箭头、细化六类弹道；潜艇接触字抵消镜像。共享状态/伤害/延迟/目标门槛未改。
-3. [完成静态，待云端] 25资源清单/checker/来源和17项直接协议负例同步；source/bundle的原alpha/CRC门槛保留，相关fixture要求水柱/火焰/三机贴图/接触字实际挂载。diff、3Python AST、3JSON、8文档41链接/围栏通过；资源图原字节复制用户目录/项目。ready新增元数据静态估算4291bytes，真实8000-byte gate不变。
-4. [进行中] 2026-11-09已fetch/pull --ff-only，main未前移。准备精确暂存/提交/正常push，等待新SHA云端现有固定入口。
-5. [待办] 下载官方结果包核对摘要/CRC/身份、双构建、25资源、25HUD+50详情、24原图与新效果挂载；不以旧包/绿状态代替。失败依据证据修复，不盲目重跑。
-6. [待办] 记录正式结论，根据仍需完成的原型品质目标继续有限迭代；必需验收未完成不清空工作台或标总目标完成。
+1. [完成] 核对v6.7官方run/attempt/SHA、API摘要、未加密zip CRC、manifest/JUnit/构建/失败HUD原始证据，定位具体6组截断。构建成功而非编译卡死。
+2. [完成实现，待云端] pending短指令、命令标题保留完整语义，pending不再拼接无关防空摘要；不修改全文gate。共享玩法/选择/路由/重置不改。
+3. [静态完成/准备提交] diff检查、5文档28链接/围栏通过；安全同步完成，仅暂存本轮源码/日志/work，正常推送main。
+4. [待办] 等待精确新SHA云端，下载官方未加密包并核验25资源/HUD25/详情50/24原生图，重点任务正文、四类pending与海空特效。失败据新证据修复。
+5. [进行中/独立候选] 内置image_gen成功生成8向坦克草图，已存用户目录。首图RGBA但1774×887不等分、第二格朝向重复；alpha范围8…255、角点90，背景并不透明，尚未接入。第二次同工具编辑已修正重复朝向并真实去底(alpha0)，原RGBA 1774×887/1524367bytes/SHA25638cb291958468016dfc7cd59735824ac96f65df4b6bd8247eccca22df9082b2c和完整两次提示词已保存；实际加载/锚点/运动尚未验证，不声称八方向已完成。
+6. [待办] 记录验收、继续总品质目标的下一个有限增量；必需证据未完成不清空工作台或标总目标完成。
 
-## 本轮编辑范围
+## 本轮编辑与验证
 
-- GameScene：HUDLayout关键字槽/关键源文完整性；Effects共享384px解码缓存及effectsLayer原入口；舰载机用原飞机纹理、相关弹道样式；CI ready/fixture加入实际挂载与文本事实。
-- Art/Effects、水柱与火焰两图、unit-art-manifest、ci/check_unit_art.py；必要ci/simulator_probe.py、ci/check_probe_runner.py协议/负例。来源md/art/v6.7-*与README/flow/图/test/log/work只提交本轮增量。
-- 不改workflow/预算、设备策略、工程文件与玩法数据。
+- GameScene.updateHUD：pending提示文案/防空摘要呈现条件；work与update_log只提交本轮事实。
+- 未编辑workflow/预算/设备策略/工程/玩法/资源清单。候选图仅存用户目录，不参与本次构建。
+- baseline：git diff --check、文档本地链接与规则一致性；本机不运行CI checker/测试/Swift编译/模拟器。
+- direct：现有云端固定入口不能分割；HUD小屏/多pending及v6.7海空特效仍需完整原集合。不额外扩跑其他对局或长期性能。
 
-## 证据与候选
+## 精确证据与下一步
 
-- v6.6：run42574668725/attempt1/main/f7c9b54，artifact13655636333，65,045,228bytes/159项未加密；SHA256=772c83bb55ac89ee8dc7f733b0f3828c665c8de2263ad5a6d9bc5d5cb6e601a8，与官方一致、CRC/身份/PNG/trace正确。缓存/private/tmp/desert-frontline-review-42574668725-attempt1/{ci-results.zip,official/,review.json}。
-- 双BUILD SUCCEEDED，111runner+5watchdog+6资源方法通过；JUnit10/0fail/1准确XCTest skip、23source/bundle一致、HUD25/详情50态/恢复true、24/24原图。首次launch help超时124后原有一次重试0.805s成功（真实恢复）；boot138.475s，work789.309s/cleanup15.084s。
-- 目视全部24：默认44pt卡/Info/Close和提示消失正确，Orders小屏HUD面积44.75%/35.11%/33.68%；任务详情Ho…及少数Read…/帮助短文不完整。合法ellipsis不代表易读，需字槽高度和关键全文门槛。水柱柱体/霓虹弹道/舰载机箭头是下一美术问题。
-- 内置image_gen两次成功；原RGBA未脚本编辑。/Users/a114514/.codex/generated_images/1/v6.7-candidates/{water-impact.png,impact-burst.png,generation-prompts.json}。
-- water SHA256=b3223cd9929fbb664f81ae687f206cb07a62175d123bc121ab625c576497cff4（1312×1199/1,377,613bytes）；impact SHA256=9026d7bcb55511611a3becf7014222f22a5ab4b94c78eae735d7705f04e2ef71（1536×1024/1,696,917bytes）。原始生成路径和完整提示词在JSON；待复制项目并经云端真实alpha/随包/画面验证，不先宣称接入。
-- 下一render helper草案/private/tmp/desert-v6.7-effect-helper.swift（未入源码）；复核辅助/private/tmp/desert-review-current-artifact.py只读云端包，不执行App/CI脚本。失败stage记录允许原有成功恢复，不能误把synthetic日志或可恢复一次超时当整体失败。
-
-## 验证选择与下一步
-
-- baseline：git diff --check、相关Python AST/JSON、文档本地链接/围栏；本机不执行checker或测试。
-- direct：云端generic+simulator构建，25资源source/bundle检查，关键全文/25HUD/详情50态/24正式截图，重点陆战/海战/航母/飞机与展开详情。现有固定入口不能切分，UI与多种战斗画面均改变，复用原集合；不加无关玩法或全量对局。
-- 当前无须用户确认的阻塞。下一步先落实HUD36pt任务卡/12pt必要文字槽与关键正常源文门槛，再复制新素材并接入原特效入口；任何失败以精确新包为准。
+- v6.7 main2a2235b/run42578898847/attempt1/artifact13656407685；142799bytes/33项，SHA256=ea13e9678c2ee812acec95dedb041b305ed81e6c0b5905fd28904ffdaa892007，与API一致，未加密/CRC通过。缓存/private/tmp/desert-frontline-review-42578898847-attempt1/{ci-results.zip,run.json,job.log,official/}。
+- generic和simulator日志均BUILD SUCCEEDED，111runner方法通过，25资源source/bundle可查；HUD状态恢复true，375/393/402高小屏air与naval的selected全文false，其余19组合通过。JUnit10/4fail/1XCTest skip，24截图未运行，不能当作图片验证。
+- 失败阶段hud-contract-read-and-validate；boot40.553s/安装成功，work194.121s/cleanup5.935s；无编译卡死证据。pending原长句又追加防空摘要是生产逻辑原因，修短句而不放宽门槛。
+- GitHub API/下载遇间歇TLS超时，curl HTTP1.1有限重试成功取得身份/日志/原包；未更换账号、改全局配置或重跑CI。
+- 2026-11-09尝试百度桌面/移动入口均不可访问/超时；官方NobleMaster itch页面已搜索找到用于参考定位，不采信下载站混淆FPS的宣传，不下载商业素材。
+- 精确下一步：baseline并完成fetch/pull；本轮patch审查/精确暂存/正常push，记录新SHA/run后等待核验。生图候选不阻断修复。
