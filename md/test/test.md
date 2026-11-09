@@ -637,3 +637,5 @@ THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，
 迷雾绘制变更时检查原可见性/探索集合与敌军过滤链路；cloud ready的fogSurface核对实际节点path边界和位置、非重叠栅格设置、与原集合一致的alpha以及节点数。缺项、数值代替布尔或几何/alpha错误均拒绝；是否出现裂缝、黑线、缺层需查看同run原生PNG，CPU证据不能代替最终呈现。
 
 截图命令采用同场景有界恢复：首次最多45秒，仅在owned CLI超时且确认进程组清理后可在原180秒总体预算内重读一次。两次使用独立nonce/attempt文件，同设备/PID/nonce/ready不变；App退出、ready改变、普通错误、取消、不完整回收或坏PNG均停止。runner与metadata独立验证screenCapture身份、时限、原始日志摘要、CLI回收和最终rawImage一致，失败候选留证；这不是重启设备或替换截图。
+
+HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1，精确5个分类文字和每命令2个文字，全部非空/可见、名称匹配。生产节点删除空副标题，文字审计只注册分类title与命令title/subtitle；缺分类、缺命令状态、旧subtitle、布尔冒充数量或隐藏均拒绝，原25布局/两态/文字拟合恢复与正式PNG门槛不变。

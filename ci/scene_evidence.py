@@ -96,6 +96,12 @@ def latest_ready(records, definition):
             or any(type(counts.get(key)) is not int or counts[key] <= 0 for key in ("mapNodes", "entities", "playerUnits", "visiblePlayerUnits", "fogNodes", "visibleTiles"))
             or counts.get("panels") != 7 or counts.get("pages") != 5 or counts.get("actions") != ACTIONS[definition["page"]]):
         raise ValueError("Scene ready lacks production stages, fixture facts or stable frames")
+    hud_text = ready.get("hudText")
+    if (not isinstance(hud_text, dict) or set(hud_text) != {"policy", "visible", "tabLabels", "commandLabels"}
+            or hud_text.get("policy") != "single-title-tabs-v1" or hud_text.get("visible") is not True
+            or type(hud_text.get("tabLabels")) is not int or hud_text["tabLabels"] != 5
+            or type(hud_text.get("commandLabels")) is not int or hud_text["commandLabels"] != 2 * counts["actions"]):
+        raise ValueError("Scene ready HUD control text structure or visibility invalid")
     fog = ready.get("fogSurface")
     fog_checks = fog.get("checks") if isinstance(fog, dict) else None
     if (not isinstance(fog, dict) or fog.get("policy") != "shared-edge-fog-v1"

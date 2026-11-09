@@ -347,3 +347,5 @@ HUD采用正常宽度Avenir Next标题、石墨色面板与柔和边框；分类
 fog tile使用精确tileWidth×tileHeight菱形并关闭形状边缘抗锯齿，去掉原1pt重叠造成的双层alpha格线。updateFog的0/0.48/0.86与visible/explored/support集合、敌军/潜艇合法性完全沿原代码；不加滤波或新可见性系统。仅云端ciFogSurfaceChecks逐节点核对实际path边界/位置、raster设置、与原集合一致的alpha，ready/runner/metadata保留shared-edge-fog-v1证据。实际是否消线且无裂缝仍以正式PNG目视为准。
 
 截图读取经`capture_scene_screenshot`：固定设备/PID/nonce/ready，首次45秒，只有确认回收的watchdog超时才允许原180秒总预算内第二次读取；候选按nonce/attempt独立命名，成功验证PNG后原子移动至正式路径，再沿用原规范化流程。`screenCapture`记录原始输出、进程回执和rawImage摘要，metadata独立复核；普通失败/取消/场景变化不重试。HUD分类删除重复副标题，保留标签注册/拟合与44pt命中；沙地/水纹在原5种材质缓存中烘焙，不新增实时节点或玩法状态。
+
+HUD分类节点现在只包含一个title，命令仍包含title/subtitle。CI就绪检查按节点名字核对精确文字集合、非空白/显隐/alpha，并在hudText附实际5个分类文字与2×命令数；parser和HUD审计同步单标题结构，不能用空/透明副标题满足旧两行计数。其余布局、44pt命中与路由不变。

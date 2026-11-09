@@ -577,8 +577,10 @@ def validate_hud_contract(summary, directory):
             raise ProbeFailure(f"HUD label audit identities/count incomplete: {context}")
         if controls is not None:
             required = {f"hud-text:{control}:{part}" for control in controls
-                        if control.startswith(("page:", "action:")) for part in ("title", "subtitle")}
-            if not required <= set(ids):
+                        if control.startswith(("page:", "action:"))
+                        for part in (("title",) if control.startswith("page:") else ("title", "subtitle"))}
+            if (not required <= set(ids)
+                    or any(value.startswith("hud-text:page:") and value.endswith(":subtitle") for value in ids)):
                 raise ProbeFailure(f"HUD label audit omitted page/action text: {context}")
         records = audit.get("phases")
         if (not isinstance(records, list) or len(records) != len(phases)

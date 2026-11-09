@@ -1747,9 +1747,23 @@ final class GameScene: SKScene {
             cameraCenter.distance(to: viewCenter) < 1 && hudOrigin.distance(to: viewCenter) < 1 && projectedPlayerUnits > 0
         let panelNames = Set(hudNode.children.compactMap(\.name).filter { $0.hasPrefix("hud-panel:") })
         let controlsHaveText = (Array(hudButtonShapes.values) + Array(hudPageShapes.values)).allSatisfy { shape in
-            guard let parent = shape.parent, parent.parent === hudNode, !parent.isHidden else { return false }
+            guard let parent = shape.parent, parent.parent === hudNode, !parent.isHidden,
+                  let name = parent.name else { return false }
+            let isPage = name.hasPrefix("hud-page:")
+            guard isPage || name.hasPrefix("hud:") else { return false }
+            let prefix = isPage ? "hud-text:page:\(name.dropFirst(9))" : "hud-text:action:\(name.dropFirst(4))"
+            let parts = isPage ? ["title"] : ["title", "subtitle"]
             let labels = parent.children.compactMap { $0 as? SKLabelNode }
-            return labels.count == 2 && labels.allSatisfy { !($0.text?.isEmpty ?? true) && !$0.isHidden }
+            return Set(labels.compactMap(\.name)) == Set(parts.map { "\(prefix):\($0)" }) &&
+                labels.count == parts.count && labels.allSatisfy {
+                    !($0.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) && !$0.isHidden && $0.alpha > 0
+                }
+        }
+        let tabTextCount = hudPageShapes.values.reduce(0) { count, shape in
+            count + (shape.parent?.children.filter { $0 is SKLabelNode }.count ?? 0)
+        }
+        let commandTextCount = hudButtonShapes.values.reduce(0) { count, shape in
+            count + (shape.parent?.children.filter { $0 is SKLabelNode }.count ?? 0)
         }
         let geometry = "\(size)|\(windowSafeAreaInsets)|\(hudGeometryRevision)"
         let checks: [String: Bool] = [
@@ -1803,6 +1817,8 @@ final class GameScene: SKScene {
             "fixtureBranch": ciFixtureBranch, "completedStages": ciCompletedStages.sorted(),
             "fixtureChecks": fixtureChecks,
             "essentialText": essentialHUDTextCompleteness(),
+            "hudText": ["policy": "single-title-tabs-v1", "visible": controlsHaveText,
+                        "tabLabels": tabTextCount, "commandLabels": commandTextCount],
             "fogSurface": ["policy": "shared-edge-fog-v1", "checks": fogSurfaceChecks, "tileCount": fogNodes.count,
                            "tileWidth": tileWidth, "tileHeight": tileHeight],
             "selectedEntities": selectedIDs.sorted().compactMap { id -> [String: Any]? in
@@ -6634,18 +6650,7 @@ final class GameScene: SKScene {
         title.horizontalAlignmentMode = .center
         title.position = CGPoint(x: 0, y: -11)
         node.addChild(title)
-        let subtitle = HUDTextLabel(fontNamed: "AvenirNext-Medium")
-        subtitle.name = "hud-text:page:\(page.rawValue):subtitle"
-        // One clear name per tab; the action cards carry the contextual facts.
-        subtitle.sourceText = ""
-        subtitle.fontSize = 7
-        subtitle.fontColor = HUDPalette.mutedText
-        subtitle.verticalAlignmentMode = .center
-        subtitle.horizontalAlignmentMode = .center
-        subtitle.position = CGPoint(x: 0, y: -16)
-        node.addChild(subtitle)
         boundedHUDLabels.append((title, CGRect(x: -frame.width / 2 + 3, y: -18, width: frame.width - 6, height: 14), 10))
-        boundedHUDLabels.append((subtitle, CGRect(x: -frame.width / 2 + 3, y: -21, width: frame.width - 6, height: 10), 7))
         return node
     }
 

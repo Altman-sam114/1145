@@ -65,3 +65,11 @@
 - [完成代码/待云端] 截图恢复和独立metadata负例、manifest日志/失败候选、HUD文字/主命令层次与缓存地形细纹。本机3Python AST与diff通过，不运行任何本地测试。
 - [素材质量阻塞] 内置imagegen共8次：四类八向候选已出图，侦察车斜向修正；透明输出存在彩边，维修车仍白底，均未接入。候选路径为generated_images/1/v6.14-*-eight-candidate.png，提示词已落盘。已异步询问是否允许图像处理清理，未收到明确回答前不做工具外图片编辑；独立代码验证继续。
 - 本次先提交截图/HUD/材质可验收增量，云端固定24链路将一并复核前轮完整海军八向。不将素材待办混成已完成内容。
+
+- 已精确暂存并正常提交/push main `2afc543`（截图恢复/HUD/材质/提示词与本轮文档追加共11文件）。原有文档整理、Team ID和历史归档未混入；先前append文档patch因index上下文不同失败，改为仅将本轮追加内容写入index，工作区原改动完整保留。现等待该SHA云端，不重复dispatch。
+- 精确云端run已出现：42687256502 / attempt1 / SHA 2afc543899625e705850c0618f236d9deeb67164，进行中。证据目标/private/tmp/desert-frontline-review-42687256502-attempt1/；本机只读取运行状态。生图记录已补每次source与未接入状态（本地文档，不为此另触发CI）。
+- run42687256502：Static checks成功（19:51:03→19:53:20 UTC，137s），Project lint成功，generic iOS device build进行中；尚无运行/截图验收结论。
+- run42687256502：generic iOS设备编译成功（19:53:20→19:54:09 UTC，49s）；当前进入模拟器构建/启动/24图流程。尚未取得完整原包，不提前声称HUD或海军验收通过。
+
+- [失败已定位] v6.14 run42687256502原包159283bytes/33项，digest924520411a108386b78df5c260007a79332e6ae758d26021b21424076b6fbaea已核对；双build/121runner/31source=bundle成功，0/24正式图。prewarm因为分类空subtitle不满足原两行controlsHaveText而hud=false，模型/地图/迷雾/文字事实/投影全true、HUD producer成功并恢复。work464.096/cleanup21.302；没有进入截图恢复。
+- [完成代码/待云端] v6.15移除空分类subtitle并同步实际节点/精确文字ID与可见性验证、hudText实际数量证据、parser与HUD审计及对应负例。本机3AST/JSON/diff；下一步精确暂存追加文档和4个直接代码文件，main正常提交/push，下载新SHA官方包逐张复核24图。失败证据继续保留，不盲加时间。

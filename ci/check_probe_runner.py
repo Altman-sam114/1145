@@ -80,6 +80,7 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
     emit("ready", checks={key: True for key in CHECKS}, fixtureChecks={"syntheticSchemaOnly": True, **({"commandUnobscured": True} if definition["marker"] in ("move", "attack-move", "attack-target") else {})},
          fixtureBranch=branch, completedStages=sorted(STAGES), frames=frames, geometryRevision=1,
          page=definition["page"], marker=definition["marker"], focus=definition["focus"],
+         hudText=dict(policy="single-title-tabs-v1", visible=True, tabLabels=5, commandLabels=2*ACTIONS[definition["page"]]),
          counts=dict(mapNodes=1, entities=1, playerUnits=1, visiblePlayerUnits=1, fogNodes=1,
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
@@ -212,7 +213,8 @@ def hud_fixture(runner):
     def label_audit(controls, phases):
         # Count-only protocol placeholders, not Python glyph measurements or a font model.
         ids = sorted({f"hud-text:{control}:{part}" for control in controls
-                      if control.startswith(("page:", "action:")) for part in ("title", "subtitle")} | {"hud-text:unit-placeholder"})
+                      if control.startswith(("page:", "action:"))
+                      for part in (("title",) if control.startswith("page:") else ("title", "subtitle"))} | {"hud-text:unit-placeholder"})
         count = len(ids)
         records = []
         for phase in phases:
@@ -771,6 +773,8 @@ class ProbeTests(unittest.TestCase):
             "duplicate-phase": lambda report: report["matrix"][0]["labelAudit"]["phases"][1].update(phase="normal"),
             "duplicate-id": lambda report: report["matrix"][0]["labelAudit"]["labelIDs"].__setitem__(1, report["matrix"][0]["labelAudit"]["labelIDs"][0]),
             "missing-action-label": lambda report: report["matrix"][0]["labelAudit"]["labelIDs"].__setitem__(0, "hud-text:omitted-action-placeholder"),
+            "missing-page-title": lambda report: report["matrix"][0]["labelAudit"]["labelIDs"].__setitem__(2, "hud-text:omitted-page-placeholder"),
+            "stale-page-subtitle": lambda report: report["matrix"][0]["labelAudit"]["labelIDs"].__setitem__(2, "hud-text:page:tactical:subtitle"),
             "bad-count": lambda report: report["matrix"][0]["labelAudit"]["phases"][0].update(measuredCount=-1),
             "missing-count": lambda report: report["matrix"][0]["labelAudit"]["phases"][0].pop("sourcePreservedCount"),
             "missing-display-count": lambda report: report["matrix"][0]["labelAudit"]["phases"][0].pop("displayValidCount"),
@@ -1908,6 +1912,22 @@ class SceneEvidenceTests(unittest.TestCase):
                 self.assertEqual(manifest["sceneReadinessOutcome"], "failure")
                 self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
                 self.runner = FakeRunner(self.directory)
+
+    def test_scene_single_title_tabs_require_real_visible_control_text(self):
+        for defect in ("missing", "policy", "hidden", "numeric-visible", "missing-tab", "extra-tab", "bool-count", "missing-state"):
+            with self.subTest(defect=defect):
+                records = self.records(self.scene()["scene"])
+                evidence = records[-1]["hudText"]
+                if defect == "missing": records[-1].pop("hudText")
+                elif defect == "policy": evidence["policy"] = "old-two-line-tabs"
+                elif defect == "hidden": evidence["visible"] = False
+                elif defect == "numeric-visible": evidence["visible"] = 1
+                elif defect == "missing-tab": evidence["tabLabels"] = 4
+                elif defect == "extra-tab": evidence["tabLabels"] = 10
+                elif defect == "bool-count": evidence["tabLabels"] = True
+                elif defect == "missing-state": evidence["commandLabels"] -= 1
+                with self.assertRaisesRegex(ValueError, "HUD control text"):
+                    latest_ready(records, self.definition)
 
     def test_scene_projection_must_bind_and_center_the_real_world_viewport(self):
         bindings = ("nativeCameraDisabled", "hudAttached", "worldAttached", "hostScene")
