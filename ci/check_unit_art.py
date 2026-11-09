@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify original entity sprites in the checkout and the actual built app."""
+"""Verify original entity, scenery and effect sprites in the checkout and built app."""
 import argparse
 import binascii
 import hashlib
@@ -19,9 +19,11 @@ STRUCTURES = {"hq": "command-hq", "barracks": "war-factory", "airfield": "airfie
               "oilDerrick": "oil-derrick", "radarOutpost": "radar-outpost", "sonarBuoy": "sonar-buoy",
               "guardTower": "guard-tower", "samSite": "sam-site", "coastalBattery": "coastal-battery"}
 SCENERY = {"desertRocks": "desert-rocks", "datePalm": "date-palm", "desertHamlet": "desert-hamlet"}
+EFFECTS = {"waterImpact": "water-impact", "impactBurst": "impact-burst"}
 ASSET_PATHS = {**{kind: f"Units/{name}.png" for kind, name in KINDS.items()},
                **{kind: f"Structures/{name}.png" for kind, name in STRUCTURES.items()},
-               **{kind: f"Scenery/{name}.png" for kind, name in SCENERY.items()}}
+               **{kind: f"Scenery/{name}.png" for kind, name in SCENERY.items()},
+               **{kind: f"Effects/{name}.png" for kind, name in EFFECTS.items()}}
 
 
 def inspect_png(data):
@@ -125,7 +127,7 @@ def verify(art):
         raise ValueError("Art provenance document missing")
     assets = manifest["assets"]
     if len(assets) != len(ASSET_PATHS) or {a["kind"] for a in assets} != set(ASSET_PATHS):
-        raise ValueError("Expected ten mobile units, ten structures and three scenery assets")
+        raise ValueError("Expected ten mobile units, ten structures, three scenery and two effect assets")
     reports = []
     for asset in assets:
         name = ASSET_PATHS[asset['kind']]

@@ -96,7 +96,9 @@ Mechanic 实体另持有预创建的 `mechanicRepairEffectNode`，由阵营化�
 
 小地图下方的 `−` / `+` 是独立的 HUD 命中区域，调用 `adjustCameraZoom(by:)` 复用 `minCameraScale`、`maxCameraScale` 和 `clampCamera`，并刷新小地图 camera box；它们不属于 `HudAction`，不会穿透为世界点击或清理 pending 命令。
 
-`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:detailsExpanded:)` 是绘制、触摸和云端契约的唯一框来源。小屏默认44pt选择卡只显示单位/数量、HP与当前状态，44pt Info/Close经同一route切换100pt五事实与队列；平板默认52pt、展开156pt。切页/详情切换保留选择、生产与互斥pending，SKRM收起详情。底部56pt动作区保留44pt控件，任务卡32pt，小地图去除重复图例边带。短消息由单调时钟驱动，3.2s后在0.45s内连背景完全淡出，隐形区域归还world路由；提示期限不因HUD重建重置。双指仍优先pan/pinch，其他可见静态面板与间隙仍inert。`HUDPalette`与共享命令符号/生产纹理沿用；25组生产契约增加50次详情状态检查、五项事实互不重叠、hidden-toast路由和精确恢复，原标签/投影/失败门槛保留。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:detailsExpanded:)` 是绘制、触摸和云端契约的唯一框来源。小屏默认44pt选择卡只显示单位/数量、HP与当前状态，44pt Info/Close经同一route切换100pt五事实与队列；平板默认52pt、展开156pt。切页/详情切换保留选择、生产与互斥pending，SKRM收起详情。底部56pt动作区保留44pt控件，任务卡36pt/必要文字槽12pt，小地图去除重复图例边带。短消息由单调时钟驱动，3.2s后在0.45s内连背景完全淡出，隐形区域归还world路由；提示期限不因HUD重建重置。双指仍优先pan/pinch，其他可见静态面板与间隙仍inert。`HUDPalette`与共享命令符号/生产纹理沿用；25组生产契约增加50次详情状态检查、五项事实互不重叠、hidden-toast路由和精确恢复，原标签/投影/失败门槛保留。
+
+两张原创透明Effects纹理与实体共用384px解码/alpha裁边，`showArtworkImpact`只投影原效果入口，在0.48–0.56s内有界清理；水柱、火焰烟尘、舰载机原飞机纹理和细化弹道继续沿原可见性/发射延迟/单次伤害链路。ready要求两图实际解码及相关固定场景真实挂载；正常任务标题/正文和默认摘要由`essentialHUDTextCompleteness`要求完整sourceText，原长文本拟合/ellipsis与边界门槛保留。
 
 ### `AIDifficulty`
 

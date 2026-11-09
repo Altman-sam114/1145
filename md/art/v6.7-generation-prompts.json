@@ -1,0 +1,35 @@
+{
+  "tool": "image_gen.imagegen",
+  "generatedDate": "2026-11-09",
+  "status": "selected original RGBA for v6.7; integration pending cloud validation",
+  "assets": [
+    {
+      "name": "water-impact",
+      "file": "water-impact.png",
+      "source": "/Users/a114514/.codex/generated_images/01a1bef8-bc93-7c52-a17f-5a99c3d4a207/exec-c55b4e3d-c0bc-4eaf-83e6-bbd46738462e.png",
+      "prompt": "Use case: stylized-concept\nAsset type: original transparent real-time-strategy game water-impact VFX sprite, production asset for an isometric modern desert/coastal military game.\nPrimary request: one refined, physically convincing naval artillery shell splash at the moment of impact. A narrow asymmetric white-water plume with delicate spray, a dense cool turquoise base and a low broken elliptical foam crown. Fine droplets feather naturally outward. The splash should look like high-quality hand-painted 3D game art, matching detailed miniature military vehicles. Water only; no vessel, projectile, fire, text, UI, icon or scenery.\nComposition: a single isolated complete effect, isometric view 35 degrees down, plume centered above a shallow horizontal ground-plane ellipse, roughly as tall as wide. Entire spray comfortably inside frame with 12 percent transparent margins. Soft sun from upper left. The surface footprint must be open and transparent between foam fragments, no opaque disk of ocean. Varied organic strands and irregular droplets; avoid cylindrical outlines, neon, lasers, cartoon tubes, symmetrical clip-art rings or a flat solid blue fill.\nPalette: warm white highlights, muted pale aqua, blue-gray shaded spray; translucent soft alpha edges.\nOutput: genuinely transparent RGBA background, no checkerboard, no backdrop, no border, no watermark. One effect only, not a sheet.",
+      "bytes": 1377613,
+      "sha256": "b3223cd9929fbb664f81ae687f206cb07a62175d123bc121ab625c576497cff4",
+      "dimensions": [
+        1312,
+        1199
+      ],
+      "projectFile": "DesertFrontline/Art/Effects/water-impact.png",
+      "selectedUserFile": "/Users/a114514/.codex/generated_images/1/v6.7-water-impact.png"
+    },
+    {
+      "name": "impact-burst",
+      "file": "impact-burst.png",
+      "source": "/Users/a114514/.codex/generated_images/01a1bef8-bc93-7c52-a17f-5a99c3d4a207/exec-a013845c-2e99-4c94-8829-1a74324b6795.png",
+      "prompt": "Use case: stylized-concept\nAsset type: one original transparent impact VFX sprite for an isometric modern military RTS.\nPrimary request: a compact conventional missile-impact burst, a bright irregular amber-orange fire core low in the center, layered small curls of charcoal and warm gray smoke behind it, a few fine sparks and tiny dark fragments, a low soft dusty ground puff. High-quality miniature 3D hand-painted game art that matches detailed military vehicles, readable when reduced to about 60 pixels wide. Natural turbulent forms and fine material detail, restrained warm color, strong silhouette with translucent feathered edges.\nComposition: one isolated complete impact, isometric view about 35 degrees down, ground contact centered near the bottom, no horizon; width slightly greater than height. Keep all fire/smoke/sparks inside frame with 15 percent true transparent margins. Soft sunlight from upper left.\nConstraints: only the effect; no vehicle, soldiers, buildings, ground tile, weapons, UI, text or logos. No nuclear mushroom cloud, symmetric starburst, opaque disk, cyan glow, neon laser, clip-art outline, checkerboard or colored backdrop. Transparent RGBA background, not a sprite sheet.",
+      "bytes": 1696917,
+      "sha256": "9026d7bcb55511611a3becf7014222f22a5ab4b94c78eae735d7705f04e2ef71",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "projectFile": "DesertFrontline/Art/Effects/impact-burst.png",
+      "selectedUserFile": "/Users/a114514/.codex/generated_images/1/v6.7-impact-burst.png"
+    }
+  ]
+}

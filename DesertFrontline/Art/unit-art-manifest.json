@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.5",
+  "version": "v6.7",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.5-production-art.md",
+  "promptDocument": "md/art/v6.7-combat-effects.md",
   "assets": [
     {
       "kind": "humvee",
@@ -248,7 +248,29 @@
       "width": 1536,
       "height": 1024,
       "worldWidth": 78
+    },
+    {
+      "kind": "waterImpact",
+      "file": "Effects/water-impact.png",
+      "sourceFile": "v6.7-water-impact.png",
+      "generationFile": "exec-c55b4e3d-c0bc-4eaf-83e6-bbd46738462e.png",
+      "bytes": 1377613,
+      "sha256": "b3223cd9929fbb664f81ae687f206cb07a62175d123bc121ab625c576497cff4",
+      "width": 1312,
+      "height": 1199,
+      "worldWidth": 50
+    },
+    {
+      "kind": "impactBurst",
+      "file": "Effects/impact-burst.png",
+      "sourceFile": "v6.7-impact-burst.png",
+      "generationFile": "exec-a013845c-2e99-4c94-8829-1a74324b6795.png",
+      "bytes": 1696917,
+      "sha256": "9026d7bcb55511611a3becf7014222f22a5ab4b94c78eae735d7705f04e2ef71",
+      "width": 1536,
+      "height": 1024,
+      "worldWidth": 48
     }
   ],
-  "updatedDate": "2026-11-06"
+  "updatedDate": "2026-11-09"
 }

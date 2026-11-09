@@ -732,7 +732,7 @@ private struct HUDLayout {
         let mapHeight: CGFloat = compact ? 60 : 108
         let mapPanel = CGRect(x: safe.maxX - mapWidth, y: top.minY - 6 - mapHeight - 68,
                               width: mapWidth, height: mapHeight + 68)
-        let missionHeight: CGFloat = compact ? 32 : 40
+        let missionHeight: CGFloat = compact ? 36 : 40
         let mission = CGRect(x: safe.minX, y: top.minY - 6 - missionHeight,
                              width: compact ? 252 : 360, height: missionHeight)
         let message = CGRect(x: safe.minX, y: mission.minY - 24, width: compact ? 320 : 440, height: 18)
@@ -764,14 +764,14 @@ private struct HUDLayout {
             "forces": CGRect(x: innerTop.minX + moneyWidth + incomeWidth, y: innerTop.minY, width: forcesWidth - 6, height: innerTop.height),
             "ai": CGRect(x: innerTop.minX + moneyWidth + incomeWidth + forcesWidth, y: innerTop.minY,
                          width: innerTop.width - moneyWidth - incomeWidth - forcesWidth, height: innerTop.height),
-            "missionTitle": CGRect(x: mission.minX + 10, y: mission.maxY - (compact ? 14 : 17), width: mission.width - 20, height: compact ? 11 : 12),
-            "missionDetail": CGRect(x: mission.minX + 10, y: mission.minY + (compact ? 7 : 11), width: mission.width - 20, height: compact ? 9 : 11),
+            "missionTitle": CGRect(x: mission.minX + 10, y: mission.maxY - (compact ? 16 : 17), width: mission.width - 20, height: 12),
+            "missionDetail": CGRect(x: mission.minX + 10, y: mission.minY + (compact ? 8 : 11), width: mission.width - 20, height: 12),
             "messageText": message.insetBy(dx: 8, dy: 2),
             "selectionTitle": CGRect(x: selection.minX + 10, y: selection.maxY - (compact ? 18 : 20),
                                      width: selectionContentWidth - 44,
                                      height: compact ? 14 : 16),
-            "selected": CGRect(x: selection.minX + 10, y: selection.maxY - (compact ? 31 : 34),
-                               width: selectionContentWidth - 44, height: compact ? 10 : 12),
+            "selected": CGRect(x: selection.minX + 10, y: selection.maxY - (compact ? 33 : 34),
+                               width: selectionContentWidth - 44, height: 12),
             "detailsToggle": disclosure,
             "detailsText": CGRect(x: disclosure.minX, y: disclosure.minY + 4, width: disclosure.width, height: 10)
         ]
@@ -1212,6 +1212,8 @@ final class GameScene: SKScene {
     private var unitArtworkTextures: [EntityKind: SKTexture] = [:]
     private var sceneryArtworkTextures: [String: SKTexture] = [:]
     private static let sceneryArtworkNames = ["desert-rocks", "date-palm", "desert-hamlet"]
+    private var effectArtworkTextures: [String: SKTexture] = [:]
+    private static let effectArtworkNames = ["water-impact", "impact-burst"]
     private var terrainSurfaceTextures: [Int: SKTexture] = [:]
     private var hudSymbolTextures: [String: SKTexture] = [:]
     private var controlPoints: [BattlefieldControlPoint] = []
@@ -1579,6 +1581,8 @@ final class GameScene: SKScene {
                 return target.isAlive && target.kind == targetKind && isKnownToFaction(target, observer: .player)
             }
         }
+        func hasEffect(_ name: String) -> Bool { effectsLayer.children.contains { $0.name == "effect-art:\(name)" } }
+        let visibleSubmarineCues = entities.values.filter { $0.kind == .submarine && !$0.submarineContactCueNode.isHidden }
         switch ciFixtureBranch {
         case "base":
             let facilities: [EntityKind] = [.hq, .barracks, .airfield, .oilDerrick]
@@ -1602,13 +1606,13 @@ final class GameScene: SKScene {
             }
             return checks
         case "coast-default": return ["navy": count(.battleship, .player) > 0 && count(.carrier, .player) > 0 && count(.shipyard, .player) > 0]
-        case "naval-salvo": return ["battleshipTarget": attacks(.battleship, .battleship)]
-        case "coastal-battery": return ["batteryTarget": attacks(.coastalBattery, .battleship)]
-        case "carrier-strike": return ["carrierTarget": attacks(.carrier, .battleship)]
-        case "fighter-strike": return ["fighterTarget": attacks(.fighter, .coastalBattery)]
-        case "helicopter-salvo": return ["helicopterTarget": attacks(.helicopter, .tank)]
-        case "mobile-aa": return ["aaTarget": attacks(.aaTruck, .fighter)]
-        case "naval-damage": return ["sonarContact": attacks(.battleship, .submarine), "criticalBattleship": selected.contains { $0.kind == .battleship && $0.hp / $0.kind.maxHP < 0.35 }]
+        case "naval-salvo": return ["battleshipTarget": attacks(.battleship, .battleship), "waterArt": hasEffect("water-impact"), "impactArt": hasEffect("impact-burst")]
+        case "coastal-battery": return ["batteryTarget": attacks(.coastalBattery, .battleship), "waterArt": hasEffect("water-impact"), "impactArt": hasEffect("impact-burst")]
+        case "carrier-strike": return ["carrierTarget": attacks(.carrier, .battleship), "waterArt": hasEffect("water-impact"), "impactArt": hasEffect("impact-burst"), "aircraftArt": effectsLayer.children.filter({ $0.name == "carrier-art:JET" }).count == 3]
+        case "fighter-strike": return ["fighterTarget": attacks(.fighter, .coastalBattery), "impactArt": hasEffect("impact-burst")]
+        case "helicopter-salvo": return ["helicopterTarget": attacks(.helicopter, .tank), "impactArt": hasEffect("impact-burst")]
+        case "mobile-aa": return ["aaTarget": attacks(.aaTruck, .fighter), "impactArt": hasEffect("impact-burst")]
+        case "naval-damage": return ["sonarContact": attacks(.battleship, .submarine), "criticalBattleship": selected.contains { $0.kind == .battleship && $0.hp / $0.kind.maxHP < 0.35 }, "waterArt": hasEffect("water-impact"), "impactArt": hasEffect("impact-burst"), "contactTextUpright": !visibleSubmarineCues.isEmpty && visibleSubmarineCues.allSatisfy({ $0.node.xScale * $0.submarineContactCueLabel.xScale > 0 })]
         case "damage-state": return ["threeDomains": chosen(.tank) && chosen(.fighter) && chosen(.battleship), "damaged": selected.count == 3 && selected.allSatisfy { $0.hp / $0.kind.maxHP < 0.62 }]
         case "stop-command": return ["fourUnits": selected.count == 4 && chosen(.carrier), "idle": selected.allSatisfy { $0.destination == nil && $0.attackTarget == nil && $0.attackMoveDestination == nil && $0.holdPosition == nil }]
         case "target-cycle": return ["targetedGroup": selected.count >= 4 && selected.allSatisfy { $0.attackTarget != nil }]
@@ -1699,10 +1703,12 @@ final class GameScene: SKScene {
                 Self.sceneryArtworkNames.allSatisfy({ sceneryArtworkTexture(named: $0) != nil }),
             "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count &&
                 EntityKind.allCases.filter({ $0.artworkName != nil }).allSatisfy({ unitArtworkTexture(for: $0) != nil }) &&
+                Self.effectArtworkNames.allSatisfy({ effectArtworkTexture(named: $0) != nil }) &&
                 attached.allSatisfy({ $0.artworkNode?.parent != nil }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
                 moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty &&
+                essentialHUDTextCompleteness().values.allSatisfy({ $0 }) &&
                 !view.shouldCullNonVisibleNodes && !view.ignoresSiblingOrder,
             "fog": !fogLayer.children.isEmpty && !visibleTiles.isEmpty && !exploredTiles.isEmpty,
             "fixture": !ciFixtureBranch.isEmpty && hudPage.rawValue == expectedPage && fixtureChecks.values.allSatisfy({ $0 }) &&
@@ -1713,7 +1719,7 @@ final class GameScene: SKScene {
             let failure = checks.keys.sorted().map { "\($0)=\(checks[$0]!)" }.joined(separator: ",")
             if failure != ciLastReadinessFailure {
                 ciLastReadinessFailure = failure
-                ciBeacon("readiness-pending", extra: ["checks": checks, "fixtureChecks": fixtureChecks,
+                ciBeacon("readiness-pending", extra: ["checks": checks, "fixtureChecks": fixtureChecks, "essentialText": essentialHUDTextCompleteness(),
                                                     "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
             ciReadyFrames.removeAll()
@@ -1730,6 +1736,7 @@ final class GameScene: SKScene {
             "page": hudPage.rawValue, "marker": marker, "focus": focus,
             "fixtureBranch": ciFixtureBranch, "completedStages": ciCompletedStages.sorted(),
             "fixtureChecks": fixtureChecks,
+            "essentialText": essentialHUDTextCompleteness(),
             "selectedEntities": selectedIDs.sorted().compactMap { id -> [String: Any]? in
                 guard let entity = entities[id] else { return nil }
                 return ["id": id, "kind": entity.kind.shortCode, "hpFraction": entity.hp / entity.kind.maxHP,
@@ -1744,6 +1751,11 @@ final class GameScene: SKScene {
                                     "viewClass": String(describing: type(of: view))],
             "projection": projection,
             "artwork": ["policy": "rgba384-grounded-v2", "attachedSprites": attached.filter({ $0.artworkNode != nil }).count,
+                        "effectTextures": Self.effectArtworkNames.compactMap { name -> [String: Any]? in
+                            guard let texture = effectArtworkTextures[name] else { return nil }
+                            return ["file": "Art/Effects/\(name).png", "width": texture.size().width, "height": texture.size().height]
+                        },
+                        "effectSprites": effectsLayer.children.filter({ $0.name?.hasPrefix("effect-art:") == true }).count,
                         "sceneryTextures": Self.sceneryArtworkNames.compactMap { name -> [String: Any]? in
                             guard let texture = sceneryArtworkTextures[name] else { return nil }
                             return ["file": "Art/Scenery/\(name).png", "width": texture.size().width, "height": texture.size().height]
@@ -3053,6 +3065,46 @@ final class GameScene: SKScene {
         guard let texture = decodedArtworkTexture(named: name, directory: "Scenery") else { return nil }
         sceneryArtworkTextures[name] = texture
         return texture
+    }
+
+    private func effectArtworkTexture(named name: String) -> SKTexture? {
+        if let cached = effectArtworkTextures[name] { return cached }
+        guard let texture = decodedArtworkTexture(named: name, directory: "Effects") else { return nil }
+        effectArtworkTextures[name] = texture
+        return texture
+    }
+
+    // Rendering only: callers retain visibility, damage and timing decisions.
+    @discardableResult
+    private func showArtworkImpact(
+        _ name: String, at point: CGPoint, width: CGFloat, zPosition: CGFloat,
+        anchorY: CGFloat = 0.18, mirrored: Bool = false,
+        duration: TimeInterval = 0.48, persistent: Bool = false
+    ) -> Bool {
+        guard let texture = effectArtworkTexture(named: name) else { return false }
+        let root = SKNode()
+        root.name = "effect-art:\(name)"
+        root.position = point
+        root.zPosition = zPosition
+        let sprite = SKSpriteNode(texture: texture)
+        sprite.size = CGSize(width: width, height: width * texture.size().height / max(texture.size().width, 1))
+        sprite.anchorPoint = CGPoint(x: 0.5, y: anchorY)
+        sprite.xScale = mirrored ? -1 : 1
+        root.addChild(sprite)
+        effectsLayer.addChild(root)
+        if !persistent {
+            root.setScale(0.76)
+            root.run(.sequence([
+                .scale(to: 1, duration: 0.08),
+                .group([
+                    .scale(to: 1.14, duration: duration - 0.08),
+                    .moveBy(x: 0, y: name == "water-impact" ? -3 : 5, duration: duration - 0.08),
+                    .fadeOut(withDuration: duration - 0.08)
+                ]),
+                .removeFromParent()
+            ]))
+        }
+        return true
     }
 
     private func decodedArtworkTexture(named name: String, directory: String) -> SKTexture? {
@@ -5386,6 +5438,14 @@ final class GameScene: SKScene {
         }
     }
 
+    private func essentialHUDTextCompleteness() -> [String: Bool] {
+        var labels = [("missionTitle", missionTitleLabel), ("missionDetail", missionDetailLabel)]
+        if !selectionDetailsExpanded { labels.append(("selected", selectedLabel)) }
+        return Dictionary(uniqueKeysWithValues: labels.map { key, label in
+            (key, !(label.sourceText?.isEmpty ?? true) && label.text == label.sourceText)
+        })
+    }
+
     private func writeHUDContractIfRequested(at time: TimeInterval) {
         let environment = ProcessInfo.processInfo.environment
         guard !didWriteHUDContract, environment["DESERT_CI_HUD_CONTRACT"] == "1",
@@ -5667,6 +5727,8 @@ final class GameScene: SKScene {
                     let overlap = first.intersection(second)
                     return overlap.isNull || overlap.width * overlap.height < 0.01
                 }
+                let essentialText = essentialHUDTextCompleteness()
+                expect(essentialText.values.allSatisfy({ $0 }), "labels", "essential-natural-text-complete")
                 var controls: [String: CGRect] = [:]
                 for (tab, frame) in layout.pages { controls["page:\(tab.rawValue)"] = frame }
                 for (action, frame) in layout.actions { controls["action:\(action.rawValue)"] = frame }
@@ -5858,6 +5920,7 @@ final class GameScene: SKScene {
                                "panelArea": panelArea, "viewportArea": fixtureSize.width * fixtureSize.height,
                                "panelAreaFraction": panelArea / (fixtureSize.width * fixtureSize.height),
                                "cameraProjectionSamples": cameraProjectionSamples,
+                               "essentialText": essentialText,
                                "disclosure": ["toggleCount": 2, "stateRestored": disclosureRestored, "toastPassthrough": toastPassthrough, "states": disclosureStates],
                                "selectionRows": selectionRows,
                                "labelAudit": auditJSON(labelAudit, labels: normal, registeredCount: labelCount),
@@ -6513,7 +6576,7 @@ final class GameScene: SKScene {
         case .secureCoast:
             let assets = coastalAssetBreakdown(for: .player)
             let total = assets.shipyards + assets.sonarBuoys + assets.coastalBatteries
-            return "Hold 2 coastal assets. \(min(total, 2))/2 secured. SY\(assets.shipyards) SON\(assets.sonarBuoys) CB\(assets.coastalBatteries) +$600"
+            return "Coast \(min(total, 2))/2  SY\(assets.shipyards) SON\(assets.sonarBuoys) CB\(assets.coastalBatteries)  +$600"
         case .combinedArms:
             let counts = playerMobileDomainCounts()
             return "Field 10 units: \(min(counts.total, 10))/10  L\(counts.land) A\(counts.air) N\(counts.naval)  +$800"
@@ -13893,6 +13956,7 @@ final class GameScene: SKScene {
             entity.submarineContactCueRing.strokeColor = cueColor.withAlphaComponent(0.92)
             entity.submarineContactCueRing.fillColor = cueColor.withAlphaComponent(0.08)
             entity.submarineContactCueLabel.text = cueText
+            entity.submarineContactCueLabel.xScale = entity.node.xScale < 0 ? -1 : 1
             entity.submarineContactCueLabel.fontColor = cueColor.withAlphaComponent(0.96)
             entity.submarineContactCueNode.isHidden = false
         }
@@ -15206,40 +15270,40 @@ final class GameScene: SKScene {
             path.addQuadCurve(to: impact, control: control)
 
             let smoke = SKShapeNode(path: path)
-            smoke.strokeColor = UIColor(white: 0.94, alpha: 0.34)
-            smoke.lineWidth = 5
+            smoke.strokeColor = UIColor(white: 0.94, alpha: 0.24)
+            smoke.lineWidth = 2.5
             smoke.lineCap = .round
             smoke.zPosition = 282
             effectsLayer.addChild(smoke)
 
             let trail = SKShapeNode(path: path)
-            trail.strokeColor = color.withAlphaComponent(0.88)
-            trail.lineWidth = 2.2
-            trail.glowWidth = 2.5
+            trail.strokeColor = color.withAlphaComponent(0.25)
+            trail.lineWidth = 0.9
+            trail.glowWidth = 0.4
             trail.zPosition = 283
             effectsLayer.addChild(trail)
 
-            let missile = SKShapeNode(rectOf: CGSize(width: 20, height: 5), cornerRadius: 2)
+            let missile = SKShapeNode(rectOf: CGSize(width: 14, height: 3.5), cornerRadius: 2)
             missile.fillColor = UIColor(white: 0.98, alpha: 1.0)
-            missile.strokeColor = color
-            missile.lineWidth = 1.4
-            missile.glowWidth = 2
+            missile.strokeColor = UIColor(white: 0.38, alpha: 0.92)
+            missile.lineWidth = 0.6
+            missile.glowWidth = 0
             missile.zPosition = 285
-            let flame = SKShapeNode(ellipseOf: CGSize(width: 11, height: 4))
+            let flame = SKShapeNode(ellipseOf: CGSize(width: 8, height: 2.5))
             flame.position = CGPoint(x: -14, y: 0)
             flame.fillColor = UIColor(red: 1.0, green: 0.58, blue: 0.16, alpha: 0.96)
             flame.strokeColor = UIColor.white.withAlphaComponent(0.72)
-            flame.glowWidth = 3
+            flame.glowWidth = 1
             flame.zPosition = -1
             missile.addChild(flame)
             effectsLayer.addChild(missile)
 
-            let flash = SKShapeNode(circleOfRadius: 6)
+            let flash = SKShapeNode(circleOfRadius: 3.5)
             flash.position = launch
             flash.fillColor = UIColor.white.withAlphaComponent(0.96)
             flash.strokeColor = color
             flash.lineWidth = 1.5
-            flash.glowWidth = 4
+            flash.glowWidth = 1
             flash.zPosition = 286
             effectsLayer.addChild(flash)
 
@@ -15350,18 +15414,18 @@ final class GameScene: SKScene {
             path.addQuadCurve(to: impact, control: control)
 
             let glowTrail = SKShapeNode(path: path)
-            glowTrail.strokeColor = color.withAlphaComponent(0.38)
-            glowTrail.lineWidth = 1.5
+            glowTrail.strokeColor = color.withAlphaComponent(0.18)
+            glowTrail.lineWidth = 0.7
             glowTrail.lineCap = .round
-            glowTrail.glowWidth = 1.5
+            glowTrail.glowWidth = 0
             glowTrail.zPosition = 282
             effectsLayer.addChild(glowTrail)
 
             for smokeIndex in 0..<4 {
                 let t = CGFloat(smokeIndex + 1) * 0.14 + CGFloat(index) * 0.025
-                let puff = SKShapeNode(circleOfRadius: smokeIndex.isMultiple(of: 2) ? 3.2 : 2.5)
+                let puff = SKShapeNode(circleOfRadius: smokeIndex.isMultiple(of: 2) ? 2.2 : 1.7)
                 puff.position = quadraticPoint(from: launch, control: control, to: impact, t: min(t, 0.76))
-                puff.fillColor = UIColor(white: 0.94, alpha: 0.54)
+                puff.fillColor = UIColor(white: 0.94, alpha: 0.35)
                 puff.strokeColor = UIColor.white.withAlphaComponent(0.32)
                 puff.lineWidth = 0.8
                 puff.zPosition = 283
@@ -15379,11 +15443,11 @@ final class GameScene: SKScene {
                 ]))
             }
 
-            let rocket = SKShapeNode(rectOf: CGSize(width: 15, height: 4), cornerRadius: 1.8)
+            let rocket = SKShapeNode(rectOf: CGSize(width: 12, height: 3), cornerRadius: 1.8)
             rocket.fillColor = UIColor(white: 0.98, alpha: 1.0)
-            rocket.strokeColor = color
-            rocket.lineWidth = 1.2
-            rocket.glowWidth = 2
+            rocket.strokeColor = UIColor(white: 0.38, alpha: 0.92)
+            rocket.lineWidth = 0.6
+            rocket.glowWidth = 0
             rocket.zPosition = 285
             let flame = SKShapeNode(ellipseOf: CGSize(width: 9, height: 3.4))
             flame.position = CGPoint(x: -11, y: 0)
@@ -15395,12 +15459,12 @@ final class GameScene: SKScene {
             effectsLayer.addChild(rocket)
 
             if index < 2 {
-                let flash = SKShapeNode(circleOfRadius: 5.5)
+                let flash = SKShapeNode(circleOfRadius: 3.5)
                 flash.position = launch
                 flash.fillColor = UIColor.white.withAlphaComponent(0.96)
                 flash.strokeColor = color
                 flash.lineWidth = 1.4
-                flash.glowWidth = 4
+                flash.glowWidth = 1
                 flash.zPosition = 286
                 effectsLayer.addChild(flash)
                 if !persistent {
@@ -15564,6 +15628,7 @@ final class GameScene: SKScene {
         persistent: Bool = false
     ) {
         guard faction == .player || isVisible(point: point) else { return }
+        if showArtworkImpact("impact-burst", at: point, width: 52, zPosition: 288, persistent: persistent) { return }
         let root = SKNode()
         root.position = point
         root.zPosition = 288
@@ -15612,6 +15677,7 @@ final class GameScene: SKScene {
         persistent: Bool = false
     ) {
         guard faction == .player || isVisible(point: point) else { return }
+        if showArtworkImpact("impact-burst", at: point, width: 48, zPosition: 288, persistent: persistent) { return }
         let root = SKNode()
         root.position = point
         root.zPosition = 288
@@ -15661,9 +15727,6 @@ final class GameScene: SKScene {
         guard direction.length > 0.01 else { return }
         let normal = CGPoint(x: -direction.y, y: direction.x)
         let muzzleDistance: CGFloat = kind == .battleship ? 34 : 49
-        let color = faction == .enemy
-            ? UIColor(red: 1.0, green: 0.43, blue: 0.24, alpha: 1.0)
-            : UIColor(red: 0.30, green: 0.92, blue: 1.0, alpha: 1.0)
 
         if kind == .coastalBattery {
             showCoastalBatteryRecoil(
@@ -15684,36 +15747,36 @@ final class GameScene: SKScene {
             path.addLine(to: impact)
 
             let glow = SKShapeNode(path: path)
-            glow.strokeColor = color.withAlphaComponent(0.62)
-            glow.lineWidth = 6
+            glow.strokeColor = UIColor(red: 1, green: 0.85, blue: 0.58, alpha: 0.20)
+            glow.lineWidth = 2
             glow.lineCap = .round
-            glow.glowWidth = 4
+            glow.glowWidth = 0
             glow.zPosition = 282
             effectsLayer.addChild(glow)
 
             let core = SKShapeNode(path: path)
-            core.strokeColor = UIColor(red: 1.0, green: 0.92, blue: 0.68, alpha: 0.98)
-            core.lineWidth = 2.2
+            core.strokeColor = UIColor(red: 1.0, green: 0.92, blue: 0.68, alpha: 0.65)
+            core.lineWidth = 0.9
             core.lineCap = .round
             core.zPosition = 283
             effectsLayer.addChild(core)
 
-            let shell = SKShapeNode(rectOf: CGSize(width: 18, height: 4), cornerRadius: 2)
+            let shell = SKShapeNode(rectOf: CGSize(width: 14, height: 3), cornerRadius: 2)
             shell.position = persistent ? muzzle + (impact - muzzle) * 0.68 : muzzle
             shell.zRotation = atan2(direction.y, direction.x)
             shell.fillColor = UIColor(white: 1.0, alpha: 0.98)
-            shell.strokeColor = color
-            shell.lineWidth = 1.2
-            shell.glowWidth = 2
+            shell.strokeColor = UIColor(white: 0.48, alpha: 0.8)
+            shell.lineWidth = 0.5
+            shell.glowWidth = 0.5
             shell.zPosition = 285
             effectsLayer.addChild(shell)
 
-            let flash = SKShapeNode(circleOfRadius: 8)
+            let flash = SKShapeNode(circleOfRadius: 4.5)
             flash.position = muzzle
             flash.fillColor = UIColor(red: 1.0, green: 0.84, blue: 0.38, alpha: 0.92)
             flash.strokeColor = UIColor.white.withAlphaComponent(0.94)
             flash.lineWidth = 1.5
-            flash.glowWidth = 5
+            flash.glowWidth = 1.5
             flash.zPosition = 286
             effectsLayer.addChild(flash)
 
@@ -15950,28 +16013,28 @@ final class GameScene: SKScene {
         path.addLine(to: end)
 
         let smoke = SKShapeNode(path: path)
-        smoke.strokeColor = UIColor(white: 0.88, alpha: 0.34)
-        smoke.lineWidth = kind == .samSite ? 7 : 5
+        smoke.strokeColor = UIColor(white: 0.88, alpha: 0.24)
+        smoke.lineWidth = kind == .samSite ? 3.5 : 2.5
         smoke.lineCap = .round
         smoke.zPosition = 282
         effectsLayer.addChild(smoke)
 
         let trail = SKShapeNode(path: path)
-        trail.strokeColor = missileColor.withAlphaComponent(0.92)
-        trail.lineWidth = kind == .samSite ? 3.5 : 2.5
-        trail.glowWidth = 3
+        trail.strokeColor = missileColor.withAlphaComponent(0.24)
+        trail.lineWidth = kind == .samSite ? 1.2 : 0.9
+        trail.glowWidth = 0.4
         trail.zPosition = 283
         effectsLayer.addChild(trail)
 
-        let missile = SKShapeNode(rectOf: CGSize(width: 18, height: 5), cornerRadius: 2)
+        let missile = SKShapeNode(rectOf: CGSize(width: 14, height: 3.5), cornerRadius: 2)
         missile.position = persistent
             ? CGPoint(x: (start.x + end.x) * 0.5, y: (start.y + end.y) * 0.5)
             : start
         missile.zRotation = atan2(end.y - start.y, end.x - start.x)
         missile.fillColor = UIColor.white
-        missile.strokeColor = missileColor
-        missile.lineWidth = 1.5
-        missile.glowWidth = 2
+        missile.strokeColor = UIColor(white: 0.38, alpha: 0.92)
+        missile.lineWidth = 0.6
+        missile.glowWidth = 0
         missile.zPosition = 284
         effectsLayer.addChild(missile)
 
@@ -16056,6 +16119,7 @@ final class GameScene: SKScene {
         persistent: Bool = false
     ) {
         guard faction == .player || isVisible(point: point) else { return }
+        if showArtworkImpact("impact-burst", at: point, width: 38, zPosition: 286, anchorY: 0.45, persistent: persistent) { return }
         let node = SKNode()
         node.position = point
         node.zPosition = 286
@@ -16134,16 +16198,16 @@ final class GameScene: SKScene {
             path.addQuadCurve(to: laneEnd, control: control)
 
             let smoke = SKShapeNode(path: path)
-            smoke.strokeColor = UIColor(white: 0.86, alpha: 0.24)
-            smoke.lineWidth = 7
+            smoke.strokeColor = UIColor(white: 0.86, alpha: 0.18)
+            smoke.lineWidth = 3
             smoke.lineCap = .round
             smoke.zPosition = 274
             effectsLayer.addChild(smoke)
 
             let flightLine = SKShapeNode(path: path)
-            flightLine.strokeColor = color.withAlphaComponent(0.68)
-            flightLine.lineWidth = 2.2
-            flightLine.glowWidth = 2
+            flightLine.strokeColor = UIColor(white: 0.94, alpha: 0.28)
+            flightLine.lineWidth = 0.8
+            flightLine.glowWidth = 0
             flightLine.zPosition = 275
             effectsLayer.addChild(flightLine)
 
@@ -16152,11 +16216,11 @@ final class GameScene: SKScene {
             craft.zPosition = 279 + CGFloat(index)
             effectsLayer.addChild(craft)
 
-            let engineGlow = SKShapeNode(ellipseOf: CGSize(width: 14, height: 5))
+            let engineGlow = SKShapeNode(ellipseOf: CGSize(width: 9, height: 3))
             engineGlow.position = CGPoint(x: -27, y: 0)
             engineGlow.fillColor = UIColor(red: 1.0, green: 0.72, blue: 0.22, alpha: 0.92)
             engineGlow.strokeColor = color.withAlphaComponent(0.84)
-            engineGlow.glowWidth = 3
+            engineGlow.glowWidth = 1
             engineGlow.zPosition = -1
             craft.addChild(engineGlow)
 
@@ -16288,39 +16352,38 @@ final class GameScene: SKScene {
         delay: TimeInterval,
         persistent: Bool
     ) {
-        let color = carrierLaunchColor(for: faction)
         let path = CGMutablePath()
         path.move(to: start)
         path.addLine(to: end)
 
         let smoke = SKShapeNode(path: path)
-        smoke.strokeColor = UIColor(white: 0.90, alpha: 0.36)
-        smoke.lineWidth = 6
+        smoke.strokeColor = UIColor(white: 0.90, alpha: 0.22)
+        smoke.lineWidth = 3
         smoke.lineCap = .round
         smoke.zPosition = 281
         effectsLayer.addChild(smoke)
 
         let trail = SKShapeNode(path: path)
-        trail.strokeColor = UIColor(red: 1.0, green: 0.67, blue: 0.20, alpha: 0.92)
-        trail.lineWidth = 2.5
-        trail.glowWidth = 3
+        trail.strokeColor = UIColor(red: 1.0, green: 0.67, blue: 0.20, alpha: 0.50)
+        trail.lineWidth = 1
+        trail.glowWidth = 0.5
         trail.zPosition = 282
         effectsLayer.addChild(trail)
 
-        let missile = SKShapeNode(rectOf: CGSize(width: 22, height: 6), cornerRadius: 2)
+        let missile = SKShapeNode(rectOf: CGSize(width: 16, height: 4), cornerRadius: 2)
         missile.fillColor = UIColor(white: 0.94, alpha: 1.0)
-        missile.strokeColor = color
-        missile.lineWidth = 1.4
-        missile.glowWidth = 2
+        missile.strokeColor = UIColor(white: 0.36, alpha: 0.90)
+        missile.lineWidth = 0.6
+        missile.glowWidth = 0
         missile.zRotation = atan2(end.y - start.y, end.x - start.x)
         missile.zPosition = 284
         effectsLayer.addChild(missile)
 
-        let flame = SKShapeNode(ellipseOf: CGSize(width: 13, height: 4))
+        let flame = SKShapeNode(ellipseOf: CGSize(width: 9, height: 2.5))
         flame.position = CGPoint(x: -16, y: 0)
         flame.fillColor = UIColor(red: 1.0, green: 0.53, blue: 0.14, alpha: 0.96)
         flame.strokeColor = UIColor.white.withAlphaComponent(0.70)
-        flame.glowWidth = 3
+        flame.glowWidth = 1
         flame.zPosition = -1
         missile.addChild(flame)
 
@@ -16471,6 +16534,7 @@ final class GameScene: SKScene {
     private func showCarrierCraftFlight(kind: EntityKind, from start: CGPoint, to end: CGPoint, faction: Faction, duration: TimeInterval, scale: CGFloat) {
         let craft = carrierLaunchCraft(for: kind, faction: faction)
         craft.position = start
+        craft.zRotation = atan2(end.y - start.y, end.x - start.x)
         craft.setScale(scale)
         craft.zPosition = 279
         effectsLayer.addChild(craft)
@@ -16480,6 +16544,17 @@ final class GameScene: SKScene {
     private func carrierLaunchCraft(for kind: EntityKind, faction: Faction) -> SKNode {
         let node = SKNode()
         let color = carrierLaunchColor(for: faction)
+        if let texture = unitArtworkTexture(for: kind) {
+            node.name = "carrier-art:\(kind.shortCode)"
+            let sprite = SKSpriteNode(texture: texture)
+            sprite.size = CGSize(width: 56, height: 56 * texture.size().height / max(texture.size().width, 1))
+            // The source sprite points down-right; align its nose with the flight node's +X axis.
+            sprite.zRotation = 0.55
+            sprite.color = faction.color
+            sprite.colorBlendFactor = faction == .enemy ? 0.12 : 0.025
+            node.addChild(sprite)
+            return node
+        }
 
         if kind == .helicopter {
             let body = SKShapeNode(ellipseOf: CGSize(width: 34, height: 15))
@@ -16511,6 +16586,7 @@ final class GameScene: SKScene {
     }
 
     private func explode(at point: CGPoint, scale: CGFloat, persistent: Bool = false) {
+        if showArtworkImpact("impact-burst", at: point, width: 70 * scale, zPosition: 286, persistent: persistent) { return }
         let root = SKNode()
         root.position = point
         root.zPosition = 286
@@ -16634,6 +16710,8 @@ final class GameScene: SKScene {
         innerRing.zPosition = 1
         root.addChild(innerRing)
 
+        let texturedPlume = showArtworkImpact("water-impact", at: point, width: 34, zPosition: 284,
+                                              duration: 0.56, persistent: persistent)
         let plumePath = CGMutablePath()
         plumePath.move(to: CGPoint(x: -7, y: 0))
         plumePath.addQuadCurve(to: CGPoint(x: -2, y: 25), control: CGPoint(x: -10, y: 13))
@@ -16645,6 +16723,7 @@ final class GameScene: SKScene {
         plume.strokeColor = UIColor.white.withAlphaComponent(0.88)
         plume.lineWidth = 1.4
         plume.zPosition = 2
+        plume.isHidden = texturedPlume
         root.addChild(plume)
 
         let foam = SKShapeNode(ellipseOf: CGSize(width: 20, height: 7))
@@ -16653,6 +16732,7 @@ final class GameScene: SKScene {
         foam.strokeColor = color.withAlphaComponent(0.72)
         foam.lineWidth = 1
         foam.zPosition = 3
+        foam.isHidden = texturedPlume
         root.addChild(foam)
 
         let bubbleOffsets = [
@@ -16708,6 +16788,8 @@ final class GameScene: SKScene {
         persistent: Bool = false
     ) {
         guard faction == .player || isVisible(point: point) else { return }
+        if showArtworkImpact("water-impact", at: point, width: 50 * scale, zPosition: 284,
+                             mirrored: (incomingDirection?.x ?? 0) < 0, duration: 0.56, persistent: persistent) { return }
 
         let node = SKNode()
         node.position = point
@@ -16879,6 +16961,7 @@ final class GameScene: SKScene {
         persistent: Bool = false
     ) {
         guard faction == .player || isVisible(point: point) else { return }
+        if showArtworkImpact("impact-burst", at: point, width: 40, zPosition: 289, anchorY: 0.3, persistent: persistent) { return }
         let root = SKNode()
         root.position = point
         root.zPosition = 289

@@ -608,6 +608,10 @@ def validate_hud_contract(summary, directory):
                 or item["panelAreaFraction"] >= 1):
             raise ProbeFailure(f"HUD contract frame/area evidence incomplete: {key}")
         label_audit(item.get("labelAudit"), ["normal", "long1", "short", "long2", "restored", "rebuilt"], str(key), controls)
+        essential_text = item.get("essentialText", {})
+        if (not isinstance(essential_text, dict) or set(essential_text) != {"missionTitle", "missionDetail", "selected"}
+                or any(value is not True for value in essential_text.values())):
+            raise ProbeFailure(f"HUD essential natural text truncated/missing: {key}")
         disclosure = item.get("disclosure", {})
         states = disclosure.get("states", []) if isinstance(disclosure, dict) else []
         if (not isinstance(disclosure, dict) or type(disclosure.get("toggleCount")) is not int or disclosure["toggleCount"] != 2

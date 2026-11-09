@@ -220,6 +220,7 @@ def hud_fixture(runner):
                 checks={key: True for key in HUD_CHECKS}, failures=[], status="success", safeFrame=rectangle,
                 panels={key: rectangle for key in ("resources", "rail", "dock", "mission", "message", "selection", "minimap")},
                 controls=controls, panelArea=1, viewportArea=2, panelAreaFraction=0.5, cameraProjectionSamples=3,
+                essentialText={key: True for key in ("missionTitle", "missionDetail", "selected")},
                 disclosure=dict(toggleCount=2, stateRestored=True, toastPassthrough=True, states=[
                     dict(expanded=expanded, selectionFrame=rectangle, toggleFrame=rectangle, rowCount=5 if expanded else 0,
                          panelAreaFraction=0.5, checks={key: True for key in ("state", "geometry", "labels", "rows", "centerClear")})
@@ -646,7 +647,7 @@ class ProbeTests(unittest.TestCase):
             with self.subTest(cameraProjectionSamples=value):
                 self.mutate_hud(lambda report: report["matrix"][0].update(cameraProjectionSamples=value))
 
-    def test_hud_disclosure_and_expired_toast_cannot_be_false_green(self):
+    def test_hud_disclosure_readability_and_expired_toast_cannot_be_false_green(self):
         mutations = {
             "missing-disclosure": lambda row: row.pop("disclosure"),
             "wrong-type": lambda row: row.update(disclosure=[]),
@@ -662,6 +663,9 @@ class ProbeTests(unittest.TestCase):
             "hidden-world-center": lambda row: row["disclosure"]["states"][0]["checks"].update(centerClear=False),
             "pending-order-changed": lambda row: row["disclosure"]["states"][0]["checks"].update(state=False),
             "failed-labels": lambda row: row["disclosure"]["states"][0]["checks"].update(labels=False),
+            "essential-missing": lambda row: row.pop("essentialText"),
+            "essential-short-truncated": lambda row: row["essentialText"].update(missionDetail=False),
+            "essential-summary-truncated": lambda row: row["essentialText"].update(selected=False),
         }
         for name, mutation in mutations.items():
             with self.subTest(case=name):
@@ -674,7 +678,8 @@ class ProbeTests(unittest.TestCase):
                 descriptor = dict(runner.summary["hudContract"], path=warm["scene"]["ready"]["hudReport"]["path"])
                 warm["scene"] = scene_fixture(runner, runner.probes[0], "prewarm:1", nonce=warm["scene"]["nonce"],
                                               extra_ready={"hudReport": descriptor}, sealed=True)
-                reason = "HUD contract frame/area" if name == "missing-control" else "HUD disclosure"
+                reason = ("HUD contract frame/area" if name == "missing-control" else
+                          "HUD essential natural text" if name.startswith("essential-") else "HUD disclosure")
                 with self.assertRaisesRegex(ProbeFailure, reason):
                     validate_hud_contract(runner.summary, self.directory)
                 with self.assertRaisesRegex(ProbeFailure, reason):

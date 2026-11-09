@@ -8,7 +8,9 @@ Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界�
 
 海军实体的 `navalWakeNode` 与选中艏向箭头都在实体配置阶段一次性预创建：Battleship / Carrier 依舰体尺度绘制艏部 V 形浅水冲洗、近 / 远段递减尾流、泡沫边与舰艉推进器扰流，Submarine 仅保留低透明扰动；移动时 `updateNavalWake` 用同一 `localWakeDirection` 与 `xScale` 镜像同时旋转尾流和箭头。选择刷新只让玩家选中、存活且可见的三类海军显示箭头；停止保留最后 rotation，取消选择、死亡、重开和 fog 隐藏继续复用实体父节点生命周期，不新增状态、每帧节点或第 25 次探针。读图：海军 movement direction 分流到既有 wake rotation 与 heading cue rotation，selection / alive / fog 门槛控制 cue 显隐。
 
-`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:detailsExpanded:)` 是绘制、触摸和云端契约的唯一框来源。小屏默认44pt选择卡只显示单位/数量、HP与当前状态，44pt Info/Close经同一route切换100pt五事实与队列；平板默认52pt、展开156pt。切页/详情切换保留选择、生产与互斥pending，SKRM收起详情。底部56pt动作区保留44pt控件，任务卡32pt，小地图去除重复图例边带。短消息由单调时钟驱动，3.2s后在0.45s内连背景完全淡出，隐形区域归还world路由；提示期限不因HUD重建重置。双指仍优先pan/pinch，其他可见静态面板与间隙仍inert。`HUDPalette`与共享命令符号/生产纹理沿用；25组生产契约增加50次详情状态检查、五项事实互不重叠、hidden-toast路由和精确恢复，原标签/投影/失败门槛保留。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:detailsExpanded:)` 是绘制、触摸和云端契约的唯一框来源。小屏默认44pt选择卡只显示单位/数量、HP与当前状态，44pt Info/Close经同一route切换100pt五事实与队列；平板默认52pt、展开156pt。切页/详情切换保留选择、生产与互斥pending，SKRM收起详情。底部56pt动作区保留44pt控件，任务卡36pt/必要文字槽12pt，小地图去除重复图例边带。短消息由单调时钟驱动，3.2s后在0.45s内连背景完全淡出，隐形区域归还world路由；提示期限不因HUD重建重置。双指仍优先pan/pinch，其他可见静态面板与间隙仍inert。`HUDPalette`与共享命令符号/生产纹理沿用；25组生产契约增加50次详情状态检查、五项事实互不重叠、hidden-toast路由和精确恢复，原标签/投影/失败门槛保留。
+
+两张原创透明Effects纹理与实体共用384px解码/alpha裁边，`showArtworkImpact`只投影原效果入口，在0.48–0.56s内有界清理；水柱、火焰烟尘、舰载机原飞机纹理和细化弹道继续沿原可见性/发射延迟/单次伤害链路。ready要求两图实际解码及相关固定场景真实挂载；正常任务标题/正文和默认摘要由`essentialHUDTextCompleteness`要求完整sourceText，原长文本拟合/ellipsis与边界门槛保留。
 
 Carrier 静态舰体由原创透明纹理承载，动态甲板三个停机位和队列提示仍属于原实体渲染子树，不创建新飞机实体或生产状态。
 
@@ -210,6 +212,8 @@ flowchart TD
   SwiftContract --> LabelAudit[原labels类 / 六阶段双fit / 正bbox 源文 幂等 base恢复 往返重建]
   SwiftContract --> ViewportAudit[原roundTrip类 / 每case三倍率真实world-HUD正逆换算 / 共75样本]
   SwiftContract --> DisclosureAudit[每case展开收起 / 五行与文字框 / pending保持 / 隐形提示穿透]
+  SwiftContract --> Readable[正常任务标题正文与默认指令完整显示 / 拒绝过度ellipsis]
+  Readable --> Restore
   DisclosureAudit --> Restore
   ViewportAudit --> Restore
   LabelAudit --> Restore[恢复实际场景与原文 / 实际窗口双fit并入stateRestored]
