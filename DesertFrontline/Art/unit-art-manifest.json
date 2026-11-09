@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.7",
+  "version": "v6.9",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.7-combat-effects.md",
+  "promptDocument": "md/art/v6.9-tank-directions.md",
   "assets": [
     {
       "kind": "humvee",
@@ -270,6 +270,33 @@
       "width": 1536,
       "height": 1024,
       "worldWidth": 48
+    },
+    {
+      "kind": "tankDirections",
+      "file": "Directions/tank-eight.png",
+      "sourceFile": "exec-2826d01a-8fd9-4353-8990-5d043f2c51f8.png",
+      "bytes": 1524367,
+      "sha256": "38cb291958468016dfc7cd59735824ac96f65df4b6bd8247eccca22df9082b2c",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "cellWorldWidth": 74,
+      "groundPivot": [
+        0.5,
+        0.25
+      ],
+      "headings": [
+        "E",
+        "NE",
+        "N",
+        "NW",
+        "W",
+        "SW",
+        "S",
+        "SE"
+      ]
     }
   ],
   "updatedDate": "2026-11-09"

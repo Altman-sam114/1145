@@ -83,6 +83,9 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
          renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False, viewClass="GameRenderView"),
+         artwork=dict(tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
+                     textureCount=8, stateRestored=True, posesValid=True,
+                     cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)])),
          camera=dict(x=43, y=-666.5, scale=1),
          projection=dict(policy="world-node-affine-v1",
                          bindings=dict(nativeCameraDisabled=True, hudAttached=True, worldAttached=True, hostScene=True),
@@ -1733,6 +1736,30 @@ class SceneEvidenceTests(unittest.TestCase):
         records[-1]["frames"] = records[-1]["frames"][:1]
         with self.assertRaisesRegex(ValueError, "stable frames"):
             latest_ready(records, self.definition)
+
+    def test_tank_artwork_rejects_missing_views_bad_mirrors_and_unrestored_state(self):
+        for defect in ("missing", "bad-type", "missing-view", "duplicate-view", "bool-heading",
+                       "wrong-count", "wrong-file", "wrong-policy", "unrestored", "fallback",
+                       "positive", "negative", "geometry", "numeric-check"):
+            with self.subTest(defect=defect):
+                scene = self.scene()["scene"]
+                records = self.records(scene)
+                ready = records[-1]
+                atlas = ready["artwork"]["tankDirections"]
+                if defect == "missing": ready.pop("artwork")
+                elif defect == "bad-type": ready["artwork"] = []
+                elif defect == "missing-view": atlas["cases"].pop()
+                elif defect == "duplicate-view": atlas["cases"][1]["heading"] = 0
+                elif defect == "bool-heading": atlas["cases"][0]["heading"] = False
+                elif defect == "wrong-count": atlas["textureCount"] = 7
+                elif defect == "wrong-file": atlas["file"] = "Art/Units/tank.png"
+                elif defect == "wrong-policy": atlas["policy"] = "mirrored-two-view"
+                elif defect == "unrestored": atlas["stateRestored"] = False
+                elif defect == "fallback": atlas["posesValid"] = False
+                elif defect == "numeric-check": atlas["cases"][0]["negative"] = 1
+                else: atlas["cases"][0][defect] = False
+                with self.assertRaisesRegex(ValueError, "tank direction artwork"):
+                    latest_ready(records, self.definition)
 
     def test_scene_render_configuration_cannot_hide_behind_ready(self):
         base = {"automaticCulling": False, "ignoresSiblingOrder": False, "viewClass": "GameRenderView"}

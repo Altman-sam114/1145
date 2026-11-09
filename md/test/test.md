@@ -624,3 +624,5 @@ THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，
 选择摘要/详情改变时，每个原HUD组合还必须通过生产`consumeHUDTouch`完成展开、收起，记录两态`disclosure`：44pt控件、五行实际文字框与事实槽不重叠、选择/队列/pending不变、战场中心可路由及恢复。短提示文字与背景透明后应归还world路由。runner与metadata要求完整两态和明确的`toastPassthrough`，相关负例即使顶层success也必须拒绝。当前原生`selection-cycle`固定图还要求详情实际展开；这些CPU路由调用仍不是真实UITouch或完整对局证据。
 
 正常任务标题、任务正文与默认选择指令必须完整显示，HUD报告逐case记录`essentialText`三项为真；ready也检查实际正常文本，不以合法ellipsis冒充可读。新效果资源并入同一source/bundle清单，沿用原RGBA/alpha/CRC/摘要门槛；相关海空固定图的fixture还要求水柱/火焰节点、三架纹理舰载机与潜艇接触文字正向。资源与CPU门槛通过后仍须逐张检查正式PNG。
+
+坦克八向图集改变时，source/bundle在原25资源外增加一张图集，保留原逐文件CRC/RGBA/摘要；4×2每格另验透明角点/面积、非空与不同alpha摘要。整图最多1536px解码，每格384px，不能套用普通单图裁边。ready保留八向×两父镜像的生产函数结果、精确恢复与实际posesValid，runner/metadata拒绝缺格/重复索引/错镜像/假true或未恢复。正式图仍检查地面战斗、选择、战损与基地，方向CPU合同不等于完整对局或物理触控。

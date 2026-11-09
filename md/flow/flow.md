@@ -322,3 +322,9 @@ compact 选择卡使用64pt高双列事实槽，队列放标题右侧，生产�
 `drawMap` 的基础菱形改为缓存 `SKSpriteNode` 材质：`terrainSurfaceTexture` 用本地确定性采样烘焙细粒沙/油/水纹理，道路和岩脊复用沙地表面，最多三种基础表面各五个变体，不在每帧重绘。地形逻辑、寻路与 fog tile 未改变；沿岸泡沫减弱，原道路连接、岸线、岩脊与 scenery 仍挂 mapNode。
 
 云端先检查 source manifest/CRC/alpha/hash，模拟器 App 构建后再复核实际 bundle；PNG/JSON、原生屏幕图与实体 ready trace 共同组成证据，不能用资源检查代替 GPU 画面或真实触控。
+
+## 坦克方向渲染
+
+坦克另一次解码1536px的4×2原始透明图集，八个UV格共享atlas，固定74世界格与地面pivot；原单幅仍服务生产头像。updateHUD开头的refreshTankArtworkFacings只读destination/合法已知attackTarget，原updateTankArtworkFacing有界选择视角、保留停止朝向并补偿父镜像。artworkHeading仅为渲染索引，玩家/AI同一实体链路，HUD/战损/灰尘/迷雾/死亡/SKRM无平行状态。
+
+CI初始化在原fixture结束前，用同一生产方向函数检查八向和两种父镜像、精确恢复；ready的units门槛与artwork.tankDirections保留八个实测case和posesValid。source/bundle逐格拒绝空白/实底/重复alpha，scene_evidence同时校验方向协议；正式原24图仍需实际核对。

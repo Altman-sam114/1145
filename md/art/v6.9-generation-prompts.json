@@ -1,0 +1,28 @@
+{
+  "tool": "image_gen.imagegen",
+  "generatedDate": "2026-11-09",
+  "status": "original RGBA integrated; cloud validation pending",
+  "rejectedDraft": {
+    "name": "tank-eight-directions-draft",
+    "source": "/Users/a114514/.codex/generated_images/01a1bf33-9f3b-7eb1-b00a-fe8e9ef1ed4e/exec-5b7e0b48-92dc-4f0e-a468-5f6a19288585.png",
+    "selectedUserFile": "/Users/a114514/.codex/generated_images/1/v6.8-candidates/tank-eight-directions-draft.png",
+    "prompt": "Use case: stylized-concept\nAsset type: a production 8-direction sprite atlas for an original isometric modern military RTS, transparent RGBA.\nInput image: visual reference for the exact same sand-camouflage tank identity, materials and detail level. Create new views of this ONE consistent vehicle, not different tanks.\nPrimary request: an exact regular 4-column by 2-row grid with eight complete tank renders, one tank in each cell. Camera fixed 35 degrees above the ground. The tank's hull AND turret point in the same direction in each cell. Rotate the vehicle in 45-degree world increments while keeping the camera fixed. Screen directions, row one left to right: RIGHT (east), UPPER RIGHT (northeast), UP (north; rear engine deck closest to camera), UPPER LEFT (northwest). Row two left to right: LEFT (west), LOWER LEFT (southwest), DOWN (south; front armor closest to camera), LOWER RIGHT (southeast). All eight views must be physically different 3D rotations, never flat image rotation. Be especially careful that north shows the REAR and south shows the FRONT.\nStyle: detailed miniature 3D painted game sprites, premium realistic metal and desert camouflage, crisp silhouettes and restrained turquoise optics. Same armor, tracks, turret, barrel, hatches and antennas in every view. Identical lighting from upper left, camera elevation and vehicle scale.\nComposition: landscape 2:1 atlas, exactly equal rectangular cells, ground pivot at the center of each cell, all sprites wholly inside their own cell with generous transparent gutters. No overlap, no cropped barrels. Even though the front/back silhouettes are narrower they must keep the same physical scale. Ground is completely transparent, no cast ground-shadow patch.\nConstraints: no text, no labels, no numerals, no compass, no grid lines, no UI, no scenery, no explosions, no solid backdrop, no checkerboard. Render eight views of one identical original tank only.",
+    "reference": "/Users/a114514/Desktop/codex/desert/DesertFrontline/Art/Units/tank.png"
+  },
+  "selected": {
+    "tool": "image_gen.imagegen",
+    "source": "/Users/a114514/.codex/generated_images/01a1bf33-9f3b-7eb1-b00a-fe8e9ef1ed4e/exec-2826d01a-8fd9-4353-8990-5d043f2c51f8.png",
+    "selectedUserFile": "/Users/a114514/.codex/generated_images/1/v6.8-candidates/tank-eight-directions-transparent.png",
+    "reference": "tank-eight-directions-draft.png",
+    "prompt": "Use case: precise-object-edit\nAsset type: transparent RGBA eight-direction tank sprite atlas for a game.\nEdit target: the supplied atlas. Two exact repairs only.\n1. Remove ALL white/light-gray background and ALL broad ground shadows around the eight tanks. Every pixel outside the tank silhouettes must have alpha ZERO. The output must be truly transparent RGBA, not white, gray, checkerboard or a translucent paper backdrop. Preserve fine antennas, barrel, tracks and their original materials; no painted halos.\n2. Correct ONLY the tank in the SECOND cell of the TOP ROW: it must face UPPER-RIGHT on screen, away from the viewer. Show its REAR engine deck/back armor closest to the viewer with the barrel pointing toward the top-right, matching the upper-left rear view in cell four but rotated the other way. It currently faces lower-right and incorrectly repeats the last cell. Hull and turret must agree in direction.\nInvariants: keep the other seven orientations unchanged, same exact vehicle, desert camouflage, detail, overhead 35-degree camera, lighting, and the 4-column/2-row arrangement. No captions, letters, numbers, grid lines, symbols, UI or extra objects. Keep each complete tank in its own cell with clear transparent gutters and no clipping. Deliver a landscape 2:1 sheet with genuine transparent background.",
+    "sha256": "38cb291958468016dfc7cd59735824ac96f65df4b6bd8247eccca22df9082b2c",
+    "bytes": 1524367,
+    "dimensions": [
+      1774,
+      887
+    ],
+    "status": "candidate inspected; alpha0 background and eight distinct headings; runtime cropping/scale/anchor still unverified"
+  },
+  "projectFile": "DesertFrontline/Art/Directions/tank-eight.png",
+  "selectedUserFile": "/Users/a114514/.codex/generated_images/1/v6.9-tank-eight.png"
+}

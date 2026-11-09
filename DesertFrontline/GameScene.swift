@@ -1095,6 +1095,8 @@ private final class GameEntity {
     var rallyPoint: CGPoint?
     let node = SKNode()
     var artworkNode: SKSpriteNode?
+    // Last rendered tank view only; movement, targeting and combat keep their existing state.
+    var artworkHeading = 7
     let selectionNode: SKShapeNode
     let weaponReadinessNode = SKNode()
     var weaponReadinessTicks: [SKShapeNode] = []
@@ -1210,6 +1212,9 @@ final class GameScene: SKScene {
 
     private var entities: [Int: GameEntity] = [:]
     private var unitArtworkTextures: [EntityKind: SKTexture] = [:]
+    private var tankDirectionTextures: [SKTexture] = []
+    private var ciTankDirectionCases: [[String: Any]] = []
+    private var ciTankDirectionRestored = false
     private var sceneryArtworkTextures: [String: SKTexture] = [:]
     private static let sceneryArtworkNames = ["desert-rocks", "date-palm", "desert-hamlet"]
     private var effectArtworkTextures: [String: SKTexture] = [:]
@@ -1432,6 +1437,7 @@ final class GameScene: SKScene {
         ciEndStage("fog")
         ciBeacon("fixture-start")
         prepareCICaptureScene()
+        if isCICaptureMode { auditTankDirectionArtwork() }
         if isCICaptureMode { ciFixtureCamera = cameraRig.position }
         ciEndStage("fixture")
         updateHUD()
@@ -1704,7 +1710,8 @@ final class GameScene: SKScene {
             "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count &&
                 EntityKind.allCases.filter({ $0.artworkName != nil }).allSatisfy({ unitArtworkTexture(for: $0) != nil }) &&
                 Self.effectArtworkNames.allSatisfy({ effectArtworkTexture(named: $0) != nil }) &&
-                attached.allSatisfy({ $0.artworkNode?.parent != nil }),
+                attached.allSatisfy({ $0.artworkNode?.parent != nil }) &&
+                ciTankDirectionRestored && ciTankDirectionCases.count == 8 && tankArtworkPosesValid(),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
                 moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty &&
@@ -1751,6 +1758,9 @@ final class GameScene: SKScene {
                                     "viewClass": String(describing: type(of: view))],
             "projection": projection,
             "artwork": ["policy": "rgba384-grounded-v2", "attachedSprites": attached.filter({ $0.artworkNode != nil }).count,
+                        "tankDirections": ["policy": "tank-eight-v1", "file": "Art/Directions/tank-eight.png",
+                                           "textureCount": tankDirectionTextures.count, "cases": ciTankDirectionCases,
+                                           "stateRestored": ciTankDirectionRestored, "posesValid": tankArtworkPosesValid()],
                         "effectTextures": Self.effectArtworkNames.compactMap { name -> [String: Any]? in
                             guard let texture = effectArtworkTextures[name] else { return nil }
                             return ["file": "Art/Effects/\(name).png", "width": texture.size().width, "height": texture.size().height]
@@ -3060,6 +3070,109 @@ final class GameScene: SKScene {
         return texture
     }
 
+    private func loadTankDirectionArtwork() -> Bool {
+        if tankDirectionTextures.count == 8 { return true }
+        guard let url = Bundle.main.url(forResource: "tank-eight", withExtension: "png", subdirectory: "Art/Directions"),
+              let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceThumbnailMaxPixelSize: 1536,
+                kCGImageSourceShouldCacheImmediately: true
+              ] as CFDictionary) else { return false }
+        // Keep equal cells and their shared ground pivot. Cropping each silhouette would
+        // enlarge narrow front/rear views and make the vehicle jump when it turns.
+        let atlas = SKTexture(cgImage: image)
+        atlas.filteringMode = .linear
+        tankDirectionTextures = (0..<8).map { index in
+            let frame = CGRect(x: CGFloat(index % 4) / 4, y: index < 4 ? 0.5 : 0,
+                               width: 0.25, height: 0.5)
+            let texture = SKTexture(rect: frame, in: atlas)
+            texture.filteringMode = .linear
+            return texture
+        }
+        return true
+    }
+
+    private func updateTankArtworkFacing(_ entity: GameEntity, direction: CGPoint?) {
+        guard entity.kind == .tank, tankDirectionTextures.count == 8, let sprite = entity.artworkNode else { return }
+        if let direction, direction.length > 0.01 {
+            let angle = atan2(direction.y, direction.x)
+            let step = CGFloat.pi / 4
+            let previousAngle = CGFloat(entity.artworkHeading) * step
+            let difference = abs(atan2(sin(angle - previousAngle), cos(angle - previousAngle)))
+            // A small hysteresis band prevents chatter at the eight view boundaries.
+            if difference > step / 2 + 0.06 {
+                entity.artworkHeading = (Int(floor((angle + 2 * .pi + step / 2) / step))) % 8
+            }
+        }
+        let texture = tankDirectionTextures[entity.artworkHeading]
+        if sprite.texture !== texture { sprite.texture = texture }
+        // The entity's original mirror still drives dust/health/selection effects.
+        let mirror: CGFloat = entity.node.xScale < 0 ? -1 : 1
+        if sprite.xScale != mirror { sprite.xScale = mirror }
+    }
+
+    private func refreshTankArtworkFacings() {
+        for entity in entities.values where entity.isAlive && entity.kind == .tank {
+            let direction: CGPoint?
+            if let destination = entity.destination {
+                direction = destination - entity.node.position
+            } else if let target = entity.attackTarget, target.isAlive,
+                      isKnownToFaction(target, observer: entity.faction) {
+                direction = target.node.position - entity.node.position
+            } else {
+                direction = nil
+            }
+            updateTankArtworkFacing(entity, direction: direction)
+        }
+    }
+
+    private func tankArtworkPosesValid() -> Bool {
+        let tanks = entities.values.filter { $0.isAlive && $0.kind == .tank }
+        return tankDirectionTextures.count == 8 && !tanks.isEmpty && tanks.allSatisfy { entity in
+            guard let sprite = entity.artworkNode, (0..<8).contains(entity.artworkHeading) else { return false }
+            return sprite.texture === tankDirectionTextures[entity.artworkHeading] &&
+                sprite.size == CGSize(width: 74, height: 74) && sprite.anchorPoint == CGPoint(x: 0.5, y: 0.25) &&
+                sprite.position == .zero && entity.node.xScale * sprite.xScale == 1
+        }
+    }
+
+    // Cloud CPU evidence for the same renderer used by moving/attacking entities.
+    // This does not simulate a match or inject physical touches.
+    private func auditTankDirectionArtwork() {
+        ciTankDirectionCases.removeAll()
+        ciTankDirectionRestored = false
+        guard tankDirectionTextures.count == 8,
+              let tank = entities.values.first(where: { $0.kind == .tank && $0.isAlive }),
+              let sprite = tank.artworkNode else { return }
+        let saved = (tank.artworkHeading, tank.node.xScale, sprite.texture, sprite.xScale)
+        let geometry = (sprite.size, sprite.anchorPoint, sprite.position, tank.node.position)
+        for index in 0..<8 {
+            let angle = CGFloat(index) * .pi / 4
+            let direction = CGPoint(x: cos(angle), y: sin(angle))
+            var mirrors: [Bool] = []
+            for sign in [CGFloat(1), CGFloat(-1)] {
+                tank.node.xScale = sign
+                updateTankArtworkFacing(tank, direction: direction)
+                mirrors.append(tank.artworkHeading == index && sprite.texture === tankDirectionTextures[index] &&
+                               sprite.xScale * tank.node.xScale == 1)
+            }
+            ciTankDirectionCases.append(["heading": index, "positive": mirrors[0], "negative": mirrors[1],
+                                         "geometry": sprite.size == geometry.0 && sprite.anchorPoint == geometry.1 &&
+                                             sprite.position == geometry.2 && tank.node.position == geometry.3])
+        }
+        tank.artworkHeading = saved.0
+        tank.node.xScale = saved.1
+        sprite.texture = saved.2
+        sprite.xScale = saved.3
+        ciTankDirectionRestored = tank.artworkHeading == saved.0 && tank.node.xScale == saved.1 &&
+            sprite.texture === saved.2 && sprite.xScale == saved.3 && sprite.size == geometry.0 &&
+            sprite.anchorPoint == geometry.1 && sprite.position == geometry.2 && tank.node.position == geometry.3 &&
+            ciTankDirectionCases.allSatisfy { item in
+                item["positive"] as? Bool == true && item["negative"] as? Bool == true && item["geometry"] as? Bool == true
+            }
+    }
+
     private func sceneryArtworkTexture(named name: String) -> SKTexture? {
         if let cached = sceneryArtworkTextures[name] { return cached }
         guard let texture = decodedArtworkTexture(named: name, directory: "Scenery") else { return nil }
@@ -3164,6 +3277,14 @@ final class GameScene: SKScene {
             sprite.position.y = 0
         } else {
             sprite.position.y = entity.kind.domain == .air ? 24 : 8
+        }
+        if entity.kind == .tank, loadTankDirectionArtwork() {
+            entity.artworkHeading = entity.faction == .enemy ? 5 : 7
+            sprite.texture = tankDirectionTextures[entity.artworkHeading]
+            sprite.size = CGSize(width: 74, height: 74)
+            sprite.anchorPoint = CGPoint(x: 0.5, y: 0.25)
+            sprite.position = .zero
+            sprite.xScale = entity.node.xScale < 0 ? -1 : 1
         }
         sprite.color = entity.faction.color
         sprite.colorBlendFactor = entity.faction == .enemy ? 0.14 : 0.025
@@ -6416,6 +6537,7 @@ final class GameScene: SKScene {
     }
 
     private func updateHUD() {
+        refreshTankArtworkFacings()
         applyCameraProjection()
         for entity in entities.values {
             entity.label.xScale = entity.node.xScale < 0 ? -1 : 1

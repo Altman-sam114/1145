@@ -331,12 +331,17 @@ flowchart LR
 
 ## 原创兵模与材质链路
 
-读图说明：素材只进入渲染子树，不增加平行玩法系统。玩家与 AI 的同种实体共享贴图缓存；source/bundle 检查和 ready trace 验证资源，最终效果仍以云端原生屏幕为准。
+读图说明：素材只进入渲染子树，不增加平行玩法系统。玩家与 AI 的同种实体共享贴图缓存；坦克八向UV只读原移动/合法目标并补偿父镜像，血条与选择不随贴图转向。source/bundle 检查和 ready trace 验证资源，最终效果仍以云端原生屏幕为准。
 
 ```mermaid
 flowchart LR
   Manifest[Art 清单 / 原创 PNG] --> Decode[ImageIO 至多 384px / 透明边距归一化]
   Decode --> Cache[按 EntityKind 缓存 20 类实体 SKTexture]
+  Manifest --> TankAtlas[坦克图集一次1536px解码 / 保留格边距]
+  TankAtlas --> TankUV[八个384px UV格 / 同74世界格与地面pivot]
+  TankUV --> Facing[updateTankArtworkFacing / 索引迟滞 / sprite镜像补偿]
+  Intent[原destination / 已知attackTarget] --> Facing
+  Facing --> Body
   Cache --> Body[GameEntity.artworkNode]
   Cache --> Portrait[当前页生产按钮肖像]
   Decode --> Scenery[3 类环境纹理缓存 / 岩石 / 棕榈 / 村落]

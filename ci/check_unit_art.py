@@ -20,13 +20,15 @@ STRUCTURES = {"hq": "command-hq", "barracks": "war-factory", "airfield": "airfie
               "guardTower": "guard-tower", "samSite": "sam-site", "coastalBattery": "coastal-battery"}
 SCENERY = {"desertRocks": "desert-rocks", "datePalm": "date-palm", "desertHamlet": "desert-hamlet"}
 EFFECTS = {"waterImpact": "water-impact", "impactBurst": "impact-burst"}
+DIRECTIONS = {"tankDirections": "tank-eight"}
 ASSET_PATHS = {**{kind: f"Units/{name}.png" for kind, name in KINDS.items()},
                **{kind: f"Structures/{name}.png" for kind, name in STRUCTURES.items()},
                **{kind: f"Scenery/{name}.png" for kind, name in SCENERY.items()},
-               **{kind: f"Effects/{name}.png" for kind, name in EFFECTS.items()}}
+               **{kind: f"Effects/{name}.png" for kind, name in EFFECTS.items()},
+               **{kind: f"Directions/{name}.png" for kind, name in DIRECTIONS.items()}}
 
 
-def inspect_png(data):
+def inspect_png(data, atlas_grid=None):
     if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data) > 12 * 1024 * 1024:
         raise ValueError("Invalid PNG signature or excessive file size")
     offset, chunks, header, ended = 8, [], None, False
@@ -70,6 +72,7 @@ def inspect_png(data):
     transparent = solid = 0
     min_x, min_y, max_x, max_y = width, height, -1, -1
     corners = []
+    alpha_rows = []
     stride, offset = width * 4, 0
     for y in range(height):
         method = raw[offset]
@@ -102,16 +105,43 @@ def inspect_png(data):
                 min_y, max_y = min(min_y, y), max(max_y, y)
         if y in (0, height - 1):
             corners.extend((row[0], row[-1]))
+        if atlas_grid:
+            alpha_rows.append(bytes(row))
         previous = row
-    return {"width": width, "height": height, "cornerAlpha": corners,
+    info = {"width": width, "height": height, "cornerAlpha": corners,
             "transparentFraction": round(transparent / (width * height), 6),
             "solidFraction": round(solid / (width * height), 6),
             "contentBounds": [min_x, min_y, max_x + 1, max_y + 1]}
+    if atlas_grid:
+        columns, rows = atlas_grid
+        cells = []
+        for index in range(columns * rows):
+            column, row = index % columns, index // columns
+            x0, x1 = column * width // columns, (column + 1) * width // columns
+            y0, y1 = row * height // rows, (row + 1) * height // rows
+            pixels = b"".join(line[x0:x1] for line in alpha_rows[y0:y1])
+            if not pixels:
+                raise ValueError("Empty atlas cell")
+            cells.append({"index": index, "width": x1 - x0, "height": y1 - y0,
+                          "cornerAlpha": [alpha_rows[y][x] for y in (y0, y1 - 1) for x in (x0, x1 - 1)],
+                          "transparentFraction": sum(a <= 8 for a in pixels) / len(pixels),
+                          "solidFraction": sum(a >= 200 for a in pixels) / len(pixels),
+                          "alphaSha256": hashlib.sha256(pixels).hexdigest()})
+        info["cells"] = cells
+    return info
 
 
 def verify_transparency(info):
     if max(info["cornerAlpha"]) > 8 or not 0.12 <= info["transparentFraction"] <= 0.95 or info["solidFraction"] < 0.03:
         raise ValueError("Sprite is empty, opaque, or has a painted background")
+
+
+def verify_directional_cells(info):
+    cells = info.get("cells", [])
+    if len(cells) != 8 or len({cell["alphaSha256"] for cell in cells}) != 8:
+        raise ValueError("Expected eight distinct populated tank views")
+    for cell in cells:
+        verify_transparency(cell)
 
 
 def verify(art):
@@ -127,7 +157,7 @@ def verify(art):
         raise ValueError("Art provenance document missing")
     assets = manifest["assets"]
     if len(assets) != len(ASSET_PATHS) or {a["kind"] for a in assets} != set(ASSET_PATHS):
-        raise ValueError("Expected ten mobile units, ten structures, three scenery and two effect assets")
+        raise ValueError("Expected ten units, ten structures, three scenery, two effects and one tank atlas")
     reports = []
     for asset in assets:
         name = ASSET_PATHS[asset['kind']]
@@ -137,10 +167,15 @@ def verify(art):
         data = path.read_bytes()
         if len(data) != asset["bytes"] or hashlib.sha256(data).hexdigest() != asset["sha256"]:
             raise ValueError(f"Asset digest mismatch: {name}")
-        info = inspect_png(data)
+        directional = asset["kind"] == "tankDirections"
+        info = inspect_png(data, atlas_grid=(4, 2) if directional else None)
         if [info["width"], info["height"]] != [asset["width"], asset["height"]]:
             raise ValueError(f"Asset dimensions mismatch: {name}")
         verify_transparency(info)
+        if directional:
+            if (asset.get("columns"), asset.get("rows"), asset.get("decodeMaxPixels")) != (4, 2, 1536):
+                raise ValueError("Unexpected tank atlas layout / decode budget")
+            verify_directional_cells(info)
         reports.append(dict(kind=asset["kind"], file=name, sha256=asset["sha256"], bytes=len(data), **info))
     return reports
 
@@ -165,6 +200,22 @@ def fixture_png(rows, method=0, color=6):
 
 
 class ArtContractTests(unittest.TestCase):
+    def test_directional_atlas_rejects_missing_opaque_and_repeated_views(self):
+        rows = [[0] * 16 for _ in range(8)]
+        for index in range(8):
+            x0, y0 = (index % 4) * 4, (index // 4) * 4
+            for y in (y0 + 1, y0 + 2):
+                rows[y][x0 + 1:x0 + 3] = [255 - index] * 2
+        verify_directional_cells(inspect_png(fixture_png(rows), atlas_grid=(4, 2)))
+        for defect in ("empty", "opaque", "duplicate"):
+            broken = [row[:] for row in rows]
+            for y in range(4):
+                broken[y][0:4] = ([0] * 4 if defect == "empty" else
+                                  [255] * 4 if defect == "opaque" else
+                                  rows[y][4:8])
+            with self.subTest(defect=defect), self.assertRaises(ValueError):
+                verify_directional_cells(inspect_png(fixture_png(broken), atlas_grid=(4, 2)))
+
     def test_all_png_filters(self):
         rows = [[0, 1, 0, 0], [0, 240, 255, 0], [0, 200, 230, 0], [0, 0, 0, 0]]
         for method in range(5):

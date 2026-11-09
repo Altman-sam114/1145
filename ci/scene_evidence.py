@@ -101,6 +101,19 @@ def latest_ready(records, definition):
             or rendering.get("viewClass") != "GameRenderView"
             or any(rendering.get(key) is not False for key in ("automaticCulling", "ignoresSiblingOrder"))):
         raise ValueError("Scene ready render configuration missing or invalid")
+    artwork = ready.get("artwork")
+    directions = artwork.get("tankDirections") if isinstance(artwork, dict) else None
+    cases = directions.get("cases") if isinstance(directions, dict) else None
+    if (not isinstance(directions, dict) or directions.get("policy") != "tank-eight-v1"
+            or directions.get("file") != "Art/Directions/tank-eight.png"
+            or type(directions.get("textureCount")) is not int or directions["textureCount"] != 8
+            or directions.get("stateRestored") is not True or directions.get("posesValid") is not True
+            or not isinstance(cases, list) or len(cases) != 8
+            or any(not isinstance(case, dict) or type(case.get("heading")) is not int
+                   or case["heading"] != index
+                   or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
+                   for index, case in enumerate(cases))):
+        raise ValueError("Scene ready tank direction artwork missing, mirrored incorrectly or not restored")
     size, view, insets = ready.get("sceneSize", {}), ready.get("viewSize", {}), ready.get("insets", {})
     if (not all(finite(size.get(key)) and finite(view.get(key)) and abs(size[key] - view[key]) < 1 for key in ("width", "height"))
             or size["width"] <= size["height"] or set(insets) != {"top", "left", "bottom", "right"}
