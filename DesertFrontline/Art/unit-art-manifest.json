@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.11",
+  "version": "v6.12",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.11-air-directions.md",
+  "promptDocument": "md/art/v6.12-naval-directions.md",
   "assets": [
     {
       "kind": "humvee",
@@ -323,6 +323,19 @@
       "rows": 2,
       "decodeMaxPixels": 1536,
       "worldCell": 120
+    },
+    {
+      "kind": "battleshipDirections",
+      "file": "Directions/battleship-eight.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.12-candidates/battleship-eight-graphite.png",
+      "bytes": 784556,
+      "sha256": "9f1e6dee64733d73c5f926439d63527ee220ab774e770ba97ccdb22a368a9ad0",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "worldCell": 160
     }
   ],
   "updatedDate": "2026-11-09"

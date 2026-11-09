@@ -6435,7 +6435,7 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - generic约41s，generic/simulator均真实 `BUILD SUCCEEDED`；113 runner方法通过，JUnit10项/0failure/1准确XCTest skip；26资源source/bundle一致，25HUD与恢复、24正式图和两镜像端点/节点复用/根重挂/状态恢复均通过。work1041.926s / cleanup14.502s，boot等待156.608s，未发生构建卡死。
 - 全24原生PNG逐张目视：陆战短弹迹与海军低对比尾流改善，没有黑屏或图集实底；三种固定命令标记仍被底栏遮挡，窄体标题与密集边框仍需优化。尚不覆盖真实物理触控、完整对局与长期性能。
 
-### v6.11 / 空军八方向与 HUD 层次调整（待云端验收）
+### v6.11 / 空军八方向与 HUD 层次调整（云端已复核）
 
 日期：2026-11-09。
 
@@ -6443,3 +6443,16 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 两机型共享原图集解码与玩家/AI姿态入口，固定格/高度、停止保留朝向并抵消父镜像；只读移动或合法已知攻击目标，不改阴影/选择/战损/迷雾/死亡/SKRM、飞行或伤害数值。临时渲染样本仅供缺该机型的云端fixture检查，不入实体表/场景，并与实际entity明确区分。
 - HUD标题改正常宽度Avenir Next，面板改石墨色与柔边，当前分类用金色底线，pending保留金色边/底线，STOP/Target可用状态改细青色底线；原44pt命中/布局/完整文字/路由保持。固定命令图的MOVE/AMOV位置与ATK目标布局调整，新增真实节点含caption屏内无遮挡合同，不改玩家实际命令位置。
 - 本机仅静态检查，3Python AST、28资源路径/digest、文档链接和diff通过；新ready静态估算低于原8000bytes门槛。新SHA双构建、28资源/两空军八向两镜像与恢复、25HUD/50详情/24正式图尚待云端，不宣称完整复刻、真实触控或全军方向/动画完成。
+
+- 正式main `38bd6ef9f14fb923568509d2169237dae67a920e`，run `42638430426` / attempt1 / artifact `13686675379`；ZIP63,926,872bytes、158项未加密，SHA256 `31aa6f08d483e6fca0f9ec0557d5b8758f6f1bb2d84fe7c4285bf7885448beba`与API一致，CRC/身份/直接trace与PNG摘要通过。证据 `/private/tmp/desert-frontline-review-42638430426-attempt1/{ci-results.zip,official/,review.json}`。
+- generic约57s，generic/simulator均真实BUILD SUCCEEDED；115runner、5watchdog、7资源方法通过，JUnit10/0failure/1准确XCTest skip；28source/bundle资源逐项一致，两机型八向×两父镜像/几何/恢复及存活实际姿态全真，subject准确区分缺fighter场景的detached-renderer。25HUD/50详情/恢复与三个commandUnobscured通过，ready实际最大6548bytes，原8000门槛未变；work1067.846s / cleanup10.735s，无失败stage。
+- 全24原生PNG已逐张目视：正常宽度标题与细状态线清晰，MOVE/AMOV/ATK含caption完整露出；两空军侧/斜视图比例可读，无实底或邻格串图。未覆盖每个方向的独立原生截图、真实物理触控、完整对局、独立旋翼动画或长期性能；其余七类机动单位仍两向镜像，地图迷雾格线仍较明显。
+
+
+### v6.12 / 战列舰八方向与迷雾格边（待云端验收）
+
+日期：2026-11-09。
+
+- 战列舰经3次内置生成/编辑，选石墨灰水线/透明/带边距稿，原RGBA与完整提示词见md/art/v6.12-*和用户指定目录；source/bundle新增至29资源、四图集。
+- 共享原八向迟滞/镜像补偿与合法目标读法，舰体固定世界格160/中心锚点/高度8；不改海战规则、主炮执行、AI、声呐、迷雾、碰撞、尾流或SKRM。新增云端战列舰八向两镜像/几何/恢复与实际姿态，保留既有坦克/两空军合同。
+- fog形状去掉原1pt重叠，精确共享边并关闭形状抗锯齿，以消除重复alpha格线；原可见性集合与0/0.48/0.86透明度不变。云端新增实际path/位置、栅格设置和alpha匹配证据，实际消线与无裂缝仍待原生PNG核实；不先称高档地图完成。

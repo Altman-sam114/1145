@@ -96,6 +96,15 @@ def latest_ready(records, definition):
             or any(type(counts.get(key)) is not int or counts[key] <= 0 for key in ("mapNodes", "entities", "playerUnits", "visiblePlayerUnits", "fogNodes", "visibleTiles"))
             or counts.get("panels") != 7 or counts.get("pages") != 5 or counts.get("actions") != ACTIONS[definition["page"]]):
         raise ValueError("Scene ready lacks production stages, fixture facts or stable frames")
+    fog = ready.get("fogSurface")
+    fog_checks = fog.get("checks") if isinstance(fog, dict) else None
+    if (not isinstance(fog, dict) or fog.get("policy") != "shared-edge-fog-v1"
+            or not isinstance(fog_checks, dict) or set(fog_checks) != {"sharedEdges", "rasterEdges", "opacity"}
+            or any(value is not True for value in fog_checks.values())
+            or type(fog.get("tileCount")) is not int or fog["tileCount"] != counts["fogNodes"]
+            or type(fog.get("tileWidth")) not in (int, float) or fog["tileWidth"] != 86
+            or type(fog.get("tileHeight")) not in (int, float) or fog["tileHeight"] != 43):
+        raise ValueError("Scene fog surface edges, raster or opacity evidence invalid")
     rendering = ready.get("renderConfiguration")
     if (not isinstance(rendering, dict) or set(rendering) != {"automaticCulling", "ignoresSiblingOrder", "viewClass"}
             or rendering.get("viewClass") != "GameRenderView"
@@ -114,6 +123,18 @@ def latest_ready(records, definition):
                    or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
                    for index, case in enumerate(cases))):
         raise ValueError("Scene ready tank direction artwork missing, mirrored incorrectly or not restored")
+    directions = artwork.get("battleshipDirections") if isinstance(artwork, dict) else None
+    cases = directions.get("cases") if isinstance(directions, dict) else None
+    if (not isinstance(directions, dict) or directions.get("policy") != "battleship-eight-v1"
+            or directions.get("file") != "Art/Directions/battleship-eight.png"
+            or type(directions.get("textureCount")) is not int or directions["textureCount"] != 8
+            or directions.get("stateRestored") is not True or directions.get("posesValid") is not True
+            or not isinstance(cases, list) or len(cases) != 8
+            or any(not isinstance(case, dict) or type(case.get("heading")) is not int
+                   or case["heading"] != index
+                   or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
+                   for index, case in enumerate(cases))):
+        raise ValueError("Scene ready battleship direction artwork missing, mirrored incorrectly or not restored")
     air = artwork.get("airDirections")
     air_cases = air.get("cases") if isinstance(air, dict) else None
     air_counts = air.get("textureCounts") if isinstance(air, dict) else None

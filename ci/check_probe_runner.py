@@ -82,10 +82,15 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          counts=dict(mapNodes=1, entities=1, playerUnits=1, visiblePlayerUnits=1, fogNodes=1,
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
+         fogSurface=dict(policy="shared-edge-fog-v1", tileCount=1, tileWidth=86, tileHeight=43,
+                         checks=dict(sharedEdges=True, rasterEdges=True, opacity=True)),
          renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False, viewClass="GameRenderView"),
          artwork=dict(tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
                      textureCount=8, stateRestored=True, posesValid=True,
                      cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)]),
+                      battleshipDirections=dict(policy="battleship-eight-v1", file="Art/Directions/battleship-eight.png",
+                          textureCount=8, stateRestored=True, posesValid=True,
+                          cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)]),
                       airDirections=dict(policy="air-eight-v1", stateRestored=True, posesValid=True,
                           subjects={kind: "entity" for kind in ("fighter", "helicopter")},
                           textureCounts={kind: 8 for kind in ("fighter", "helicopter")},
@@ -1768,6 +1773,48 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "numeric-check": atlas["cases"][0]["negative"] = 1
                 else: atlas["cases"][0][defect] = False
                 with self.assertRaisesRegex(ValueError, "tank direction artwork"):
+                    latest_ready(records, self.definition)
+
+    def test_fog_surface_rejects_wrong_edges_raster_opacity_and_counts(self):
+        for defect in ("missing", "bad-type", "policy", "edges", "raster", "opacity", "numeric-check", "count", "width", "height"):
+            with self.subTest(defect=defect):
+                records = self.records(self.scene()["scene"])
+                fog = records[-1]["fogSurface"]
+                if defect == "missing": records[-1].pop("fogSurface")
+                elif defect == "bad-type": records[-1]["fogSurface"] = []
+                elif defect == "policy": fog["policy"] = "overlapping-fog"
+                elif defect == "edges": fog["checks"]["sharedEdges"] = False
+                elif defect == "raster": fog["checks"]["rasterEdges"] = False
+                elif defect == "opacity": fog["checks"]["opacity"] = False
+                elif defect == "numeric-check": fog["checks"]["opacity"] = 1
+                elif defect == "count": fog["tileCount"] += 1
+                elif defect == "width": fog["tileWidth"] = 87
+                elif defect == "height": fog["tileHeight"] = 44
+                with self.assertRaisesRegex(ValueError, "fog surface"):
+                    latest_ready(records, self.definition)
+
+    def test_battleship_artwork_rejects_missing_views_bad_mirrors_and_unrestored_state(self):
+        for defect in ("missing", "bad-type", "missing-view", "duplicate-view", "bool-heading",
+                       "wrong-count", "wrong-file", "wrong-policy", "unrestored", "fallback",
+                       "positive", "negative", "geometry", "numeric-check"):
+            with self.subTest(defect=defect):
+                scene = self.scene()["scene"]
+                records = self.records(scene)
+                ready = records[-1]
+                atlas = ready["artwork"]["battleshipDirections"]
+                if defect == "missing": ready["artwork"].pop("battleshipDirections")
+                elif defect == "bad-type": ready["artwork"]["battleshipDirections"] = []
+                elif defect == "missing-view": atlas["cases"].pop()
+                elif defect == "duplicate-view": atlas["cases"][1]["heading"] = 0
+                elif defect == "bool-heading": atlas["cases"][0]["heading"] = False
+                elif defect == "wrong-count": atlas["textureCount"] = 7
+                elif defect == "wrong-file": atlas["file"] = "Art/Units/battleship.png"
+                elif defect == "wrong-policy": atlas["policy"] = "mirrored-two-view"
+                elif defect == "unrestored": atlas["stateRestored"] = False
+                elif defect == "fallback": atlas["posesValid"] = False
+                elif defect == "numeric-check": atlas["cases"][0]["negative"] = 1
+                else: atlas["cases"][0][defect] = False
+                with self.assertRaisesRegex(ValueError, "battleship direction artwork"):
                     latest_ready(records, self.definition)
 
     def test_air_artwork_rejects_missing_views_bad_mirrors_and_unrestored_state(self):

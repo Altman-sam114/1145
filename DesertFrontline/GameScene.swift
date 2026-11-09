@@ -1220,6 +1220,9 @@ final class GameScene: SKScene {
     private var entities: [Int: GameEntity] = [:]
     private var unitArtworkTextures: [EntityKind: SKTexture] = [:]
     private var tankDirectionTextures: [SKTexture] = []
+    private var battleshipDirectionTextures: [SKTexture] = []
+    private var ciBattleshipDirectionCases: [[String: Any]] = []
+    private var ciBattleshipDirectionRestored = false
     private let directionalAirKinds: [EntityKind] = [.fighter, .helicopter]
     private var airDirectionTextures: [EntityKind: [SKTexture]] = [:]
     private var ciAirDirectionCases: [String: [[String: Any]]] = [:]
@@ -1455,6 +1458,7 @@ final class GameScene: SKScene {
         if isCICaptureMode {
             auditTankDirectionArtwork()
             auditAirDirectionArtwork()
+            auditBattleshipDirectionArtwork()
             auditTacticalOverlayRendering()
         }
         if isCICaptureMode { ciFixtureCamera = cameraRig.position }
@@ -1594,6 +1598,18 @@ final class GameScene: SKScene {
         ciBeacon("geometry-invalidated", extra: ["reason": reason])
     }
 
+    private func ciFogSurfaceChecks() -> [String: Bool] {
+        let bounds = CGRect(x: -tileWidth / 2, y: -tileHeight / 2, width: tileWidth, height: tileHeight)
+        return ["sharedEdges": fogNodes.count == rows * cols && fogNodes.allSatisfy { tile, fog in
+                    fog.path?.boundingBoxOfPath == bounds && fog.position == tileCenter(tile)
+                },
+                "rasterEdges": fogNodes.values.allSatisfy { !$0.isAntialiased },
+                "opacity": fogNodes.allSatisfy { tile, fog in
+                    let expected: CGFloat = visibleTiles.contains(tile) ? 0 : (exploredTiles.contains(tile) ? 0.48 : 0.86)
+                    return abs(fog.alpha - expected) < 0.0001
+                }]
+    }
+
     private func ciCommandMarkerUnobscured(_ marker: String) -> Bool {
         guard let node = effectsLayer.childNode(withName: "ci:marker:\(marker)"), let layout = hudLayout else { return false }
         let frame = node.calculateAccumulatedFrame()
@@ -1704,6 +1720,7 @@ final class GameScene: SKScene {
         let marker = environment["DESERT_CI_COMMAND_MARKER"] ?? ""
         let focus = environment["DESERT_CI_CAMERA_FOCUS"] ?? ""
         let fixtureChecks = ciFixtureChecks(marker: marker)
+        let fogSurfaceChecks = ciFogSurfaceChecks()
         let requiredStages: Set<String> = ["terrain", "map", "control-points", "units", "hud", "fog", "fixture", "initialization"]
         let attached = entities.values.filter { $0.isAlive && $0.node.parent === entityLayer }
         let playerUnits = attached.filter { $0.faction == .player && !$0.kind.isStructure }
@@ -1746,13 +1763,14 @@ final class GameScene: SKScene {
                 attached.allSatisfy({ $0.artworkNode?.parent != nil }) &&
                 ciTankDirectionRestored && ciTankDirectionCases.count == 8 && tankArtworkPosesValid() &&
                 ciAirDirectionRestored && airArtworkPosesValid() &&
+                ciBattleshipDirectionRestored && battleshipArtworkPosesValid() &&
                 ciOverlayChecks.count == 4 && ciOverlayChecks.values.allSatisfy({ $0 }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
                 moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty &&
                 essentialHUDTextCompleteness().values.allSatisfy({ $0 }) &&
                 !view.shouldCullNonVisibleNodes && !view.ignoresSiblingOrder,
-            "fog": !fogLayer.children.isEmpty && !visibleTiles.isEmpty && !exploredTiles.isEmpty,
+            "fog": !fogLayer.children.isEmpty && !visibleTiles.isEmpty && !exploredTiles.isEmpty && fogSurfaceChecks.values.allSatisfy({ $0 }),
             "fixture": !ciFixtureBranch.isEmpty && hudPage.rawValue == expectedPage && fixtureChecks.values.allSatisfy({ $0 }) &&
                 ciFixtureCamera.map({ cameraRig.position.distance(to: clampCamera($0)) < 1 }) == true,
             "contractRestored": environment["DESERT_CI_HUD_CONTRACT"] != "1" || (ciHUDReport != nil && ciHUDRestored)
@@ -1764,6 +1782,8 @@ final class GameScene: SKScene {
                 ciBeacon("readiness-pending", extra: ["checks": checks, "fixtureChecks": fixtureChecks, "essentialText": essentialHUDTextCompleteness(),
                                                     "tacticalOverlays": ["checks": ciOverlayChecks, "mirrors": ciOverlayMirrors],
                                                     "airDirections": airArtworkEvidence(),
+                                                    "battleshipDirections": ["cases": ciBattleshipDirectionCases, "restored": ciBattleshipDirectionRestored],
+                                                    "fogSurface": fogSurfaceChecks,
                                                     "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
             ciReadyFrames.removeAll()
@@ -1781,6 +1801,8 @@ final class GameScene: SKScene {
             "fixtureBranch": ciFixtureBranch, "completedStages": ciCompletedStages.sorted(),
             "fixtureChecks": fixtureChecks,
             "essentialText": essentialHUDTextCompleteness(),
+            "fogSurface": ["policy": "shared-edge-fog-v1", "checks": fogSurfaceChecks, "tileCount": fogNodes.count,
+                           "tileWidth": tileWidth, "tileHeight": tileHeight],
             "selectedEntities": selectedIDs.sorted().compactMap { id -> [String: Any]? in
                 guard let entity = entities[id] else { return nil }
                 return ["id": id, "kind": entity.kind.shortCode, "hpFraction": entity.hp / entity.kind.maxHP,
@@ -1800,6 +1822,9 @@ final class GameScene: SKScene {
                                            "textureCount": tankDirectionTextures.count, "cases": ciTankDirectionCases,
                                            "stateRestored": ciTankDirectionRestored, "posesValid": tankArtworkPosesValid()],
                         "airDirections": airArtworkEvidence(),
+                        "battleshipDirections": ["policy": "battleship-eight-v1", "file": "Art/Directions/battleship-eight.png",
+                                                "textureCount": battleshipDirectionTextures.count, "cases": ciBattleshipDirectionCases,
+                                                "stateRestored": ciBattleshipDirectionRestored, "posesValid": battleshipArtworkPosesValid()],
                         "effectTextures": Self.effectArtworkNames.compactMap { name -> [String: Any]? in
                             guard let texture = effectArtworkTextures[name] else { return nil }
                             return ["file": "Art/Effects/\(name).png", "width": texture.size().width, "height": texture.size().height]
@@ -2024,7 +2049,10 @@ final class GameScene: SKScene {
                 addTerrainDetail(for: tile, terrain: terrain[row][col], at: center)
                 addScenery(for: tile, terrain: terrain[row][col], at: center)
 
-                let fog = SKShapeNode(path: diamondPath(width: tileWidth + 1, height: tileHeight + 1))
+                let fog = SKShapeNode(path: diamondPath(width: tileWidth, height: tileHeight))
+                // Adjacent translucent fog polygons share exact edges: the old 1pt
+                // overlap multiplied alpha and drew a dark grid over explored ground.
+                fog.isAntialiased = false
                 fog.position = center
                 fog.fillColor = UIColor.black
                 fog.strokeColor = .clear
@@ -3149,9 +3177,8 @@ final class GameScene: SKScene {
         return CGSize(width: side, height: side)
     }
 
-    private func updateAirArtworkFacing(_ entity: GameEntity, direction: CGPoint?) {
-        guard let textures = airDirectionTextures[entity.kind], textures.count == 8,
-              let sprite = entity.artworkNode else { return }
+    private func updateDirectionalArtworkFacing(_ entity: GameEntity, direction: CGPoint?, textures: [SKTexture]) {
+        guard textures.count == 8, let sprite = entity.artworkNode else { return }
         if let direction, direction.length > 0.01 {
             let angle = atan2(direction.y, direction.x)
             let step = CGFloat.pi / 4
@@ -3166,18 +3193,21 @@ final class GameScene: SKScene {
         if sprite.xScale != mirror { sprite.xScale = mirror }
     }
 
+    private func updateAirArtworkFacing(_ entity: GameEntity, direction: CGPoint?) {
+        guard let textures = airDirectionTextures[entity.kind] else { return }
+        updateDirectionalArtworkFacing(entity, direction: direction, textures: textures)
+    }
+
+    private func artworkFacingDirection(for entity: GameEntity) -> CGPoint? {
+        if let destination = entity.destination { return destination - entity.node.position }
+        if let target = entity.attackTarget, target.isAlive,
+           isKnownToFaction(target, observer: entity.faction) { return target.node.position - entity.node.position }
+        return nil
+    }
+
     private func refreshAirArtworkFacings() {
         for entity in entities.values where entity.isAlive && directionalAirKinds.contains(entity.kind) {
-            let direction: CGPoint?
-            if let destination = entity.destination {
-                direction = destination - entity.node.position
-            } else if let target = entity.attackTarget, target.isAlive,
-                      isKnownToFaction(target, observer: entity.faction) {
-                direction = target.node.position - entity.node.position
-            } else {
-                direction = nil
-            }
-            updateAirArtworkFacing(entity, direction: direction)
+            updateAirArtworkFacing(entity, direction: artworkFacingDirection(for: entity))
         }
     }
 
@@ -3247,37 +3277,68 @@ final class GameScene: SKScene {
     }
 
     private func updateTankArtworkFacing(_ entity: GameEntity, direction: CGPoint?) {
-        guard entity.kind == .tank, tankDirectionTextures.count == 8, let sprite = entity.artworkNode else { return }
-        if let direction, direction.length > 0.01 {
-            let angle = atan2(direction.y, direction.x)
-            let step = CGFloat.pi / 4
-            let previousAngle = CGFloat(entity.artworkHeading) * step
-            let difference = abs(atan2(sin(angle - previousAngle), cos(angle - previousAngle)))
-            // A small hysteresis band prevents chatter at the eight view boundaries.
-            if difference > step / 2 + 0.06 {
-                entity.artworkHeading = (Int(floor((angle + 2 * .pi + step / 2) / step))) % 8
-            }
-        }
-        let texture = tankDirectionTextures[entity.artworkHeading]
-        if sprite.texture !== texture { sprite.texture = texture }
-        // The entity's original mirror still drives dust/health/selection effects.
-        let mirror: CGFloat = entity.node.xScale < 0 ? -1 : 1
-        if sprite.xScale != mirror { sprite.xScale = mirror }
+        guard entity.kind == .tank else { return }
+        updateDirectionalArtworkFacing(entity, direction: direction, textures: tankDirectionTextures)
     }
 
     private func refreshTankArtworkFacings() {
         for entity in entities.values where entity.isAlive && entity.kind == .tank {
-            let direction: CGPoint?
-            if let destination = entity.destination {
-                direction = destination - entity.node.position
-            } else if let target = entity.attackTarget, target.isAlive,
-                      isKnownToFaction(target, observer: entity.faction) {
-                direction = target.node.position - entity.node.position
-            } else {
-                direction = nil
-            }
-            updateTankArtworkFacing(entity, direction: direction)
+            updateTankArtworkFacing(entity, direction: artworkFacingDirection(for: entity))
         }
+    }
+
+    private func loadBattleshipDirectionArtwork() -> Bool {
+        if battleshipDirectionTextures.count == 8 { return true }
+        guard let textures = directionArtworkTextures(named: "battleship-eight") else { return false }
+        battleshipDirectionTextures = textures
+        return true
+    }
+
+    private func refreshBattleshipArtworkFacings() {
+        for entity in entities.values where entity.isAlive && entity.kind == .battleship {
+            updateDirectionalArtworkFacing(entity, direction: artworkFacingDirection(for: entity), textures: battleshipDirectionTextures)
+        }
+    }
+
+    private func battleshipArtworkPosesValid() -> Bool {
+        let ships = entities.values.filter { $0.isAlive && $0.kind == .battleship }
+        return battleshipDirectionTextures.count == 8 && !ships.isEmpty && ships.allSatisfy { ship in
+            guard let sprite = ship.artworkNode, (0..<8).contains(ship.artworkHeading) else { return false }
+            return sprite.texture === battleshipDirectionTextures[ship.artworkHeading] &&
+                sprite.size == CGSize(width: 160, height: 160) && sprite.anchorPoint == CGPoint(x: 0.5, y: 0.5) &&
+                sprite.position == CGPoint(x: 0, y: 8) && ship.node.xScale * sprite.xScale == 1
+        }
+    }
+
+    private func auditBattleshipDirectionArtwork() {
+        ciBattleshipDirectionCases.removeAll()
+        ciBattleshipDirectionRestored = false
+        guard battleshipDirectionTextures.count == 8,
+              let ship = entities.values.first(where: { $0.kind == .battleship && $0.isAlive }),
+              let sprite = ship.artworkNode else { return }
+        let saved = (ship.artworkHeading, ship.node.xScale, sprite.texture, sprite.xScale)
+        let geometry = (sprite.size, sprite.anchorPoint, sprite.position, ship.node.position)
+        for index in 0..<8 {
+            let angle = CGFloat(index) * .pi / 4
+            var mirrors: [Bool] = []
+            for sign in [CGFloat(1), CGFloat(-1)] {
+                ship.node.xScale = sign
+                updateDirectionalArtworkFacing(ship, direction: CGPoint(x: cos(angle), y: sin(angle)), textures: battleshipDirectionTextures)
+                mirrors.append(ship.artworkHeading == index && sprite.texture === battleshipDirectionTextures[index] &&
+                               sprite.xScale * ship.node.xScale == 1)
+            }
+            ciBattleshipDirectionCases.append(["heading": index, "positive": mirrors[0], "negative": mirrors[1],
+                                              "geometry": sprite.size == geometry.0 && sprite.anchorPoint == geometry.1 &&
+                                                  sprite.position == geometry.2 && ship.node.position == geometry.3])
+        }
+        ship.artworkHeading = saved.0
+        ship.node.xScale = saved.1
+        sprite.texture = saved.2
+        sprite.xScale = saved.3
+        ciBattleshipDirectionRestored = ship.artworkHeading == saved.0 && ship.node.xScale == saved.1 &&
+            sprite.texture === saved.2 && sprite.xScale == saved.3 && sprite.size == geometry.0 &&
+            sprite.anchorPoint == geometry.1 && sprite.position == geometry.2 && ship.node.position == geometry.3 &&
+            ciBattleshipDirectionCases.allSatisfy { $0["positive"] as? Bool == true && $0["negative"] as? Bool == true && $0["geometry"] as? Bool == true }
     }
 
     private func tankArtworkPosesValid() -> Bool {
@@ -3446,6 +3507,14 @@ final class GameScene: SKScene {
             sprite.size = airArtworkCellSize(for: entity.kind)
             sprite.anchorPoint = CGPoint(x: 0.5, y: 0.5)
             sprite.position = CGPoint(x: 0, y: 24)
+            sprite.xScale = entity.node.xScale < 0 ? -1 : 1
+        }
+        if entity.kind == .battleship, loadBattleshipDirectionArtwork() {
+            entity.artworkHeading = entity.faction == .enemy ? 5 : 7
+            sprite.texture = battleshipDirectionTextures[entity.artworkHeading]
+            sprite.size = CGSize(width: 160, height: 160)
+            sprite.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            sprite.position = CGPoint(x: 0, y: 8)
             sprite.xScale = entity.node.xScale < 0 ? -1 : 1
         }
         sprite.color = entity.faction.color
@@ -6713,6 +6782,7 @@ final class GameScene: SKScene {
     private func updateHUD() {
         refreshTankArtworkFacings()
         refreshAirArtworkFacings()
+        refreshBattleshipArtworkFacings()
         applyCameraProjection()
         for entity in entities.values {
             entity.label.xScale = entity.node.xScale < 0 ? -1 : 1

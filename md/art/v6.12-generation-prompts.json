@@ -1,0 +1,23 @@
+[
+  {
+    "tool": "image_gen.imagegen",
+    "reference": "DesertFrontline/Art/Units/battleship.png",
+    "source": "exec-0ff0e689-7b1c-4bb1-a7d3-73abdb604bc8.png",
+    "prompt": "Use case: stylized-concept\nAsset type: original production game sprite atlas for an isometric naval RTS, transparent RGBA, landscape 2:1 canvas, mathematical 4 columns by 2 rows of equal SQUARE cells.\nReference: supplied original battleship is an identity/material reference. Render the SAME recognisable battleship, not eight different ships. Keep its slate-gray armor, muted teak deck, low red waterline, two twin-barrel forward main turrets, bridge, rear structures, antenna mast and secondary guns. Clean realistic miniature 3D detail with restrained matte daylight, no neon or cartoon gold outlines.\nPrimary request: EIGHT distinct yaw angles of that ship viewed from the same fixed elevated orthographic camera about 45 degrees down. Physically rotate the entire ship, do NOT just mirror the same view.\nDirections in exact row order: top row E (pointed BOW RIGHT, rounded stern LEFT), NE (bow UPPER RIGHT, see rear/starboard), N (bow UP away, rounded stern nearest viewer), NW (bow UPPER LEFT). Bottom row W (bow LEFT), SW (bow LOWER LEFT toward viewer), S (bow DOWN toward viewer, two big forward turrets clearly in front), SE (bow LOWER RIGHT toward viewer).\nEach whole ship including mast and all barrels fits within the central 68 percent of its own cell, centered precisely. Same physical dimensions and zoom in all views; front/rear views remain naturally narrow. Broad empty transparent gutters on all sides of every cell. No ship or mast touches or crosses cell boundaries.\nTruly transparent alpha-zero background, clean neutral antialiased edge pixels. No sea, water, waves, wake, ground shadows, cast shadow, smoke, firing, explosion, flags, text, labels, grid lines, border, scenery or UI. No detached pixels or colored halos. This is a game-ready eight-direction atlas of one original miniature warship.",
+    "status": "rejected: white background/shadows, insufficient padding"
+  },
+  {
+    "tool": "image_gen.imagegen",
+    "reference": "battleship-eight-draft.png",
+    "source": "exec-b1b77d37-a1f2-4d2f-b8c2-6f2197b0bf53.png",
+    "prompt": "Use case: background-extraction\nEdit target: the supplied four-by-two battleship atlas. Preserve every ship's exact detail, material, light, angle, physical scale relative to the other ships, and row order.\nRemove the entire WHITE background, ALL cast ground shadows and ALL faint grid/seam lines. Replace with GENUINE transparent RGBA, alpha ZERO in every empty pixel. Do NOT paint a fake checkerboard or another solid background.\nUniformly shrink each entire ship INCLUDING its mast and barrels to 76 percent of its current size. Precisely center its whole silhouette in the same equal square grid cell. Broad fully transparent empty gutters on ALL four sides of EACH cell. No part may touch or cross any cell boundary. Keep actual eight distinct ship directions unchanged: top E / NE / N / NW, bottom W / SW / S / SE. Keep the original restrained slate gray hull, teak deck and red waterline.\nClean antialiased neutral edges, no colored matte, white halo, detached fragments, text, labels, UI, sea, water, wake, shadows, smoke, or new elements. Output ONLY eight clean isolated small battleship sprites with full real transparency.",
+    "status": "rejected: bright red edge fragments"
+  },
+  {
+    "tool": "image_gen.imagegen",
+    "reference": "battleship-eight-transparent.png",
+    "source": "exec-64f295c2-6a37-436c-9b16-fbb72923b763.png",
+    "prompt": "Use case: precise-object-edit\nEdit target: supplied eight-direction battleship atlas. Preserve the exact eight yaw angles, layout, padding, silhouette sizes, gun/tower/mast details and ship identity. Top E/NE/N/NW, bottom W/SW/S/SE.\nChange ONLY color materials and edge cleanliness: replace ALL red hull/waterline paint with dark desaturated graphite naval gray. Keep muted natural tan teak decks and neutral slate-gray superstructure with restrained matte lighting. Remove every bright red, yellow or cyan edge fleck and any isolated opaque fragment outside the ship silhouette. Clean antialiasing, neutral edge pixels, no bright painted outlines.\nKeep truly transparent RGBA alpha-zero gutters and background. No opaque matte, background, shadow, wave, water, wake, smoke, firing, text, grid or labels. Do not resize, move, rotate or substitute any ship; do not add elements. Production game-ready clean miniature sprites.",
+    "status": "candidate only: not integrated or cloud validated"
+  }
+]

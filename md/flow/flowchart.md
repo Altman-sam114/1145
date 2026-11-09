@@ -393,3 +393,19 @@ flowchart LR
   Intent --> Audit[云端两镜像端点 / 节点身份 / 重挂与状态恢复]
   Focus --> Audit
 ```
+
+
+## 战列舰方向与迷雾格边
+
+读图说明：战列舰与坦克/空军共享视觉朝向函数，仍使用原实体状态；迷雾只调整边缘覆盖，透明度和可见性集合保持原来来源。
+
+```mermaid
+flowchart LR
+  State[原destination / 已知存活target] --> Facing[共享八向迟滞 / 父镜像补偿]
+  Atlas[战列舰4x2图集] --> Facing
+  Facing --> Hull[原实体artworkNode / 固定格与高度]
+  Fog[原visible / explored集合] --> Alpha[原0 / 0.48 / 0.86]
+  Alpha --> Tiles[精确共享菱形边 / 无重叠 / 关闭边缘抗锯齿]
+  Hull --> Evidence[云端实际姿态 / 几何 / 恢复 / 正式PNG]
+  Tiles --> Evidence
+```
