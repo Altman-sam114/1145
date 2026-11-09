@@ -351,3 +351,5 @@ fog tile使用精确tileWidth×tileHeight菱形并关闭形状边缘抗锯齿，
 HUD分类节点现在只包含一个title，命令仍包含title/subtitle。CI就绪检查按节点名字核对精确文字集合、非空白/显隐/alpha，并在hudText附实际5个分类文字与2×命令数；parser和HUD审计同步单标题结构，不能用空/透明副标题满足旧两行计数。其余布局、44pt命中与路由不变。
 
 `hudControlTextIDs(for:)`是原生就绪与Swift文字审计的共同规则：hud-page控件只有title，hud动作保留title/subtitle；`expectedHUDControlTextIDs`从五页与当前动作生成审计集合。失败时额外输出有界hud-contract-diagnostic（前三个case与首条文字失败），不替代ready/完整报告，不放宽恢复检查。
+
+8pt命令状态文字使用12pt高拟合槽，保持槽中心不动，容纳Avenir Next升降部；shortCommandCaptionComplete要求不超过8字符的命令状态完整显示，ready与Swift审计共同核对。较长动态状态仍使用既有有界前缀省略策略，不改输入或命令语义。

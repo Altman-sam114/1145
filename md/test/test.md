@@ -639,3 +639,5 @@ THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，
 截图命令采用同场景有界恢复：首次最多45秒，仅在owned CLI超时且确认进程组清理后可在原180秒总体预算内重读一次。两次使用独立nonce/attempt文件，同设备/PID/nonce/ready不变；App退出、ready改变、普通错误、取消、不完整回收或坏PNG均停止。runner与metadata独立验证screenCapture身份、时限、原始日志摘要、CLI回收和最终rawImage一致，失败候选留证；这不是重启设备或替换截图。
 
 HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1，精确5个分类文字和每命令2个文字，全部非空/可见、名称匹配。生产节点删除空副标题，文字审计只注册分类title与命令title/subtitle；缺分类、缺命令状态、旧subtitle、布尔冒充数量或隐藏均拒绝，原25布局/两态/文字拟合恢复与正式PNG门槛不变。
+
+常用命令状态（source不超过8字符）必须完整显示；原生ready与各HUD审计阶段的displayValidCount同时检查源文字与显示文字相等，不能把guard/push等短词省略视为正常。长动态状态仍允许合法前缀省略。字槽调整后核对原25组布局/恢复和24正式PNG，避免仅依靠合法省略的计数通过。

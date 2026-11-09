@@ -6498,3 +6498,11 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 原生hud已true；HUD producer stateRestored=false。源码审计另有expectedIDs仍强制五个已删除的分类subtitle，这是确定存在的必败条件；不能将未采集的报告冒称审计通过。
 - 将就绪检查与Swift文字审计合并到同一hudControlTextIDs/expectedHUDControlTextIDs规则，完整保留命令两行、分类单标题、精确ID/非空白/可见/数量以及恢复/布局全部门槛。补有界失败诊断，输出首个文字问题与前三个失败case，避免只看到超时；不是通过证据。
 - 再次按main精确SHA云端复核，不本机测试；若仍失败以新增原始诊断决定下一步，不盲放宽合同或预算。
+
+
+### v6.17 / 修正短命令状态文字高度（待云端）
+
+- v6.16 main5f352e242244d45fcf3229c8093c98ec91cffdea / run42692732568/attempt1/artifact13709850480，原包75499021bytes/185项，SHA256 2fd0c88b9da5c6ea7ff1d8e9e5a65d3fedcb8769b694abd5e96de41fa2a5643c；身份、未加密/CRC/digest、manifest、JUnit10/0failure/1准确XCTest skip、双build、122回归、31source=bundle、25HUD/50详情、24正式PNG已复核。ready最大7207/8000，work1065.386/cleanup12.474。
+- 真实AMOV截图首命令45秒上限超时，owned CLI已reap并以signal0确认进程组不存在（KILL原生EPERM按既有合同核对）；同设备/PID/nonce/ready第二次exit0，原始PNG和日志摘要均绑定，总170.258748s<180，无重启/换设备/替代图像。另boot-wait与launch-help各有原有有界恢复；保留三条失败stage，不冒称零失败stage。
+- 24原始PNG已逐张目视：未见黑屏/缺层/系统通知；三个命令无遮挡、海空与三舰图集正常。但guard/push短词因8pt字仍用10pt高槽而被省略，不能以绿色CI冒称UI全部验收。
+- 将命令副标题槽高度10→12、中心不变；ready与Swift审计共用shortCommandCaptionComplete，要求8字符以内命令状态完整显示。长动态文案保留既有前缀省略；不改路由、玩法、资源或预算。将用新SHA复核原链路与原图。

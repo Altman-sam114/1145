@@ -1753,7 +1753,8 @@ final class GameScene: SKScene {
             let labels = parent.children.compactMap { $0 as? SKLabelNode }
             return !expected.isEmpty && Set(labels.compactMap(\.name)) == expected &&
                 labels.count == expected.count && labels.allSatisfy {
-                    !($0.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) && !$0.isHidden && $0.alpha > 0
+                    !($0.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) && !$0.isHidden && $0.alpha > 0 &&
+                        shortCommandCaptionComplete(id: $0.name ?? "", source: ($0 as? HUDTextLabel)?.sourceText, display: $0.text)
                 }
         }
         let tabTextCount = hudPageShapes.values.reduce(0) { count, shape in
@@ -5707,6 +5708,12 @@ final class GameScene: SKScene {
         return []
     }
 
+    private func shortCommandCaptionComplete(id: String, source: String?, display: String?) -> Bool {
+        guard id.hasPrefix("hud-text:action:"), id.hasSuffix(":subtitle"),
+              let source, !source.isEmpty, source.count <= 8 else { return true }
+        return display == source
+    }
+
     private var expectedHUDControlTextIDs: Set<String> {
         var result = Set<String>()
         for page in HudPage.allCases { result.formUnion(hudControlTextIDs(for: "hud-page:\(page.rawValue)")) }
@@ -6117,7 +6124,8 @@ final class GameScene: SKScene {
                 let validPrefix = value.display.map { display in
                     display.hasSuffix("\u{2026}") && value.source?.hasPrefix(String(display.dropLast())) == true
                 } ?? false
-                check(!truncated || (nonempty && validPrefix), "displayValidCount")
+                check((!truncated || (nonempty && validPrefix)) &&
+                      shortCommandCaptionComplete(id: value.id, source: value.source, display: value.display), "displayValidCount")
                 if truncated { counts["truncatedCount"]! += 1 }
                 check(first[index].node === value.node && sameFit(first[index], value, sameObject: true), "idempotentCount", comparison: first[index])
                 check(sameParents(input, value, sameObject: true), "parentPreservedCount", comparison: input)
@@ -6636,7 +6644,7 @@ final class GameScene: SKScene {
         subtitleLabel.horizontalAlignmentMode = .center
         subtitleLabel.position = CGPoint(x: 0, y: -18)
         node.addChild(subtitleLabel)
-        boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: frame.height < 48 ? -21 : -23, width: frame.width - 6, height: 10), 8))
+        boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: frame.height < 48 ? -22 : -24, width: frame.width - 6, height: 12), 8))
         hudButtonSubtitleLabels[action] = subtitleLabel
         return node
     }
