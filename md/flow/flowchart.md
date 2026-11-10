@@ -453,3 +453,18 @@ flowchart LR
   Inside --> Evidence
   Enemy --> Evidence
 ```
+
+
+读图说明：底材只在地图创建或重开时生成；地形掩模、道路/油污与装饰仍取自同一GameScene，实体和迷雾沿原上层链路覆盖。HUD着色与布局/输入各自复用已有状态。
+
+```mermaid
+flowchart LR
+  Map["drawMap / SKRM"] --> Mask["真实tile → footprint / sea / 陆水边"]
+  RGB["原创RGB沙地 / 海面<br/>各解码≤1024px"] --> Bake["统一世界坐标镜像重复<br/>一次烘焙≤4096px / 岸线浅滩碎浪"]
+  Mask --> Bake
+  Bake --> Surface["唯一continuous-surface<br/>mapNode z=-100"]
+  Map --> Detail["原道路 / 油污 / 岩石 / 村落"]
+  Surface --> Layers["原实体 / 战斗 / 迷雾 / 相机"]
+  Detail --> Layers
+  Shade["两张32×128渐层缓存"] --> HUD["原HUDLayout五页 / 44pt / 路由"]
+```

@@ -84,6 +84,7 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          counts=dict(mapNodes=1, entities=1, playerUnits=1, visiblePlayerUnits=1, fogNodes=1,
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
+         terrainSurface=["continuous-terrain-v1", 3483, 1742, 1, 1, 2, 255],
          fogSurface=dict(policy="inward-feather-fog-v1", tileCount=1, tileWidth=86, tileHeight=43,
                          featherCounts=[1, 1, 1], checks=dict(sharedEdges=True, rasterEdges=True, opacity=True,
                              featherGeometry=True, featherMasks=True, featherPixels=True, featherBounded=True,
@@ -1789,6 +1790,31 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "numeric-check": atlas["cases"][0]["negative"] = 1
                 else: atlas["cases"][0][defect] = False
                 with self.assertRaisesRegex(ValueError, "tank direction artwork"):
+                    latest_ready(records, self.definition)
+
+    def test_continuous_terrain_rejects_missing_wrong_material_and_incomplete_coverage(self):
+        for defect in ("missing", "type", "short", "long", "policy", "bool", "float", "empty", "oversize",
+                       "aspect", "tiles", "coast", "excess-coast", "materials", "mask", "extra-bit"):
+            with self.subTest(defect=defect):
+                records = self.records(self.scene()["scene"])
+                surface = records[-1]["terrainSurface"]
+                if defect == "missing": records[-1].pop("terrainSurface")
+                elif defect == "type": records[-1]["terrainSurface"] = {}
+                elif defect == "short": surface.pop()
+                elif defect == "long": surface.append(1)
+                elif defect == "policy": surface[0] = "tiles-v0"
+                elif defect == "bool": surface[3] = True
+                elif defect == "float": surface[1] = 3483.0
+                elif defect == "empty": surface[2] = 0
+                elif defect == "oversize": surface[1:3] = [5000, 2500]
+                elif defect == "aspect": surface[2] = 1000
+                elif defect == "tiles": surface[3] = 2
+                elif defect == "coast": surface[4] = 0
+                elif defect == "excess-coast": surface[4] = 5
+                elif defect == "materials": surface[5] = 1
+                elif defect == "mask": surface[6] = 254
+                elif defect == "extra-bit": surface[6] = 511
+                with self.assertRaisesRegex(ValueError, "continuous terrain"):
                     latest_ready(records, self.definition)
 
     def test_fog_surface_rejects_wrong_edges_raster_opacity_and_counts(self):

@@ -834,16 +834,16 @@ private final class HUDTextLabel: SKLabelNode {
 }
 
 private enum HUDPalette {
-    static let panel = UIColor(red: 0.10, green: 0.12, blue: 0.12, alpha: 0.96)
-    static let panelRaised = UIColor(red: 0.16, green: 0.18, blue: 0.18, alpha: 0.96)
-    static let panelDeep = UIColor(red: 0.065, green: 0.080, blue: 0.080, alpha: 0.97)
+    static let panel = UIColor(red: 0.14, green: 0.19, blue: 0.23, alpha: 0.98)
+    static let panelRaised = UIColor(red: 0.22, green: 0.28, blue: 0.32, alpha: 1)
+    static let panelDeep = UIColor(red: 0.075, green: 0.10, blue: 0.13, alpha: 0.99)
     static let border = UIColor(red: 0.43, green: 0.57, blue: 0.60, alpha: 0.65)
-    static let borderSoft = UIColor(red: 0.55, green: 0.60, blue: 0.56, alpha: 0.24)
-    static let gold = UIColor(red: 0.94, green: 0.77, blue: 0.45, alpha: 1.0)
-    static let cyan = UIColor(red: 0.52, green: 0.77, blue: 0.74, alpha: 1.0)
+    static let borderSoft = UIColor(red: 0.66, green: 0.77, blue: 0.82, alpha: 0.22)
+    static let gold = UIColor(red: 1.0, green: 0.80, blue: 0.45, alpha: 1.0)
+    static let cyan = UIColor(red: 0.53, green: 0.82, blue: 0.84, alpha: 1.0)
     static let warning = UIColor(red: 1.0, green: 0.42, blue: 0.27, alpha: 1.0)
     static let text = UIColor(red: 0.90, green: 0.94, blue: 0.91, alpha: 1.0)
-    static let mutedText = UIColor(red: 0.62, green: 0.73, blue: 0.70, alpha: 1.0)
+    static let mutedText = UIColor(red: 0.70, green: 0.79, blue: 0.82, alpha: 1.0)
 }
 
 private enum SupportPower: CaseIterable, Hashable {
@@ -1246,7 +1246,16 @@ final class GameScene: SKScene {
     private static let sceneryArtworkNames = ["desert-rocks", "date-palm", "desert-hamlet"]
     private var effectArtworkTextures: [String: SKTexture] = [:]
     private static let effectArtworkNames = ["water-impact", "impact-burst"]
-    private var terrainSurfaceTextures: [Int: SKTexture] = [:]
+    private var terrainMaterialImages: [String: UIImage] = [:]
+    private var terrainSurfaceNode: SKSpriteNode?
+    private var terrainSurfaceTexture: SKTexture?
+    private var terrainSurfaceFrame = CGRect.zero
+    private var terrainSurfacePixels = CGSize.zero
+    private var terrainSurfaceStamp: [Int] = []
+    private var terrainSurfaceShoreCount = 0
+    private var terrainSurfaceCoverageValid = false
+    private var terrainSurfacePixelsValid = false
+    private var hudSurfaceTextures: [String: SKTexture] = [:]
     private var hudSymbolTextures: [String: SKTexture] = [:]
     private var controlPoints: [BattlefieldControlPoint] = []
     private var selectedIDs = Set<Int>()
@@ -1800,7 +1809,7 @@ final class GameScene: SKScene {
             "geometry": !pendingGeometry && !hudGeometryDirty && !isLayingOutHUD && !isWritingHUDContract &&
                 projectionValid && hasWindowSafeArea && size.width > size.height && abs(view.bounds.width - size.width) < 1 &&
                 abs(view.bounds.height - size.height) < 1 && window.safeAreaInsets == windowSafeAreaInsets,
-            "map": terrain.count == rows && mapNode.children.count >= rows * cols &&
+            "map": terrain.count == rows && (terrainSurfaceEvidence().last as? Int) == 255 &&
                 Self.sceneryArtworkNames.allSatisfy({ sceneryArtworkTexture(named: $0) != nil }),
             "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count &&
                 EntityKind.allCases.filter({ $0.artworkName != nil }).allSatisfy({ unitArtworkTexture(for: $0) != nil }) &&
@@ -1830,6 +1839,7 @@ final class GameScene: SKScene {
                                                     "airDirections": airArtworkEvidence(),
                                                     "navalDirections": navalArtworkEvidence(),
                                                     "groundDirections": groundArtworkEvidence(),
+                                                    "terrainSurface": terrainSurfaceEvidence(),
                                                     "fogSurface": fogSurfaceChecks,
                                                     "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
@@ -1850,6 +1860,7 @@ final class GameScene: SKScene {
             "essentialText": essentialHUDTextCompleteness(),
             "hudText": ["policy": "single-title-tabs-v1", "visible": controlsHaveText,
                         "tabLabels": tabTextCount, "commandLabels": commandTextCount],
+            "terrainSurface": terrainSurfaceEvidence(),
             "fogSurface": ["policy": "inward-feather-fog-v1", "checks": fogSurfaceChecks, "tileCount": fogNodes.count,
                            "featherCounts": [fogFeatherNodes.count, fogFeatherKeys.count, fogFeatherTextures.count],
                            "tileWidth": tileWidth, "tileHeight": tileHeight],
@@ -2091,12 +2102,6 @@ final class GameScene: SKScene {
                 minY = min(minY, center.y - tileHeight / 2)
                 maxY = max(maxY, center.y + tileHeight / 2)
 
-                let shape = SKSpriteNode(texture: terrainSurfaceTexture(for: terrain[row][col], tile: tile))
-                shape.size = CGSize(width: tileWidth + 0.8, height: tileHeight + 0.4)
-                shape.position = center
-                shape.zPosition = zPosition(for: center)
-                mapNode.addChild(shape)
-
                 addTerrainDetail(for: tile, terrain: terrain[row][col], at: center)
                 addScenery(for: tile, terrain: terrain[row][col], at: center)
 
@@ -2114,88 +2119,193 @@ final class GameScene: SKScene {
             }
         }
 
-        worldBounds = CGRect(x: minX - 120, y: minY - 120, width: maxX - minX + 240, height: maxY - minY + 240)
+        let surfaceFrame = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+        drawContinuousTerrain(in: surfaceFrame)
+        worldBounds = surfaceFrame.insetBy(dx: -120, dy: -120)
     }
 
-    private func terrainSurfaceTexture(for terrain: Terrain, tile: TileCoord) -> SKTexture {
-        // Roads and rock formations sit on sand; their silhouettes, not whole tiles, define the material.
-        let surface: Terrain = terrain == .road || terrain == .ridge ? .sand : terrain
-        let material: Int
-        switch surface {
-        case .sand: material = 0
-        case .road: material = 1
-        case .water: material = 2
-        case .oil: material = 3
-        case .ridge: material = 4
-        }
-        let key = material * 5 + terrainDetailHash(for: tile) % 5
-        if let cached = terrainSurfaceTextures[key] { return cached }
-        let size = CGSize(width: 260, height: 132)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        format.opaque = false
-        var state = UInt64(key + 1) &* 0x9E3779B97F4A7C15
-        func sample() -> CGFloat {
-            state = state &* 6364136223846793005 &+ 1442695040888963407
-            return CGFloat((state >> 32) & 0xFFFF) / 65535
-        }
-        let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
-            let context = renderer.cgContext
-            let boundary = CGMutablePath()
-            boundary.addLines(between: [CGPoint(x: size.width / 2, y: 0), CGPoint(x: size.width, y: size.height / 2),
-                                        CGPoint(x: size.width / 2, y: size.height), CGPoint(x: 0, y: size.height / 2)])
-            boundary.closeSubpath()
-            context.addPath(boundary)
-            context.clip()
-            context.setFillColor(color(for: surface, tile: tile).cgColor)
-            context.fill(CGRect(origin: .zero, size: size))
-            // Bake broad relief and small wind/water ridges into the cached
-            // material. No per-frame work or extra map nodes are needed.
-            let reliefColors = [UIColor.white.withAlphaComponent(0.035).cgColor,
-                                UIColor.black.withAlphaComponent(0.025).cgColor] as CFArray
-            if let relief = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: reliefColors, locations: [0, 1]) {
-                context.drawLinearGradient(relief, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
+    private func terrainMaterialImage(named name: String) -> UIImage? {
+        if let cached = terrainMaterialImages[name] { return cached }
+        guard let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Art/Terrain"),
+              let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceThumbnailMaxPixelSize: 1024,
+                kCGImageSourceShouldCacheImmediately: true
+              ] as CFDictionary) else { return nil }
+        let material = UIImage(cgImage: image)
+        terrainMaterialImages[name] = material
+        return material
+    }
+
+    private func currentTerrainSurfaceStamp() -> [Int] {
+        terrain.flatMap { row in row.map { tile in
+            switch tile {
+            case .sand: 0
+            case .road: 1
+            case .water: 2
+            case .oil: 3
+            case .ridge: 4
             }
-            if surface == .sand || surface == .water {
-                let water = surface == .water
-                for _ in 0..<(water ? 12 : 18) {
-                    let x = 26 + sample() * (size.width - 70)
-                    let y = 24 + sample() * (size.height - 48)
-                    let span = (water ? 8 : 14) + sample() * (water ? 24 : 35)
-                    let ridge = CGMutablePath()
-                    ridge.move(to: CGPoint(x: x, y: y))
-                    ridge.addCurve(to: CGPoint(x: x + span, y: y + 1.5),
-                                   control1: CGPoint(x: x + span * 0.3, y: y - 2.5),
-                                   control2: CGPoint(x: x + span * 0.7, y: y + 3.5))
-                    context.addPath(ridge)
-                    context.setLineWidth(water ? 0.7 : 0.9)
-                    context.setLineCap(.round)
-                    context.setStrokeColor((water ? UIColor.white : UIColor(red: 0.44, green: 0.34, blue: 0.20, alpha: 1))
-                        .withAlphaComponent(water ? 0.06 : 0.045).cgColor)
-                    context.strokePath()
-                    if !water {
-                        context.saveGState()
-                        context.translateBy(x: 0, y: 1.2)
-                        context.addPath(ridge)
-                        context.setStrokeColor(UIColor.white.withAlphaComponent(0.10).cgColor)
-                        context.strokePath()
-                        context.restoreGState()
-                    }
+        } }
+    }
+
+    private func drawContinuousTerrain(in frame: CGRect) {
+        // One world-coordinate canvas replaces 720 independently tinted diamonds.
+        // It is baked only when the map is built, including a new SKRM seed.
+        terrainSurfaceNode = nil
+        terrainSurfaceTexture = nil
+        terrainSurfaceCoverageValid = false
+        terrainSurfacePixelsValid = false
+        let sand = terrainMaterialImage(named: "desert-sand")
+        let water = terrainMaterialImage(named: "open-water")
+        func point(_ world: CGPoint) -> CGPoint { CGPoint(x: world.x - frame.minX, y: frame.maxY - world.y) }
+        let footprint = CGMutablePath(), sea = CGMutablePath(), coast = CGMutablePath()
+        var shoreCount = 0
+        for row in 0..<rows {
+            for col in 0..<cols {
+                let tile = TileCoord(row: row, col: col), center = tileCenter(tile)
+                let diamond = CGMutablePath()
+                diamond.addLines(between: [point(center + CGPoint(x: 0, y: tileHeight / 2)),
+                    point(center + CGPoint(x: tileWidth / 2, y: 0)),
+                    point(center + CGPoint(x: 0, y: -tileHeight / 2)),
+                    point(center + CGPoint(x: -tileWidth / 2, y: 0))])
+                diamond.closeSubpath()
+                footprint.addPath(diamond)
+                if terrain[row][col] != .water { continue }
+                sea.addPath(diamond)
+                for edge in shorelineSegments(for: tile) {
+                    let a = point(center + edge.start), b = point(center + edge.end)
+                    let bend = CGFloat(terrainDetailHash(for: tile) % 5 - 2) * 0.22
+                    coast.move(to: a)
+                    coast.addQuadCurve(to: b, control: CGPoint(x: (a.x + b.x) / 2 + bend,
+                                                               y: (a.y + b.y) / 2 - bend))
+                    shoreCount += 1
                 }
             }
-            // Fine deterministic material grain is baked once per variant, not per tile or frame.
-            for index in 0..<(surface == .water ? 800 : 2200) {
-                let light = index.isMultiple(of: 3)
-                context.setFillColor((light ? UIColor.white : UIColor.black).withAlphaComponent(light ? 0.10 : 0.055).cgColor)
-                let point = CGPoint(x: sample() * size.width, y: sample() * size.height)
-                let width = surface == .water ? 3 + sample() * 6 : 0.6 + sample() * 1.7
-                context.fillEllipse(in: CGRect(x: point.x, y: point.y, width: width, height: 0.5 + sample() * 0.9))
+        }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = min(1.5, 4096 / max(frame.width, frame.height))
+        format.preferredRange = .standard
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: frame.size, format: format).image { renderer in
+            let context = renderer.cgContext
+            let canvas = CGRect(origin: .zero, size: frame.size)
+            func paint(_ material: UIImage?, within mask: CGPath, fallback: UIColor, cell: CGSize) {
+                context.saveGState()
+                context.addPath(mask)
+                context.clip()
+                context.setFillColor(fallback.cgColor)
+                context.fill(canvas)
+                if let material {
+                    // Mirrored repetition shares identical edge pixels even if a
+                    // generated source is only approximately tileable.
+                    for y in 0..<Int(ceil(frame.height / cell.height)) {
+                        for x in 0..<Int(ceil(frame.width / cell.width)) {
+                            let flipX = !x.isMultiple(of: 2), flipY = !y.isMultiple(of: 2)
+                            context.saveGState()
+                            context.translateBy(x: CGFloat(x) * cell.width + (flipX ? cell.width : 0),
+                                                y: CGFloat(y) * cell.height + (flipY ? cell.height : 0))
+                            context.scaleBy(x: flipX ? -1 : 1, y: flipY ? -1 : 1)
+                            material.draw(in: CGRect(origin: .zero, size: cell))
+                            context.restoreGState()
+                        }
+                    }
+                }
+                context.restoreGState()
             }
+            paint(sand, within: footprint, fallback: color(for: .sand, tile: TileCoord(row: 0, col: 0)),
+                  cell: CGSize(width: 680, height: 340))
+            paint(water, within: sea, fallback: color(for: .water, tile: TileCoord(row: 0, col: 0)),
+                  cell: CGSize(width: 560, height: 280))
+            // Shallows and broken foam follow only actual land/water edges.
+            // Soft bands are clipped to water and never alter navigable tiles.
+            context.saveGState()
+            context.addPath(sea)
+            context.clip()
+            context.setLineCap(.round)
+            context.setLineJoin(.round)
+            let bands: [(CGFloat, UIColor)] = [
+                (48, UIColor(red: 0.20, green: 0.55, blue: 0.52, alpha: 0.10)),
+                (32, UIColor(red: 0.29, green: 0.65, blue: 0.58, alpha: 0.17)),
+                (18, UIColor(red: 0.46, green: 0.72, blue: 0.60, alpha: 0.24)),
+                (7, UIColor(red: 0.74, green: 0.82, blue: 0.67, alpha: 0.32))]
+            for (width, color) in bands {
+                context.addPath(coast)
+                context.setLineWidth(width)
+                context.setStrokeColor(color.cgColor)
+                context.strokePath()
+            }
+            context.addPath(coast.copy(dashingWithPhase: 0, lengths: [5, 2, 1, 4]))
+            context.setLineWidth(1.1)
+            context.setStrokeColor(UIColor(red: 0.96, green: 0.95, blue: 0.82, alpha: 0.66).cgColor)
+            context.strokePath()
+            context.restoreGState()
         }
         let texture = SKTexture(image: image)
         texture.filteringMode = .linear
-        terrainSurfaceTextures[key] = texture
-        return texture
+        let surface = SKSpriteNode(texture: texture)
+        surface.name = "terrain:continuous-surface"
+        surface.size = frame.size
+        surface.position = CGPoint(x: frame.midX, y: frame.midY)
+        surface.zPosition = -100
+        mapNode.addChild(surface)
+        terrainSurfaceNode = surface
+        terrainSurfaceTexture = texture
+        terrainSurfaceFrame = frame
+        terrainSurfacePixels = CGSize(width: CGFloat(image.cgImage?.width ?? 0), height: CGFloat(image.cgImage?.height ?? 0))
+        terrainSurfaceStamp = currentTerrainSurfaceStamp()
+        terrainSurfaceShoreCount = shoreCount
+        terrainSurfaceCoverageValid = terrain.indices.allSatisfy { row in terrain[row].indices.allSatisfy { col in
+            let tile = TileCoord(row: row, col: col), p = point(tileCenter(tile))
+            return footprint.contains(p) && sea.contains(p) == (terrain[row][col] == .water)
+        } }
+        if isCICaptureMode, let raster = image.cgImage, raster.bitsPerPixel == 32,
+           let data = raster.dataProvider?.data, CFDataGetLength(data) >= raster.bytesPerRow * raster.height,
+           let bytes = CFDataGetBytePtr(data) {
+            // Read the actual baked image's rows; no second raster or coordinate
+            // flip is involved. UIKit's standard-range output has 8-bit alpha.
+            let little = raster.bitmapInfo.intersection(.byteOrderMask) == .byteOrder32Little
+            let first = raster.alphaInfo == .first || raster.alphaInfo == .premultipliedFirst
+            let last = raster.alphaInfo == .last || raster.alphaInfo == .premultipliedLast
+            let alphaOffset = first ? (little ? 3 : 0) : (little ? 0 : 3)
+            func alpha(at p: CGPoint) -> UInt8 {
+                let x = min(raster.width - 1, max(0, Int(p.x * CGFloat(raster.width) / frame.width)))
+                let y = min(raster.height - 1, max(0, Int(p.y * CGFloat(raster.height) / frame.height)))
+                return bytes[y * raster.bytesPerRow + x * 4 + alphaOffset]
+            }
+            let interior = (0..<rows).allSatisfy { row in (0..<cols).allSatisfy { col in
+                let tile = TileCoord(row: row, col: col), center = tileCenter(tile)
+                return alpha(at: point(center)) >= 250 && terrainEdges(for: tile).filter({ isValid($0.neighbor) }).allSatisfy {
+                    alpha(at: point(center + ($0.start + $0.end) * 0.5)) >= 250
+                }
+            } }
+            let corners = [CGPoint.zero, CGPoint(x: frame.width, y: 0),
+                           CGPoint(x: 0, y: frame.height), CGPoint(x: frame.width, y: frame.height)]
+            terrainSurfacePixelsValid = (first || last) && interior && corners.allSatisfy { alpha(at: $0) == 0 }
+        }
+    }
+
+    private func terrainSurfaceEvidence() -> [Any] {
+        let surface = terrainSurfaceNode
+        let frame = terrainSurfaceFrame
+        let checks: [Bool] = [
+            surface?.parent === mapNode && mapNode.children.filter({ $0.name == "terrain:continuous-surface" }).count == 1,
+            surface?.texture === terrainSurfaceTexture && terrainSurfaceTexture?.filteringMode == .linear,
+            surface?.size == frame.size && surface?.position == CGPoint(x: frame.midX, y: frame.midY) &&
+                surface?.xScale == 1 && surface?.yScale == 1 && surface?.zRotation == 0 && surface?.alpha == 1 && surface?.zPosition == -100,
+            Set(terrainMaterialImages.keys) == Set(["desert-sand", "open-water"]) && terrainMaterialImages.values.allSatisfy {
+                max($0.size.width, $0.size.height) <= 1024
+            },
+            terrainSurfacePixelsValid,
+            terrainSurfaceCoverageValid,
+            terrainSurfaceStamp.count == rows * cols && terrainSurfaceStamp == currentTerrainSurfaceStamp(),
+            terrainSurfaceShoreCount > 0 && terrainSurfaceShoreCount == (0..<rows).reduce(0) { count, row in
+                count + (0..<cols).reduce(0) { $0 + shorelineSegments(for: TileCoord(row: row, col: $1)).count }
+            }]
+        let mask = checks.enumerated().reduce(0) { $0 | ($1.element ? 1 << $1.offset : 0) }
+        return ["continuous-terrain-v1", Int(terrainSurfacePixels.width), Int(terrainSurfacePixels.height),
+                terrainSurfaceStamp.count, terrainSurfaceShoreCount, terrainMaterialImages.count, mask]
     }
 
     private func color(for terrain: Terrain, tile: TileCoord) -> UIColor {
@@ -2229,83 +2339,7 @@ final class GameScene: SKScene {
     private func addTerrainDetail(for tile: TileCoord, terrain: Terrain, at center: CGPoint) {
         switch terrain {
         case .water:
-            let shoreSegments = shorelineSegments(for: tile)
-            if !shoreSegments.isEmpty {
-                let hash = terrainDetailHash(for: tile)
-                for segment in shoreSegments {
-                    let start = segment.start * 0.94
-                    let end = segment.end * 0.94
-                    let path = CGMutablePath()
-                    path.move(to: start)
-                    path.addLine(to: end)
-
-                    let shallows = SKShapeNode(path: path)
-                    shallows.position = center
-                    shallows.strokeColor = UIColor(red: 0.32, green: 0.68, blue: 0.62, alpha: 0.16)
-                    shallows.lineWidth = 17
-                    shallows.lineCap = .round
-                    shallows.zPosition = zPosition(for: center) + 0.14
-                    mapNode.addChild(shallows)
-
-                    let wash = SKShapeNode(path: path)
-                    wash.position = center
-                    wash.strokeColor = UIColor(red: 0.50, green: 0.78, blue: 0.67, alpha: 0.25)
-                    wash.lineWidth = 7
-                    wash.lineCap = .round
-                    wash.zPosition = zPosition(for: center) + 0.22
-                    mapNode.addChild(wash)
-
-                    let foamPath = CGMutablePath()
-                    foamPath.move(to: pointAlongShoreline(from: start, to: end, fraction: 0.12))
-                    foamPath.addLine(to: pointAlongShoreline(from: start, to: end, fraction: 0.76))
-                    let foam = SKShapeNode(path: foamPath)
-                    foam.position = center
-                    foam.strokeColor = UIColor(red: 0.90, green: 0.93, blue: 0.80, alpha: 0.34)
-                    foam.lineWidth = 0.75
-                    foam.lineCap = .round
-                    foam.zPosition = zPosition(for: center) + 0.26
-                    mapNode.addChild(foam)
-
-                    let bubbleCount = 2 + (hash % 2)
-                    for index in 0..<bubbleCount {
-                        let t = CGFloat(index + 1) / CGFloat(bubbleCount + 1)
-                        let along = CGPoint(
-                            x: start.x + (end.x - start.x) * t,
-                            y: start.y + (end.y - start.y) * t
-                        )
-                        let inward = CGPoint(x: -along.x * 0.16, y: -along.y * 0.16)
-                        let bubble = SKShapeNode(circleOfRadius: 0.8 + CGFloat((hash + index * 5) % 5) * 0.15)
-                        bubble.position = center + along + inward
-                        bubble.fillColor = UIColor.white.withAlphaComponent(0.14 + CGFloat((hash + index * 3) % 3) * 0.05)
-                        bubble.strokeColor = .clear
-                        bubble.zPosition = zPosition(for: center) + 0.28
-                        mapNode.addChild(bubble)
-                    }
-                }
-            } else if (tile.row + tile.col) % 3 == 0 {
-                let hash = terrainDetailHash(for: tile)
-                let waveLength = CGFloat(22 + hash % 13)
-                let wave = SKShapeNode(rectOf: CGSize(width: waveLength, height: 0.8), cornerRadius: 0.4)
-                wave.position = center + CGPoint(x: 2, y: CGFloat((tile.row % 3) - 1) * 5)
-                wave.fillColor = UIColor.white.withAlphaComponent(0.16)
-                wave.strokeColor = .clear
-                wave.zRotation = ((tile.row + tile.col) % 2 == 0 ? -1 : 1) * (0.28 + CGFloat(hash % 12) * 0.02)
-                wave.zPosition = zPosition(for: center) + 0.2
-                mapNode.addChild(wave)
-
-                if hash % 2 == 0 {
-                    let ripple = SKShapeNode(rectOf: CGSize(width: waveLength * 0.55, height: 0.65), cornerRadius: 0.3)
-                    ripple.position = wave.position + CGPoint(
-                        x: CGFloat(hash % 15 - 7),
-                        y: CGFloat((hash / 3) % 9 - 4)
-                    )
-                    ripple.fillColor = UIColor.white.withAlphaComponent(0.10)
-                    ripple.strokeColor = .clear
-                    ripple.zRotation = wave.zRotation
-                    ripple.zPosition = zPosition(for: center) + 0.2
-                    mapNode.addChild(ripple)
-                }
-            }
+            break
         case .road:
             let connectionPoints = roadConnectionPoints(for: tile)
             let roadPath = CGMutablePath()
@@ -5862,6 +5896,28 @@ final class GameScene: SKScene {
         return result
     }
 
+    private func hudSurfaceTexture(raised: Bool) -> SKTexture {
+        let key = raised ? "raised" : "panel"
+        if let cached = hudSurfaceTextures[key] { return cached }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        format.preferredRange = .standard
+        let size = CGSize(width: 32, height: 128)
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+            let colors = [UIColor(white: 1, alpha: 1).cgColor,
+                          UIColor(white: raised ? 0.93 : 0.87, alpha: 1).cgColor,
+                          UIColor(white: raised ? 0.72 : 0.68, alpha: 1).cgColor] as CFArray
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.18, 1]) {
+                renderer.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
+            }
+        }
+        let texture = SKTexture(image: image)
+        texture.filteringMode = .linear
+        hudSurfaceTextures[key] = texture
+        return texture
+    }
+
     private func layoutHUD() {
         guard !isLayingOutHUD else { hudGeometryDirty = true; return }
         if !isWritingHUDContract { ciInvalidateReady("hud-rebuild") }
@@ -5903,6 +5959,7 @@ final class GameScene: SKScene {
             if key == "message" { messageSurfaces.append(shadow) }
             let panel = SKShapeNode(rect: frame, cornerRadius: 6)
             panel.name = "hud-panel:\(key)"
+            panel.fillTexture = hudSurfaceTexture(raised: false)
             panel.fillColor = key == "dock" || key == "rail" ? HUDPalette.panelDeep : HUDPalette.panel
             panel.strokeColor = HUDPalette.borderSoft
             panel.lineWidth = 0.5
@@ -5914,6 +5971,22 @@ final class GameScene: SKScene {
             edge.strokeColor = .clear
             hudNode.addChild(edge)
             if key == "message" { messageSurfaces.append(edge) }
+        }
+        for key in ["mission", "selection"] {
+            let frame = layout.panels[key]!
+            let accent = SKShapeNode(rect: CGRect(x: frame.minX + 1, y: frame.minY + 7,
+                                                  width: 1.5, height: frame.height - 14), cornerRadius: 0.75)
+            accent.fillColor = (key == "mission" ? HUDPalette.gold : HUDPalette.cyan).withAlphaComponent(0.65)
+            accent.strokeColor = .clear
+            hudNode.addChild(accent)
+        }
+        let resources = layout.panels["resources"]!
+        for key in ["income", "forces", "ai"] {
+            let x = layout.slots[key]!.minX - 7
+            let separator = SKShapeNode(rect: CGRect(x: x, y: resources.minY + 7, width: 0.5, height: resources.height - 14))
+            separator.fillColor = HUDPalette.borderSoft
+            separator.strokeColor = .clear
+            hudNode.addChild(separator)
         }
         moneyLabel = makeHUDLabel(slot: "money", font: "AvenirNext-DemiBold", size: 16, color: HUDPalette.gold)
         incomeLabel = makeHUDLabel(slot: "income", size: 10)
@@ -6743,6 +6816,7 @@ final class GameScene: SKScene {
         node.position = CGPoint(x: frame.midX, y: frame.midY)
         let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 5)
         shape.fillColor = buttonColor(for: action)
+        shape.fillTexture = hudSurfaceTexture(raised: true)
         shape.strokeColor = HUDPalette.borderSoft
         shape.lineWidth = 0.75
         node.addChild(shape)
@@ -6804,6 +6878,7 @@ final class GameScene: SKScene {
         node.position = CGPoint(x: frame.midX, y: frame.midY)
         let shape = SKShapeNode(rectOf: frame.size, cornerRadius: 5)
         shape.fillColor = hudPageColor(page, active: page == hudPage)
+        shape.fillTexture = hudSurfaceTexture(raised: true)
         shape.strokeColor = HUDPalette.borderSoft
         shape.lineWidth = 0.75
         node.addChild(shape)
@@ -6815,6 +6890,7 @@ final class GameScene: SKScene {
         accent.strokeColor = .clear
         node.addChild(accent)
         if let symbol = hudSymbol(page.symbolName, size: 14) {
+            symbol.name = "hud:page-symbol"
             symbol.position.y = 8
             node.addChild(symbol)
         }
@@ -6861,8 +6937,8 @@ final class GameScene: SKScene {
             shape.lineWidth = armed ? 1 : 0.5
             shape.glowWidth = 0
             if let accent = shape.parent?.childNode(withName: "hud:state-accent") as? SKShapeNode {
-                accent.isHidden = !armed && !contextual
-                accent.fillColor = armed ? HUDPalette.gold : HUDPalette.cyan.withAlphaComponent(0.6)
+                accent.isHidden = !armed && !contextual && !primary
+                accent.fillColor = armed || primary ? HUDPalette.gold : HUDPalette.cyan.withAlphaComponent(0.6)
             }
             if let symbol = shape.parent?.childNode(withName: "hud:action-symbol") as? SKSpriteNode {
                 symbol.color = armed || primary ? HUDPalette.gold : HUDPalette.cyan
@@ -6880,17 +6956,20 @@ final class GameScene: SKScene {
             shape.lineWidth = armed ? 0.75 : 0
             shape.glowWidth = 0
             shape.parent?.childNode(withName: "hud:tab-accent")?.isHidden = !active && !armed
+            if let symbol = shape.parent?.childNode(withName: "hud:page-symbol") as? SKSpriteNode {
+                symbol.color = active || armed ? HUDPalette.gold : HUDPalette.cyan
+            }
         }
     }
 
     private func hudPageColor(_ page: HudPage, active: Bool) -> UIColor {
-        active ? UIColor(red: 0.23, green: 0.26, blue: 0.24, alpha: 1) : .clear
+        active ? UIColor(red: 0.25, green: 0.37, blue: 0.42, alpha: 1) : .clear
     }
 
     private func buttonColor(for action: HudAction) -> UIColor {
-        if isHudActionArmed(action) { return UIColor(red: 0.28, green: 0.25, blue: 0.17, alpha: 1) }
+        if isHudActionArmed(action) { return UIColor(red: 0.48, green: 0.36, blue: 0.20, alpha: 1) }
         if action == .attackMove || (action == .cycleTarget && isTargetCycleAvailable) {
-            return UIColor(red: 0.22, green: 0.23, blue: 0.18, alpha: 1)
+            return UIColor(red: 0.40, green: 0.33, blue: 0.21, alpha: 1)
         }
         return HUDPalette.panelRaised
     }
@@ -7051,9 +7130,9 @@ final class GameScene: SKScene {
         let income = incomePerTick(for: .player)
         moneyLabel.sourceText = "$\(playerMoney)"
         incomeLabel.sourceText = "+$\(income)/s  OIL \(oilCount(for: .player))  FLAG \(controlPointCount(for: .player))"
-        forcesLabel.sourceText = "BLUE \(mobileCount(for: .player))"
+        forcesLabel.sourceText = "UNITS \(mobileCount(for: .player))"
         let enemyStatus = currentEnemyAssaultWaveSummary() ?? "AI \(aiDifficulty.displayName)"
-        aiStatusLabel.sourceText = "R\(mobileCount(for: .enemy)) F\(controlPointCount(for: .enemy)) \(enemyStatus)"
+        aiStatusLabel.sourceText = "RED \(mobileCount(for: .enemy)) · FLAGS \(controlPointCount(for: .enemy)) · \(enemyStatus)"
         let missionStatus = missionStatusContent()
         missionTitleLabel.sourceText = missionStatus.title
         missionDetailLabel.sourceText = missionStatus.detail
@@ -7122,7 +7201,7 @@ final class GameScene: SKScene {
             let summary = playerQueue.prefix(3).map { "\($0.kind.shortCode) \(Int(ceil($0.remaining)))s" }.joined(separator: "  ")
             queueLabel.sourceText = "Queue: \(summary)"
         }
-        if !playerQueue.isEmpty { forcesLabel.sourceText = "BLUE \(mobileCount(for: .player))  Q\(playerQueue.count)" }
+        if !playerQueue.isEmpty { forcesLabel.sourceText = "UNITS \(mobileCount(for: .player)) · Q\(playerQueue.count)" }
         if !selectionDetailsExpanded && pendingConstructionKind == nil && pendingSupportPower == nil &&
             !isSettingRallyPoint && !isSettingAttackMove {
             selectedLabel.sourceText = collapsedSelectionStatus(for: selected)

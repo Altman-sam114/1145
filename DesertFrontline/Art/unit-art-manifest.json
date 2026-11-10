@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.18",
+  "version": "v6.20",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.18-ground-directions.md",
+  "promptDocument": "md/art/v6.20-continuous-terrain.md",
   "assets": [
     {
       "kind": "humvee",
@@ -470,6 +470,28 @@
         "S",
         "SE"
       ]
+    },
+    {
+      "kind": "sandSurface",
+      "file": "Terrain/desert-sand.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1c2fb-f8f5-7ad1-977f-d8bb02f89b26/exec-c29dbc77-f38d-49cd-9d61-041aeb97f156.png",
+      "bytes": 2543495,
+      "sha256": "793c0a81d50f4750b6d3b64cf9252ccd8a9ab2e88623bfa75526a5131bc7b7cc",
+      "width": 1254,
+      "height": 1254,
+      "format": "RGB8",
+      "decodeMaxPixels": 1024
+    },
+    {
+      "kind": "waterSurface",
+      "file": "Terrain/open-water.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1c2fb-f8f5-7ad1-977f-d8bb02f89b26/exec-3329641b-2f5e-4600-b6ca-3d318bf772c8.png",
+      "bytes": 1863022,
+      "sha256": "c9061ed53086a38de9564768068bb02577eddf30349ccab6796329cb20bab5b6",
+      "width": 1254,
+      "height": 1254,
+      "format": "RGB8",
+      "decodeMaxPixels": 1024
     }
   ],
   "updatedDate": "2026-11-10"

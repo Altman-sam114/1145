@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-10",
+  "generator": "built-in image_gen",
+  "status": "selected originals; continuous terrain integration implemented, cloud validation pending",
+  "assets": [
+    {
+      "kind": "sandSurface",
+      "file": "Terrain/desert-sand.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1c2fb-f8f5-7ad1-977f-d8bb02f89b26/exec-c29dbc77-f38d-49cd-9d61-041aeb97f156.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/terrain-desert-sand-20261110.png",
+      "prompt": "Use-case: game terrain material for an original premium isometric desert RTS. Generate a square seamless tileable warm beige desert sand surface, orthographic aerial straight-down albedo, completely fills the entire image edge to edge. Small fine aeolian ripples, soft wind-swept irregular sand sheets, occasional extremely tiny embedded pebbles, broad very gentle tonal variation. Refined realistic hand-painted 3D game texture, detailed but restrained, matte pale limestone sand with muted ochre undertones. Lighting is soft and consistent across the whole surface, no dramatic cast shadows, no vignette, no center subject, no frame, no grid, no symbols, no text, no buildings, no tracks, no cliffs, no plants, no dunes large enough to hide units. The ripples must be shallow and subtle, contrast low so small dark vehicle sprites remain clearly readable above it. True repeatable terrain texture, all four edges should match. 1536 square or highest available square resolution. Opaque surface, no transparency.",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGB",
+      "bytes": 2543495,
+      "sha256": "793c0a81d50f4750b6d3b64cf9252ccd8a9ab2e88623bfa75526a5131bc7b7cc",
+      "alphaExtrema": null
+    },
+    {
+      "kind": "waterSurface",
+      "file": "Terrain/open-water.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1c2fb-f8f5-7ad1-977f-d8bb02f89b26/exec-3329641b-2f5e-4600-b6ca-3d318bf772c8.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/terrain-open-water-20261110.png",
+      "prompt": "Use-case: seamless square ocean surface material for an original premium isometric naval real-time strategy game. Orthographic aerial straight-down close view of open deep teal-blue seawater. Soft fine irregular capillary ripples and low overlapping wavelets, subtle occasional small turquoise highlights, gentle broad variations of blue and petrol teal, refined realistic hand-painted game environment albedo, elegant natural maritime surface with restrained contrast so small gray ship sprites remain legible. Fill entire image edge to edge with water. Even lighting, no sun disc, no horizon, no sky, no boats, no coastline, no land, no foam wall, no text, no borders, no grid, no vignette, no dramatic diagonal lighting, no large white hotspots. All four edges should repeat seamlessly. Uniform depth and density. Opaque image, no transparency. 1536 square or highest available square resolution.",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGB",
+      "bytes": 1863022,
+      "sha256": "c9061ed53086a38de9564768068bb02577eddf30349ccab6796329cb20bab5b6",
+      "alphaExtrema": null
+    }
+  ]
+}

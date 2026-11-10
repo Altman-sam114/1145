@@ -361,3 +361,8 @@ HUD分类节点现在只包含一个title，命令仍包含title/subtitle。CI�
 ## 迷雾内侧羽化
 
 updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog tile，再调用updateFogFeathering。fogFeatherKey按NE/SE/SW/NW读取四邻等级，只为较亮tile生成向内衰减的黑色遮罩；纹理alpha按(邻alpha-本alpha)/(1-本alpha)匹配边界，四边取max，不在角落叠乘。172×86 RGBA遮罩最多95种，按key共享，不每帧重烘焙。每tile最多一个SKShapeNode，fillTexture裁在原精确菱形内以防线性采样涂到邻格；失效隐藏、再次命中复用。drawMap（含SKRM调用链）清空节点/key，保留不可变纹理缓存。原enemy isKnownToFaction隐藏与潜艇侦测继续独立执行。ready fogSurface采用inward-feather-fog-v1，保留原三项检查并增加几何、mask/纹理身份、黑色alpha像素约束、节点/纹理预算和实际敌军隐藏状态；counts.fogNodes明确为基础tile数，featherCounts单列已建/活动/纹理数。
+
+
+## 连续地表渲染
+
+`drawMap → drawContinuousTerrain`将真实tile边合并为footprint/sea掩模，以两张最长1024px的原创RGB材质在统一世界坐标镜像重复，一次烘焙最长4096px底材；唯一`terrain:continuous-surface`位于mapNode的z=-100。旧逐格底纹与水格浅滩/波浪不再创建，道路/油污/场景/实体/迷雾保留。岸线浅滩与碎浪裁在真实水域；重开重新烘焙并记录实际地形快照，不改规则。HUD两张灰度渐层共享缓存通过fillTexture与原颜色混合，原布局与路由仍来自HUDLayout。ready用紧凑terrainSurface数组记录实际像素尺寸/格数/岸数/材质数与八项真实检查mask；source/bundle区分RGB地表与RGBA单位。来源见[连续地表](../art/v6.20-continuous-terrain.md)。

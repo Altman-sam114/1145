@@ -102,6 +102,13 @@ def latest_ready(records, definition):
             or type(hud_text.get("tabLabels")) is not int or hud_text["tabLabels"] != 5
             or type(hud_text.get("commandLabels")) is not int or hud_text["commandLabels"] != 2 * counts["actions"]):
         raise ValueError("Scene ready HUD control text structure or visibility invalid")
+    surface = ready.get("terrainSurface")
+    if (not isinstance(surface, list) or len(surface) != 7 or surface[0] != "continuous-terrain-v1"
+            or any(type(value) is not int for value in surface[1:])
+            or not 0 < surface[2] <= surface[1] <= 4096 or abs(surface[1] - 2 * surface[2]) > 2
+            or surface[3] != counts["fogNodes"] or not 0 < surface[4] <= surface[3] * 4
+            or surface[5:] != [2, 255]):
+        raise ValueError("Scene continuous terrain material, raster, coverage or geometry evidence invalid")
     fog = ready.get("fogSurface")
     fog_checks = fog.get("checks") if isinstance(fog, dict) else None
     feather_counts = fog.get("featherCounts") if isinstance(fog, dict) else None

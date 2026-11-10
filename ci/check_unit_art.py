@@ -24,14 +24,16 @@ DIRECTIONS = {"tankDirections": "tank-eight", "fighterDirections": "fighter-eigh
               "battleshipDirections": "battleship-eight", "carrierDirections": "carrier-eight", "submarineDirections": "submarine-eight",
               "scoutDirections": "scout-eight", "artilleryDirections": "artillery-eight",
               "mobileAADirections": "mobile-aa-eight", "repairTruckDirections": "repair-truck-eight"}
+MATERIALS = {"sandSurface": "desert-sand", "waterSurface": "open-water"}
 ASSET_PATHS = {**{kind: f"Units/{name}.png" for kind, name in KINDS.items()},
                **{kind: f"Structures/{name}.png" for kind, name in STRUCTURES.items()},
                **{kind: f"Scenery/{name}.png" for kind, name in SCENERY.items()},
                **{kind: f"Effects/{name}.png" for kind, name in EFFECTS.items()},
-               **{kind: f"Directions/{name}.png" for kind, name in DIRECTIONS.items()}}
+               **{kind: f"Directions/{name}.png" for kind, name in DIRECTIONS.items()},
+               **{kind: f"Terrain/{name}.png" for kind, name in MATERIALS.items()}}
 
 
-def inspect_png(data, atlas_grid=None):
+def inspect_png(data, atlas_grid=None, opaque_rgb=False):
     if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data) > 12 * 1024 * 1024:
         raise ValueError("Invalid PNG signature or excessive file size")
     offset, chunks, header, ended = 8, [], None, False
@@ -64,13 +66,45 @@ def inspect_png(data, atlas_grid=None):
     width, height, depth, color, compression, filtering, interlace = header
     if not (0 < width <= 2048 and 0 < height <= 2048 and width * height <= 4194304):
         raise ValueError("PNG dimensions exceed the sprite budget")
-    if (depth, color, compression, filtering, interlace) != (8, 6, 0, 0, 0):
-        raise ValueError("Sprites must be noninterlaced RGBA8 PNGs with real alpha")
-    expected = (width * 4 + 1) * height
+    expected_color = 2 if opaque_rgb else 6
+    if (depth, color, compression, filtering, interlace) != (8, expected_color, 0, 0, 0):
+        raise ValueError("Terrain materials must be RGB8" if opaque_rgb else
+                         "Sprites must be noninterlaced RGBA8 PNGs with real alpha")
+    channels = 3 if opaque_rgb else 4
+    expected = (width * channels + 1) * height
     decoder = zlib.decompressobj()
     raw = decoder.decompress(b"".join(chunks), expected + 1)
     if len(raw) != expected or not decoder.eof or decoder.unused_data:
         raise ValueError("Invalid or oversized PNG scanlines")
+    if opaque_rgb:
+        stride, offset, previous = width * 3, 0, bytearray(width * 3)
+        lows, highs = [255] * 3, [0] * 3
+        for _ in range(height):
+            method = raw[offset]
+            if method not in range(5):
+                raise ValueError("Invalid PNG filter")
+            row = bytearray(raw[offset + 1:offset + 1 + stride])
+            offset += stride + 1
+            if method:
+                for x in range(stride):
+                    left, up = row[x - 3] if x >= 3 else 0, previous[x]
+                    upper_left = previous[x - 3] if x >= 3 else 0
+                    if method == 1: predictor = left
+                    elif method == 2: predictor = up
+                    elif method == 3: predictor = (left + up) // 2
+                    else:
+                        p = left + up - upper_left
+                        distances = (abs(p - left), abs(p - up), abs(p - upper_left))
+                        predictor = (left, up, upper_left)[distances.index(min(distances))]
+                    row[x] = (row[x] + predictor) & 255
+            for channel in range(3):
+                values = row[channel::3]
+                lows[channel], highs[channel] = min(lows[channel], min(values)), max(highs[channel], max(values))
+            previous = row
+        if max(high - low for low, high in zip(lows, highs)) < 4:
+            raise ValueError("Terrain material is blank or flat colored")
+        return {"width": width, "height": height, "format": "RGB8", "opaque": True,
+                "channelMin": lows, "channelMax": highs}
     previous = bytearray(width)
     transparent = solid = 0
     min_x, min_y, max_x, max_y = width, height, -1, -1
@@ -160,7 +194,7 @@ def verify(art):
         raise ValueError("Art provenance document missing")
     assets = manifest["assets"]
     if len(assets) != len(ASSET_PATHS) or {a["kind"] for a in assets} != set(ASSET_PATHS):
-        raise ValueError("Expected ten units, ten structures, three scenery, two effects and ten directional atlases")
+        raise ValueError("Expected ten units, ten structures, three scenery, two effects, ten atlases and two terrain materials")
     reports = []
     for asset in assets:
         name = ASSET_PATHS[asset['kind']]
@@ -171,10 +205,15 @@ def verify(art):
         if len(data) != asset["bytes"] or hashlib.sha256(data).hexdigest() != asset["sha256"]:
             raise ValueError(f"Asset digest mismatch: {name}")
         directional = asset["kind"] in DIRECTIONS
-        info = inspect_png(data, atlas_grid=(4, 2) if directional else None)
+        material = asset["kind"] in MATERIALS
+        info = inspect_png(data, atlas_grid=(4, 2) if directional else None, opaque_rgb=material)
         if [info["width"], info["height"]] != [asset["width"], asset["height"]]:
             raise ValueError(f"Asset dimensions mismatch: {name}")
-        verify_transparency(info)
+        if material:
+            if asset.get("format") != "RGB8" or asset.get("decodeMaxPixels") != 1024:
+                raise ValueError("Unexpected terrain material format / decode budget")
+        else:
+            verify_transparency(info)
         if directional:
             if (asset.get("columns"), asset.get("rows"), asset.get("decodeMaxPixels")) != (4, 2, 1536):
                 raise ValueError("Unexpected directional atlas layout / decode budget")
@@ -202,6 +241,25 @@ def fixture_png(rows, method=0, color=6):
             chunk(b"IDAT", zlib.compress(bytes(scanlines))) + chunk(b"IEND", b""))
 
 
+def fixture_rgb_png(rows, method=0):
+    def chunk(tag, payload):
+        return struct.pack(">I", len(payload)) + tag + payload + struct.pack(">I", binascii.crc32(tag + payload) & 0xFFFFFFFF)
+    width, scanlines, previous = len(rows[0]), bytearray(), bytearray(len(rows[0]) * 3)
+    for pixels in rows:
+        row = bytes(channel for pixel in pixels for channel in pixel)
+        scanlines.append(method)
+        for x, value in enumerate(row):
+            left, up = row[x - 3] if x >= 3 else 0, previous[x]
+            upper_left = previous[x - 3] if x >= 3 else 0
+            p = left + up - upper_left
+            distances = [abs(p - v) for v in (left, up, upper_left)]
+            predictor = [0, left, up, (left + up) // 2, (left, up, upper_left)[distances.index(min(distances))]][method]
+            scanlines.append((value - predictor) & 255)
+        previous = row
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, len(rows), 8, 2, 0, 0, 0)) +
+            chunk(b"IDAT", zlib.compress(bytes(scanlines))) + chunk(b"IEND", b""))
+
+
 class ArtContractTests(unittest.TestCase):
     def test_directional_atlas_rejects_missing_opaque_and_repeated_views(self):
         rows = [[0] * 16 for _ in range(8)]
@@ -218,6 +276,25 @@ class ArtContractTests(unittest.TestCase):
                                   rows[y][4:8])
             with self.subTest(defect=defect), self.assertRaises(ValueError):
                 verify_directional_cells(inspect_png(fixture_png(broken), atlas_grid=(4, 2)))
+
+    def test_material_rgb_filters_and_ranges(self):
+        rows = [[(10, 30, 50), (250, 230, 210)], [(30, 50, 70), (200, 180, 160)]]
+        for method in range(5):
+            with self.subTest(method=method):
+                info = inspect_png(fixture_rgb_png(rows, method), opaque_rgb=True)
+                self.assertEqual(info["channelMin"], [10, 30, 50])
+                self.assertEqual(info["channelMax"], [250, 230, 210])
+                self.assertIs(info["opaque"], True)
+
+    def test_material_rejects_flat_rgba_corruption_and_sprite_mode(self):
+        valid = fixture_rgb_png([[(10, 20, 30), (200, 180, 160)]])
+        corrupt = bytearray(valid); corrupt[-1] ^= 1
+        for data in (fixture_rgb_png([[(10, 30, 50)] * 2] * 2),
+                     fixture_png([[0, 255], [255, 0]]), bytes(corrupt), valid[:-6], valid + b"extra"):
+            with self.subTest(bytes=len(data)), self.assertRaises(ValueError):
+                inspect_png(data, opaque_rgb=True)
+        with self.assertRaises(ValueError):
+            inspect_png(valid)
 
     def test_all_png_filters(self):
         rows = [[0, 1, 0, 0], [0, 240, 255, 0], [0, 200, 230, 0], [0, 0, 0, 0]]
@@ -268,7 +345,7 @@ def main():
     try:
         report["assets"] = verify(args.bundle / "Art" if args.bundle else ROOT / "DesertFrontline/Art")
         report["status"] = "success"
-        print(f"Entity art {mode}: {len(report['assets'])} RGBA sprites, digests, bounds and transparency verified", flush=True)
+        print(f"Entity art {mode}: {len(report['assets'])} assets; sprite alpha / opaque terrain, digests and bounds verified", flush=True)
     except (OSError, ValueError, KeyError, TypeError, zlib.error) as error:
         report["error"] = str(error)
         print(f"Unit art {mode}: failure: {error}", flush=True)

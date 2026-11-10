@@ -298,3 +298,8 @@ The following records the v5.58 policy; v5.61 replaces only its intermediate fre
 Scouts, artillery, mobile anti-air vehicles and repair trucks now use original graphite eight-direction models with consistent scale, full barrel clearance and matching production-button previews. They turn using existing movement and known-target state; stationary units keep their last view. These are static directional sprites; wheel, track and independent turret animation remain future work.
 
 - Fog boundaries use a soft inward shadow on the brighter tile, with exact shared-edge clipping and cached masks. The original visible/explored areas, enemy detection and submarine rules still determine what can be seen or targeted.
+
+
+### Continuous battlefield materials
+
+The terrain renderer uses original fine sand and deep teal water across a single continuous world canvas, with water-clipped shallow bands and broken foam along actual shores. Roads, oil stains, scenery and fog retain the existing game map. The command console uses shaded slate surfaces, resource separators and warm gold primary actions; the five pages and 44pt controls keep their existing commands. Artwork provenance: [continuous terrain](md/art/v6.20-continuous-terrain.md).
