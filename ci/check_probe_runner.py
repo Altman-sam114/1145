@@ -90,7 +90,8 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
                              featherGeometry=True, featherMasks=True, featherPixels=True, featherBounded=True,
                              enemyVisibility=True)),
          renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False, viewClass="GameRenderView"),
-         artwork=dict(tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
+         artwork=dict(scenery=dict(policy="scenery-v1", textures=7, counts=[1] * 7, mask=127),
+                      tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
                      textureCount=8, stateRestored=True, posesValid=True,
                      cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)]),
                       groundDirections=dict(policy="ground-eight-v1", stateRestored=True, posesValid=True, previewsValid=True,
@@ -1790,6 +1791,31 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "numeric-check": atlas["cases"][0]["negative"] = 1
                 else: atlas["cases"][0][defect] = False
                 with self.assertRaisesRegex(ValueError, "tank direction artwork"):
+                    latest_ready(records, self.definition)
+
+    def test_scenery_rejects_unmounted_fallback_missing_and_invalid_geometry(self):
+        for defect in ("missing", "type", "policy", "texture-count", "bool-textures", "mask", "extra-bit",
+                       "bool-mask", "short", "long", "empty", "bool-count", "float-count", "excess", "extra-key"):
+            with self.subTest(defect=defect):
+                records = self.records(self.scene()["scene"])
+                artwork = records[-1]["artwork"]
+                scenery = artwork["scenery"]
+                if defect == "missing": artwork.pop("scenery")
+                elif defect == "type": artwork["scenery"] = []
+                elif defect == "policy": scenery["policy"] = "decoded-only"
+                elif defect == "texture-count": scenery["textures"] = 6
+                elif defect == "bool-textures": scenery["textures"] = True
+                elif defect == "mask": scenery["mask"] = 126
+                elif defect == "extra-bit": scenery["mask"] = 255
+                elif defect == "bool-mask": scenery["mask"] = True
+                elif defect == "short": scenery["counts"].pop()
+                elif defect == "long": scenery["counts"].append(1)
+                elif defect == "empty": scenery["counts"][3] = 0
+                elif defect == "bool-count": scenery["counts"][0] = True
+                elif defect == "float-count": scenery["counts"][0] = 1.0
+                elif defect == "excess": scenery["counts"][0] = 5
+                elif defect == "extra-key": scenery["fallback"] = True
+                with self.assertRaisesRegex(ValueError, "scenery"):
                     latest_ready(records, self.definition)
 
     def test_continuous_terrain_rejects_missing_wrong_material_and_incomplete_coverage(self):

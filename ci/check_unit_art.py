@@ -18,7 +18,9 @@ KINDS = {"humvee": "scout", "tank": "tank", "artillery": "artillery",
 STRUCTURES = {"hq": "command-hq", "barracks": "war-factory", "airfield": "airfield", "shipyard": "shipyard",
               "oilDerrick": "oil-derrick", "radarOutpost": "radar-outpost", "sonarBuoy": "sonar-buoy",
               "guardTower": "guard-tower", "samSite": "sam-site", "coastalBattery": "coastal-battery"}
-SCENERY = {"desertRocks": "desert-rocks", "datePalm": "date-palm", "desertHamlet": "desert-hamlet"}
+SCENERY = {"desertRocks": "desert-rocks", "datePalm": "date-palm", "desertHamlet": "desert-hamlet",
+           "desertScrub": "desert-scrub", "oasisSpring": "oasis-spring", "desertFarm": "desert-farm",
+           "armoredWreck": "armored-wreck"}
 EFFECTS = {"waterImpact": "water-impact", "impactBurst": "impact-burst"}
 DIRECTIONS = {"tankDirections": "tank-eight", "fighterDirections": "fighter-eight", "helicopterDirections": "helicopter-eight",
               "battleshipDirections": "battleship-eight", "carrierDirections": "carrier-eight", "submarineDirections": "submarine-eight",
@@ -202,7 +204,7 @@ def verify(art):
         raise ValueError("Art provenance document missing")
     assets = manifest["assets"]
     if len(assets) != len(ASSET_PATHS) or {a["kind"] for a in assets} != set(ASSET_PATHS):
-        raise ValueError("Expected ten units, ten structures, three scenery, two effects, ten atlases and two terrain materials")
+        raise ValueError("Expected ten units, ten structures, seven scenery, two effects, ten atlases and two terrain materials")
     reports = []
     for asset in assets:
         name = ASSET_PATHS[asset['kind']]

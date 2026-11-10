@@ -460,11 +460,27 @@ flowchart LR
 ```mermaid
 flowchart LR
   Map["drawMap / SKRM"] --> Mask["真实tile → footprint / sea / 陆水边"]
-  RGB["原创RGB沙地 / 海面<br/>各解码≤1024px"] --> Bake["统一世界坐标镜像重复<br/>一次烘焙≤4096px / 岸线浅滩碎浪"]
+  RGB["原创RGB沙地 / 海面<br/>各解码≤1024px"] --> Bake["统一世界坐标镜像重复<br/>一次烘焙≤4096px / 道路与岸线"]
   Mask --> Bake
   Bake --> Surface["唯一continuous-surface<br/>mapNode z=-100"]
-  Map --> Detail["原道路 / 油污 / 岩石 / 村落"]
+  Map --> Detail["油污 / 岩石 / 村落 / 细致环境"]
   Surface --> Layers["原实体 / 战斗 / 迷雾 / 相机"]
   Detail --> Layers
   Shade["两张32×128渐层缓存"] --> HUD["原HUDLayout五页 / 44pt / 路由"]
+```
+
+
+读图说明：道路与海岸现在和底材共用一次性画布；七种环境仍是原地图的装饰子节点，原实体和视野负责玩法。战术分组只改变同一组布局框与颜色，命中和命令处理保持原流向。
+
+```mermaid
+flowchart LR
+  Map["真实terrain / roadConnectionPoints"] --> Bake["连续地表 / 陆地内道路磨损 / 细步岸线"]
+  Bake --> Surface["唯一map底材 / SKRM重建"]
+  Art["七类原创Scenery / 384px缓存"] --> Decor["原位置挂图 / mapNode子树"]
+  Decor --> Evidence["挂图计数 / 纹理几何mask127 / 云端PNG"]
+  Surface --> Evidence
+  Layout["HUDLayout.actions / 五页 / 九战术动作"] --> Groups["编队3 / 交战4 / 导航2 / 金色Advance"]
+  Layout --> Touch["原44pt命中 / consumeHUDTouch / pending"]
+  Groups --> Evidence
+  Touch --> Evidence
 ```

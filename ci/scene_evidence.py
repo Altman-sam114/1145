@@ -186,6 +186,15 @@ def latest_ready(records, definition):
                           or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
                           for index, case in enumerate(cases)) for cases in air_cases.values())):
         raise ValueError("Scene ready air direction artwork missing, mirrored incorrectly or not restored")
+    scenery = artwork.get("scenery") if isinstance(artwork, dict) else None
+    placements = scenery.get("counts") if isinstance(scenery, dict) else None
+    if (not isinstance(scenery, dict) or set(scenery) != {"policy", "textures", "counts", "mask"}
+            or scenery.get("policy") != "scenery-v1"
+            or type(scenery.get("textures")) is not int or scenery["textures"] != 7
+            or type(scenery.get("mask")) is not int or scenery["mask"] != 127
+            or not isinstance(placements, list) or len(placements) != 7
+            or any(type(value) is not int or not 0 < value <= 4 * counts["fogNodes"] for value in placements)):
+        raise ValueError("Scene scenery textures, attached sprites or geometry evidence invalid")
     if definition["marker"] in {"move", "attack-move", "attack-target"} and fixture_checks.get("commandUnobscured") is not True:
         raise ValueError("Scene command marker obscured by HUD or offscreen")
     overlay = ready.get("tacticalOverlays")

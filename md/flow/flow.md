@@ -315,7 +315,7 @@ THEATER 状态卡包含静态绿色 LIVE 指示点，仅为状态卡视觉层级
 
 ## 原创美术资源与材质
 
-`EntityKind.artworkName/artworkDirectory/artworkWidth` 映射十种机动单位与十类设施；ImageIO 从 Bundle 的 `Art/Units` / `Structures` 以至多 384px 解码，`croppedArtwork` 一次性归一化透明边距，`unitArtworkTextures` 按种类缓存，同种实体与生产按钮复用。三类 `Art/Scenery` 共用解码 helper 和独立纹理缓存，仍挂原 `mapNode`。ready 验证全部实体实际挂图、环境纹理可加载并记录纹理尺寸，缺资源不能以旧形状 fallback 冒充成功。来源见 [原兵模说明](../art/v6.0-unit-art.md) 与 [设施及环境说明](../art/v6.5-production-art.md)。
+`EntityKind.artworkName/artworkDirectory/artworkWidth` 映射十种机动单位与十类设施；ImageIO 从 Bundle 的 `Art/Units` / `Structures` 以至多 384px 解码，`croppedArtwork` 一次性归一化透明边距，`unitArtworkTextures` 按种类缓存，同种实体与生产按钮复用。七类 `Art/Scenery` 共用解码 helper 和独立纹理缓存，仍挂原 `mapNode`。ready 验证全部实体实际挂图、环境纹理可加载并记录纹理尺寸，缺资源不能以旧形状 fallback 冒充成功。来源见 [原兵模说明](../art/v6.0-unit-art.md) 与 [设施及环境说明](../art/v6.5-production-art.md)。
 
 compact 选择卡使用64pt高双列事实槽，队列放标题右侧，生产布局、绘制和文字拟合同源；HUD契约另外验证事实槽互不重叠。所有原控件44pt门槛、pending互斥和恢复检查保持。
 
@@ -366,3 +366,10 @@ updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog til
 ## 连续地表渲染
 
 `drawMap → drawContinuousTerrain`将真实tile边合并为footprint/sea掩模，以两张最长1024px的原创RGB材质在统一世界坐标镜像重复，一次烘焙最长4096px底材；唯一`terrain:continuous-surface`位于mapNode的z=-100。旧逐格底纹与水格浅滩/波浪不再创建，道路/油污/场景/实体/迷雾保留。岸线浅滩与碎浪裁在真实水域；重开重新烘焙并记录实际地形快照，不改规则。HUD两张灰度渐层共享缓存通过fillTexture与原颜色混合，原布局与路由仍来自HUDLayout。ready用紧凑terrainSurface数组记录实际像素尺寸/格数/岸数/材质数与八项真实检查mask；source/bundle区分RGB地表与RGBA单位。来源见[连续地表](../art/v6.20-continuous-terrain.md)。
+
+
+## 环境细节与战术分组
+
+`drawContinuousTerrain → drawRoadSurface`复用同一真实road地形/连接点，将路肩、路面颗粒/裂缝/褪色标线一次烘焙在land掩模内；旧逐路格shape不再建立。海岸使用细步透明度过渡，沙/油岸边仅保留稀疏地表细节。七类Scenery经原384px解码/裁边缓存共享，新增四类分别用于原灌木/绿洲/农田/残骸位置，仍挂mapNode，不注册为实体、不改变视野/经济/寻路。`sceneryArtworkEvidence`只在CI就绪时遍历实际map子树，紧凑记录纹理数/七种挂图计数/mask127，检查纹理身份、有限尺寸/位置与宽高比。
+
+战术HUD在同一actions布局上为第3/7项前加组间距，绘制分隔；Advance使用金底深字、辅助指令深底、可用Target青色，颜色刷新沿既有pending与可用状态。五页/九战术动作、44pt与全部命中仍来自HUDLayout。占点小旗/立体基座/名称底板与进度条仅呈现原faction/captureProgress；SKRM经原drawMap和spawnControlPoints重建。资源与证据说明见[环境美术](../art/v6.23-landscape.md)。

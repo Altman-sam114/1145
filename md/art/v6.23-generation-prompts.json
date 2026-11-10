@@ -1,0 +1,113 @@
+{
+  "date": "2026-11-10",
+  "tool": "built-in image_gen; original project scenery, no external image editing",
+  "assets": [
+    {
+      "asset": "desert-scrub",
+      "prompt": "Create ONE original production-ready transparent scenery sprite for an isometric mobile real-time strategy game, matching the supplied sandstone rocks' warm noon light, crisp finely textured pre-rendered 3D game-art quality and 2:1 orthographic ground perspective (camera 30 degrees above horizon). Subject: a low, irregular desert saltbush cluster, dusty muted sage/olive leaves with many readable twig branches, a few tiny dry golden grasses and 3 weathered small ochre pebbles around its roots. Clearly volumetric foliage, realistic individual clumps, not a flat green circle, no tall palm, no flowers. The cluster should form a low broad naturally asymmetric shape that remains clear at 20 game pixels wide. Isolated single prop centered with at least 15 percent clear padding on every side. Genuinely transparent alpha background including between all leaves, NO colored background, NO floor plane or sand tile, NO horizon, NO white matte or checkerboard, NO glow/halo/outline, NO text, NO frame, NO watermark. Only tight subtle contact shadow beneath roots, no large fuzzy shadow. Original art, no existing game assets. Reference image is only for style, not an edit target.",
+      "reference": "DesertFrontline/Art/Scenery/desert-rocks.png",
+      "source": "/Users/a114514/.codex/generated_images/01a1c401-6679-79d0-9504-4be278dcfcc3/exec-71810097-5c1a-4680-a207-b8ce352eee39.png",
+      "width": 1774,
+      "height": 887,
+      "mode": "RGBA",
+      "contentBBoxAlpha32": [
+        197,
+        126,
+        1550,
+        762
+      ],
+      "corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 1629578,
+      "sha256": "b4ec7168cc186afdf537f30c3f25e9bc9985d220fe622c2a9f76b91f8827d2b9",
+      "projectFile": "DesertFrontline/Art/Scenery/desert-scrub.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.23-desert-scrub.png",
+      "status": "selected raw generation; pending cloud source/bundle and native rendering"
+    },
+    {
+      "asset": "oasis-spring",
+      "prompt": "Generate one original high quality isometric RTS scenery sprite: a tiny natural desert oasis pool, shown from 30 degrees elevation orthographic camera, same warm sandstone materials and finely detailed pre-rendered 3D game art as the references. Wide low irregular crescent bean-shaped emerald/turquoise spring with translucent shallow water, darker central water, delicate restrained sun ripples, a chipped pale sandstone rim with many small stones, sparse reeds and dusty low plants clustered on two edges. NO tall trees, no palm trunks, no buildings. This sprite will sit beneath separate existing palm sprites. Ground footprint about 2:1 width to height; clearly natural uneven rim, NOT a perfect ellipse, NOT a thick cartoon blue disk. Subject occupies central 70% with plenty of clear transparent margin on all sides, entire object and every pebble visible. The entire space outside the small irregular rim and reeds is genuinely alpha-transparent; no rectangular sand slab, no island diorama base, no floor/background gradient, no white fragments, no matte, no border, no text or logo. Tight natural contact shadow only. Match reference rocks' warm noon light from upper left, readable at 48 pixels wide. References are style only, generate a new asset.",
+      "references": [
+        "DesertFrontline/Art/Scenery/desert-rocks.png",
+        "DesertFrontline/Art/Scenery/desert-hamlet.png"
+      ],
+      "source": "/Users/a114514/.codex/generated_images/01a1c401-6679-79d0-9504-4be278dcfcc3/exec-a440ddf8-86aa-49c8-83d9-e74c7bf0c085.png",
+      "width": 1774,
+      "height": 887,
+      "mode": "RGBA",
+      "contentBBoxAlpha32": [
+        97,
+        129,
+        1678,
+        756
+      ],
+      "corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 1686862,
+      "sha256": "3f5b8a3f39926e6122b6325146a4e2a34b0b0088c4ec407cf566589ccaeb2dac",
+      "projectFile": "DesertFrontline/Art/Scenery/oasis-spring.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.23-oasis-spring.png",
+      "status": "selected raw generation; pending cloud source/bundle and native rendering"
+    },
+    {
+      "asset": "desert-farm",
+      "prompt": "Create ONE original high quality isometric desert RTS environment prop, same orthographic 2:1 ground projection at 30 degrees camera elevation, warm upper-left midday light and finely textured pre-rendered 3D style as the supplied sandstone village. Subject: a small rural irrigated desert market garden, a single coherent compact field plot with five neat rows of low dusty green vegetable plants separated by detailed dry brown earthen furrows, small narrow stone irrigation channels, a little tan adobe tool shed at the back-left with a weathered timber door and tiny flat roof, one clay water jar, a short broken dry-stone wall on one side. Rich material detail but broad legible silhouettes; natural desert earth tones, restrained green, no vivid striped cartoon blocks. Ground plan gently irregular at the outer edges; not a large thick slab or tile. Everything including all plants/shed visible and centered with 12 percent empty transparent padding on all sides. Entire exterior background genuinely transparent alpha, NO sky, NO terrain rectangle, NO pedestal, NO large haze/glowing shadow, NO outline, no white matte, no text or logo. Fine tight soft contact shadows only. Designed to read at 64 game pixels wide. Reference is style only, do not duplicate the village.",
+      "reference": "DesertFrontline/Art/Scenery/desert-hamlet.png",
+      "source": "/Users/a114514/.codex/generated_images/01a1c401-6679-79d0-9504-4be278dcfcc3/exec-3a627702-0626-4e41-b642-b53da940e6a1.png",
+      "width": 1774,
+      "height": 887,
+      "mode": "RGBA",
+      "contentBBoxAlpha32": [
+        214,
+        31,
+        1559,
+        853
+      ],
+      "corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 2018781,
+      "sha256": "09a7ac6694dca44b659594fff45630f9c842f446b7538f090d6b70f64bd3bdcf",
+      "projectFile": "DesertFrontline/Art/Scenery/desert-farm.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.23-desert-farm.png",
+      "status": "selected raw generation; pending cloud source/bundle and native rendering"
+    },
+    {
+      "asset": "armored-wreck",
+      "prompt": "Create ONE original production-ready isometric mobile RTS scenery sprite of a long-abandoned destroyed armored vehicle, a low broken tank wreck without any faction markings. Three-quarter orthographic view from 30 degrees above horizon with a 2:1 ground plane, long axis pointing toward lower right. Charcoal graphite scorched steel hull, visibly collapsed fractured left track and bent wheels, torn open engine deck, twisted short bent cannon, rust ochre edges and bleached sand dust, two small broken armor plates and a few bolts nearby. Detailed finely textured pre-rendered 3D game art, crisp legible shape, restrained warm upper-left desert midday lighting, believable scale, NOT a flat silhouette or icon. The tank is dead and static: NO fire, NO smoke, NO bright lights, no intact shiny combat tank, no cartoon outlines, no symbols or text. All pieces fully visible with at least 12 percent transparent empty border around every side. Genuinely transparent alpha background outside the wreck and its tight contact shadow, NO sand rectangle, no ground slab/pedestal, no glow/haze/colored matte, no white fragments, no horizon, no labels, no watermark. Readable at 52 game pixels wide. Supplied rocks reference is only to match rendering and lighting quality, create the new armored wreck.",
+      "reference": "DesertFrontline/Art/Scenery/desert-rocks.png",
+      "source": "/Users/a114514/.codex/generated_images/01a1c401-6679-79d0-9504-4be278dcfcc3/exec-f5377e8d-860f-43b0-8d31-5bbf7ff8d618.png",
+      "width": 1774,
+      "height": 887,
+      "mode": "RGBA",
+      "contentBBoxAlpha32": [
+        147,
+        91,
+        1568,
+        778
+      ],
+      "corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 1774041,
+      "sha256": "0aff5c0c587b1e1331e52defe513d11328c00473b719d9ee9f6ed0261f91365e",
+      "projectFile": "DesertFrontline/Art/Scenery/armored-wreck.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.23-armored-wreck.png",
+      "status": "selected raw generation; pending cloud source/bundle and native rendering"
+    }
+  ]
+}
