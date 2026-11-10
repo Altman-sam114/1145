@@ -424,3 +424,17 @@ flowchart LR
 ```
 
 HUD初始化与文字契约共用`hudControlTextIDs(for:)`：分类单标题、命令标题加状态；原生ready与审计都从这一规则核对实际文字节点。失败诊断只用于定位，不进入通过条件。
+
+读图说明：四类新增陆军只扩展贴图渲染，朝向来自原移动和可见性规则；生产预览也读取同一缓存。审计短暂改变贴图朝向后恢复，不向实体表增加样本。
+
+```mermaid
+flowchart LR
+  Atlas[侦察 / 火炮 / 防空 / 维修4x2图集] --> Cache[1536px解码 / 8格共享缓存]
+  State[原destination / 已知存活target] --> Facing[共享八向迟滞与父镜像补偿]
+  Cache --> Facing
+  Facing --> Sprite[固定世界格 / 地面pivot / 原实体子树]
+  Cache --> Preview[生产按钮SE预览]
+  Sprite --> Audit[32方向x两父镜像 / 几何与精确恢复]
+  Preview --> Evidence[原生ready / source与bundle / 正式PNG]
+  Audit --> Evidence
+```

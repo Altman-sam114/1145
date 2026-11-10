@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.13",
+  "version": "v6.18",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.13-naval-directions.md",
+  "promptDocument": "md/art/v6.18-ground-directions.md",
   "assets": [
     {
       "kind": "humvee",
@@ -362,6 +362,114 @@
       "rows": 2,
       "decodeMaxPixels": 1536,
       "worldCell": 116
+    },
+    {
+      "kind": "scoutDirections",
+      "file": "Directions/scout-eight.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.18-scout-eight.png",
+      "bytes": 1129464,
+      "sha256": "26eeb8100b0596f5f986113c0566fed2e6f448086b2951f17ceb3d7ccf86c3cb",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "cellWorldWidth": 82,
+      "groundPivot": [
+        0.5,
+        0.25
+      ],
+      "headings": [
+        "E",
+        "NE",
+        "N",
+        "NW",
+        "W",
+        "SW",
+        "S",
+        "SE"
+      ]
+    },
+    {
+      "kind": "artilleryDirections",
+      "file": "Directions/artillery-eight.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.18-artillery-eight.png",
+      "bytes": 862510,
+      "sha256": "346444911b42b800127c089fefdda4583316553695bd1df7e3cc9f9f27f5876e",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "cellWorldWidth": 112,
+      "groundPivot": [
+        0.5,
+        0.25
+      ],
+      "headings": [
+        "E",
+        "NE",
+        "N",
+        "NW",
+        "W",
+        "SW",
+        "S",
+        "SE"
+      ]
+    },
+    {
+      "kind": "mobileAADirections",
+      "file": "Directions/mobile-aa-eight.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.18-mobile-aa-eight.png",
+      "bytes": 1261881,
+      "sha256": "3438813d2a0da17047f40ae3571eae8b1e2bb83f54f8a39f3c69cdfd852de62e",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "cellWorldWidth": 96,
+      "groundPivot": [
+        0.5,
+        0.25
+      ],
+      "headings": [
+        "E",
+        "NE",
+        "N",
+        "NW",
+        "W",
+        "SW",
+        "S",
+        "SE"
+      ]
+    },
+    {
+      "kind": "repairTruckDirections",
+      "file": "Directions/repair-truck-eight.png",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.18-repair-truck-eight.png",
+      "bytes": 1446797,
+      "sha256": "395d2c5ed29534a4acb8086b72e2af92080fb59182b633e60c904be0fb862bc7",
+      "width": 1774,
+      "height": 887,
+      "columns": 4,
+      "rows": 2,
+      "decodeMaxPixels": 1536,
+      "cellWorldWidth": 96,
+      "groundPivot": [
+        0.5,
+        0.25
+      ],
+      "headings": [
+        "E",
+        "NE",
+        "N",
+        "NW",
+        "W",
+        "SW",
+        "S",
+        "SE"
+      ]
     }
   ],
   "updatedDate": "2026-11-10"

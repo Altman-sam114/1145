@@ -353,3 +353,7 @@ HUD分类节点现在只包含一个title，命令仍包含title/subtitle。CI�
 `hudControlTextIDs(for:)`是原生就绪与Swift文字审计的共同规则：hud-page控件只有title，hud动作保留title/subtitle；`expectedHUDControlTextIDs`从五页与当前动作生成审计集合。失败时额外输出有界hud-contract-diagnostic（前三个case与首条文字失败），不替代ready/完整报告，不放宽恢复检查。
 
 8pt命令状态文字使用12pt高拟合槽，保持槽中心不动，容纳Avenir Next升降部；shortCommandCaptionComplete要求不超过8字符的命令状态完整显示，ready与Swift审计共同核对。较长动态状态仍使用既有有界前缀省略策略，不改输入或命令语义。
+
+## 陆军方向渲染
+
+侦察/火炮/防空/维修四类通过groundDirectionTextures缓存一次解码的八个UV格；updateHUD的refreshGroundArtworkFacings复用updateDirectionalArtworkFacing与原destination/阵营已知存活目标，抵消父镜像，不改AI/移动/攻击。固定格82/112/96/96与pivot(0.5,0.25)避免逐向拉伸。productionArtworkTexture为对应按钮返回同缓存的SE格；原单幅只作兜底。云端fixture后auditGroundDirectionArtwork保存贴图/朝向/镜像/几何，检查八向×正负镜像并精确恢复；缺种类用未入场真实配置样本。ready groundDirections使用每种五整数samples压缩报告32视角与几何位，另核对实际姿态和生产预览，scene_evidence严格验收；不扩大8000字节行预算。素材/提示词见[陆军美术](../art/v6.18-ground-directions.md)。

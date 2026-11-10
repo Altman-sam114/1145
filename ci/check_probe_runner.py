@@ -90,6 +90,9 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          artwork=dict(tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
                      textureCount=8, stateRestored=True, posesValid=True,
                      cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)]),
+                      groundDirections=dict(policy="ground-eight-v1", stateRestored=True, posesValid=True, previewsValid=True,
+                          samples={kind: [8, 255, 255, 255, 1]
+                                   for kind in ("scout", "artillery", "mobile-aa", "repair-truck")}),
                       navalDirections=dict(policy="naval-eight-v1", stateRestored=True, posesValid=True,
                           subjects={kind: "entity" for kind in ("battleship", "carrier", "submarine")},
                           textureCounts={kind: 8 for kind in ("battleship", "carrier", "submarine")},
@@ -1831,6 +1834,41 @@ class SceneEvidenceTests(unittest.TestCase):
                     else: atlas["masks"][kind][defect] = 127
                     with self.assertRaisesRegex(ValueError, "naval direction artwork"):
                         latest_ready(records, self.definition)
+
+    def test_ground_artwork_requires_each_view_mirror_geometry_and_restoration(self):
+        for kind in ("scout", "artillery", "mobile-aa", "repair-truck"):
+            for defect in ("missing", "wrong-type", "wrong-policy", "missing-kind", "extra-kind", "short", "long",
+                           "count", "positive", "negative", "geometry", "overflow", "bool", "subject", "float",
+                           "unrestored", "fallback", "wrong-preview", "numeric-preview"):
+                with self.subTest(kind=kind, defect=defect):
+                    records = self.records(self.scene()["scene"])
+                    atlas = records[-1]["artwork"]["groundDirections"]
+                    if defect == "missing": records[-1]["artwork"].pop("groundDirections")
+                    elif defect == "wrong-type": records[-1]["artwork"]["groundDirections"] = []
+                    elif defect == "wrong-policy": atlas["policy"] = "single-frame"
+                    elif defect == "missing-kind": atlas["samples"].pop(kind)
+                    elif defect == "extra-kind": atlas["samples"]["unknown"] = [8, 255, 255, 255, 1]
+                    elif defect == "short": atlas["samples"][kind].pop()
+                    elif defect == "long": atlas["samples"][kind].append(1)
+                    elif defect == "count": atlas["samples"][kind][0] = 7
+                    elif defect in ("positive", "negative", "geometry"):
+                        atlas["samples"][kind][{"positive": 1, "negative": 2, "geometry": 3}[defect]] = 127
+                    elif defect == "overflow": atlas["samples"][kind][1] = 511
+                    elif defect == "bool": atlas["samples"][kind][4] = True
+                    elif defect == "float": atlas["samples"][kind][1] = 255.0
+                    elif defect == "subject": atlas["samples"][kind][4] = 2
+                    elif defect == "unrestored": atlas["stateRestored"] = False
+                    elif defect == "fallback": atlas["posesValid"] = False
+                    elif defect == "wrong-preview": atlas["previewsValid"] = False
+                    elif defect == "numeric-preview": atlas["previewsValid"] = 1
+                    with self.assertRaisesRegex(ValueError, "ground direction artwork"):
+                        latest_ready(records, self.definition)
+
+    def test_ground_artwork_accepts_explicit_detached_renderers_when_kind_absent(self):
+        records = self.records(self.scene()["scene"])
+        for sample in records[-1]["artwork"]["groundDirections"]["samples"].values():
+            sample[4] = 0
+        self.assertIs(latest_ready(records, self.definition), records[-1])
 
     def test_air_artwork_rejects_missing_views_bad_mirrors_and_unrestored_state(self):
         for kind in ("fighter", "helicopter"):

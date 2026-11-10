@@ -292,3 +292,7 @@ The following records the v5.58 policy; v5.61 replaces only its intermediate fre
 - The original HUD25 bands checks also inspect the real direct container and child bounds. Both builds, 100 CI regression methods, five watchdog checks and all 24 unchanged formal screen probes still require latest-SHA cloud acceptance. This tests a rendering-path hypothesis found in the v5.54-to-v5.55 diff; it is not yet a confirmed black-screen fix or completion of the UI/art overhaul. No local build or tests run.
 
 - Command tabs use a single clear label; Advance and available Target commands have a warm accent. Sand and water use cached fine relief textures. The 44pt controls and existing gesture routes remain available.
+
+### Ground vehicle artwork
+
+Scouts, artillery, mobile anti-air vehicles and repair trucks now use original graphite eight-direction models with consistent scale, full barrel clearance and matching production-button previews. They turn using existing movement and known-target state; stationary units keep their last view. These are static directional sprites; wheel, track and independent turret animation remain future work.

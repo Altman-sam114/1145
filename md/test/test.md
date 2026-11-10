@@ -641,3 +641,5 @@ THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，
 HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1，精确5个分类文字和每命令2个文字，全部非空/可见、名称匹配。生产节点删除空副标题，文字审计只注册分类title与命令title/subtitle；缺分类、缺命令状态、旧subtitle、布尔冒充数量或隐藏均拒绝，原25布局/两态/文字拟合恢复与正式PNG门槛不变。
 
 常用命令状态（source不超过8字符）必须完整显示；原生ready与各HUD审计阶段的displayValidCount同时检查源文字与显示文字相等，不能把guard/push等短词省略视为正常。长动态状态仍允许合法前缀省略。字槽调整后核对原25组布局/恢复和24正式PNG，避免仅依靠合法省略的计数通过。
+
+陆军八向改动时，source/bundle逐文件和逐格覆盖侦察/火炮/防空/维修图集。ready的groundDirections严格核对四种samples，每种为[纹理数8,正父镜像mask255,负父镜像mask255,几何mask255,实际实体1/未入场样本0]，拒绝缺种类、缺方向位、溢出、布尔或浮点冒充、非法subject、未恢复/兜底/错误生产预览。stateRestored/posesValid/previewsValid必须为true；既有坦克/海空合同、行预算和正式图门槛保留。实际原生图检查地战、防空、战损和Build/Air按钮模型及文字，不以32视角CPU检查冒称32张实际操作截图。

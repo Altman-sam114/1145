@@ -53,3 +53,22 @@
 
 - [24图已目视，需继续修] v6.16全部24原始PNG无黑屏/缺层/系统通知，三固定marker无遮挡，舰/机/坦克方向及战斗层正常；但guard/push被10pt高槽截断。review.json已如实记录visual issue，不能以CI绿色结束。
 - [v6.17完成代码/待云端] 命令副标题槽10→12pt且中心不变；同一个shortCommandCaptionComplete在ready与Swift字体审计要求source≤8字符的命令状态完整，长文案仍允许原合法省略。只改GameScene及flow/test/log/work，资源/玩法/路由/协议/预算不变；精确下一步main提交push并下载新SHA，25HUD/24原生图再次目视短词，未本机测试。
+
+## 当前续作 v6.18（2026-11-10）
+
+- 目标：接续44f4e65，合格生图接入剩余四类陆军八方向，改善战场模型转向；复核新SHA云端构建/相关渲染与官方原图。整体复刻、战役/多人、连续动画不在这一有限增量中宣称完成。
+- 现场：main与origin/main一致，fetch/pull已完成；旧文档整理、工程Team ID和未跟踪归档保留不提交。本轮原文件备份/private/tmp/desert-v6.18-baseline。Altman-sam114已核对。
+- [进行中] 用内置imagegen清理/重做候选；真实alpha和8格方向目视合格后才接入。素材保存用户目录与项目Art/Directions，记录完整提示词。
+- [待办] 复用现有八向UV/朝向/镜像/缓存模式，加入四类陆军；不改玩家/AI行为、迷雾、胜负。增加直接相关八向与恢复合同，保持ready行预算。
+- [待办] 本机仅diff/AST/JSON/元数据/文档链接；云端执行现有workflow（无范围选择输入），检查generic+simulator build、source/bundle资源、陆军方向/镜像/恢复、HUD/相关正式截图。
+- [待办] 自查后只暂存本轮文件与文档增量，main提交推送；等待并下载精确SHA未加密官方包，核对run/attempt/manifest/JUnit/日志及原图。失败依据新证据修复。
+- 编辑范围：GameScene.swift，Art/Directions四候选及manifest，ci/check_unit_art.py、scene_evidence.py、check_probe_runner.py（仅相关资源/证据合同），md/art新文档/提示词，必要README/flow/图/test/log追加。workflow不因旧失败盲改。
+- 新证据：最新两次run42692732568/42697509272均success，无当前挂起run；百度不可访问，官方App Store资料已查。
+- 下一步：检查内置生图输出，优先侦察车；不以不合格候选交付。
+
+### v6.18 实现检查点
+
+- [完成] 本轮生图8次，合格四图源已逐格目视与alpha≥32内容边界核对，复制到用户目录/项目，提示词已保存。未使用其他修图方式；用户可选清理问题尚未答复，不按超时视为授权。
+- [完成] 地面四类八向、缓存、固定几何、父镜像与生产预览接入；新增直接资源与原生trace合同，含负路径测试（仅待云端执行）。
+- [完成] Python AST、JSON与源摘要静态核对；尚未云端编译，不宣称通过。必要文档追加，原改动保留。
+- 下一步：检查实际diff/文档链接与ready预算，精确暂存本轮增量后main提交push，等待新SHA完整官方包。

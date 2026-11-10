@@ -1095,7 +1095,7 @@ private final class GameEntity {
     var rallyPoint: CGPoint?
     let node = SKNode()
     var artworkNode: SKSpriteNode?
-    // Last rendered tank view only; movement, targeting and combat keep their existing state.
+    // Last rendered view only; movement, targeting and combat keep their existing state.
     var artworkHeading = 7
     let selectionNode: SKShapeNode
     let weaponReadinessNode = SKNode()
@@ -1220,6 +1220,10 @@ final class GameScene: SKScene {
     private var entities: [Int: GameEntity] = [:]
     private var unitArtworkTextures: [EntityKind: SKTexture] = [:]
     private var tankDirectionTextures: [SKTexture] = []
+    private let directionalGroundKinds: [EntityKind] = [.humvee, .artillery, .aaTruck, .mechanic]
+    private var groundDirectionTextures: [EntityKind: [SKTexture]] = [:]
+    private var ciGroundDirectionSamples: [String: [Int]] = [:]
+    private var ciGroundDirectionRestored = false
     private let directionalNavalKinds: [EntityKind] = [.battleship, .carrier, .submarine]
     private var navalDirectionTextures: [EntityKind: [SKTexture]] = [:]
     private var ciNavalDirectionMasks: [String: [String: Int]] = [:]
@@ -1461,6 +1465,7 @@ final class GameScene: SKScene {
             auditTankDirectionArtwork()
             auditAirDirectionArtwork()
             auditNavalDirectionArtwork()
+            auditGroundDirectionArtwork()
             auditTacticalOverlayRendering()
         }
         if isCICaptureMode { ciFixtureCamera = cameraRig.position }
@@ -1778,6 +1783,7 @@ final class GameScene: SKScene {
                 ciTankDirectionRestored && ciTankDirectionCases.count == 8 && tankArtworkPosesValid() &&
                 ciAirDirectionRestored && airArtworkPosesValid() &&
                 ciNavalDirectionRestored && navalArtworkPosesValid() &&
+                ciGroundDirectionRestored && groundArtworkPosesValid() &&
                 ciOverlayChecks.count == 4 && ciOverlayChecks.values.allSatisfy({ $0 }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
@@ -1797,6 +1803,7 @@ final class GameScene: SKScene {
                                                     "tacticalOverlays": ["checks": ciOverlayChecks, "mirrors": ciOverlayMirrors],
                                                     "airDirections": airArtworkEvidence(),
                                                     "navalDirections": navalArtworkEvidence(),
+                                                    "groundDirections": groundArtworkEvidence(),
                                                     "fogSurface": fogSurfaceChecks,
                                                     "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
@@ -1839,6 +1846,7 @@ final class GameScene: SKScene {
                                            "stateRestored": ciTankDirectionRestored, "posesValid": tankArtworkPosesValid()],
                         "airDirections": airArtworkEvidence(),
                         "navalDirections": navalArtworkEvidence(),
+                        "groundDirections": groundArtworkEvidence(),
                         "effectTextures": Self.effectArtworkNames.compactMap { name -> [String: Any]? in
                             guard let texture = effectArtworkTextures[name] else { return nil }
                             return ["file": "Art/Effects/\(name).png", "width": texture.size().width, "height": texture.size().height]
@@ -3343,6 +3351,101 @@ final class GameScene: SKScene {
         return true
     }
 
+    private func loadGroundDirectionArtwork(for kind: EntityKind) -> Bool {
+        if groundDirectionTextures[kind]?.count == 8 { return true }
+        guard directionalGroundKinds.contains(kind), let name = kind.artworkName,
+              let textures = directionArtworkTextures(named: "\(name)-eight") else { return false }
+        groundDirectionTextures[kind] = textures
+        return true
+    }
+
+    private func groundArtworkCellSize(for kind: EntityKind) -> CGSize {
+        // Artillery has extra transparent barrel clearance; keep one physical scale
+        // per model rather than stretching narrow front/rear silhouettes to fit.
+        let side: CGFloat = kind == .humvee ? 82 : (kind == .artillery ? 112 : 96)
+        return CGSize(width: side, height: side)
+    }
+
+    private func refreshGroundArtworkFacings() {
+        for entity in entities.values where entity.isAlive && directionalGroundKinds.contains(entity.kind) {
+            guard let textures = groundDirectionTextures[entity.kind] else { continue }
+            updateDirectionalArtworkFacing(entity, direction: artworkFacingDirection(for: entity), textures: textures)
+        }
+    }
+
+    private func groundArtworkPosesValid() -> Bool {
+        directionalGroundKinds.allSatisfy { kind in
+            guard let textures = groundDirectionTextures[kind], textures.count == 8 else { return false }
+            return entities.values.filter({ $0.isAlive && $0.kind == kind }).allSatisfy { unit in
+                guard let sprite = unit.artworkNode, (0..<8).contains(unit.artworkHeading) else { return false }
+                return sprite.texture === textures[unit.artworkHeading] && sprite.size == groundArtworkCellSize(for: kind) &&
+                    sprite.anchorPoint == CGPoint(x: 0.5, y: 0.25) && sprite.position == .zero &&
+                    unit.node.xScale * sprite.xScale == 1
+            }
+        }
+    }
+
+    private func groundArtworkEvidence() -> [String: Any] {
+        // samples[name] = [texture count, +mirror heading bits, -mirror heading
+        // bits, unchanged geometry bits, live entity(1)/detached renderer(0)].
+        // This bounded representation keeps all 32 views below the 8KB beacon cap.
+        return ["policy": "ground-eight-v1", "samples": ciGroundDirectionSamples,
+                "stateRestored": ciGroundDirectionRestored, "posesValid": groundArtworkPosesValid(),
+                "previewsValid": groundProductionPreviewsValid()]
+    }
+
+    private func groundProductionPreviewsValid() -> Bool {
+        hudPage.actions.allSatisfy { action in
+            guard let kind = action.buildKind, directionalGroundKinds.contains(kind) else { return true }
+            guard let textures = groundDirectionTextures[kind], textures.count == 8,
+                  let preview = hudNode.childNode(withName: "//hud:production-preview:\(kind.shortCode)") as? SKSpriteNode
+            else { return false }
+            return preview.texture === textures[7] && !preview.isHidden && preview.alpha > 0
+        }
+    }
+
+    private func auditGroundDirectionArtwork() {
+        ciGroundDirectionSamples.removeAll()
+        ciGroundDirectionRestored = false
+        var restored: [Bool] = []
+        for kind in directionalGroundKinds {
+            let live = entities.values.sorted { $0.id < $1.id }.first { $0.kind == kind && $0.isAlive }
+            let unit = live ?? GameEntity(id: -1, kind: kind, faction: .player, position: .zero)
+            if live == nil { configureEntityNode(unit) }
+            guard let textures = groundDirectionTextures[kind], textures.count == 8,
+                  let sprite = unit.artworkNode, let name = kind.artworkName else { return }
+            let saved = (unit.artworkHeading, unit.node.xScale, sprite.texture, sprite.xScale)
+            let geometry = (sprite.size, sprite.anchorPoint, sprite.position, unit.node.position)
+            var positive = 0, negative = 0, geometryMask = 0
+            for index in 0..<8 {
+                let angle = CGFloat(index) * .pi / 4
+                var geometryValid = true
+                for sign in [CGFloat(1), CGFloat(-1)] {
+                    unit.node.xScale = sign
+                    updateDirectionalArtworkFacing(unit, direction: CGPoint(x: cos(angle), y: sin(angle)), textures: textures)
+                    let correct = unit.artworkHeading == index && sprite.texture === textures[index] &&
+                        sprite.xScale * unit.node.xScale == 1
+                    if correct {
+                        if sign > 0 { positive |= 1 << index } else { negative |= 1 << index }
+                    }
+                    geometryValid = geometryValid && sprite.size == geometry.0 && sprite.anchorPoint == geometry.1 &&
+                        sprite.position == geometry.2 && unit.node.position == geometry.3
+                }
+                if geometryValid { geometryMask |= 1 << index }
+            }
+            ciGroundDirectionSamples[name] = [textures.count, positive, negative, geometryMask, live == nil ? 0 : 1]
+            unit.artworkHeading = saved.0
+            unit.node.xScale = saved.1
+            sprite.texture = saved.2
+            sprite.xScale = saved.3
+            restored.append(unit.artworkHeading == saved.0 && unit.node.xScale == saved.1 &&
+                sprite.texture === saved.2 && sprite.xScale == saved.3 && sprite.size == geometry.0 &&
+                sprite.anchorPoint == geometry.1 && sprite.position == geometry.2 && unit.node.position == geometry.3 &&
+                positive == 255 && negative == 255 && geometryMask == 255)
+        }
+        ciGroundDirectionRestored = restored.count == directionalGroundKinds.count && restored.allSatisfy { $0 }
+    }
+
     private func navalArtworkCellSize(for kind: EntityKind) -> CGSize {
         let side: CGFloat = kind == .carrier ? 176 : (kind == .submarine ? 116 : 160)
         return CGSize(width: side, height: side)
@@ -3577,6 +3680,15 @@ final class GameScene: SKScene {
             entity.artworkHeading = entity.faction == .enemy ? 5 : 7
             sprite.texture = tankDirectionTextures[entity.artworkHeading]
             sprite.size = CGSize(width: 74, height: 74)
+            sprite.anchorPoint = CGPoint(x: 0.5, y: 0.25)
+            sprite.position = .zero
+            sprite.xScale = entity.node.xScale < 0 ? -1 : 1
+        }
+        if directionalGroundKinds.contains(entity.kind), loadGroundDirectionArtwork(for: entity.kind),
+           let textures = groundDirectionTextures[entity.kind] {
+            entity.artworkHeading = entity.faction == .enemy ? 5 : 7
+            sprite.texture = textures[entity.artworkHeading]
+            sprite.size = groundArtworkCellSize(for: entity.kind)
             sprite.anchorPoint = CGPoint(x: 0.5, y: 0.25)
             sprite.position = .zero
             sprite.xScale = entity.node.xScale < 0 ? -1 : 1
@@ -6613,9 +6725,11 @@ final class GameScene: SKScene {
         accent.isHidden = true
         node.addChild(accent)
 
-        if let kind = action.buildKind, let texture = unitArtworkTexture(for: kind) {
+        if let kind = action.buildKind, let texture = productionArtworkTexture(for: kind) {
             let preview = SKSpriteNode(texture: texture)
-            let scale = min(36 / max(texture.size().width, 1), 24 / max(texture.size().height, 1))
+            preview.name = "hud:production-preview:\(kind.shortCode)"
+            let height: CGFloat = directionalGroundKinds.contains(kind) ? 30 : 24
+            let scale = min(36 / max(texture.size().width, 1), height / max(texture.size().height, 1))
             preview.size = CGSize(width: texture.size().width * scale, height: texture.size().height * scale)
             preview.position.y = frame.height < 48 ? 10 : 12
             node.addChild(preview)
@@ -6647,6 +6761,12 @@ final class GameScene: SKScene {
         boundedHUDLabels.append((subtitleLabel, CGRect(x: -frame.width / 2 + 3, y: frame.height < 48 ? -22 : -24, width: frame.width - 6, height: 12), 8))
         hudButtonSubtitleLabels[action] = subtitleLabel
         return node
+    }
+
+    private func productionArtworkTexture(for kind: EntityKind) -> SKTexture? {
+        if directionalGroundKinds.contains(kind), loadGroundDirectionArtwork(for: kind),
+           let textures = groundDirectionTextures[kind] { return textures[7] }
+        return unitArtworkTexture(for: kind)
     }
 
     private func makeHudPageTab(page: HudPage, frame: CGRect) -> SKNode {
@@ -6891,6 +7011,7 @@ final class GameScene: SKScene {
         refreshTankArtworkFacings()
         refreshAirArtworkFacings()
         refreshNavalArtworkFacings()
+        refreshGroundArtworkFacings()
         applyCameraProjection()
         for entity in entities.values {
             entity.label.xScale = entity.node.xScale < 0 ? -1 : 1

@@ -144,6 +144,17 @@ def latest_ready(records, definition):
             or any(not isinstance(mask, dict) or set(mask) != {"positive", "negative", "geometry"}
                    or any(type(value) is not int or value != 255 for value in mask.values()) for mask in masks.values())):
         raise ValueError("Scene ready naval direction artwork missing, mirrored incorrectly or not restored")
+    ground = artwork.get("groundDirections")
+    samples = ground.get("samples") if isinstance(ground, dict) else None
+    if (not isinstance(ground, dict) or ground.get("policy") != "ground-eight-v1"
+            or ground.get("stateRestored") is not True or ground.get("posesValid") is not True
+            or ground.get("previewsValid") is not True
+            or not isinstance(samples, dict) or set(samples) != {"scout", "artillery", "mobile-aa", "repair-truck"}
+            or any(not isinstance(sample, list) or len(sample) != 5
+                   or any(type(value) is not int for value in sample)
+                   or sample[:4] != [8, 255, 255, 255] or sample[4] not in (0, 1)
+                   for sample in samples.values())):
+        raise ValueError("Scene ready ground direction artwork missing, mirrored incorrectly or not restored")
     air = artwork.get("airDirections")
     air_cases = air.get("cases") if isinstance(air, dict) else None
     air_counts = air.get("textureCounts") if isinstance(air, dict) else None
