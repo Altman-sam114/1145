@@ -6586,3 +6586,14 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - HUDLayout将五分类改为左侧56/68pt竖栏、金色竖向当前页指示；选择摘要/详情放到顶部任务与小地图之间，上沿/Info固定，展开向下。消息沿实际选择卡避让；底部单排保留当前页全部动作与3/4/2战术分组，旧第二排大部分区域归还world。未新增菜单状态或改变原命令、pending、玩家/AI、地图/迷雾/经济/胜负/资源。
 - 保留25HUD/50详情，新增实际空出区域与3点consumeHUDTouch状态不变证据，ready纳入当前布局检查；runner/metadata共享edge-console-v1严格协议，摘要/展开/收起的缺失/数值冒充/失败/非法框等直接负例保持顶层假绿拒绝。没有删gate、加预算、改重试或选择其他本地设备。
 - 本机仅diff、相关Python AST和文档链接，未本机编译/App/模拟器/simctl/CI回归。正式双build、原生路由/文字、24PNG与真实效果待新SHA云端；真实UITouch/长期FPS/完整复刻不在这些证据范围内。
+
+
+## v6.24 正式云端未通过
+
+- main/8dcd48ba32379f25e7e91db4cb055add5aa785e7，run42773703513/attempt1/artifact13743517258；未加密ZIP549204bytes/36项，digest b82f9526cf9b36b6c8c92d0a07d1791114d9bdb5927f1885513e071d2014c51e。branch/SHA/run/attempt/CRC/摘要、manifest/JUnit/日志已核对；原包/private/tmp/desert-frontline-review-42773703513-attempt1/。
+- generic约53s/sim56.961s双build、127脚本0failure/0error、41source=bundle、真实HUD25组/50详情/75份edge-console-v1与225程序化透传通过；HUD173913bytes。失败在之后的prewarm-terminate独立CLI等待60s，stage62.592s后124；24正式项全部not_run，无正式截图，界面效果仍未验收。JUnit10/3failure/1skip；metadata因未启动空nonce又报重复nonce，不能当作实际同nonce复用。boot164.027/install59.361/预热minimum90.075秒。不是Swift编译或HUD合同失败。
+
+## v6.25 预热归档消除重复退出（实现待云端）
+
+- 从上述直接证据修复：archive_prewarm先验证HUD/归档诊断/冻结当前ready，去掉单独simctl terminate与5秒settle。snapshot本来支持存活App，正式capture也如此；原每场景launch --terminate-running-process仍负责新进程和新nonce。没有降低ready、PNG、24集合或改预算/设备/重试；未回滚HUD。
+- 场景gate优先拒绝未成功项并显示原failureStage，再检查nonce；直接合成回归覆盖预热归档、快照后live追加与新nonce、坏HUD/失效ready/deadline停止、未运行误诊及假绿nonce拒绝。本机只做相关AST/diff/链接；修复与新布局均待新SHA双build和全24原图正式复核。

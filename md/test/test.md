@@ -657,3 +657,6 @@ HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1
 
 
 边缘HUD布局使用`edge-console-v1`合同：原25组与50详情态各自提供edgeConsole，corridor为有限有效矩形且高≥44，passThroughSamples严格整数3，verticalPages/topSelection/commandCorridor三项严格true；拒绝缺项、旧策略、错类型、布尔或浮点冒充计数、失败/额外检查和多余字段。原生实际验证完整矩形不与任一HUD面板相交，并通过consumeHUDTouch三点证明world透传且选择/队列/pending不变；ready也检查当前布局。Python只验来自Swift的证据与身份，不重新实现布局。直接负例覆盖摘要/展开/收起及包装失败，保留原44pt/文字拟合/恢复/三marker和24PNG门槛；不将这些CPU调用冒称真实触控注入。
+
+
+预热收尾不单独terminate：HUD验证和可选诊断之后，按原snapshot协议冻结仍存活App的当前ready字节；正式场景维持原`launch --terminate-running-process`、独立nonce/PID和24图。直接回归覆盖活体快照/下一nonce/后续live追加、坏HUD/几何失效/耗尽deadline停止、不运行记录优先报告原failureStage，以及虚报success仍受nonce门槛拒绝。真实云端需看到prewarm-trace-snapshot及正式场景完成；只有预热或HUD通过不能称24图已通过。不加预算、不重启设备、不放松ready/PNG/gate。

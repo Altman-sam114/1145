@@ -502,3 +502,16 @@ flowchart LR
   Top --> Evidence
   Bottom --> Evidence
 ```
+
+
+读图说明：预热产出的HUD与就绪trace先按原规则冻结；每个正式场景沿既有launch参数结束上一份App并启动新nonce。未运行场景优先报告原失败阶段，仍按失败处理。
+
+```mermaid
+flowchart LR
+  Warm["成功预热 / HUD合同 / 当前ready"] --> Archive["原snapshot规则冻结 / 保留live诊断"]
+  Archive --> Launch["正式launch --terminate-running-process / 新nonce与PID"]
+  Launch --> Screens["原24原生截图 / 原gate"]
+  Screens --> Status{"24项全success?"}
+  Status -- 否 --> Failed["失败 / 未运行项 / 原failureStage"]
+  Status -- 是 --> Identity["独立nonce / trace与PNG完整性"]
+```

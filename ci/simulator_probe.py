@@ -59,6 +59,10 @@ def validate_scene_evidence(probes, summary, directory):
         records = summary.get("probes", [])
         if len(probes) != 24 or len(records) != 24:
             raise ValueError("Scene readiness requires exactly the original 24 probe records")
+        incomplete = [record.get("id", "unknown") for record in records if record.get("status") != "success"]
+        if incomplete:
+            raise ValueError(f"Scene readiness incomplete: {len(incomplete)} probes not successful; "
+                             f"failureStage={summary.get('failureStage', 'none')}; probes={','.join(incomplete)}")
         launches = summary.get("prewarm", []) + records
         nonces = [record.get("scene", {}).get("nonce") for record in launches]
         if any(not nonce for nonce in nonces) or len(set(nonces)) != len(nonces):
@@ -1345,6 +1349,17 @@ class Runner:
             record["elapsedSeconds"] = round(time.monotonic() - started, 3)
             self.save()
 
+    def archive_prewarm(self, record):
+        self.collect_hud_contract(record["pid"])
+        with self.stage("render-diagnostics-archive"):
+            self.collect_render_diagnostics(record["pid"])
+        # Freeze verified bytes while the App is live, just like formal captures.
+        # The next launch already terminates it via --terminate-running-process.
+        with self.stage("prewarm-trace-snapshot"):
+            self.remaining()
+            seal_scene(self.summary, record["scene"], self.directory, self.probes[0])
+            record["scene"]["sealedAtMonotonic"] = time.monotonic()
+
     def work(self):
         self.command("xcode-version", ["/usr/bin/xcodebuild", "-version"])
         self.command("simulator-sdk-build", ["/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild",
@@ -1369,7 +1384,6 @@ class Runner:
             if not self.device.get("dataPath"):
                 raise SceneFailure("Selected device has no authoritative dataPath")
             print(json.dumps(self.device, indent=2), flush=True)
-        udid = self.device["udid"]
         self.boot_device()
         self.install_app(app)
         self.check_launch_output_options()
@@ -1399,15 +1413,7 @@ class Runner:
                 if attempt == 3 or error.code >= 128 or isinstance(error, SceneFailure):
                     raise
                 self.wait("prewarm-retry-wait", 20)
-        self.collect_hud_contract(record["pid"])
-        with self.stage("render-diagnostics-archive"):
-            self.collect_render_diagnostics(record["pid"])
-        self.simctl("prewarm-terminate", "terminate", udid, self.bundle)
-        with self.stage("prewarm-trace-snapshot"):
-            self.remaining()
-            seal_scene(self.summary, record["scene"], self.directory, self.probes[0])
-            record["scene"]["sealedAtMonotonic"] = time.monotonic()
-        self.wait("prewarm-settle", 5)
+        self.archive_prewarm(record)
         for index, probe in enumerate(self.probes):
             self.capture(probe, index)
         with self.stage("integrity-gate"):

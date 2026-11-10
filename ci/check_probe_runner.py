@@ -2200,6 +2200,59 @@ class SceneEvidenceTests(unittest.TestCase):
                 with self.assertRaises((ValueError, FileNotFoundError)):
                     self.records(scene)
 
+    def test_prewarm_archive_freezes_live_evidence_before_the_next_fresh_launch(self):
+        scene = scene_fixture(self.runner, self.definition, "prewarm:1")
+        warm = dict(attempt=1, pid=scene["pid"], status="success", scene=scene)
+        self.runner.summary["prewarm"] = [warm]
+        deadline = self.runner.deadline
+        with patch.object(self.runner, "collect_hud_contract") as hud, \
+             patch.object(self.runner, "collect_render_diagnostics") as diagnostics, \
+             patch.object(self.runner, "simctl") as command, patch.object(self.runner, "wait") as wait:
+            self.runner.archive_prewarm(warm)
+        hud.assert_called_once_with(warm["pid"])
+        diagnostics.assert_called_once_with(warm["pid"])
+        command.assert_not_called()
+        wait.assert_not_called()
+        self.assertEqual(self.runner.deadline, deadline)
+        validate_scene(self.runner.summary, warm, self.directory, self.definition, "prewarm:1")
+        # Synthetic fresh-launch protocol only; not an actual simulator restart.
+        self.runner.capture(self.definition, 0)
+        self.assertNotEqual(self.runner.summary["probes"][0]["scene"]["nonce"], scene["nonce"])
+        (self.directory / scene["directFiles"]["stderr"]["path"]).write_text("later App termination diagnostic\n")
+        validate_scene(self.runner.summary, warm, self.directory, self.definition, "prewarm:1")
+
+    def test_prewarm_archive_stops_on_bad_hud_changed_ready_or_deadline(self):
+        for defect in ("hud", "ready", "deadline"):
+            with self.subTest(defect=defect):
+                self.runner = FakeRunner(self.directory)
+                scene = scene_fixture(self.runner, self.definition, "prewarm:1")
+                warm = dict(attempt=1, pid=scene["pid"], status="success", scene=scene)
+                if defect == "ready":
+                    records = self.records(scene)
+                    records.append(dict(records[-1], stage="geometry-invalidated"))
+                    self.rewrite(scene, records)
+                elif defect == "deadline":
+                    self.runner.deadline = time.monotonic() - 1
+                error = ProbeFailure("injected HUD contract failure") if defect == "hud" else None
+                with patch.object(self.runner, "collect_hud_contract", side_effect=error), \
+                     patch.object(self.runner, "collect_render_diagnostics"), patch.object(self.runner, "simctl") as command:
+                    with self.assertRaises((ProbeFailure, ValueError)):
+                        self.runner.archive_prewarm(warm)
+                self.assertFalse(scene.get("sealed", False))
+                self.assertTrue(all(record["status"] == "not_run" for record in self.runner.summary["probes"]))
+                command.assert_not_called()
+
+    def test_unrun_probes_report_the_failure_stage_before_missing_nonces(self):
+        hud_fixture(self.runner)
+        self.runner.summary.update(status="failure", failureStage="prewarm-terminate")
+        with self.assertRaisesRegex(SceneFailure, "24 probes not successful; failureStage=prewarm-terminate"):
+            validate_scene_evidence(self.runner.probes, self.runner.summary, self.directory)
+        # Claiming success still cannot bypass the original distinct-nonce gate.
+        for record in self.runner.summary["probes"]:
+            record["status"] = "success"
+        with self.assertRaisesRegex(SceneFailure, "Every launch must have a distinct nonce"):
+            validate_scene_evidence(self.runner.probes, self.runner.summary, self.directory)
+
     def test_scene_snapshot_survives_later_stderr_but_not_tampering(self):
         record = self.scene(sealed=True)
         scene = record["scene"]

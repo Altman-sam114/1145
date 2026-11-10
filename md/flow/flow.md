@@ -380,3 +380,6 @@ updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog til
 `HUDLayout`将五页分类放在左侧56/68pt竖栏，分类框按原HudPage顺序自上而下，保留单标题/图标/至少44pt。选择卡上沿对齐任务卡，在任务与小地图之间，展开向下、Info固定；消息位于左栏右侧并跟随选择卡底部避让。底部只保留原当前页命令与3/4/2战术分组。所有绘制、命中、图层和pending继续用同一panels/slots/pages/actions，没有新增菜单状态或输入分支。SKRM仍用原hudPage/selectionDetailsExpanded重置入口。
 
 `commandCorridor`表示旧第二排释放的44pt高宽区域；`edgeConsoleChecks`从实际框验证竖栏、顶部选择卡、整段区域与所有面板不交及三点world路由。CI ready把它并入原hud检查。HUD合同保持25尺寸/页面、50详情两态，增加edge-console-v1和各态edgeConsole：真实框、三项严格检查与经过consumeHUDTouch返回false且选择/队列/pending未变的3样本数；runner和metadata共享严格验证。它是生产CPU路由证据，不等于物理UITouch，原24正式PNG仍核对文字/画面/marker。
+
+
+预热归档使用`archive_prewarm`顺序收集已验证HUD、非gate渲染诊断与当前latest-ready快照。它和正式capture一样在App存活时冻结字节，不单独调用simctl terminate或等待退出；随后每次正式launch仍用原`--terminate-running-process`和独立nonce启动。snapshot的稳定帧/ready匹配、不可变摘要及原24图门槛不变。场景验证先拒绝not_run/running/failure并带原failureStage，再检查所有已成功launch的独立nonce，避免把尚未启动的空记录误称重复nonce。
