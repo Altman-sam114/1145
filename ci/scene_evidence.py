@@ -104,10 +104,17 @@ def latest_ready(records, definition):
         raise ValueError("Scene ready HUD control text structure or visibility invalid")
     fog = ready.get("fogSurface")
     fog_checks = fog.get("checks") if isinstance(fog, dict) else None
-    if (not isinstance(fog, dict) or fog.get("policy") != "shared-edge-fog-v1"
-            or not isinstance(fog_checks, dict) or set(fog_checks) != {"sharedEdges", "rasterEdges", "opacity"}
+    feather_counts = fog.get("featherCounts") if isinstance(fog, dict) else None
+    if (not isinstance(fog, dict) or fog.get("policy") != "inward-feather-fog-v1"
+            or not isinstance(fog_checks, dict) or set(fog_checks) != {
+                "sharedEdges", "rasterEdges", "opacity", "featherGeometry", "featherMasks", "featherPixels",
+                "featherBounded", "enemyVisibility"}
             or any(value is not True for value in fog_checks.values())
             or type(fog.get("tileCount")) is not int or fog["tileCount"] != counts["fogNodes"]
+            or not isinstance(feather_counts, list) or len(feather_counts) != 3
+            or any(type(value) is not int for value in feather_counts)
+            or not 0 < feather_counts[1] <= feather_counts[0] <= fog["tileCount"]
+            or not 0 < feather_counts[2] <= 95
             or type(fog.get("tileWidth")) not in (int, float) or fog["tileWidth"] != 86
             or type(fog.get("tileHeight")) not in (int, float) or fog["tileHeight"] != 43):
         raise ValueError("Scene fog surface edges, raster or opacity evidence invalid")

@@ -84,8 +84,10 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          counts=dict(mapNodes=1, entities=1, playerUnits=1, visiblePlayerUnits=1, fogNodes=1,
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
-         fogSurface=dict(policy="shared-edge-fog-v1", tileCount=1, tileWidth=86, tileHeight=43,
-                         checks=dict(sharedEdges=True, rasterEdges=True, opacity=True)),
+         fogSurface=dict(policy="inward-feather-fog-v1", tileCount=1, tileWidth=86, tileHeight=43,
+                         featherCounts=[1, 1, 1], checks=dict(sharedEdges=True, rasterEdges=True, opacity=True,
+                             featherGeometry=True, featherMasks=True, featherPixels=True, featherBounded=True,
+                             enemyVisibility=True)),
          renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False, viewClass="GameRenderView"),
          artwork=dict(tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
                      textureCount=8, stateRestored=True, posesValid=True,
@@ -1790,7 +1792,10 @@ class SceneEvidenceTests(unittest.TestCase):
                     latest_ready(records, self.definition)
 
     def test_fog_surface_rejects_wrong_edges_raster_opacity_and_counts(self):
-        for defect in ("missing", "bad-type", "policy", "edges", "raster", "opacity", "numeric-check", "count", "width", "height"):
+        for defect in ("missing", "bad-type", "policy", "edges", "raster", "opacity", "numeric-check", "count", "width", "height",
+                       "featherGeometry", "featherMasks", "featherPixels", "featherBounded", "enemyVisibility",
+                       "missing-feather", "bool-feather", "empty-feather", "excess-nodes", "excess-active", "excess-textures",
+                       "extra-check", "short-feather", "long-feather"):
             with self.subTest(defect=defect):
                 records = self.records(self.scene()["scene"])
                 fog = records[-1]["fogSurface"]
@@ -1804,6 +1809,17 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "count": fog["tileCount"] += 1
                 elif defect == "width": fog["tileWidth"] = 87
                 elif defect == "height": fog["tileHeight"] = 44
+                elif defect in ("featherGeometry", "featherMasks", "featherPixels", "featherBounded", "enemyVisibility"):
+                    fog["checks"][defect] = False
+                elif defect == "missing-feather": fog.pop("featherCounts")
+                elif defect == "bool-feather": fog["featherCounts"][0] = True
+                elif defect == "empty-feather": fog["featherCounts"] = [0, 0, 0]
+                elif defect == "excess-nodes": fog["featherCounts"][0] = 2
+                elif defect == "excess-active": fog["featherCounts"][1] = 2
+                elif defect == "excess-textures": fog["featherCounts"][2] = 96
+                elif defect == "extra-check": fog["checks"]["unknown"] = True
+                elif defect == "short-feather": fog["featherCounts"].pop()
+                elif defect == "long-feather": fog["featherCounts"].append(1)
                 with self.assertRaisesRegex(ValueError, "fog surface"):
                     latest_ready(records, self.definition)
 

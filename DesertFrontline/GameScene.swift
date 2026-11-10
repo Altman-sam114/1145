@@ -1213,6 +1213,10 @@ final class GameScene: SKScene {
 
     private var terrain: [[Terrain]] = []
     private var fogNodes: [TileCoord: SKShapeNode] = [:]
+    private var fogFeatherNodes: [TileCoord: SKShapeNode] = [:]
+    private var fogFeatherKeys: [TileCoord: Int] = [:]
+    private var fogFeatherTextures: [Int: SKTexture] = [:]
+    private var fogFeatherPixelsValid: [Int: Bool] = [:]
     private var exploredTiles = Set<TileCoord>()
     private var visibleTiles = Set<TileCoord>()
     private var worldBounds = CGRect.zero
@@ -1614,6 +1618,28 @@ final class GameScene: SKScene {
                 "opacity": fogNodes.allSatisfy { tile, fog in
                     let expected: CGFloat = visibleTiles.contains(tile) ? 0 : (exploredTiles.contains(tile) ? 0.48 : 0.86)
                     return abs(fog.alpha - expected) < 0.0001
+                },
+                "featherGeometry": fogFeatherNodes.allSatisfy { tile, node in
+                    node.parent === fogLayer && node.position == tileCenter(tile) &&
+                        node.path?.boundingBoxOfPath == bounds && !node.isAntialiased &&
+                        node.xScale == 1 && node.yScale == 1 && node.zRotation == 0 && node.alpha == 1 &&
+                        node.fillColor == .white && node.strokeColor == .clear &&
+                        node.zPosition == zPosition(for: tileCenter(tile)) + 1000.1
+                },
+                "featherMasks": fogNodes.keys.allSatisfy { tile in
+                    let key = fogFeatherKey(for: tile)
+                    if key == 0 { return fogFeatherNodes[tile]?.isHidden ?? true }
+                    guard let node = fogFeatherNodes[tile], let texture = fogFeatherTextures[key] else { return false }
+                    return !node.isHidden && fogFeatherKeys[tile] == key && node.fillTexture === texture
+                },
+                "featherPixels": fogFeatherTextures.count == fogFeatherPixelsValid.count &&
+                    fogFeatherPixelsValid.values.allSatisfy({ $0 }),
+                "featherBounded": fogFeatherTextures.count <= 95 && fogFeatherNodes.count <= rows * cols &&
+                    Set(fogFeatherNodes.keys).isSubset(of: Set(fogNodes.keys)) &&
+                    fogLayer.children.count == fogNodes.count + fogFeatherNodes.count &&
+                    fogFeatherKeys.count == fogFeatherNodes.values.filter({ !$0.isHidden }).count,
+                "enemyVisibility": entities.values.filter({ $0.faction == .enemy }).allSatisfy {
+                    $0.node.isHidden == !isKnownToFaction($0, observer: .player)
                 }]
     }
 
@@ -1824,7 +1850,8 @@ final class GameScene: SKScene {
             "essentialText": essentialHUDTextCompleteness(),
             "hudText": ["policy": "single-title-tabs-v1", "visible": controlsHaveText,
                         "tabLabels": tabTextCount, "commandLabels": commandTextCount],
-            "fogSurface": ["policy": "shared-edge-fog-v1", "checks": fogSurfaceChecks, "tileCount": fogNodes.count,
+            "fogSurface": ["policy": "inward-feather-fog-v1", "checks": fogSurfaceChecks, "tileCount": fogNodes.count,
+                           "featherCounts": [fogFeatherNodes.count, fogFeatherKeys.count, fogFeatherTextures.count],
                            "tileWidth": tileWidth, "tileHeight": tileHeight],
             "selectedEntities": selectedIDs.sorted().compactMap { id -> [String: Any]? in
                 guard let entity = entities[id] else { return nil }
@@ -1864,7 +1891,7 @@ final class GameScene: SKScene {
                         }],
             "counts": ["mapNodes": mapNode.children.count, "entities": attached.count, "playerUnits": playerUnits.count,
                        "visiblePlayerUnits": visiblePlayerUnits.count, "panels": panelNames.count, "pages": layout.pages.count,
-                       "actions": hudButtonShapes.count, "fogNodes": fogLayer.children.count, "visibleTiles": visibleTiles.count,
+                       "actions": hudButtonShapes.count, "fogNodes": fogNodes.count, "visibleTiles": visibleTiles.count,
                        "selected": selectedIDs.count, "effectNodes": effectsLayer.children.count]
         ]
         if let ciHUDReport { readiness["hudReport"] = ciHUDReport }
@@ -2047,6 +2074,8 @@ final class GameScene: SKScene {
         mapNode.removeAllChildren()
         fogLayer.removeAllChildren()
         fogNodes.removeAll()
+        fogFeatherNodes.removeAll()
+        fogFeatherKeys.removeAll()
 
         var minX = CGFloat.greatestFiniteMagnitude
         var minY = CGFloat.greatestFiniteMagnitude
@@ -14049,6 +14078,112 @@ final class GameScene: SKScene {
         }
     }
 
+    private func fogOpacityLevel(at tile: TileCoord) -> Int {
+        guard isValid(tile) else { return 2 }
+        return visibleTiles.contains(tile) ? 0 : (exploredTiles.contains(tile) ? 1 : 2)
+    }
+
+    private func fogFeatherKey(for tile: TileCoord) -> Int {
+        let level = fogOpacityLevel(at: tile)
+        guard level < 2 else { return 0 }
+        // Clockwise diamond edges: NE, SE, SW, NW. Only shade the brighter
+        // tile's interior; the authoritative fog/visibility sets never expand.
+        let neighbors = [TileCoord(row: tile.row - 1, col: tile.col),
+                         TileCoord(row: tile.row, col: tile.col + 1),
+                         TileCoord(row: tile.row + 1, col: tile.col),
+                         TileCoord(row: tile.row, col: tile.col - 1)]
+        var edges = 0
+        for (index, neighbor) in neighbors.enumerated() {
+            let other = fogOpacityLevel(at: neighbor)
+            if other > level { edges |= other << (index * 2) }
+        }
+        return edges == 0 ? 0 : edges | (level << 8)
+    }
+
+    private func fogFeatherTexture(for key: Int) -> SKTexture? {
+        if let cached = fogFeatherTextures[key] { return cached }
+        let opacities: [CGFloat] = [0, 0.48, 0.86]
+        let base = opacities[key >> 8]
+        let edgeAlpha: [CGFloat] = (0..<4).map { index in
+            let neighbor = opacities[(key >> (index * 2)) & 3]
+            return max(0, (neighbor - base) / (1 - base))
+        }
+        // A small procedural mask, shared by every tile with the same edges.
+        // 80 visible + 15 explored masks are possible; no per-frame raster work.
+        let width = Int(tileWidth * 2), height = Int(tileHeight * 2)
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        for y in 0..<height {
+            let v = 1 - (CGFloat(y) + 0.5) * 2 / CGFloat(height)
+            for x in 0..<width {
+                let u = (CGFloat(x) + 0.5) * 2 / CGFloat(width) - 1
+                guard abs(u) + abs(v) <= 1 else { continue }
+                let distances = [1 - u - v, 1 - u + v, 1 + u + v, 1 + u - v]
+                var alpha: CGFloat = 0
+                for edge in 0..<4 where edgeAlpha[edge] > 0 {
+                    let t = min(1, max(0, 1 - distances[edge] / 0.7))
+                    alpha = max(alpha, edgeAlpha[edge] * t * t * (3 - 2 * t))
+                }
+                // Max, not stacked edge sprites: corners cannot accumulate a
+                // darker seam than the neighboring authoritative fog surface.
+                pixels[(y * width + x) * 4 + 3] = UInt8((alpha * 255).rounded())
+            }
+        }
+        let data = Data(pixels)
+        guard let provider = CGDataProvider(data: data as CFData),
+              let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                  bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                  provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent) else { return nil }
+        let maximum = Int(ceil((edgeAlpha.max() ?? 0) * 255))
+        var valid = true, populated = false
+        for y in 0..<height {
+            let v = 1 - (CGFloat(y) + 0.5) * 2 / CGFloat(height)
+            for x in 0..<width {
+                let i = (y * width + x) * 4
+                let u = (CGFloat(x) + 0.5) * 2 / CGFloat(width) - 1
+                let alpha = Int(pixels[i + 3])
+                valid = valid && pixels[i] == 0 && pixels[i + 1] == 0 && pixels[i + 2] == 0 &&
+                    alpha <= maximum && (abs(u) + abs(v) <= 1 || alpha == 0)
+                populated = populated || alpha > 0
+            }
+        }
+        let texture = SKTexture(cgImage: image)
+        texture.filteringMode = .linear
+        fogFeatherTextures[key] = texture
+        fogFeatherPixelsValid[key] = valid && populated
+        return texture
+    }
+
+    private func updateFogFeathering() {
+        for tile in fogNodes.keys {
+            let key = fogFeatherKey(for: tile)
+            guard key != 0, let texture = fogFeatherTexture(for: key) else {
+                fogFeatherNodes[tile]?.isHidden = true
+                fogFeatherKeys.removeValue(forKey: tile)
+                continue
+            }
+            let node: SKShapeNode
+            if let existing = fogFeatherNodes[tile] {
+                node = existing
+            } else {
+                // Clip the texture to the exact shared diamond geometry so
+                // linear filtering cannot shade the darker neighboring tile.
+                node = SKShapeNode(path: diamondPath(width: tileWidth, height: tileHeight))
+                node.name = "fog:inward-feather"
+                node.fillColor = .white
+                node.strokeColor = .clear
+                node.isAntialiased = false
+                node.position = tileCenter(tile)
+                node.zPosition = zPosition(for: node.position) + 1000.1
+                fogLayer.addChild(node)
+                fogFeatherNodes[tile] = node
+            }
+            if fogFeatherKeys[tile] != key { node.fillTexture = texture }
+            fogFeatherKeys[tile] = key
+            node.isHidden = false
+        }
+    }
+
     private func updateFog(force: Bool, dt: TimeInterval = 0) {
         if !force {
             fogAccumulator += dt
@@ -14101,6 +14236,7 @@ final class GameScene: SKScene {
             }
         }
 
+        updateFogFeathering()
         for entity in entities.values where entity.faction == .enemy {
             entity.node.isHidden = !isKnownToFaction(entity, observer: .player)
         }

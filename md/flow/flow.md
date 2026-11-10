@@ -357,3 +357,7 @@ HUD分类节点现在只包含一个title，命令仍包含title/subtitle。CI�
 ## 陆军方向渲染
 
 侦察/火炮/防空/维修四类通过groundDirectionTextures缓存一次解码的八个UV格；updateHUD的refreshGroundArtworkFacings复用updateDirectionalArtworkFacing与原destination/阵营已知存活目标，抵消父镜像，不改AI/移动/攻击。固定格82/112/96/96与pivot(0.5,0.25)避免逐向拉伸。productionArtworkTexture为对应按钮返回同缓存的SE格；原单幅只作兜底。云端fixture后auditGroundDirectionArtwork保存贴图/朝向/镜像/几何，检查八向×正负镜像并精确恢复；缺种类用未入场真实配置样本。ready groundDirections使用每种五整数samples压缩报告32视角与几何位，另核对实际姿态和生产预览，scene_evidence严格验收；不扩大8000字节行预算。素材/提示词见[陆军美术](../art/v6.18-ground-directions.md)。
+
+## 迷雾内侧羽化
+
+updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog tile，再调用updateFogFeathering。fogFeatherKey按NE/SE/SW/NW读取四邻等级，只为较亮tile生成向内衰减的黑色遮罩；纹理alpha按(邻alpha-本alpha)/(1-本alpha)匹配边界，四边取max，不在角落叠乘。172×86 RGBA遮罩最多95种，按key共享，不每帧重烘焙。每tile最多一个SKShapeNode，fillTexture裁在原精确菱形内以防线性采样涂到邻格；失效隐藏、再次命中复用。drawMap（含SKRM调用链）清空节点/key，保留不可变纹理缓存。原enemy isKnownToFaction隐藏与潜艇侦测继续独立执行。ready fogSurface采用inward-feather-fog-v1，保留原三项检查并增加几何、mask/纹理身份、黑色alpha像素约束、节点/纹理预算和实际敌军隐藏状态；counts.fogNodes明确为基础tile数，featherCounts单列已建/活动/纹理数。

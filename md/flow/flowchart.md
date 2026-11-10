@@ -438,3 +438,18 @@ flowchart LR
   Preview --> Evidence[原生ready / source与bundle / 正式PNG]
   Audit --> Evidence
 ```
+
+读图说明：羽化只向较亮格内部增加黑色阴影，原视野集合、基础雾格和敌军隐藏规则仍决定可见性。共享纹理按四边组合缓存，精确菱形裁切避免邻格叠黑，SKRM经drawMap清理节点。
+
+```mermaid
+flowchart LR
+  Vision[原visible / explored / supportReveal] --> Base[原0 / .48 / .86基础fog tile]
+  Vision --> Key[四邻更暗边 / 组合key]
+  Key --> Cache[最多95张172x86黑色alpha遮罩]
+  Cache --> Clip[每tile一个复用SKShapeNode / 精确菱形fillTexture]
+  Clip --> Inside[只向亮格内衰减 / 四边max不叠乘]
+  Vision --> Enemy[原known / 潜艇侦测 / node.isHidden]
+  Base --> Evidence[云端实际节点/像素合同 + 原生PNG]
+  Inside --> Evidence
+  Enemy --> Evidence
+```

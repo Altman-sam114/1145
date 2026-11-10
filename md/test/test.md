@@ -643,3 +643,5 @@ HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1
 常用命令状态（source不超过8字符）必须完整显示；原生ready与各HUD审计阶段的displayValidCount同时检查源文字与显示文字相等，不能把guard/push等短词省略视为正常。长动态状态仍允许合法前缀省略。字槽调整后核对原25组布局/恢复和24正式PNG，避免仅依靠合法省略的计数通过。
 
 陆军八向改动时，source/bundle逐文件和逐格覆盖侦察/火炮/防空/维修图集。ready的groundDirections严格核对四种samples，每种为[纹理数8,正父镜像mask255,负父镜像mask255,几何mask255,实际实体1/未入场样本0]，拒绝缺种类、缺方向位、溢出、布尔或浮点冒充、非法subject、未恢复/兜底/错误生产预览。stateRestored/posesValid/previewsValid必须为true；既有坦克/海空合同、行预算和正式图门槛保留。实际原生图检查地战、防空、战损和Build/Air按钮模型及文字，不以32视角CPU检查冒称32张实际操作截图。
+
+迷雾内侧羽化变更时，inward-feather-fog-v1保留基础雾格sharedEdges/rasterEdges/opacity，另要求featherGeometry/featherMasks/featherPixels/featherBounded/enemyVisibility严格为true，核对真实节点位置/精确菱形裁切/纹理身份、黑色RGBA像素的外部透明与alpha上限、节点缓存预算及原known规则对应的敌军隐藏。featherCounts严格为三个整数[已建节点,活动节点,纹理数]，0<活动≤已建≤tileCount，0<纹理≤95；拒绝缺项、布尔冒充、超量、空羽化及检查失败。静态像素/节点合同不能证明雾边美观或长期FPS，须复核同SHA原生地图/地战/海空/缩放图，不放宽基础雾或可见性规则。

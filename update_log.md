@@ -6507,9 +6507,18 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 24原始PNG已逐张目视：未见黑屏/缺层/系统通知；三个命令无遮挡、海空与三舰图集正常。但guard/push短词因8pt字仍用10pt高槽而被省略，不能以绿色CI冒称UI全部验收。
 - 将命令副标题槽高度10→12、中心不变；ready与Swift审计共用shortCommandCaptionComplete，要求8字符以内命令状态完整显示。长动态文案保留既有前缀省略；不改路由、玩法、资源或预算。将用新SHA复核原链路与原图。
 
-## v6.18 陆军方向美术与生产预览（待云端验收）
+## v6.18 陆军方向美术与生产预览（云端验收通过）
 
 - 接续44f4e65，本轮内置生图8次，新增侦察/火炮/防空/维修四张4×2透明图集；火炮留白/炮口、防空与维修白底碎片经模型编辑修正，源文件保存用户指定目录。完整提示词见md/art/v6.18-generation-prompts.json，未使用其他图片编辑工具。
 - GameScene复用原方向函数/实体状态，固定格/锚点、抵消父镜像；生产按钮使用同缓存SE模型。ci增加35项source/bundle和32视角×两镜像/几何/恢复、实际姿态与生产预览检查，ready保持原8000字节上限。未改workflow预算/门槛。
 - 新任务现场核对最新两次run已success，无当前挂起run；此前卡死修复沿用44f4e65链路，本轮仍需新SHA构建与原生包确认。百度不可访问，查阅官方App Store的沙漠陆海空与油田争夺设计，仅作为参考。
 - 本机仅静态检查；未运行本机build/模拟器/探针/回归，未开子智能体。完整复刻、地图继续细化、独立动画、真实触控和长期性能仍未完成。
+
+- 精确验收：main/56f76493c3e95e64c704af6690a95f24ef5f6476，run42731402355/attempt1，artifact13724179997；未加密ZIP74360375bytes/182项，SHA256 a10af095d8873bcc62007a8c02686cf040aa199e227ead2383d5477be4590a39。身份、官方摘要、manifest/JUnit/双build/日志/35资源source=bundle已复核。124脚本合同、25HUD/50详情态、24正式原图通过；ready最大7446/8000，work330.664s/cleanup3.291s，全部截图首试成功，无失败stage。JUnit10项/0failure/1准确XCTest skip（无target）。
+- 全24原图逐张目视，四类新陆军及生产预览清晰，无明显白底/炮管裁切/缺层/文字挡住三命令marker。战争迷雾仍有硬菱形轮廓，继续v6.19只向已明亮区域添加羽化暗边。证据/private/tmp/desert-frontline-review-42731402355-attempt1/；只读复核脚本/private/tmp/desert-review-v6.18.py。没有将云端耗时改善归因于未测优化，generic build约20秒，当前无编译卡死。
+
+## v6.19 迷雾内侧羽化（待云端验收）
+
+- 依据v6.18全部24原图的硬菱形雾边，GameScene加入四邻内侧黑色羽化：边界alpha补偿、smoothstep衰减、四边max、精确菱形fillTexture裁切；0/.48/.86基础雾和visible/explored/supportReveal/known/潜艇侦测保持原链路。缓存最多95张小遮罩，每tile最多一个可复用节点，SKRM经drawMap清空节点/key。
+- 新增实际几何/mask/黑色像素/预算/敌军隐藏合同与直接负例，ready预算仍8000，旧JSON估算新字段最大7587字节，不能作为当前运行证据。本机仅diff/AST/链接；未本机build、App/模拟器、探针/CI回归，未开子智能体。
+- 首轮方案由sprite改为精确菱形SKShapeNode fillTexture裁切，避免线性采样越界叠黑；未添加外部依赖或素材。下一步云端双build/正式探针与精确包原图。

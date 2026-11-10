@@ -296,3 +296,5 @@ The following records the v5.58 policy; v5.61 replaces only its intermediate fre
 ### Ground vehicle artwork
 
 Scouts, artillery, mobile anti-air vehicles and repair trucks now use original graphite eight-direction models with consistent scale, full barrel clearance and matching production-button previews. They turn using existing movement and known-target state; stationary units keep their last view. These are static directional sprites; wheel, track and independent turret animation remain future work.
+
+- Fog boundaries use a soft inward shadow on the brighter tile, with exact shared-edge clipping and cached masks. The original visible/explored areas, enemy detection and submarine rules still determine what can be seen or targeted.
