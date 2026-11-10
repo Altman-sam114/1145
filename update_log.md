@@ -6568,3 +6568,21 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 同一GameScene将道路一次烘焙到真实land掩模，加入细粒/裂纹/褪色线；减弱海岸平行硬色带，四类场景替换平面占位，旗台与文字层级细化。战术九动作按3/4/2分组并突出Advance，保持原布局/命中来源、44pt和pending。未改玩家/AI执行、单位数值、视野/合法目标、经济/任务/胜负或SKRM入口。
 - 原生环境证据改为实际子树挂图/纹理身份/有限几何与七位mask，source/bundle增至41；直接负例与现有25HUD/50详情、全24原生入口关联验收。预算/重试/设备策略未改，不凭绿状态声明云端异常彻底消失。
 - 本机仅Git/diff、AST/JSON/资源元数据/摘要与文档链接检查；双build与正式包待新SHA云端，未本机编译/运行/测试，未开子智能体。完整复刻、独立旋翼/炮塔/履带动画、自然地图拓扑、真实触控/完整对局/长期FPS仍未完成。
+
+
+## v6.23 正式云端复核
+
+- main精确SHA773368d54eb9196809943527bb014dfe676953b3，run42766647722/attempt1/artifact13740194319；未加密ZIP82516314bytes/183项，官方digest2280be756c6b1bc9b62f5b1c165d1c21a7ea0c643d95c2466588d4a5df5b70cc。branch/SHA/run/attempt/version、ZIP CRC/摘要、manifest/JUnit、双build/原日志与24PNG摘要均已复核。原包与review在/private/tmp/desert-frontline-review-42766647722-attempt1/。
+- generic与simulator双BUILD SUCCEEDED，实际57.8s/59.2s；126脚本合同0failure/0error、10资源方法、41source=bundle、原25HUD/50详情及恢复、全部方向/迷雾/地表合同、24独立场景/PID/nonce/PNG通过。环境实际counts=[10,16,7,28,4,3,3]/纹理7/mask127；旧37项资源报告与v6.22精确相同，4项新资源真实挂图。ready最大7522/8000，work863.123/cleanup10.752。JUnit10/0failure/1准确XCTest skip，无XCTest target。
+- 保留一次真实attack-target截图首超时（124，stage56.313s）和同设备/PID/nonce/ready恢复成功，capture总128.215935/180s；不能称零失败阶段或消灭所有云端抖动。static约163s，官方日志表明37项scheduler套件66.585s，合成脚本全部约125.71s，source检查约22.35s；主要增耗是调度/日志/命令等待，不能归咎新4图或Swift编译。boot138.573s、首场景90.141s。没有改预算、重试、设备或失败gate。
+- 全24官方原图逐张目视完成：四类环境透明/尺度正常，未见白底/裁模；道路连贯、细线与颗粒可见，三组指令/金色Advance深字清晰；五页、三命令marker、陆海空/战损/水柱/选择详情完整，无黑屏/缺层/系统通知。岸线平行色带减弱，但真实地形边界仍是明显折线，不称自然海岸目标已达成。HUD仍占底部两排，需继续整合。
+- 本机仅Git/diff、AST/JSON、资源元数据/摘要、链接与官方包只读复核；未本机编译、运行App/模拟器、simctl或CI/玩法测试，未开子智能体。真实触控、完整对局/SKRM、长期FPS、独立旋翼/炮塔/履带动画与完整复刻未覆盖。README/验收补记留本地，不为纯文档重触发固定全套CI。
+- 等待期间独立内置生图补给堆场候选已保存目录1/v6.24-supply-cache.png及md/art/v6.24-generation-prompts.json，尚未复制Art或修改manifest/运行时，不能算已接入。开发者公开IndieDB原图仅只读布局参考，未下载商业资产进项目。
+
+
+## v6.24 边缘指挥界面（实现待云端）
+
+- 接续已正式验收773368d，重新核对main/远端和最新3个成功run，保留旧文档/Team ID/归档及补给候选。上一轮目标轮为有效progress；持续全目标仍未完成。
+- HUDLayout将五分类改为左侧56/68pt竖栏、金色竖向当前页指示；选择摘要/详情放到顶部任务与小地图之间，上沿/Info固定，展开向下。消息沿实际选择卡避让；底部单排保留当前页全部动作与3/4/2战术分组，旧第二排大部分区域归还world。未新增菜单状态或改变原命令、pending、玩家/AI、地图/迷雾/经济/胜负/资源。
+- 保留25HUD/50详情，新增实际空出区域与3点consumeHUDTouch状态不变证据，ready纳入当前布局检查；runner/metadata共享edge-console-v1严格协议，摘要/展开/收起的缺失/数值冒充/失败/非法框等直接负例保持顶层假绿拒绝。没有删gate、加预算、改重试或选择其他本地设备。
+- 本机仅diff、相关Python AST和文档链接，未本机编译/App/模拟器/simctl/CI回归。正式双build、原生路由/文字、24PNG与真实效果待新SHA云端；真实UITouch/长期FPS/完整复刻不在这些证据范围内。

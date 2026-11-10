@@ -535,7 +535,8 @@ def validate_hud_contract(summary, directory):
     if (evidence.get("path") != path.name or evidence.get("bytes") != len(data)
             or evidence.get("sha256") != hashlib.sha256(data).hexdigest()):
         raise ProbeFailure("HUD contract file integrity mismatch")
-    if report.get("schemaVersion") != 1 or report.get("producer") != "GameScene.HUDLayout":
+    if (report.get("schemaVersion") != 1 or report.get("producer") != "GameScene.HUDLayout"
+            or report.get("layoutPolicy") != "edge-console-v1"):
         raise ProbeFailure("HUD contract schema/production source mismatch")
     for key in ("commitSha", "runId", "runAttempt", "version"):
         if not summary.get(key) or report.get(key) != summary[key]:
@@ -561,6 +562,15 @@ def validate_hud_contract(summary, directory):
         return (isinstance(value, dict) and set(value) == {"x", "y", "width", "height"}
                 and all(type(number) in (int, float) and math.isfinite(number) for number in value.values())
                 and value["width"] > 0 and value["height"] > 0)
+
+    def edge_console(value, context):
+        if (not isinstance(value, dict) or set(value) != {"corridor", "checks", "passThroughSamples"}
+                or not rectangle(value.get("corridor")) or value["corridor"]["height"] < 44
+                or type(value.get("passThroughSamples")) is not int or value["passThroughSamples"] != 3
+                or not isinstance(value.get("checks"), dict)
+                or set(value["checks"]) != {"verticalPages", "topSelection", "commandCorridor"}
+                or any(passed is not True for passed in value["checks"].values())):
+            raise ProbeFailure(f"HUD edge console layout or world passthrough incomplete: {context}")
 
     def label_audit(audit, phases, context, controls=None):
         if (not isinstance(audit, dict) or type(audit.get("schemaVersion")) is not int or audit["schemaVersion"] != 1
@@ -654,6 +664,7 @@ def validate_hud_contract(summary, directory):
                 or item["panelAreaFraction"] >= 1):
             raise ProbeFailure(f"HUD contract frame/area evidence incomplete: {key}")
         label_audit(item.get("labelAudit"), ["normal", "long1", "short", "long2", "restored", "rebuilt"], str(key), controls)
+        edge_console(item.get("edgeConsole"), str(key))
         essential_text = item.get("essentialText", {})
         if (not isinstance(essential_text, dict) or set(essential_text) != {"missionTitle", "missionDetail", "selected"}
                 or any(value is not True for value in essential_text.values())):
@@ -673,6 +684,7 @@ def validate_hud_contract(summary, directory):
                     or set(state["checks"]) != {"state", "geometry", "labels", "rows", "centerClear"}
                     or any(value is not True for value in state["checks"].values())):
                 raise ProbeFailure(f"HUD disclosure state assertions failed/incomplete: {key}/{expanded}")
+            edge_console(state.get("edgeConsole"), f"{key}/{expanded}")
     return report
 
 

@@ -214,7 +214,7 @@ def hud_fixture(runner):
     runner.summary["prewarm"] = [{"attempt": 1, "status": "success", "pid": pid, "aliveAfterWait": True}]
     report = {key: runner.summary[key] for key in ("commitSha", "runId", "runAttempt", "version")}
     report.update(schemaVersion=1, producer="GameScene.HUDLayout", pid=pid, nonce=nonce, probeID="prewarm:1",
-                  status="success", stateRestored=True,
+                  layoutPolicy="edge-console-v1", status="success", stateRestored=True,
                   actualSize={"width": 874, "height": 402}, actualInsets={"top": 0, "left": 62, "bottom": 21, "right": 62}, matrix=[])
 
     def label_audit(controls, phases):
@@ -236,6 +236,11 @@ def hud_fixture(runner):
         return dict(schemaVersion=1, coordinateSpace="label-parent-local", registeredCount=count, labelIDs=ids, phases=records,
                     failureCount=0, omittedFailureCount=0, details=[], status="success")
 
+    def edge_console():
+        # Protocol placeholders; actual layout and touch routing run only in Swift.
+        return dict(corridor=dict(x=0, y=0, width=80, height=44), passThroughSamples=3,
+                    checks=dict(verticalPages=True, topSelection=True, commandCorridor=True))
+
     for fixture, (width, height) in HUD_FIXTURES.items():
         insets = (report["actualInsets"] if fixture == "874x402" else
                   {"top": 0, "left": 59, "bottom": 21, "right": 59} if fixture == "852x393" else
@@ -249,10 +254,12 @@ def hud_fixture(runner):
                 checks={key: True for key in HUD_CHECKS}, failures=[], status="success", safeFrame=rectangle,
                 panels={key: rectangle for key in ("resources", "rail", "dock", "mission", "message", "selection", "minimap")},
                 controls=controls, panelArea=1, viewportArea=2, panelAreaFraction=0.5, cameraProjectionSamples=3,
+                edgeConsole=edge_console(),
                 essentialText={key: True for key in ("missionTitle", "missionDetail", "selected")},
                 disclosure=dict(toggleCount=2, stateRestored=True, toastPassthrough=True, states=[
                     dict(expanded=expanded, selectionFrame=rectangle, toggleFrame=rectangle, rowCount=5 if expanded else 0,
-                         panelAreaFraction=0.5, checks={key: True for key in ("state", "geometry", "labels", "rows", "centerClear")})
+                         panelAreaFraction=0.5, edgeConsole=edge_console(),
+                         checks={key: True for key in ("state", "geometry", "labels", "rows", "centerClear")})
                     for expanded in (True, False)]),
                 labelAudit=label_audit(controls, ["normal", "long1", "short", "long2", "restored", "rebuilt"])))
     report["actualLabelAudit"] = label_audit(report["matrix"][0]["controls"], ["actual-normal", "actual-restored"])
@@ -729,6 +736,73 @@ class ProbeTests(unittest.TestCase):
         runner.summary["hudContract"]["sha256"] = "0" * 64
         with self.assertRaises(ProbeFailure):
             validate_results(self.probes, runner.summary, self.directory)
+
+    def test_hud_edge_console_rejects_hidden_corridor_and_false_green_evidence(self):
+        runner = self.complete()
+        validate_hud_contract(runner.summary, self.directory)
+        original = (self.directory / "hud-layout-contract.json").read_text()
+
+        def reseal(report):
+            write_hud_fixture(runner, report)
+            warm = runner.summary["prewarm"][0]
+            descriptor = dict(runner.summary["hudContract"], path=warm["scene"]["ready"]["hudReport"]["path"])
+            warm["scene"] = scene_fixture(runner, runner.probes[0], "prewarm:1", nonce=warm["scene"]["nonce"],
+                                          extra_ready={"hudReport": descriptor}, sealed=True)
+
+        for policy in (None, "bottom-strip-v0"):
+            report = json.loads(original)
+            report["layoutPolicy"] = policy
+            reseal(report)
+            with self.subTest(policy=policy), self.assertRaisesRegex(ProbeFailure, "HUD contract schema"):
+                validate_hud_contract(runner.summary, self.directory)
+
+        for target in ("summary", "expanded", "collapsed"):
+            for defect in ("missing", "type", "missing-check", "numeric-check", "verticalPages", "topSelection",
+                           "commandCorridor", "short-corridor", "bad-width", "nonfinite", "float-count", "bool-count",
+                           "missing-sample", "extra-sample", "extra-key"):
+                with self.subTest(target=target, defect=defect):
+                    report = json.loads(original)
+                    row = report["matrix"][0]
+                    owner = row if target == "summary" else row["disclosure"]["states"][0 if target == "expanded" else 1]
+                    edge = owner["edgeConsole"]
+                    if defect == "missing": owner.pop("edgeConsole")
+                    elif defect == "type": owner["edgeConsole"] = []
+                    elif defect == "missing-check": edge["checks"].pop("commandCorridor")
+                    elif defect == "numeric-check": edge["checks"]["verticalPages"] = 1
+                    elif defect in ("verticalPages", "topSelection", "commandCorridor"): edge["checks"][defect] = False
+                    elif defect == "short-corridor": edge["corridor"]["height"] = 43
+                    elif defect == "bad-width": edge["corridor"]["width"] = 0
+                    elif defect == "nonfinite": edge["corridor"]["x"] = float("nan")
+                    elif defect == "float-count": edge["passThroughSamples"] = 3.0
+                    elif defect == "bool-count": edge["passThroughSamples"] = True
+                    elif defect == "missing-sample": edge["passThroughSamples"] = 2
+                    elif defect == "extra-sample": edge["passThroughSamples"] = 4
+                    elif defect == "extra-key": edge["fallback"] = True
+                    self.assertEqual(report["status"], "success")
+                    self.assertTrue(all(row["checks"].values()))
+                    reseal(report)
+                    with self.assertRaisesRegex(ProbeFailure, "HUD edge console"):
+                        validate_hud_contract(runner.summary, self.directory)
+                    with self.assertRaisesRegex(ProbeFailure, "HUD edge console"):
+                        validate_results(self.probes, runner.summary, self.directory)
+
+        # The same validator is also called by artifact packaging; its top-level
+        # success fields must not hide a bad collapsed-state corridor.
+        runner.summary.update(status="success", integrityOutcome="success")
+        runner.save()
+        environment = {key: runner.summary[field] for key, field in (
+            ("CI_VERSION", "version"), ("GITHUB_REF_NAME", "branch"), ("GITHUB_SHA", "commitSha"),
+            ("GITHUB_RUN_ID", "runId"), ("GITHUB_RUN_ATTEMPT", "runAttempt"))}
+        environment.update(WORKFLOW_NAME="synthetic edge console fixture", GITHUB_OUTPUT=str(self.directory / "outputs"),
+                           STATIC_OUTCOME="success", PROJECT_LINT_OUTCOME="success", BUILD_OUTCOME="success",
+                           SIMULATOR_LAUNCH_OUTCOME="success")
+        with patch.dict(os.environ, environment), patch("package_results.Path", side_effect=lambda path:
+                self.directory if path == "ci-results" else Path(path)):
+            package_results()
+        manifest = json.loads((self.directory / "ci-artifact-manifest.json").read_text())
+        self.assertEqual(manifest["hudLayoutContractOutcome"], "failure")
+        self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+        self.assertEqual(manifest["sceneReadinessOutcome"], "success")
 
     def test_hud_collection_not_validated(self):
         runner = self.complete()

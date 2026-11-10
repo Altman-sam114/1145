@@ -306,3 +306,10 @@ The terrain renderer uses original fine sand and deep teal water across a single
 
 
 Tank artwork uses a coherent graphite-gray eight-direction model and matching production preview, alongside the existing scout/artillery/AA/repair assets. Land production thumbnails share a 30pt height cap. Provenance: [tank materials](md/art/v6.22-tank-coherence.md).
+
+
+### Battlefield scenery and command groups
+
+Original detailed scrub, spring water, irrigated farm and armored wreck sprites replace the earlier flat scenery marks. Roads are baked into the shared terrain with faded markings, subtle grain and worn edges; coast shading uses a softer transition. Flag objectives have a compact raised base and readable nameplate. The tactical command row separates Army/G1/G2, Hold/Stop/Target/Advance and Rally/Base; the gold Advance button is the main attack-move action. All five pages and existing tap/hold gestures remain available. Artwork: [landscape assets](md/art/v6.23-landscape.md).
+
+The coastline still follows the angular game tile boundary. Independent turret, wheel and rotor animation and a more compact HUD layout remain in development.

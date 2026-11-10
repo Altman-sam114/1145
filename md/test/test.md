@@ -654,3 +654,6 @@ HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1
 
 
 新增场景素材沿原RGBA/透明/CRC/摘要门槛，source/bundle现在覆盖七类Scenery。`artwork.scenery`必须是scenery-v1，纹理数严格整数7、七项正整数挂图计数且不超过4×真实tile数、七位mask严格127；拒绝缺项/实底兜底/未挂图/布尔冒充/错维数/多余位或字段。mask逐种来自实际map子树的纹理身份、384px解码预算与有限几何/宽高比检查。保留8000字节ready预算与原全部方向/迷雾/地表合同。道路/岸线/旗点/HUD分组改变后，以同SHA正式地图/基地/五页/陆海空/选择图检查层级、接缝、细节与主操作文字；原25布局/50详情及44pt/路由/恢复仍必须通过，CPU/像素合同不代替实际触控或长期FPS。
+
+
+边缘HUD布局使用`edge-console-v1`合同：原25组与50详情态各自提供edgeConsole，corridor为有限有效矩形且高≥44，passThroughSamples严格整数3，verticalPages/topSelection/commandCorridor三项严格true；拒绝缺项、旧策略、错类型、布尔或浮点冒充计数、失败/额外检查和多余字段。原生实际验证完整矩形不与任一HUD面板相交，并通过consumeHUDTouch三点证明world透传且选择/队列/pending不变；ready也检查当前布局。Python只验来自Swift的证据与身份，不重新实现布局。直接负例覆盖摘要/展开/收起及包装失败，保留原44pt/文字拟合/恢复/三marker和24PNG门槛；不将这些CPU调用冒称真实触控注入。

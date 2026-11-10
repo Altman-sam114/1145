@@ -198,7 +198,7 @@ flowchart TD
   Pending --> SceneInsets[初始化结束后update统一应用 / layout非重入]
   Page[当前 HudPage] --> Layout[HUDLayout 生产框与 route]
   SceneInsets --> Layout
-  Layout --> Draw[底部横向分类 / 收口 dock / 28pt 顶栏 / 有界卡片 / 小地图]
+  Layout --> Draw[左侧竖向分类 / 单排命令 / 28pt 顶栏 / 顶部选择卡 / 小地图]
   Draw --> Source[生产只写完整sourceText / text仅显示 / 不猜测上次输出]
   Source --> Fit[base与固定锚点 / 两次缩字 / 最多九次前缀实测 / 父局部bbox对齐]
   Layout --> Touch[双指优先后单指 route]
@@ -483,4 +483,22 @@ flowchart LR
   Layout --> Touch["原44pt命中 / consumeHUDTouch / pending"]
   Groups --> Evidence
   Touch --> Evidence
+```
+
+
+读图说明：界面仍只有一份布局数据；分类沿左边缘排列，任务与选择信息位于上方，命令留在底边。旧第二排释放区域复用原world输入路径，详情开合不会移动Info按钮。
+
+```mermaid
+flowchart LR
+  State["原hudPage / 选择 / pending / 详情状态"] --> Layout["唯一HUDLayout"]
+  Layout --> Left["左侧五页 / 图标+单标题 / 44pt以上"]
+  Layout --> Top["任务旁的选择卡 / 固定Info / 向下展开"]
+  Layout --> Bottom["底部单排命令 / 原3-4-2分组"]
+  Layout --> Route["原consumeHUDTouch / 地图与命令路由"]
+  Layout --> Clear["旧第二排44pt高区域 / 三点world采样"]
+  Clear --> Evidence["25合同 / 50详情态 / 状态恢复 / 云端24PNG"]
+  Route --> Evidence
+  Left --> Evidence
+  Top --> Evidence
+  Bottom --> Evidence
 ```

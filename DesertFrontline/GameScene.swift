@@ -727,10 +727,11 @@ private struct HUDLayout {
         let buttonWidth = min(compact ? 72 : 96, (safe.width - 12 - gaps) / CGFloat(page.actions.count))
         let dockWidth = 12 + CGFloat(page.actions.count) * buttonWidth + gaps
         let dock = CGRect(x: safe.minX, y: safe.minY, width: dockWidth, height: compact ? 56 : 76)
-        let pageGap: CGFloat = 4
-        let railWidth: CGFloat = compact ? 252 : 332
-        let rail = CGRect(x: safe.minX, y: dock.maxY + 6, width: railWidth, height: compact ? 44 : 52)
-        let pageWidth = (railWidth - 8 - 4 * pageGap) / 5
+        let pageGap: CGFloat = compact ? 1 : 4
+        let pageHeight: CGFloat = compact ? 44 : 52
+        let railWidth: CGFloat = compact ? 56 : 68
+        let rail = CGRect(x: safe.minX, y: dock.maxY + 4, width: railWidth,
+                          height: CGFloat(HudPage.allCases.count) * pageHeight + 4 * pageGap)
         let mapWidth: CGFloat = compact ? 140 : 184
         let mapHeight: CGFloat = compact ? 60 : 108
         let mapPanel = CGRect(x: safe.maxX - mapWidth, y: top.minY - 6 - mapHeight - 68,
@@ -738,10 +739,14 @@ private struct HUDLayout {
         let missionHeight: CGFloat = compact ? 36 : 40
         let mission = CGRect(x: safe.minX, y: top.minY - 6 - missionHeight,
                              width: compact ? 252 : 360, height: missionHeight)
-        let message = CGRect(x: safe.minX, y: mission.minY - 24, width: compact ? 320 : 440, height: 18)
-        let selection = CGRect(x: rail.maxX + 8, y: dock.maxY + 6,
-                               width: min(compact ? 320 : 420, safe.maxX - rail.maxX - 8),
-                               height: detailsExpanded ? (compact ? 100 : 156) : (compact ? 44 : 52))
+        let selectionX = mission.maxX + 6
+        let selectionHeight: CGFloat = detailsExpanded ? (compact ? 100 : 156) : (compact ? 44 : 52)
+        let selection = CGRect(x: selectionX, y: top.minY - 6 - selectionHeight,
+                               width: min(compact ? 320 : 420, mapPanel.minX - 6 - selectionX),
+                               height: selectionHeight)
+        let messageX = rail.maxX + 8
+        let message = CGRect(x: messageX, y: min(mission.minY, selection.minY) - 24,
+                             width: min(compact ? 320 : 440, mapPanel.minX - 6 - messageX), height: 18)
         let selectionContentWidth = selection.width - 20
         let disclosure = CGRect(x: selection.maxX - 44, y: selection.maxY - 44, width: 44, height: 44)
         panels = ["resources": top, "rail": rail, "dock": dock, "mission": mission,
@@ -793,8 +798,9 @@ private struct HUDLayout {
         self.slots = slots
         var pages: [HudPage: CGRect] = [:]
         for (index, tab) in HudPage.allCases.enumerated() {
-            pages[tab] = CGRect(x: rail.minX + 4 + CGFloat(index) * (pageWidth + pageGap), y: rail.minY,
-                               width: pageWidth, height: rail.height)
+            pages[tab] = CGRect(x: rail.minX + 4,
+                               y: rail.maxY - pageHeight - CGFloat(index) * (pageHeight + pageGap),
+                               width: rail.width - 8, height: pageHeight)
         }
         self.pages = pages
         var actions: [HudAction: CGRect] = [:]
@@ -806,6 +812,35 @@ private struct HUDLayout {
             actionX += buttonWidth + actionGap
         }
         self.actions = actions
+    }
+
+    var commandCorridor: CGRect {
+        let rail = panels["rail"]!, dock = panels["dock"]!
+        return CGRect(x: rail.maxX + 8, y: dock.maxY + 8,
+                      width: safe.maxX - rail.maxX - 16, height: 44)
+    }
+
+    var commandCorridorSamples: [CGPoint] {
+        let corridor = commandCorridor
+        return (0..<3).map { CGPoint(x: corridor.minX + corridor.width * (CGFloat($0) + 0.5) / 3,
+                                    y: corridor.midY) }
+    }
+
+    var edgeConsoleChecks: [String: Bool] {
+        let rail = panels["rail"]!, selection = panels["selection"]!, mission = panels["mission"]!
+        let corridor = commandCorridor
+        let ordered = HudPage.allCases.compactMap { pages[$0] }
+        let vertical = ordered.count == 5 && rail.height > rail.width && ordered.enumerated().allSatisfy { index, frame in
+            rail.contains(frame) && frame.width >= 44 && frame.height >= 44 &&
+            abs(frame.midX - rail.midX) < 0.01 && (index == 0 || ordered[index - 1].minY >= frame.maxY)
+        }
+        let topSelection = selection.minX >= mission.maxX && selection.maxX <= panels["minimap"]!.minX &&
+            abs(selection.maxY - mission.maxY) < 0.01 && selection.minY > 0
+        let clear = corridor.width >= safe.width * 0.72 && safe.contains(corridor) && panels.values.allSatisfy {
+            let overlap = corridor.intersection($0)
+            return overlap.isNull || overlap.width * overlap.height < 0.01
+        } && commandCorridorSamples.allSatisfy { route(at: $0) == .world }
+        return ["verticalPages": vertical, "topSelection": topSelection, "commandCorridor": clear]
     }
 
     func route(at point: CGPoint, messageVisible: Bool = true) -> HUDRoute {
@@ -1853,6 +1888,7 @@ final class GameScene: SKScene {
                 ciOverlayChecks.count == 4 && ciOverlayChecks.values.allSatisfy({ $0 }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
+                layout.edgeConsoleChecks.values.allSatisfy({ $0 }) &&
                 moneyLabel.parent === hudNode && !(moneyLabel.text?.isEmpty ?? true) && !boundedHUDLabels.isEmpty &&
                 essentialHUDTextCompleteness().values.allSatisfy({ $0 }) &&
                 !view.shouldCullNonVisibleNodes && !view.ignoresSiblingOrder,
@@ -6180,6 +6216,17 @@ final class GameScene: SKScene {
             let queue = buildOrders.map { "\($0.sourceID):\($0.kind.shortCode):\($0.faction.rawValue):\($0.remaining)" }.joined(separator: ",")
             return "\(selectedIDs.sorted())|\(queue)|\(String(describing: pendingConstructionKind))|\(String(describing: pendingSupportPower))|\(isSettingRallyPoint)|\(isSettingAttackMove)"
         }
+        func auditEdgeConsole(_ layout: HUDLayout) -> (evidence: [String: Any], valid: Bool) {
+            let before = fingerprint()
+            var passed = 0
+            for point in layout.commandCorridorSamples {
+                let consumed = consumeHUDTouch(at: point)
+                if layout.route(at: point) == .world && !consumed && fingerprint() == before { passed += 1 }
+            }
+            let checks = layout.edgeConsoleChecks
+            return (["corridor": rectJSON(layout.commandCorridor), "checks": checks, "passThroughSamples": passed],
+                    passed == 3 && checks.values.allSatisfy({ $0 }))
+        }
         func nodeCount(_ node: SKNode) -> Int {
             1 + node.children.reduce(0) { $0 + nodeCount($1) }
         }
@@ -6584,11 +6631,14 @@ final class GameScene: SKScene {
                         (!revealed.compact || fraction <= (expanded ? 0.54 : 0.46))
                     let centerClear = revealed.route(at: .zero) == .world
                     let rowsPresent = rowCount == (expanded ? 5 : 0) && (queueLabel.parent === hudNode) == expanded
+                    let edge = auditEdgeConsole(revealed)
+                    expect(edge.valid, "routing", "edge-console/details/\(expanded)")
                     let values = ["state": statePreserved, "geometry": geometry, "labels": labelsFit,
                                   "rows": rowsPresent, "centerClear": centerClear]
                     for (key, passed) in values { expect(passed, key == "labels" ? "labels" : "pending", "details/\(expanded)/\(key)") }
                     disclosureStates.append(["expanded": expanded, "selectionFrame": rectJSON(selection), "toggleFrame": rectJSON(toggleFrame),
-                                             "rowCount": rowCount, "panelAreaFraction": fraction, "checks": values])
+                                             "rowCount": rowCount, "panelAreaFraction": fraction, "checks": values,
+                                             "edgeConsole": edge.evidence])
                 }
                 let afterDisclosure = labelSnapshots()
                 let disclosureRestored = !selectionDetailsExpanded && afterDisclosure.count == normal.count &&
@@ -6598,6 +6648,8 @@ final class GameScene: SKScene {
                 expect(!layout.compact || panelArea / (fixtureSize.width * fixtureSize.height) <= 0.46,
                        "containers", "compact-hud-density")
                 expect(layout.route(at: .zero) == .world, "routing", "battlefield-center-clear")
+                let edge = auditEdgeConsole(layout)
+                expect(edge.valid, "routing", "edge-console/summary")
                 matrix.append(["fixture": fixtureID, "page": page.rawValue,
                                "size": ["width": fixtureSize.width, "height": fixtureSize.height],
                                "insets": insetJSON(fixtureInsets), "safeFrame": rectJSON(layout.safe),
@@ -6606,6 +6658,7 @@ final class GameScene: SKScene {
                                "panelAreaFraction": panelArea / (fixtureSize.width * fixtureSize.height),
                                "cameraProjectionSamples": cameraProjectionSamples,
                                "essentialText": essentialText,
+                               "edgeConsole": edge.evidence,
                                "disclosure": ["toggleCount": 2, "stateRestored": disclosureRestored, "toastPassthrough": toastPassthrough, "states": disclosureStates],
                                "selectionRows": selectionRows,
                                "labelAudit": auditJSON(labelAudit, labels: normal, registeredCount: labelCount),
@@ -6653,7 +6706,8 @@ final class GameScene: SKScene {
         ciInvalidateReady("contract-restored")
         let passed = restored && actualLabelAudit.failureCount == 0 && matrix.allSatisfy { $0["status"] as? String == "success" }
         let report: [String: Any] = [
-            "schemaVersion": 1, "producer": "GameScene.HUDLayout", "status": passed ? "success" : "failure",
+            "schemaVersion": 1, "producer": "GameScene.HUDLayout", "layoutPolicy": "edge-console-v1",
+            "status": passed ? "success" : "failure",
             "commitSha": environment["DESERT_CI_COMMIT_SHA"] ?? "", "runId": environment["DESERT_CI_RUN_ID"] ?? "",
             "runAttempt": environment["DESERT_CI_RUN_ATTEMPT"] ?? "", "version": environment["DESERT_CI_VERSION"] ?? "",
             "pid": ProcessInfo.processInfo.processIdentifier, "actualSize": ["width": actualSize.width, "height": actualSize.height],
@@ -6895,9 +6949,9 @@ final class GameScene: SKScene {
         shape.lineWidth = 0.75
         node.addChild(shape)
         hudPageShapes[page] = shape
-        let accent = SKShapeNode(rectOf: CGSize(width: frame.width - 18, height: 2), cornerRadius: 1)
+        let accent = SKShapeNode(rectOf: CGSize(width: 2, height: frame.height - 12), cornerRadius: 1)
         accent.name = "hud:tab-accent"
-        accent.position.y = -frame.height / 2 + 1.5
+        accent.position.x = -frame.width / 2 + 1.5
         accent.fillColor = HUDPalette.gold
         accent.strokeColor = .clear
         node.addChild(accent)
