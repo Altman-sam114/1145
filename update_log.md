@@ -6541,3 +6541,17 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 用白色RGBA/零alpha语义替代UIColor对象色彩空间相等，深度比较误差<0.001（保留0.1层间距）；位置/path/raster/transform/texture/可见性等合同保持。新增逐字段实际几何、实际/预期深度与旧严格比较诊断，以新云端证据确认具体失败项，不仅据推测宣称修复通过。
 - PNG alpha计数与主体边界改用byte table的C层translate/count/find，五filter复原、CRC、阈值、资源报告格式与source/bundle一致性不变。新增跨8/9、31/32、199/200阈值的五filter精确计数和边界合同；不增加workflow预算、不削减测试。
 - v6.20 run42735577098已通过static约111秒、generic约38秒，模拟器仍运行；新地表原生结果待收取。本文修复另用新SHA完整云端与官方包验证，本机只AST/diff，未编译/运行/回归。
+
+
+## v6.21 最终云端复核
+
+- main精确SHA fc877dd9ef9fde96d4fd9902ae088fdf82a7bd05，run42736566132/attempt1/artifact13728062908；ZIP81078196bytes/183项，digest1059c4423528389d99cfb553d1230464c2e9b52355d6691851bf9d371484441b。未加密/CRC、branch/SHA/run/attempt/version、manifest/JUnit/双build/原日志与PNG摘要已复核，证据/private/tmp/desert-frontline-review-42736566132-attempt1/。
+- 125脚本合同与10资源方法、37source=bundle、25HUD/50详情及恢复、连续地表3483×1742/720格/33岸/两材质mask255、单位/迷雾合同、24正式独立PNG通过；ready最大7648/8000，work976.794/cleanup10.878。JUnit10/0failure/1准确XCTest skip。37项资源报告与优化前v6.20精确一致。
+- 原生几何诊断确认旧严格比较两项均false：depth1036.6500244140625 vs1036.65，UIColor对象比较不同；RGBA/零alpha语义与0.001深度检查均true。不是Swift编译死锁。保留一次Build screenshot首超时、完整owned CLI回收、同设备/PID/nonce/ready恢复，总169.185466/180秒成功，不冒称零失败stage。
+- 全24官方原图逐张目视：连续细沙/深青海面、分层HUD与文字、命令marker、陆海空模型/战损/水柱完整，无黑屏/缺层/系统通知；仍有细亮雾格边线、硬岸线轮廓和简陋环境小物。未覆盖真实触控、完整对局/SKRM或长期FPS，整体复刻未完成。
+
+## v6.22 石墨灰坦克与雾形描边（待云端）
+
+- 两次内置模型编辑选定石墨灰坦克八向与同风格SE单图，原样复制用户目录1与项目；提示词和实际逐格边界见md/art/v6.22-generation-prompts.json。去除旧铜黄/红色彩边，运行时74世界格/锚点/八向/迟滞/镜像/数值保留，陆军生产预览高度统一30。
+- 根据v6.21正式图的细亮雾格边线，将基础雾与羽化shape默认描边宽度显式设0，并使原生raster合同严格要求该属性；不改原path/alpha/集合或隐藏逻辑。实际细线变化待同run正式图，不先称已消线。
+- 本机仅diff/AST/JSON/资源元数据/摘要与文档链接，未编译/运行/测试或开子智能体。新SHA双构建、37资源、HUD/坦克方向/雾层与24正式图待云端复核。

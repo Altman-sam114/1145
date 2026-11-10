@@ -1,0 +1,119 @@
+{
+  "date": "2026-11-10",
+  "generator": "built-in image_gen; two model edits; no other image editing tools",
+  "status": "selected original outputs copied to project; cloud validation pending",
+  "assets": [
+    {
+      "kind": "tankDirections",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1c2fb-f8f5-7ad1-977f-d8bb02f89b26/exec-f941ae50-921f-4a1c-96f0-fabad9e0d9d4.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.22-tank-eight-graphite.png",
+      "prompt": "Use-case: production game sprite-sheet edit. Image 1 is the EDIT TARGET: a transparent 4-column by 2-row, eight-direction tank atlas. Image 2 is a MATERIAL AND LIGHTING REFERENCE ONLY, showing the established graphite reconnaissance vehicle. Re-render ONLY the tanks in image 1 to high-end realistic graphite-gray armored steel, matching the matte gray, restrained detail, soft overhead illumination, edge contrast and dark rubber of image 2. Preserve image 1's exact eight tank orientations and 4x2 layout: top row E, NE, N, NW; bottom row W, SW, S, SE. Turret and long gun remain aligned with the hull direction in each cell, including full rear grilles in the north-facing views and frontal armor in the south-facing views. Preserve the tank silhouette, track and wheel counts, cannon length and same camera elevation. Add subtle clean armor panel seams, realistic periscope glass, restrained edge wear and bolts without visual noise. Remove ALL orange, yellow, gold, red camouflage, colored outlines, glowing edging and painted background residue. No flags or faction markings, no text, no labels, no grid, no scenery, no cast ground shadow, no extra objects. Genuinely transparent alpha background. Keep all tracks, antennas and gun barrels fully inside their cells, with at least 18px transparent space from every cell edge; reduce subjects slightly if needed. All eight views must remain separate and recognizable. Maintain the full original wide atlas canvas and equal-size cells, ideally 1774x887. This should look like eight consistent views of the same premium real-time strategy tank, not a poster or collectible toy.",
+      "bytes": 1228496,
+      "sha256": "9c3fc75adbbc3d637e4f2c580128bf391b11e086b55cc2fc1f78303bae2345e2",
+      "width": 1774,
+      "height": 887,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "cellAlpha32Bounds": [
+        {
+          "cell": 0,
+          "bounds": [
+            21,
+            79,
+            435,
+            352
+          ],
+          "margin": 8
+        },
+        {
+          "cell": 1,
+          "bounds": [
+            32,
+            80,
+            380,
+            379
+          ],
+          "margin": 32
+        },
+        {
+          "cell": 2,
+          "bounds": [
+            113,
+            45,
+            334,
+            377
+          ],
+          "margin": 45
+        },
+        {
+          "cell": 3,
+          "bounds": [
+            54,
+            59,
+            426,
+            377
+          ],
+          "margin": 18
+        },
+        {
+          "cell": 4,
+          "bounds": [
+            16,
+            78,
+            426,
+            351
+          ],
+          "margin": 16
+        },
+        {
+          "cell": 5,
+          "bounds": [
+            46,
+            33,
+            415,
+            368
+          ],
+          "margin": 29
+        },
+        {
+          "cell": 6,
+          "bounds": [
+            111,
+            29,
+            339,
+            360
+          ],
+          "margin": 29
+        },
+        {
+          "cell": 7,
+          "bounds": [
+            41,
+            33,
+            401,
+            368
+          ],
+          "margin": 33
+        }
+      ]
+    },
+    {
+      "kind": "tank",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1c2fb-f8f5-7ad1-977f-d8bb02f89b26/exec-e76dfb35-79fc-458e-b64c-737d688576f7.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.22-tank-graphite.png",
+      "prompt": "Use-case: production game sprite extraction by image editing. The reference is an eight-direction atlas of one graphite-gray main battle tank. Create ONLY the LOWER-RIGHT tank (the southeast-facing, front three-quarter view with its cannon pointing down-right) as ONE standalone game sprite. Keep that exact tank design, matte graphite armor, track details, antennas, periscopes, restrained edge wear, camera angle, illumination and cannon alignment. No redesign, no other tank orientations, no text, no frame, no grid, no scenery, no ground plane or cast shadow. Center the complete tank with generous transparent padding in a square image; no part of cannon, tracks or antennas may be cropped. Genuinely transparent alpha background. Clean neutral edges, no yellow/red/white/colored fringe, no glow. High-end coherent RTS asset with crisp readable mechanical detail, dark glass and rubber, not a metallic toy. Single subject only; all space outside the tank must be transparent.",
+      "bytes": 982173,
+      "sha256": "a3f3e7e666225b3ab743ea7e0b78e8da14ce7c7645de01ee98d697a65f346504",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    }
+  ]
+}

@@ -1625,7 +1625,7 @@ final class GameScene: SKScene {
             r == 1 && g == 1 && b == 1 && a == 1
         let clear = node.strokeColor.cgColor.alpha == 0
         return ["parent": node.parent === fogLayer, "position": node.position == tileCenter(tile),
-                "path": node.path?.boundingBoxOfPath == bounds, "raster": !node.isAntialiased,
+                "path": node.path?.boundingBoxOfPath == bounds, "raster": !node.isAntialiased && node.lineWidth == 0,
                 "transform": node.xScale == 1 && node.yScale == 1 && node.zRotation == 0 && node.alpha == 1,
                 "color": white && clear,
                 // SpriteKit stores depth with finite precision; 0.001 is much
@@ -1639,7 +1639,7 @@ final class GameScene: SKScene {
         guard let (tile, node) = sample else { return [:] }
         let bounds = node.path?.boundingBoxOfPath ?? .zero
         return ["tile": [tile.row, tile.col], "checks": ciFogFeatherGeometry(tile, node: node),
-                "bounds": [bounds.minX, bounds.minY, bounds.width, bounds.height],
+                "bounds": [bounds.minX, bounds.minY, bounds.width, bounds.height], "lineWidth": node.lineWidth,
                 "position": [node.position.x, node.position.y], "scale": [node.xScale, node.yScale],
                 "depth": [node.zPosition, zPosition(for: tileCenter(tile)) + 1000.1],
                 "strictDepthMatch": node.zPosition == zPosition(for: tileCenter(tile)) + 1000.1,
@@ -1651,7 +1651,7 @@ final class GameScene: SKScene {
         return ["sharedEdges": fogNodes.count == rows * cols && fogNodes.allSatisfy { tile, fog in
                     fog.path?.boundingBoxOfPath == bounds && fog.position == tileCenter(tile)
                 },
-                "rasterEdges": fogNodes.values.allSatisfy { !$0.isAntialiased },
+                "rasterEdges": fogNodes.values.allSatisfy { !$0.isAntialiased && $0.lineWidth == 0 },
                 "opacity": fogNodes.allSatisfy { tile, fog in
                     let expected: CGFloat = visibleTiles.contains(tile) ? 0 : (exploredTiles.contains(tile) ? 0.48 : 0.86)
                     return abs(fog.alpha - expected) < 0.0001
@@ -2137,6 +2137,7 @@ final class GameScene: SKScene {
                 fog.position = center
                 fog.fillColor = UIColor.black
                 fog.strokeColor = .clear
+                fog.lineWidth = 0
                 fog.alpha = 0.86
                 fog.zPosition = zPosition(for: center) + 1000
                 fogLayer.addChild(fog)
@@ -6856,7 +6857,7 @@ final class GameScene: SKScene {
         if let kind = action.buildKind, let texture = productionArtworkTexture(for: kind) {
             let preview = SKSpriteNode(texture: texture)
             preview.name = "hud:production-preview:\(kind.shortCode)"
-            let height: CGFloat = directionalGroundKinds.contains(kind) ? 30 : 24
+            let height: CGFloat = kind.domain == .land ? 30 : 24
             let scale = min(36 / max(texture.size().width, 1), height / max(texture.size().height, 1))
             preview.size = CGSize(width: texture.size().width * scale, height: texture.size().height * scale)
             preview.position.y = frame.height < 48 ? 10 : 12
@@ -14276,6 +14277,7 @@ final class GameScene: SKScene {
                 node.name = "fog:inward-feather"
                 node.fillColor = .white
                 node.strokeColor = .clear
+                node.lineWidth = 0
                 node.isAntialiased = false
                 node.position = tileCenter(tile)
                 node.zPosition = zPosition(for: node.position) + 1000.1

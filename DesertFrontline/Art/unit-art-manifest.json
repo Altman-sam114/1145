@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.20",
+  "version": "v6.22",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.20-continuous-terrain.md",
+  "promptDocument": "md/art/v6.22-tank-coherence.md",
   "assets": [
     {
       "kind": "humvee",
@@ -19,9 +19,9 @@
     {
       "kind": "tank",
       "file": "Units/tank.png",
-      "sourceFile": "call_7f896064c6b647e79008df806b7b8d9f.png",
-      "bytes": 1370216,
-      "sha256": "bd18a1d74ad2238581d945b65993b58a45588da10c5a8f0e997b43c5a8410f47",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1c2fb-f8f5-7ad1-977f-d8bb02f89b26/exec-e76dfb35-79fc-458e-b64c-737d688576f7.png",
+      "bytes": 982173,
+      "sha256": "a3f3e7e666225b3ab743ea7e0b78e8da14ce7c7645de01ee98d697a65f346504",
       "width": 1254,
       "height": 1254,
       "worldWidth": 66
@@ -274,9 +274,9 @@
     {
       "kind": "tankDirections",
       "file": "Directions/tank-eight.png",
-      "sourceFile": "exec-2826d01a-8fd9-4353-8990-5d043f2c51f8.png",
-      "bytes": 1524367,
-      "sha256": "38cb291958468016dfc7cd59735824ac96f65df4b6bd8247eccca22df9082b2c",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1c2fb-f8f5-7ad1-977f-d8bb02f89b26/exec-f941ae50-921f-4a1c-96f0-fabad9e0d9d4.png",
+      "bytes": 1228496,
+      "sha256": "9c3fc75adbbc3d637e4f2c580128bf391b11e086b55cc2fc1f78303bae2345e2",
       "width": 1774,
       "height": 887,
       "columns": 4,
