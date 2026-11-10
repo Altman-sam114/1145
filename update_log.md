@@ -6533,3 +6533,11 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 世界坐标单画布取代720张独立菱形底材，镜像重复和真实陆水掩模；浅滩/碎浪一次烘焙，重开重建。HUD深蓝石墨渐层、资源分隔、金色主操作与卡片侧线沿原五页/44pt/路由。
 - 新增显式RGB材质格式/五filter与负例、37项source/bundle；原生紧凑terrainSurface数组及八项实际节点/像素/覆盖/快照检查，保留原8000字节与云端预算/完整截图门槛。
 - 本机仅静态检查，尚待精确SHA双构建与官方trace/24原图；不宣称完整复刻、长期性能或真实触控通过。
+
+
+## v6.21 迷雾浮点审计与资源统计优化（待云端）
+
+- v6.19精确SHAe82f7d1/run42733988703/attempt1，原ZIP174705bytes、artifact13727255341、digest c801673ab7d37c705afdc8897181a69f2b4fe47fbe879ec725dc2cbfed08b378已核对：双build、124runner/35资源完成；workflow static 3分钟超时，原生仅featherGeometry=false，正式0/24。原包和原始诊断保留，不冒称编译卡死或验收通过。
+- 用白色RGBA/零alpha语义替代UIColor对象色彩空间相等，深度比较误差<0.001（保留0.1层间距）；位置/path/raster/transform/texture/可见性等合同保持。新增逐字段实际几何、实际/预期深度与旧严格比较诊断，以新云端证据确认具体失败项，不仅据推测宣称修复通过。
+- PNG alpha计数与主体边界改用byte table的C层translate/count/find，五filter复原、CRC、阈值、资源报告格式与source/bundle一致性不变。新增跨8/9、31/32、199/200阈值的五filter精确计数和边界合同；不增加workflow预算、不削减测试。
+- v6.20 run42735577098已通过static约111秒、generic约38秒，模拟器仍运行；新地表原生结果待收取。本文修复另用新SHA完整云端与官方包验证，本机只AST/diff，未编译/运行/回归。

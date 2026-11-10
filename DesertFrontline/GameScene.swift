@@ -1618,6 +1618,34 @@ final class GameScene: SKScene {
         ciBeacon("geometry-invalidated", extra: ["reason": reason])
     }
 
+    private func ciFogFeatherGeometry(_ tile: TileCoord, node: SKShapeNode) -> [String: Bool] {
+        let bounds = CGRect(x: -tileWidth / 2, y: -tileHeight / 2, width: tileWidth, height: tileHeight)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        let white = node.fillColor.getRed(&r, green: &g, blue: &b, alpha: &a) &&
+            r == 1 && g == 1 && b == 1 && a == 1
+        let clear = node.strokeColor.cgColor.alpha == 0
+        return ["parent": node.parent === fogLayer, "position": node.position == tileCenter(tile),
+                "path": node.path?.boundingBoxOfPath == bounds, "raster": !node.isAntialiased,
+                "transform": node.xScale == 1 && node.yScale == 1 && node.zRotation == 0 && node.alpha == 1,
+                "color": white && clear,
+                // SpriteKit stores depth with finite precision; 0.001 is much
+                // smaller than the intentional 0.1 separation from base fog.
+                "depth": abs(node.zPosition - (zPosition(for: tileCenter(tile)) + 1000.1)) < 0.001]
+    }
+
+    private func ciFogFeatherDiagnostic() -> [String: Any] {
+        let sample = fogFeatherNodes.first(where: { !ciFogFeatherGeometry($0.key, node: $0.value).values.allSatisfy({ $0 }) })
+            ?? fogFeatherNodes.first
+        guard let (tile, node) = sample else { return [:] }
+        let bounds = node.path?.boundingBoxOfPath ?? .zero
+        return ["tile": [tile.row, tile.col], "checks": ciFogFeatherGeometry(tile, node: node),
+                "bounds": [bounds.minX, bounds.minY, bounds.width, bounds.height],
+                "position": [node.position.x, node.position.y], "scale": [node.xScale, node.yScale],
+                "depth": [node.zPosition, zPosition(for: tileCenter(tile)) + 1000.1],
+                "strictDepthMatch": node.zPosition == zPosition(for: tileCenter(tile)) + 1000.1,
+                "strictColorsMatch": node.fillColor == .white && node.strokeColor == .clear]
+    }
+
     private func ciFogSurfaceChecks() -> [String: Bool] {
         let bounds = CGRect(x: -tileWidth / 2, y: -tileHeight / 2, width: tileWidth, height: tileHeight)
         return ["sharedEdges": fogNodes.count == rows * cols && fogNodes.allSatisfy { tile, fog in
@@ -1629,11 +1657,7 @@ final class GameScene: SKScene {
                     return abs(fog.alpha - expected) < 0.0001
                 },
                 "featherGeometry": fogFeatherNodes.allSatisfy { tile, node in
-                    node.parent === fogLayer && node.position == tileCenter(tile) &&
-                        node.path?.boundingBoxOfPath == bounds && !node.isAntialiased &&
-                        node.xScale == 1 && node.yScale == 1 && node.zRotation == 0 && node.alpha == 1 &&
-                        node.fillColor == .white && node.strokeColor == .clear &&
-                        node.zPosition == zPosition(for: tileCenter(tile)) + 1000.1
+                    ciFogFeatherGeometry(tile, node: node).values.allSatisfy({ $0 })
                 },
                 "featherMasks": fogNodes.keys.allSatisfy { tile in
                     let key = fogFeatherKey(for: tile)
@@ -1841,6 +1865,7 @@ final class GameScene: SKScene {
                                                     "groundDirections": groundArtworkEvidence(),
                                                     "terrainSurface": terrainSurfaceEvidence(),
                                                     "fogSurface": fogSurfaceChecks,
+                                                    "fogGeometry": ciFogFeatherDiagnostic(),
                                                     "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
             ciReadyFrames.removeAll()

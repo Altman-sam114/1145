@@ -33,6 +33,14 @@ ASSET_PATHS = {**{kind: f"Units/{name}.png" for kind, name in KINDS.items()},
                **{kind: f"Terrain/{name}.png" for kind, name in MATERIALS.items()}}
 
 
+# Reconstruct alpha prediction exactly, then count and locate its thresholds in
+# C-backed byte tables. Large transparent sprites should not spend Python work
+# on four statistics / min-max calls for every pixel in both source and bundle.
+_ALPHA_TRANSPARENT = bytes(1 if value <= 8 else 0 for value in range(256))
+_ALPHA_SOLID = bytes(1 if value >= 200 else 0 for value in range(256))
+_ALPHA_CONTENT = bytes(1 if value >= 32 else 0 for value in range(256))
+
+
 def inspect_png(data, atlas_grid=None, opaque_rgb=False):
     if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data) > 12 * 1024 * 1024:
         raise ValueError("Invalid PNG signature or excessive file size")
@@ -118,28 +126,28 @@ def inspect_png(data, atlas_grid=None, opaque_rgb=False):
         if method not in range(5):
             raise ValueError("Invalid PNG filter")
         # PNG prediction is channel-independent; only alpha needs reconstruction.
-        for x in range(width):
-            left = row[x - 1] if x else 0
-            up, upper_left = previous[x], previous[x - 1] if x else 0
-            if method == 1:
-                predictor = left
-            elif method == 2:
-                predictor = up
-            elif method == 3:
-                predictor = (left + up) // 2
-            elif method == 4:
-                p = left + up - upper_left
-                distances = (abs(p - left), abs(p - up), abs(p - upper_left))
-                predictor = (left, up, upper_left)[distances.index(min(distances))]
-            else:
-                predictor = 0
-            row[x] = (row[x] + predictor) & 255
-            alpha = row[x]
-            transparent += alpha <= 8
-            solid += alpha >= 200
-            if alpha >= 32:
-                min_x, max_x = min(min_x, x), max(max_x, x)
-                min_y, max_y = min(min_y, y), max(max_y, y)
+        if method:
+            for x in range(width):
+                left = row[x - 1] if x else 0
+                up, upper_left = previous[x], previous[x - 1] if x else 0
+                if method == 1:
+                    predictor = left
+                elif method == 2:
+                    predictor = up
+                elif method == 3:
+                    predictor = (left + up) // 2
+                else:
+                    p = left + up - upper_left
+                    distances = (abs(p - left), abs(p - up), abs(p - upper_left))
+                    predictor = (left, up, upper_left)[distances.index(min(distances))]
+                row[x] = (row[x] + predictor) & 255
+        transparent += row.translate(_ALPHA_TRANSPARENT).count(b"\x01")
+        solid += row.translate(_ALPHA_SOLID).count(b"\x01")
+        content = row.translate(_ALPHA_CONTENT)
+        first, last = content.find(b"\x01"), content.rfind(b"\x01")
+        if first >= 0:
+            min_x, max_x = min(min_x, first), max(max_x, last)
+            min_y, max_y = min(min_y, y), max(max_y, y)
         if y in (0, height - 1):
             corners.extend((row[0], row[-1]))
         if atlas_grid:
@@ -303,6 +311,17 @@ class ArtContractTests(unittest.TestCase):
                 info = inspect_png(fixture_png(rows, method))
                 verify_transparency(info)
                 self.assertEqual(info["contentBounds"], [1, 1, 3, 3])
+
+    def test_alpha_threshold_counts_and_bounds(self):
+        rows = [[0, 8, 9, 31, 0, 0], [0, 32, 199, 200, 255, 0],
+                [8, 9, 31, 32, 199, 200], [0, 0, 0, 0, 0, 0]]
+        for method in range(5):
+            with self.subTest(method=method):
+                info = inspect_png(fixture_png(rows, method))
+                self.assertEqual(info["transparentFraction"], 0.541667)
+                self.assertEqual(info["solidFraction"], 0.125)
+                self.assertEqual(info["contentBounds"], [1, 1, 6, 3])
+                self.assertEqual(info["cornerAlpha"], [0, 0, 0, 0])
 
     def test_opaque_and_empty_rejected(self):
         for alpha in (0, 255):
