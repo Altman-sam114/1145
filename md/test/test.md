@@ -636,7 +636,7 @@ THEATER 状态卡右侧显示绿色 LIVE 指示点，与状态文字同层级，
 
 迷雾绘制变更时检查原可见性/探索集合与敌军过滤链路；cloud ready的fogSurface核对实际节点path边界和位置、非重叠栅格设置、与原集合一致的alpha以及节点数。缺项、数值代替布尔或几何/alpha错误均拒绝；是否出现裂缝、黑线、缺层需查看同run原生PNG，CPU证据不能代替最终呈现。
 
-截图命令采用同场景有界恢复：首次最多45秒，仅在owned CLI超时且确认进程组清理后可在原180秒总体预算内重读一次。两次使用独立nonce/attempt文件，同设备/PID/nonce/ready不变；App退出、ready改变、普通错误、取消、不完整回收或坏PNG均停止。runner与metadata独立验证screenCapture身份、时限、原始日志摘要、CLI回收和最终rawImage一致，失败候选留证；这不是重启设备或替换截图。
+截图命令采用同场景有界恢复：首次最多45秒，仅在owned CLI超时且确认进程组清理后，或首图Vision确认已知通知并等待6秒后，可在原180秒总体预算内重读一次。两次使用独立nonce/attempt文件，同设备/PID/nonce/ready不变；App退出、ready改变、普通错误、取消、不完整回收或坏PNG均停止。runner与metadata独立验证screenCapture身份、时限、原始日志摘要、CLI回收和最终rawImage一致，失败候选留证；这不是重启设备或替换截图。
 
 HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1，精确5个分类文字和每命令2个文字，全部非空/可见、名称匹配。生产节点删除空副标题，文字审计只注册分类title与命令title/subtitle；缺分类、缺命令状态、旧subtitle、布尔冒充数量或隐藏均拒绝，原25布局/两态/文字拟合恢复与正式PNG门槛不变。
 
@@ -663,3 +663,8 @@ HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1
 
 
 固定fighter-strike取景必须同时保留fighterTarget/impactArt与fighterUnobscured/targetUnobscured。原生使用完整图集格/目标兵模框并扩4pt，转换到真实HUD后与七面板/安全区比较；fixtureFraming以fighter-framing-v1保存safe/art/panels矩形，runner和metadata直接复核两兵模均在安全区内且与每个面板不交。负例覆盖缺项/旧policy/错类型/布尔或非有限坐标/空框/屏外/各面板遮挡及数值假true。正式PNG仍须目视确认飞机、炮台、攻击特效和HUD完整；该合同不等于真实触控或长期性能。
+
+
+截图可见性采用same-scene-visible-screenshot-180-once-v2：全部成功截图必须有system-banner-ocr-v1、系统Vision引擎、原图bytes/SHA/宽高、正确方向/顶部ROI、非空有界OCR文字与几何、正常退出回收回执和原始日志。runner/metadata从识别文字独立推导clear/obstructed，拒绝缺报告、摘要变化、旧策略、空文字、非有限/布尔数值、方向错误或假clear。仅首图明确识别Apple Intelligence通知且原设备/PID/nonce/ready仍有效时可等6秒重读一次，保留污染候选与报告；两次总预算180秒、最多2次不变，不能再叠加第三次超时恢复。第二次通知、OCR错误/超时、普通I/O失败、取消、场景变化或剩余不足停止。既有owned-CLI超时恢复与负例保留。
+
+真实云端在同一runner准备阶段编译Vision helper，检查有来源的历史污染/清晰PNG及云端旋转的portrait两态共4例，保存visibility-fixtures.json/实际OCR报告/日志；这些是历史检测器fixture，不是当前玩法证据。全部当前24图仍须逐张目视，未知系统浮层不由该窄OCR门槛保证。相关Python回归只验证schema/路由/预算/拒绝与包装负例，不能冒充Vision执行；本机不编译helper或运行OCR。

@@ -1,0 +1,23 @@
+{
+  "role": "historical detector fixtures only; never current game evidence",
+  "runId": "43218559244",
+  "runAttempt": 1,
+  "commitSha": "b750ae93fcb4b088d12afe94f15a70ddf90f5d80",
+  "artifactId": 13945758481,
+  "files": [
+    {
+      "file": "capture-banner.png",
+      "expected": "obstructed",
+      "bytes": 4080412,
+      "sha256": "ac85e9b708c4371d2ff16c206fd536f5d55421c9cfd09c1ec66edf305ee557fc",
+      "originalFile": "simulator-hud-naval.png"
+    },
+    {
+      "file": "capture-clear.png",
+      "expected": "clear",
+      "bytes": 2895029,
+      "sha256": "dd9648090a019106f8a5a869be6daf65cc73e7ad31e18da9f63897a6a0a215a8",
+      "originalFile": "simulator-fighter-strike.png"
+    }
+  ]
+}

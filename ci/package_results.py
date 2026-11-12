@@ -98,7 +98,9 @@ def main():
                "ci-regression-results.json", "probes.json", "hud-layout-contract.json", "simulator-launch-help.log",
                "simulator-launch-help-retry.log",
                "render-diagnostics.json", "diagnostic-world.png", "diagnostic-hud.png",
-               "unit-art-source.json", "unit-art-bundle.json", "unit-art-bundle.log"] + [probe["png"] for probe in probes]
+               "unit-art-source.json", "unit-art-bundle.json", "unit-art-bundle.log",
+               "capture-visibility-build.log", "visibility-fixtures.json"] + [probe["png"] for probe in probes]
+    reports.extend(path.name for path in sorted(results.glob("visibility-fixture-*")) if path.is_file())
     installation = summary.get("installation", {})
     boot = summary.get("boot", {})
     for record in boot.get("commands", []):
@@ -120,6 +122,10 @@ def main():
             path = attempt.get("output", {}).get("path")
             if path and Path(path).name == path:
                 reports.append(path)
+            for descriptor in (attempt.get("visibility", {}).get("report", {}), attempt.get("visibility", {}).get("output", {})):
+                visible_path = descriptor.get("path")
+                if visible_path and Path(visible_path).name == visible_path:
+                    reports.append(visible_path)
             candidate = attempt.get("candidate")
             if candidate and Path(candidate).name == candidate and (results / candidate).is_file():
                 reports.append(candidate)

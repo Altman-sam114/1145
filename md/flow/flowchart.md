@@ -531,3 +531,17 @@ flowchart LR
   Native --> PNG
   Check --> PNG
 ```
+
+
+读图说明：截图像素先经系统Vision读取文字，受已知系统通知遮挡的候选保留为失败留证；同一场景最多重读一次，只有clear原图才能作为正式结果。历史fixture只验证检测器。
+
+```mermaid
+flowchart LR
+  Fixtures["历史污染/清晰PNG + portrait旋转 / 云端4例"] --> OCR["云端Vision helper / 顶部ROI / 方向归一"]
+  Native["当前同设备/PID/nonce/ready的原生PNG"] --> OCR
+  OCR --> Status{"已知Apple通知?"}
+  Status -- "首图是" --> Keep["保留候选/报告 / 等6秒 / 原180秒内第2次"]
+  Keep --> Native
+  Status -- "第二图是或OCR失败" --> Failure["停止 / 真实失败证据"]
+  Status -- 否 --> Formal["clear原图 / 原sips规范化 / metadata复核 / 正式PNG"]
+```

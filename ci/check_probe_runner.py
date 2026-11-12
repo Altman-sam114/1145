@@ -28,6 +28,7 @@ from simulator_probe import (HUD_CHECKS, HUD_FIXTURES, HUD_PAGES, Runner, ProbeF
 from scene_evidence import (ACTIONS, CHECKS, STAGES, TRACE_LIMIT, file_evidence, latest_ready,
                             read_app_document, read_hud_report, seal_scene, trace_records, validate_page_images, validate_scene)
 from run_bounded import run_bounded
+from capture_visibility import validate_visibility
 from package_results import main as package_results
 
 
@@ -382,6 +383,22 @@ class FakeRunner(Runner):
                 kwargs["receipt"].update(unit_cli_receipt(cap=kwargs.get("cap", 45)), elapsedSeconds=0)
             if kwargs.get("log"):
                 (self.directory / kwargs["log"]).write_text("synthetic screenshot CLI schema fixture only\n")
+
+    def inspect_capture(self, name, path, prefix, cap):
+        # Synthetic schema only; the actual Vision engine is exercised separately
+        # on historical cloud PNGs during the real runner's prepare stage.
+        statuses = getattr(self, "visibility_statuses", [])
+        status = statuses.pop(0) if statuses else "clear"
+        report = dict(schemaVersion=1, policy="system-banner-ocr-v1", engine="Vision.VNRecognizeTextRequest",
+                      status=status, image=png_info(path), rotationDegrees=0, region=[0, 0.75, 1, 0.25],
+                      observations=[dict(text="Ready for Apple Intelligence" if status == "obstructed" else "$5200 UNITS 8",
+                                         confidence=0.9, bounds=[0.2, 0.8, 0.5, 0.1])])
+        output = self.directory / (prefix + ".json")
+        output.write_text(json.dumps(report))
+        log = self.directory / (prefix + ".log")
+        log.write_text("synthetic OCR schema, not Vision execution\n")
+        return dict(report=file_evidence(self.directory, output.name)[0], process=unit_cli_receipt(cap=cap),
+                    output=file_evidence(self.directory, log.name)[0]), status
 
     def work(self):
         boot_fixture(self)
@@ -2489,6 +2506,75 @@ class SceneEvidenceTests(unittest.TestCase):
             self.assertEqual(self.runner.deadline, deadline)
             self.assertEqual(record["screenCapture"]["pid"], record["pid"])
             self.assertEqual(record["screenCapture"]["nonce"], record["scene"]["nonce"])
+
+    def test_known_notification_recaptures_same_scene_once_and_preserves_obstructed_png(self):
+        root = self.directory
+        for index, statuses in enumerate((["obstructed", "clear"], ["obstructed", "obstructed"])):
+            with self.subTest(statuses=statuses):
+                clock = [0.0]
+                with patch("simulator_probe.time.monotonic", side_effect=lambda: clock[0]):
+                    self.directory = root / str(index)
+                    self.runner = FakeRunner(self.directory)
+                    record, path = self.screenshot_context()
+                    self.runner.visibility_statuses = statuses[:]
+                    self.runner.wait = lambda name, seconds: clock.__setitem__(0, clock[0] + seconds)
+                    if statuses[-1] == "obstructed":
+                        with self.assertRaisesRegex(SceneFailure, "still obscures"):
+                            self.runner.capture_scene_screenshot(self.definition, record, path)
+                        self.assertFalse(path.exists())
+                    else:
+                        self.runner.capture_scene_screenshot(self.definition, record, path)
+                        record["rawImage"] = png_info(path)
+                        validate_screenshot_capture(self.runner.summary, record, self.directory)
+                        self.assertTrue(path.exists())
+                    attempts = record["screenCapture"]["attempts"]
+                    self.assertEqual(len(attempts), 2)
+                    self.assertEqual(attempts[0]["status"], "obstructed")
+                    self.assertTrue((self.directory / attempts[0]["candidate"]).is_file())
+                    self.assertEqual(record["screenCapture"]["elapsedSeconds"], 6)
+
+    def test_ocr_failure_or_insufficient_budget_never_authorizes_another_capture(self):
+        for defect in ("ocr-timeout", "ocr-error", "insufficient-budget"):
+            with self.subTest(defect=defect):
+                clock = [0.0]
+                with patch("simulator_probe.time.monotonic", side_effect=lambda: clock[0]):
+                    self.runner = FakeRunner(self.directory)
+                    record, path = self.screenshot_context()
+                    def inspect(*args):
+                        if defect == "insufficient-budget":
+                            clock[0] = 174
+                            return FakeRunner.inspect_capture(self.runner, *args)
+                        raise ProbeFailure("OCR failed", 124 if defect == "ocr-timeout" else 1)
+                    self.runner.visibility_statuses = ["obstructed"]
+                    self.runner.inspect_capture = inspect
+                    with self.assertRaises(ProbeFailure):
+                        self.runner.capture_scene_screenshot(self.definition, record, path)
+                    self.assertEqual(len(record["screenCapture"]["attempts"]), 1)
+                    self.assertFalse(path.exists())
+
+    def test_visibility_rejects_empty_false_clear_changed_pixels_and_invalid_protocol(self):
+        record, path = self.screenshot_context()
+        self.runner.capture_scene_screenshot(self.definition, record, path)
+        record["rawImage"] = png_info(path)
+        baseline = record["screenCapture"]["attempts"][0]["visibility"]
+        report = json.loads((self.directory / baseline["report"]["path"]).read_text())
+        for defect in ("policy", "image", "rotation", "empty", "false-clear", "bool-confidence", "nan", "bounds"):
+            with self.subTest(defect=defect):
+                altered = json.loads(json.dumps(report))
+                if defect == "policy": altered["policy"] = "no-inspection"
+                elif defect == "image": altered["image"]["sha256"] = "0" * 64
+                elif defect == "rotation": altered["rotationDegrees"] = 270
+                elif defect == "empty": altered["observations"] = []
+                elif defect == "false-clear": altered["observations"][0]["text"] = "Ready for Apple Intelligence"
+                elif defect == "bool-confidence": altered["observations"][0]["confidence"] = True
+                elif defect == "nan": altered["observations"][0]["confidence"] = float("nan")
+                elif defect == "bounds": altered["observations"][0]["bounds"] = [0, 0, 0, 0]
+                with self.assertRaises(ValueError): validate_visibility(altered, record["rawImage"])
+        self.runner.work()
+        self.runner.summary.update(status="success", integrityOutcome="success")
+        self.assertEqual(self.package(self.runner)["probeIntegrityOutcome"], "success")
+        self.runner.summary["probes"][0]["screenCapture"]["attempts"][0].pop("visibility")
+        self.assertEqual(self.package(self.runner)["probeIntegrityOutcome"], "failure")
 
     def test_screenshot_retry_rejects_unclean_non_timeout_and_changed_scene(self):
         for defect in ("unclean", "non-timeout", "cancel", "dead-app", "changed-scene", "second-timeout"):

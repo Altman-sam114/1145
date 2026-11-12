@@ -18,6 +18,7 @@ import uuid
 import zlib
 
 from run_bounded import run_bounded
+from capture_visibility import read_visibility
 from scene_evidence import (file_evidence, latest_ready, read_app_document, read_hud_report, seal_scene, trace_records,
                             validate_page_images, validate_scene)
 
@@ -35,7 +36,7 @@ INSTALL_CLEANUP_RESERVE = 2
 INSTALL_POLICY = "same-device-install-180-once-v1"
 BOOT_POLICY = "same-device-monitor-continuation-v2"
 BOOT_OUTPUT_LIMIT = 1024 * 1024
-SCREENSHOT_POLICY = "same-scene-screenshot-180-once-v1"
+SCREENSHOT_POLICY = "same-scene-visible-screenshot-180-once-v2"
 SCREENSHOT_BUDGET = 180
 SCREENSHOT_FIRST_CAP = 45
 
@@ -150,9 +151,27 @@ def validate_screenshot_capture(summary, record, directory):
             if (attempt.get("status") != "success" or process.get("trigger") != "exit" or attempt.get("exitCode") != 0
                     or attempt.get("image") != record.get("rawImage")):
                 raise SceneFailure("Screenshot capture did not produce the current raw PNG")
-        elif (attempt.get("status") != "failure" or attempt.get("retryDecision") != "retry"
-              or attempt.get("exitCode") != 124 or process.get("trigger") != "timeout"):
-            raise SceneFailure("Screenshot retry lacks a clean watchdog timeout")
+        if attempt.get("status") in ("success", "obstructed"):
+            inspection = attempt.get("visibility", {})
+            prefix = f"capture-{scene['nonce']}-{index}-visibility"
+            receipt = inspection.get("process", {})
+            descriptor = inspection.get("report", {})
+            log = inspection.get("output", {})
+            actual, _ = file_evidence(directory, log.get("path"))
+            if (descriptor.get("path") != prefix + ".json" or log.get("path") != prefix + ".log" or actual != log
+                    or not cli_receipt_complete(receipt) or receipt.get("trigger") != "exit" or receipt.get("exitCode") != 0
+                    or not 0 < receipt.get("limitSeconds", 0) <= 15
+                    or read_visibility(directory, descriptor, attempt.get("image")) != ("clear" if last else "obstructed")):
+                raise SceneFailure("Screenshot visibility inspection incomplete or obstructed")
+        if not last:
+            timeout = (attempt.get("status") == "failure" and attempt.get("exitCode") == 124 and process.get("trigger") == "timeout")
+            banner = (attempt.get("status") == "obstructed" and attempt.get("exitCode") == 0 and process.get("trigger") == "exit"
+                      and attempt.get("retryReason") == "known_system_banner" and attempt.get("settleSeconds") == 6
+                      and evidence["elapsedSeconds"] >= 6)
+            if attempt.get("retryDecision") != "retry" or not (timeout or banner):
+                raise SceneFailure("Screenshot retry lacks a clean timeout or recognized system banner")
+            if banner and png_info(directory / expected) != attempt.get("image"):
+                raise SceneFailure("Obstructed screenshot candidate missing or changed")
 
 
 def install_retry_reason(code, diagnostic, receipt):
@@ -1237,6 +1256,42 @@ class Runner:
             validate_normalization(record)
             self.remaining()
 
+    def inspect_capture(self, name, path, prefix, cap):
+        descriptor = dict(process={})
+        output = prefix + ".json"
+        log = prefix + ".log"
+        self.command(name, [str(Path(".derivedData-sim/capture-visibility").resolve()), str(path.resolve()),
+                            str((self.directory / output).resolve())], cap=cap,
+                     receipt=descriptor["process"], log=log, raw_log=True)
+        descriptor["report"], _ = file_evidence(self.directory, output, limit=32768)
+        descriptor["output"], _ = file_evidence(self.directory, log)
+        status = read_visibility(self.directory, descriptor["report"], png_info(path))
+        return descriptor, status
+
+    def prepare_capture_inspector(self):
+        self.command("capture-visibility-build", ["/usr/bin/xcrun", "swiftc", "-swift-version", "5",
+                     "ci/capture_visibility.swift", "-o", ".derivedData-sim/capture-visibility"],
+                     cap=60, log="capture-visibility-build.log")
+        provenance = json.loads(Path("ci/fixtures/capture-visibility-provenance.json").read_text())
+        cases = []
+        for fixture in provenance["files"]:
+            source = Path("ci/fixtures") / fixture["file"]
+            data = source.read_bytes()
+            if len(data) != fixture["bytes"] or hashlib.sha256(data).hexdigest() != fixture["sha256"]:
+                raise SceneFailure("Historical visibility fixture differs from provenance")
+            for orientation in ("landscape", "portrait"):
+                prefix = f"visibility-fixture-{fixture['expected']}-{orientation}"
+                target = source
+                if orientation == "portrait":
+                    target = self.directory / (prefix + ".png")
+                    self.command(prefix + ":rotate", ["/usr/bin/sips", "--rotate", "90", str(source), "--out", str(target)], cap=15)
+                descriptor, status = self.inspect_capture(prefix, target, prefix, 15)
+                if status != fixture["expected"]:
+                    raise SceneFailure(f"Visibility detector failed {prefix}: {status}")
+                cases.append(dict(case=prefix, expected=fixture["expected"], status=status, image=png_info(target), **descriptor))
+        (self.directory / "visibility-fixtures.json").write_text(json.dumps(dict(
+            role="historical OCR fixtures, not current gameplay", source=provenance, cases=cases), indent=2) + "\n")
+
     def capture_scene_screenshot(self, definition, record, path):
         started = time.monotonic()
         local_deadline = started + SCREENSHOT_BUDGET
@@ -1271,8 +1326,22 @@ class Runner:
                             or attempt["process"].get("exitCode") != 0):
                         raise SceneFailure("Screenshot CLI cleanup/completion unconfirmed")
                     attempt["image"] = png_info(candidate)
+                    prefix = f"capture-{scene['nonce']}-{index}-visibility"
+                    visibility_cap = min(15, local_deadline - time.monotonic() - 2)
+                    if visibility_cap <= 0:
+                        raise ProbeFailure("Screenshot inspection budget exhausted", 124)
+                    visibility, status = self.inspect_capture(name + ":visibility", candidate, prefix,
+                                                              visibility_cap)
+                    attempt["visibility"] = visibility
                     if not alive(record["pid"]) or latest_ready(trace_records(self.summary, scene, self.directory), definition) != scene["ready"]:
                         raise SceneFailure("Screenshot scene changed or app exited during capture")
+                    if status == "obstructed":
+                        if index != 1 or time.monotonic() + 8 >= local_deadline:
+                            raise SceneFailure("Known system notification still obscures screenshot")
+                        attempt.update(status="obstructed", exitCode=0, retryDecision="retry",
+                                       retryReason="known_system_banner", settleSeconds=6)
+                        self.wait(name + ":banner-settle", 6)
+                        continue
                     if time.monotonic() >= local_deadline:
                         raise ProbeFailure("Screenshot shared 180s budget exhausted", 124)
                     candidate.replace(path)
@@ -1375,6 +1444,7 @@ class Runner:
             self.summary["appProduct"] = {"bundleId": self.bundle, "path": str(app)}
         self.command("unit-art-bundle", [sys.executable, "ci/check_unit_art.py", "--bundle", str(app)],
                      cap=60, log="unit-art-bundle.log")
+        self.prepare_capture_inspector()
         sdk = self.command("simulator-sdk-version", ["/usr/bin/xcrun", "--sdk", "iphonesimulator", "--show-sdk-version"]).strip()
         runtimes = json.loads(self.simctl("installed-runtimes", "list", "runtimes", "--json", log="simulator-runtimes.json"))
         devices = json.loads(self.simctl("available-devices", "list", "devices", "available", "--json"))

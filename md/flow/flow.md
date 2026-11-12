@@ -346,7 +346,7 @@ HUD采用正常宽度Avenir Next标题、石墨色面板与柔和边框；分类
 
 fog tile使用精确tileWidth×tileHeight菱形并关闭形状边缘抗锯齿，去掉原1pt重叠造成的双层alpha格线。updateFog的0/0.48/0.86与visible/explored/support集合、敌军/潜艇合法性完全沿原代码；不加滤波或新可见性系统。仅云端ciFogSurfaceChecks逐节点核对实际path边界/位置、raster设置、与原集合一致的alpha，ready/runner/metadata保留shared-edge-fog-v1证据。实际是否消线且无裂缝仍以正式PNG目视为准。
 
-截图读取经`capture_scene_screenshot`：固定设备/PID/nonce/ready，首次45秒，只有确认回收的watchdog超时才允许原180秒总预算内第二次读取；候选按nonce/attempt独立命名，成功验证PNG后原子移动至正式路径，再沿用原规范化流程。`screenCapture`记录原始输出、进程回执和rawImage摘要，metadata独立复核；普通失败/取消/场景变化不重试。HUD分类删除重复副标题，保留标签注册/拟合与44pt命中；沙地/水纹在原5种材质缓存中烘焙，不新增实时节点或玩法状态。
+截图读取经`capture_scene_screenshot`：固定设备/PID/nonce/ready，首次45秒，在确认回收的watchdog超时后，或首图识别已知系统通知并等待6秒后，才允许原180秒总预算内第二次读取；候选按nonce/attempt独立命名，成功验证PNG后原子移动至正式路径，再沿用原规范化流程。`screenCapture`记录原始输出、进程回执和rawImage摘要，metadata独立复核；普通失败/取消/场景变化不重试。HUD分类删除重复副标题，保留标签注册/拟合与44pt命中；沙地/水纹在原5种材质缓存中烘焙，不新增实时节点或玩法状态。
 
 HUD分类节点现在只包含一个title，命令仍包含title/subtitle。CI就绪检查按节点名字核对精确文字集合、非空白/显隐/alpha，并在hudText附实际5个分类文字与2×命令数；parser和HUD审计同步单标题结构，不能用空/透明副标题满足旧两行计数。其余布局、44pt命中与路由不变。
 
@@ -386,3 +386,8 @@ updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog til
 
 
 `fighter-strike`固定取景把飞机放到顶部选择卡下方；ciArtworkFrame经真实父节点→hud转换取得完整图集格/目标兵模框并扩4pt，原生fixture要求两者与全部七面板不交且在安全区内。ready的fixtureFraming保存safe/art/panels实际矩形；scene_evidence由runner与metadata共享直接复核，不以单位中心或图片存在代替无遮挡。直升机八向和单幅采用同一石墨灰模型，解码/尺寸/原方向逻辑保持；来源见[海岸与空军](../art/v6.26-coast-aircraft.md)。
+
+
+原生截图现使用 `same-scene-visible-screenshot-180-once-v2`：原45秒首次I/O、180秒共享上限与最多2次保留；成功I/O后用云端编译的系统Vision helper识别未经修改PNG的顶部四分之一区域，按实际portrait270/landscape0方向解析。每次OCR有独立JSON/原始日志/owned CLI回执，报告绑定原图bytes/SHA/宽高，runner和metadata重新从识别文字推导clear/obstructed。仅已见Apple Intelligence横幅可在首图保留候选后等6秒重读，设备/PID/nonce/ready保持；旧owned-CLI超时恢复仍保留，二者共用最多2次。OCR失败、普通错误、取消、场景变化、第二次通知或预算不足均停止。仅clear原图可晋升正式截图，再沿原sips规范化，不遮挡通知或修补像素。
+
+`prepare_capture_inspector`在云端编译helper后，先用两份带来源/摘要的历史官方PNG检查污染/清晰两态，再用云端sips生成portrait版本检查两个方向，共4例。它们是检测器fixture，不能代替当前游戏图；原24独立正式PNG和目视仍保留。原生Vision来源见[Apple文字识别文档](https://developer.apple.com/documentation/vision/recognizing-text-in-images)。检测目前针对已见Apple Intelligence通知，不宣称识别所有系统浮层。

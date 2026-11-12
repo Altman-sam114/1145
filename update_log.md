@@ -6608,3 +6608,16 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 固定fighter-strike重排飞机和相机，完整飞机格/炮台兵模框各扩4pt后与全部七HUD面板/安全区比较；ready保存实际矩形供runner/metadata直接复核。新增直接正负例，旧海岸合同不得冒充通过。
 - 内置imagegen实际调用4次：2版旋翼盘不合格，仅留目录1/v6.26-candidates；选定石墨灰八向和匹配单幅，原样复制用户目录1与项目。图集1774×887 RGBA/最小格边距43px，预览1254×1254 RGBA。提示词/摘要见md/art/v6.26-generation-prompts.json，无脚本修图。旋翼仍为静态方向模型，不称已完成独立动画。
 - 本机仅Git/diff、AST/JSON/资源元数据/摘要与链接检查；云端精确SHA双build/41source=bundle/原HUD/海岸与空袭合同/全部24原图仍待验证。未本机编译、App/模拟器/simctl或CI测试，未开子智能体。未宣称高档品质或完整复刻已完成。
+
+
+## v6.26 云端合同通过但海军截图受系统通知遮挡
+
+- main/b750ae93fcb4b088d12afe94f15a70ddf90f5d80，run43218559244/attempt1/artifact13945758481；未加密ZIP82182774bytes/183项，官方digest90ae8c1ecc6ca412796252eeed9655c1ef1a2ca7995ae33707989d73161c0a19。身份/CRC/摘要/manifest/JUnit/双build/日志/131脚本/41source=bundle/原HUD/全部24图摘要与trace已核对；证据/private/tmp/desert-frontline-review-43218559244-attempt1/。
+- generic约47秒、sim47.494秒；地表实际[rounded-coast-v2,3483,1742,720,33,2,1,32,3600,511]，fighter完整模型框与目标均避开7面板，max ready7646。work926.158/cleanup17.569；保留move截图首超时124、stage60.521秒和同场景恢复总116.428074/180秒，不称零失败stage。
+- 目视8图已确认海岸圆滑、fighter完整露出、直升机石墨材质；naval正式PNG却被Ready for Apple Intelligence系统横幅遮挡，当前包画面验收失败，不称全24通过。其余16张不扩查旧失败包，后续用新SHA全24重新验收。JUnit10/0failure/1准确XCTest skip不能替代此目视失败。
+
+## v6.27 已知系统通知的有界采集恢复（实现待云端）
+
+- 保留App/素材/玩法；只修采集假绿缺口。云端编译系统Vision helper，顶部ROI读取原生PNG并绑定图摘要/方向；识别已见Apple Intelligence横幅，报告原始文字/几何。两份v6.26官方PNG逐字节作为有来源的污染/清晰fixture，云端再旋转成portrait，共4例先检检测器，不冒称当前玩法。
+- 成功I/O必须OCR clear才晋升正式图。首图已知通知可保留污染候选、同设备/PID/nonce/ready内等6秒重读；旧超时恢复保留，共用原180秒/最多2次。OCR失败、普通错误、取消、变更场景、预算不足或第二次通知停止。metadata独立核对报告/日志/CLI回执/原图摘要并重算状态；未遮通知、修图、放宽预算或重启设备。
+- 本机仅AST/JSON/元数据/diff与文档链接；待精确新SHA云端generic/sim双build、检测器4例、134脚本、41source=bundle、原HUD和全部24正式PNG目视。完整复刻、独立动画、真实触控/完整对局/SKRM与长期FPS仍未完成。
