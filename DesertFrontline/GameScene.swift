@@ -1065,6 +1065,18 @@ private struct TerrainEdge {
     let end: CGPoint
 }
 
+private struct TerrainVertex: Hashable {
+    // Doubled tile coordinates keep shared corners exact, including map edges.
+    let row: Int
+    let col: Int
+}
+
+private struct WaterContourEdge {
+    let start: TerrainVertex
+    let end: TerrainVertex
+    let isShore: Bool
+}
+
 private struct BuildOrder {
     let kind: EntityKind
     let faction: Faction
@@ -1297,6 +1309,10 @@ final class GameScene: SKScene {
     private var terrainSurfaceShoreCount = 0
     private var terrainSurfaceCoverageValid = false
     private var terrainSurfacePixelsValid = false
+    private var terrainCoastContourCount = 0
+    private var terrainCoastCurveCount = 0
+    private var terrainCoastSampleCount = 0
+    private var terrainCoastGeometryValid = false
     private var hudSurfaceTextures: [String: SKTexture] = [:]
     private var hudSymbolTextures: [String: SKTexture] = [:]
     private var controlPoints: [BattlefieldControlPoint] = []
@@ -1731,6 +1747,39 @@ final class GameScene: SKScene {
             }
     }
 
+    private func ciArtworkFrame(_ entity: GameEntity) -> CGRect? {
+        guard entity.isAlive, entity.node.parent === entityLayer, !entity.node.isHidden, entity.node.alpha > 0,
+              let sprite = entity.artworkNode, let parent = sprite.parent,
+              !sprite.isHidden, sprite.alpha > 0, sprite.texture != nil else { return nil }
+        // Include the entire atlas cell, even its transparent margins. This is
+        // stricter than testing the unit origin or just the visible nose pixel.
+        let frame = sprite.calculateAccumulatedFrame()
+        let corners = [CGPoint(x: frame.minX, y: frame.minY), CGPoint(x: frame.maxX, y: frame.minY),
+                       CGPoint(x: frame.maxX, y: frame.maxY), CGPoint(x: frame.minX, y: frame.maxY)]
+            .map { parent.convert($0, to: hudNode) }
+        guard let minX = corners.map(\.x).min(), let maxX = corners.map(\.x).max(),
+              let minY = corners.map(\.y).min(), let maxY = corners.map(\.y).max() else { return nil }
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY).insetBy(dx: -4, dy: -4)
+    }
+
+    private func ciArtworkUnobscured(_ entity: GameEntity) -> Bool {
+        guard let frame = ciArtworkFrame(entity), let layout = hudLayout else { return false }
+        return frame.width > 0 && frame.height > 0 && layout.safe.contains(frame) &&
+            layout.panels.values.allSatisfy { !$0.intersects(frame) }
+    }
+
+    private func ciFighterFramingEvidence() -> [String: Any]? {
+        guard let layout = hudLayout,
+              let fighter = selectedIDs.compactMap({ entities[$0] }).first(where: { $0.kind == .fighter }),
+              let target = fighter.attackTarget,
+              let aircraftFrame = ciArtworkFrame(fighter), let targetFrame = ciArtworkFrame(target) else { return nil }
+        func rect(_ frame: CGRect) -> [Double] {
+            [frame.minX, frame.minY, frame.width, frame.height].map { (Double($0) * 1000).rounded() / 1000 }
+        }
+        return ["policy": "fighter-framing-v1", "safe": rect(layout.safe),
+                "art": [rect(aircraftFrame), rect(targetFrame)], "panels": layout.panels.mapValues { rect($0) }]
+    }
+
     private func ciFixtureChecks(marker: String) -> [String: Bool] {
         let selected = selectedIDs.compactMap { entities[$0] }.filter { $0.isAlive && $0.node.parent === entityLayer }
         func count(_ kind: EntityKind, _ faction: Faction) -> Int {
@@ -1772,7 +1821,11 @@ final class GameScene: SKScene {
         case "naval-salvo": return ["battleshipTarget": attacks(.battleship, .battleship), "waterArt": hasEffect("water-impact"), "impactArt": hasEffect("impact-burst")]
         case "coastal-battery": return ["batteryTarget": attacks(.coastalBattery, .battleship), "waterArt": hasEffect("water-impact"), "impactArt": hasEffect("impact-burst")]
         case "carrier-strike": return ["carrierTarget": attacks(.carrier, .battleship), "waterArt": hasEffect("water-impact"), "impactArt": hasEffect("impact-burst"), "aircraftArt": effectsLayer.children.filter({ $0.name == "carrier-art:JET" }).count == 3]
-        case "fighter-strike": return ["fighterTarget": attacks(.fighter, .coastalBattery), "impactArt": hasEffect("impact-burst")]
+        case "fighter-strike":
+            let fighter = selected.first(where: { $0.kind == .fighter })
+            return ["fighterTarget": attacks(.fighter, .coastalBattery), "impactArt": hasEffect("impact-burst"),
+                    "fighterUnobscured": fighter.map { ciArtworkUnobscured($0) } == true,
+                    "targetUnobscured": fighter.flatMap { $0.attackTarget }.map { ciArtworkUnobscured($0) } == true]
         case "helicopter-salvo": return ["helicopterTarget": attacks(.helicopter, .tank), "impactArt": hasEffect("impact-burst")]
         case "mobile-aa": return ["aaTarget": attacks(.aaTruck, .fighter), "impactArt": hasEffect("impact-burst")]
         case "naval-damage": return ["sonarContact": attacks(.battleship, .submarine), "criticalBattleship": selected.contains { $0.kind == .battleship && $0.hp / $0.kind.maxHP < 0.35 }, "waterArt": hasEffect("water-impact"), "impactArt": hasEffect("impact-burst"), "contactTextUpright": !visibleSubmarineCues.isEmpty && visibleSubmarineCues.allSatisfy({ $0.node.xScale * $0.submarineContactCueLabel.xScale > 0 })]
@@ -1875,7 +1928,7 @@ final class GameScene: SKScene {
             "geometry": !pendingGeometry && !hudGeometryDirty && !isLayingOutHUD && !isWritingHUDContract &&
                 projectionValid && hasWindowSafeArea && size.width > size.height && abs(view.bounds.width - size.width) < 1 &&
                 abs(view.bounds.height - size.height) < 1 && window.safeAreaInsets == windowSafeAreaInsets,
-            "map": terrain.count == rows && (terrainSurfaceEvidence().last as? Int) == 255 &&
+            "map": terrain.count == rows && (terrainSurfaceEvidence().last as? Int) == 511 &&
                 Self.sceneryArtworkNames.allSatisfy({ sceneryArtworkTexture(named: $0) != nil }),
             "units": !visiblePlayerUnits.isEmpty && attached.count == entities.values.filter(\.isAlive).count &&
                 EntityKind.allCases.filter({ $0.artworkName != nil }).allSatisfy({ unitArtworkTexture(for: $0) != nil }) &&
@@ -1909,6 +1962,7 @@ final class GameScene: SKScene {
                                                     "terrainSurface": terrainSurfaceEvidence(),
                                                     "fogSurface": fogSurfaceChecks,
                                                     "fogGeometry": ciFogFeatherDiagnostic(),
+                                                    "fixtureFraming": marker == "fighter-strike" ? (ciFighterFramingEvidence() ?? [:]) : [:],
                                                     "fixtureBranch": ciFixtureBranch, "projection": projection])
             }
             ciReadyFrames.removeAll()
@@ -1970,6 +2024,7 @@ final class GameScene: SKScene {
                        "actions": hudButtonShapes.count, "fogNodes": fogNodes.count, "visibleTiles": visibleTiles.count,
                        "selected": selectedIDs.count, "effectNodes": effectsLayer.children.count]
         ]
+        if marker == "fighter-strike" { readiness["fixtureFraming"] = ciFighterFramingEvidence() ?? [:] }
         if let ciHUDReport { readiness["hudReport"] = ciHUDReport }
         ciBeacon("ready", extra: readiness)
         ciReadyWritten = true
@@ -2216,6 +2271,114 @@ final class GameScene: SKScene {
         } }
     }
 
+    private func waterContours() -> (loops: [[WaterContourEdge]], complete: Bool) {
+        var edges: [WaterContourEdge] = []
+        for row in 0..<rows {
+            for col in 0..<cols where terrain[row][col] == .water {
+                let tile = TileCoord(row: row, col: col)
+                let vertices = [TerrainVertex(row: row * 2 - 1, col: col * 2 - 1),
+                                TerrainVertex(row: row * 2 - 1, col: col * 2 + 1),
+                                TerrainVertex(row: row * 2 + 1, col: col * 2 + 1),
+                                TerrainVertex(row: row * 2 + 1, col: col * 2 - 1)]
+                for edge in terrainEdges(for: tile) {
+                    let inside = isValid(edge.neighbor)
+                    if inside && terrain(at: edge.neighbor) == .water { continue }
+                    edges.append(WaterContourEdge(start: vertices[edge.index], end: vertices[(edge.index + 1) % 4],
+                                                  isShore: inside))
+                }
+            }
+        }
+        let outgoing = Dictionary(grouping: edges.indices, by: { edges[$0].start })
+        var remaining = Set(edges.indices)
+        var loops: [[WaterContourEdge]] = []
+        while let first = remaining.min() {
+            var loop: [WaterContourEdge] = []
+            var current = first
+            while remaining.remove(current) != nil {
+                let edge = edges[current]
+                loop.append(edge)
+                if edge.end == edges[first].start { break }
+                let next = (outgoing[edge.end] ?? []).filter { remaining.contains($0) }
+                guard !next.isEmpty else { return (loops, false) }
+                // At a diagonal contact, follow the right-hand water boundary
+                // rather than crossing between two otherwise separate contours.
+                let a = CGPoint(x: CGFloat(edge.end.col - edge.start.col), y: CGFloat(edge.end.row - edge.start.row))
+                current = next.max { left, right in
+                    func turn(_ index: Int) -> CGFloat {
+                        let b = CGPoint(x: CGFloat(edges[index].end.col - edges[index].start.col),
+                                        y: CGFloat(edges[index].end.row - edges[index].start.row))
+                        return atan2(a.x * b.y - a.y * b.x, a.x * b.x + a.y * b.y)
+                    }
+                    return turn(left) < turn(right)
+                }!
+            }
+            guard loop.count >= 4, loop.last?.end == loop.first?.start else { return (loops, false) }
+            loops.append(loop)
+        }
+        return (loops, !edges.isEmpty && loops.reduce(0, { $0 + $1.count }) == edges.count)
+    }
+
+    private func roundedWaterPaths(in frame: CGRect) -> (sea: CGPath, coast: CGPath, valid: Bool) {
+        let contours = waterContours()
+        let sea = CGMutablePath(), coast = CGMutablePath()
+        terrainCoastContourCount = contours.loops.count
+        terrainCoastCurveCount = 0
+        func point(_ vertex: TerrainVertex) -> CGPoint {
+            let world = CGPoint(x: CGFloat(vertex.col - vertex.row) * tileWidth / 4,
+                                y: -CGFloat(vertex.col + vertex.row) * tileHeight / 4)
+            return CGPoint(x: world.x - frame.minX, y: frame.maxY - world.y)
+        }
+        var bounded = true
+        for loop in contours.loops {
+            let count = loop.count
+            let original = loop.map { point($0.start) }
+            var vertices = original
+            var entry = original, exit = original
+            for index in 0..<count {
+                let previous = (index + count - 1) % count, next = (index + 1) % count
+                // Preserve the exterior map footprint and the coast's endpoints.
+                guard loop[previous].isShore && loop[index].isShore else { continue }
+                let incoming = original[index] - original[previous]
+                let outgoing = original[next] - original[index]
+                let cross = incoming.x * outgoing.y - incoming.y * outgoing.x
+                if abs(cross) < 0.01 {
+                    let hash = (loop[index].start.row &* 73856093) ^ (loop[index].start.col &* 19349663)
+                    let ripple = CGFloat(abs(hash % 7) - 3) * 0.6
+                    let normal = CGPoint(x: -incoming.y, y: incoming.x).normalized
+                    vertices[index] = original[index] + normal * ripple
+                }
+            }
+            for index in 0..<count {
+                let previous = (index + count - 1) % count, next = (index + 1) % count
+                guard loop[previous].isShore && loop[index].isShore else { continue }
+                // A quadratic corner stays in the local edge triangle. Its cuts
+                // never reach a neighboring tile center or navigation waypoint.
+                entry[index] = vertices[index] + (vertices[previous] - vertices[index]) * 0.42
+                exit[index] = vertices[index] + (vertices[next] - vertices[index]) * 0.42
+                terrainCoastCurveCount += 1
+                bounded = bounded && vertices[index].distance(to: original[index]) <= 1.81 &&
+                    entry[index].distance(to: original[index]) < tileWidth * 0.27 &&
+                    exit[index].distance(to: original[index]) < tileWidth * 0.27
+            }
+            sea.move(to: exit[0])
+            for index in 0..<count {
+                let next = (index + 1) % count
+                sea.addLine(to: entry[next])
+                sea.addQuadCurve(to: exit[next], control: vertices[next])
+                if loop[index].isShore {
+                    coast.move(to: exit[index])
+                    coast.addLine(to: entry[next])
+                    coast.addQuadCurve(to: exit[next], control: vertices[next])
+                }
+            }
+            sea.closeSubpath()
+            bounded = bounded && (vertices + entry + exit).allSatisfy {
+                $0.x.isFinite && $0.y.isFinite && CGRect(origin: .zero, size: frame.size).insetBy(dx: -0.01, dy: -0.01).contains($0)
+            }
+        }
+        return (sea, coast, contours.complete && bounded && terrainCoastCurveCount > 0)
+    }
+
     private func drawContinuousTerrain(in frame: CGRect) {
         // One world-coordinate canvas replaces 720 independently tinted diamonds.
         // It is baked only when the map is built, including a new SKRM seed.
@@ -2223,10 +2386,14 @@ final class GameScene: SKScene {
         terrainSurfaceTexture = nil
         terrainSurfaceCoverageValid = false
         terrainSurfacePixelsValid = false
+        terrainCoastGeometryValid = false
+        terrainCoastSampleCount = 0
         let sand = terrainMaterialImage(named: "desert-sand")
         let water = terrainMaterialImage(named: "open-water")
         func point(_ world: CGPoint) -> CGPoint { CGPoint(x: world.x - frame.minX, y: frame.maxY - world.y) }
-        let footprint = CGMutablePath(), sea = CGMutablePath(), land = CGMutablePath(), coast = CGMutablePath()
+        let footprint = CGMutablePath(), land = CGMutablePath()
+        let rounded = roundedWaterPaths(in: frame)
+        let sea = rounded.sea, coast = rounded.coast
         var shoreCount = 0
         for row in 0..<rows {
             for col in 0..<cols {
@@ -2238,21 +2405,13 @@ final class GameScene: SKScene {
                     point(center + CGPoint(x: -tileWidth / 2, y: 0))])
                 diamond.closeSubpath()
                 footprint.addPath(diamond)
-                if terrain[row][col] != .water {
-                    land.addPath(diamond)
-                    continue
-                }
-                sea.addPath(diamond)
-                for edge in shorelineSegments(for: tile) {
-                    let a = point(center + edge.start), b = point(center + edge.end)
-                    let bend = CGFloat(terrainDetailHash(for: tile) % 5 - 2) * 0.22
-                    coast.move(to: a)
-                    coast.addQuadCurve(to: b, control: CGPoint(x: (a.x + b.x) / 2 + bend,
-                                                               y: (a.y + b.y) / 2 - bend))
-                    shoreCount += 1
-                }
+                shoreCount += shorelineSegments(for: tile).count
             }
         }
+        // The beach, water, road clipping and foam all consume the same curve.
+        // Even-odd land clipping subtracts water from the original map footprint.
+        land.addPath(footprint)
+        land.addPath(sea)
         let format = UIGraphicsImageRendererFormat()
         format.scale = min(1.5, 4096 / max(frame.width, frame.height))
         format.preferredRange = .standard
@@ -2288,6 +2447,18 @@ final class GameScene: SKScene {
             paint(water, within: sea, fallback: color(for: .water, tile: TileCoord(row: 0, col: 0)),
                   cell: CGSize(width: 560, height: 280))
             drawRoadSurface(in: context, frame: frame, land: land)
+            context.saveGState()
+            context.addPath(land)
+            context.clip(using: .evenOdd)
+            context.setLineCap(.round)
+            context.setLineJoin(.round)
+            for band in stride(from: 12, through: 1, by: -1) {
+                context.addPath(coast)
+                context.setLineWidth(CGFloat(band))
+                context.setStrokeColor(UIColor(red: 0.36, green: 0.39, blue: 0.29, alpha: 0.018).cgColor)
+                context.strokePath()
+            }
+            context.restoreGState()
             // Shallows and broken foam follow only actual land/water edges.
             // Soft bands are clipped to water and never alter navigable tiles.
             context.saveGState()
@@ -2324,8 +2495,25 @@ final class GameScene: SKScene {
         terrainSurfaceShoreCount = shoreCount
         terrainSurfaceCoverageValid = terrain.indices.allSatisfy { row in terrain[row].indices.allSatisfy { col in
             let tile = TileCoord(row: row, col: col), p = point(tileCenter(tile))
-            return footprint.contains(p) && sea.contains(p) == (terrain[row][col] == .water)
+            return footprint.contains(p) && sea.contains(p) == (terrain[row][col] == .water) &&
+                land.contains(p, using: .evenOdd) == (terrain[row][col] != .water)
         } }
+        let offsets = [CGPoint.zero, CGPoint(x: tileWidth * 0.2, y: 0), CGPoint(x: -tileWidth * 0.2, y: 0),
+                       CGPoint(x: 0, y: tileHeight * 0.2), CGPoint(x: 0, y: -tileHeight * 0.2)]
+        var samplesValid = true
+        for row in 0..<rows {
+            for col in 0..<cols {
+                let center = tileCenter(TileCoord(row: row, col: col))
+                for offset in offsets {
+                    let p = point(center + offset)
+                    terrainCoastSampleCount += 1
+                    samplesValid = samplesValid && footprint.contains(p) &&
+                        sea.contains(p) == (terrain[row][col] == .water) &&
+                        land.contains(p, using: .evenOdd) == (terrain[row][col] != .water)
+                }
+            }
+        }
+        terrainCoastGeometryValid = rounded.valid && samplesValid && terrainCoastSampleCount == rows * cols * offsets.count
         if isCICaptureMode, let raster = image.cgImage, raster.bitsPerPixel == 32,
            let data = raster.dataProvider?.data, CFDataGetLength(data) >= raster.bytesPerRow * raster.height,
            let bytes = CFDataGetBytePtr(data) {
@@ -2376,7 +2564,7 @@ final class GameScene: SKScene {
         }
         context.saveGState()
         context.addPath(land)
-        context.clip()
+        context.clip(using: .evenOdd)
         context.setLineCap(.round)
         context.setLineJoin(.round)
         for (width, alpha) in [(CGFloat(26), CGFloat(0.06)), (22, 0.09), (18, 0.15)] {
@@ -2437,10 +2625,13 @@ final class GameScene: SKScene {
             terrainSurfaceStamp.count == rows * cols && terrainSurfaceStamp == currentTerrainSurfaceStamp(),
             terrainSurfaceShoreCount > 0 && terrainSurfaceShoreCount == (0..<rows).reduce(0) { count, row in
                 count + (0..<cols).reduce(0) { $0 + shorelineSegments(for: TileCoord(row: row, col: $1)).count }
-            }]
+            },
+            terrainCoastGeometryValid && terrainCoastContourCount > 0 && terrainCoastCurveCount > 0 &&
+                terrainCoastCurveCount <= terrainSurfaceShoreCount && terrainCoastSampleCount == rows * cols * 5]
         let mask = checks.enumerated().reduce(0) { $0 | ($1.element ? 1 << $1.offset : 0) }
-        return ["continuous-terrain-v1", Int(terrainSurfacePixels.width), Int(terrainSurfacePixels.height),
-                terrainSurfaceStamp.count, terrainSurfaceShoreCount, terrainMaterialImages.count, mask]
+        return ["rounded-coast-v2", Int(terrainSurfacePixels.width), Int(terrainSurfacePixels.height),
+                terrainSurfaceStamp.count, terrainSurfaceShoreCount, terrainMaterialImages.count,
+                terrainCoastContourCount, terrainCoastCurveCount, terrainCoastSampleCount, mask]
     }
 
     private func color(for terrain: Terrain, tile: TileCoord) -> UIColor {
@@ -11823,8 +12014,8 @@ final class GameScene: SKScene {
             at: tileCenter(TileCoord(row: 18, col: 25))
         )
 
-        cameraRig.position = tileCenter(TileCoord(row: 18, col: 23))
-        fighter.node.position = tileCenter(TileCoord(row: 17, col: 21)) + CGPoint(x: -14, y: 54)
+        cameraRig.position = tileCenter(TileCoord(row: 18, col: 23)) + CGPoint(x: 0, y: 20)
+        fighter.node.position = tileCenter(TileCoord(row: 17, col: 21)) + CGPoint(x: -100, y: -40)
         fighter.node.xScale = 1
         fighter.node.zPosition = entityZPosition(fighter)
         fighter.destination = fighter.node.position + CGPoint(x: 190, y: -28)

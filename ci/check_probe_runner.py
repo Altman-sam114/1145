@@ -84,7 +84,7 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
          counts=dict(mapNodes=1, entities=1, playerUnits=1, visiblePlayerUnits=1, fogNodes=1,
                      visibleTiles=1, panels=7, pages=5, actions=ACTIONS[definition["page"]]),
          sceneSize=dict(width=874, height=402), viewSize=dict(width=874, height=402),
-         terrainSurface=["continuous-terrain-v1", 3483, 1742, 1, 1, 2, 255],
+         terrainSurface=["rounded-coast-v2", 3483, 1742, 1, 1, 2, 1, 1, 5, 511],
          fogSurface=dict(policy="inward-feather-fog-v1", tileCount=1, tileWidth=86, tileHeight=43,
                          featherCounts=[1, 1, 1], checks=dict(sharedEdges=True, rasterEdges=True, opacity=True,
                              featherGeometry=True, featherMasks=True, featherPixels=True, featherBounded=True,
@@ -117,6 +117,14 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
                          worldTransform=dict(x=-43, y=666.5, scaleX=1, scaleY=1),
                          cameraCenter=dict(x=437, y=201), hudOrigin=dict(x=437, y=201), visiblePlayerUnits=1),
          insets=dict(top=0, left=62, right=62, bottom=21), **(extra_ready or {}))
+    if definition["marker"] == "fighter-strike":
+        records[-1]["fixtureChecks"].update(fighterUnobscured=True, targetUnobscured=True)
+        records[-1]["fixtureFraming"] = dict(
+            policy="fighter-framing-v1", safe=[-369, -174, 738, 369],
+            art=[[-180, -20, 80, 70], [80, -80, 90, 60]],
+            panels=dict(resources=[-369, 167, 738, 28], mission=[-369, 125, 252, 36],
+                        selection=[-111, 117, 320, 44], message=[-305, 93, 320, 18],
+                        minimap=[229, 33, 140, 128], rail=[-369, -114, 56, 224], dock=[-369, -174, 708, 56]))
     for channel in ("stdout", "stderr"):
         path = runner.directory / f"scene-{scene['nonce']}-{channel}.live.log"
         data = b"".join(b"DESERTCI " + json.dumps(item, sort_keys=True).encode() + b"\n" for item in records) if channel == "stdout" else b""
@@ -1894,7 +1902,8 @@ class SceneEvidenceTests(unittest.TestCase):
 
     def test_continuous_terrain_rejects_missing_wrong_material_and_incomplete_coverage(self):
         for defect in ("missing", "type", "short", "long", "policy", "bool", "float", "empty", "oversize",
-                       "aspect", "tiles", "coast", "excess-coast", "materials", "mask", "extra-bit"):
+                       "aspect", "tiles", "coast", "excess-coast", "materials", "mask", "extra-bit",
+                       "legacy", "no-contour", "excess-contour", "no-curve", "excess-curve", "samples"):
             with self.subTest(defect=defect):
                 records = self.records(self.scene()["scene"])
                 surface = records[-1]["terrainSurface"]
@@ -1912,10 +1921,45 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "coast": surface[4] = 0
                 elif defect == "excess-coast": surface[4] = 5
                 elif defect == "materials": surface[5] = 1
-                elif defect == "mask": surface[6] = 254
-                elif defect == "extra-bit": surface[6] = 511
+                elif defect == "mask": surface[9] = 255
+                elif defect == "extra-bit": surface[9] = 1023
+                elif defect == "legacy": surface[:] = ["continuous-terrain-v1", 3483, 1742, 1, 1, 2, 255]
+                elif defect == "no-contour": surface[6] = 0
+                elif defect == "excess-contour": surface[6] = 2
+                elif defect == "no-curve": surface[7] = 0
+                elif defect == "excess-curve": surface[7] = 2
+                elif defect == "samples": surface[8] = 4
                 with self.assertRaisesRegex(ValueError, "continuous terrain"):
                     latest_ready(records, self.definition)
+
+    def test_fighter_framing_requires_complete_model_and_target_clear_of_every_panel(self):
+        definition = next(probe for probe in self.runner.probes if probe["id"] == "fighter-strike")
+        for defect in (None, "missing", "policy", "short", "bool", "nan", "empty", "offscreen",
+                       "missing-panel", "extra-panel", "missing-check", "numeric-check", "extra-key",
+                       "resources", "mission", "selection", "message", "minimap", "rail", "dock"):
+            with self.subTest(defect=defect):
+                scene = scene_fixture(self.runner, definition, "probe:fighter-strike")
+                records = self.records(scene)
+                ready = records[-1]
+                framing = ready["fixtureFraming"]
+                if defect is None:
+                    self.assertIs(latest_ready(records, definition), ready)
+                    continue
+                if defect == "missing": ready.pop("fixtureFraming")
+                elif defect == "policy": framing["policy"] = "origin-only"
+                elif defect == "short": framing["art"].pop()
+                elif defect == "bool": framing["art"][0][0] = True
+                elif defect == "nan": framing["art"][0][0] = float("nan")
+                elif defect == "empty": framing["art"][1][2] = 0
+                elif defect == "offscreen": framing["art"][1][0] = -500
+                elif defect == "missing-panel": framing["panels"].pop("selection")
+                elif defect == "extra-panel": framing["panels"]["fake"] = [0, 0, 1, 1]
+                elif defect == "missing-check": ready["fixtureChecks"].pop("fighterUnobscured")
+                elif defect == "numeric-check": ready["fixtureChecks"]["targetUnobscured"] = 1
+                elif defect == "extra-key": framing["fallback"] = True
+                else: framing["art"][0] = framing["panels"][defect][:]
+                with self.assertRaisesRegex(ValueError, "fighter framing|fixture facts"):
+                    latest_ready(records, definition)
 
     def test_fog_surface_rejects_wrong_edges_raster_opacity_and_counts(self):
         for defect in ("missing", "bad-type", "policy", "edges", "raster", "opacity", "numeric-check", "count", "width", "height",

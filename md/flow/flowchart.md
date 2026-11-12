@@ -515,3 +515,19 @@ flowchart LR
   Status -- 否 --> Failed["失败 / 未运行项 / 原failureStage"]
   Status -- 是 --> Identity["独立nonce / trace与PNG完整性"]
 ```
+
+
+读图说明：海岸曲线只改变地表呈现，共用原地图并保留每格中心与周边内部点的分类；固定空袭取景另检查完整模型框和实际 HUD 面板，原图负责最终画面验收。
+
+```mermaid
+flowchart LR
+  Terrain["原terrain / 精确共享顶点"] --> Loops["闭合水域轮廓 / 有界海岸曲线"]
+  Loops --> Bake["同源sea和land / 浅滩 / 湿沙 / 碎浪 / 道路裁切"]
+  Bake --> Surface["唯一地表 / 地图建立或SKRM烘焙"]
+  Loops --> Native["完整有界 / 每格5点分类 / mask511"]
+  Frame["空袭飞机与目标兵模 / 真实HUD转换 / 4pt边距"] --> Rects["实际safe / art / 七面板矩形"]
+  Rects --> Check["runner与metadata / 安全区内且不相交"]
+  Surface --> PNG["同SHA云端正式PNG目视"]
+  Native --> PNG
+  Check --> PNG
+```

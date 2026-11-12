@@ -18,6 +18,35 @@ def finite(value):
     return type(value) in (int, float) and math.isfinite(value) and value >= 0
 
 
+def validate_fighter_framing(ready):
+    framing = ready.get("fixtureFraming")
+    checks = ready.get("fixtureChecks", {})
+    if (not isinstance(framing, dict) or set(framing) != {"policy", "safe", "art", "panels"}
+            or framing.get("policy") != "fighter-framing-v1"
+            or any(checks.get(key) is not True for key in ("fighterUnobscured", "targetUnobscured"))):
+        raise ValueError("Scene fighter framing evidence missing or incomplete")
+
+    def rectangle(value):
+        return (isinstance(value, list) and len(value) == 4
+                and all(type(item) in (int, float) and math.isfinite(item) for item in value)
+                and value[2] > 0 and value[3] > 0)
+
+    safe, art, panels = framing["safe"], framing["art"], framing["panels"]
+    if (not rectangle(safe) or not isinstance(art, list) or len(art) != 2
+            or not all(rectangle(frame) for frame in art)
+            or not isinstance(panels, dict) or set(panels) != {
+                "resources", "mission", "selection", "message", "minimap", "rail", "dock"}
+            or not all(rectangle(panel) for panel in panels.values())):
+        raise ValueError("Scene fighter framing rectangles invalid")
+    for frame in art:
+        if (frame[0] < safe[0] or frame[1] < safe[1]
+                or frame[0] + frame[2] > safe[0] + safe[2] or frame[1] + frame[3] > safe[1] + safe[3]
+                or any(min(frame[0] + frame[2], panel[0] + panel[2]) > max(frame[0], panel[0])
+                       and min(frame[1] + frame[3], panel[1] + panel[3]) > max(frame[1], panel[1])
+                       for panel in panels.values())):
+            raise ValueError("Scene fighter framing intersects HUD or falls outside safe area")
+
+
 def file_evidence(directory, name, limit=TRACE_LIMIT):
     if not isinstance(name, str) or Path(name).name != name:
         raise ValueError("Trace must use a results-directory basename")
@@ -103,11 +132,12 @@ def latest_ready(records, definition):
             or type(hud_text.get("commandLabels")) is not int or hud_text["commandLabels"] != 2 * counts["actions"]):
         raise ValueError("Scene ready HUD control text structure or visibility invalid")
     surface = ready.get("terrainSurface")
-    if (not isinstance(surface, list) or len(surface) != 7 or surface[0] != "continuous-terrain-v1"
+    if (not isinstance(surface, list) or len(surface) != 10 or surface[0] != "rounded-coast-v2"
             or any(type(value) is not int for value in surface[1:])
             or not 0 < surface[2] <= surface[1] <= 4096 or abs(surface[1] - 2 * surface[2]) > 2
             or surface[3] != counts["fogNodes"] or not 0 < surface[4] <= surface[3] * 4
-            or surface[5:] != [2, 255]):
+            or surface[5] != 2 or not 0 < surface[6] <= surface[3]
+            or not 0 < surface[7] <= surface[4] or surface[8] != surface[3] * 5 or surface[9] != 511):
         raise ValueError("Scene continuous terrain material, raster, coverage or geometry evidence invalid")
     fog = ready.get("fogSurface")
     fog_checks = fog.get("checks") if isinstance(fog, dict) else None
@@ -197,6 +227,8 @@ def latest_ready(records, definition):
         raise ValueError("Scene scenery textures, attached sprites or geometry evidence invalid")
     if definition["marker"] in {"move", "attack-move", "attack-target"} and fixture_checks.get("commandUnobscured") is not True:
         raise ValueError("Scene command marker obscured by HUD or offscreen")
+    if definition["marker"] == "fighter-strike":
+        validate_fighter_framing(ready)
     overlay = ready.get("tacticalOverlays")
     overlay_checks = overlay.get("checks") if isinstance(overlay, dict) else None
     mirrors = overlay.get("mirrors") if isinstance(overlay, dict) else None

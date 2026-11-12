@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.23",
+  "version": "v6.26",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.23-landscape.md",
+  "promptDocument": "md/art/v6.26-coast-aircraft.md",
   "assets": [
     {
       "kind": "humvee",
@@ -59,9 +59,9 @@
     {
       "kind": "helicopter",
       "file": "Units/helicopter.png",
-      "sourceFile": "call_4e5396894e3a4163871c1ff98b4072d6.png",
-      "bytes": 1021815,
-      "sha256": "38b9b138beab348882aca08cc98c6bc8109b51bc4f8a0eff5171a29604e7a5e3",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1cfab-1d94-7843-95d8-836e1f04a81a/exec-d4115050-94be-40f1-b7de-16e848e5ac97.png",
+      "bytes": 784635,
+      "sha256": "7b624979634b95383a5947491e031642575d3e0f1f94292fd43b8c13986ca29d",
       "width": 1254,
       "height": 1254,
       "worldWidth": 78
@@ -314,9 +314,9 @@
     {
       "kind": "helicopterDirections",
       "file": "Directions/helicopter-eight.png",
-      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.11-candidates/helicopter-eight-matte.png",
-      "bytes": 760365,
-      "sha256": "36f5573bbeeb0cae30401853006fb1ef04be0a9ef8e06fe716b135f00b59b403",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1cfab-1d94-7843-95d8-836e1f04a81a/exec-c0541cc0-8603-4222-92cf-e47668cbd3a2.png",
+      "bytes": 840678,
+      "sha256": "f7bd3e6d8cb0b33c9227484d41498385956b61bc1d5409d5ea57102c3d1c661b",
       "width": 1774,
       "height": 887,
       "columns": 4,
@@ -534,5 +534,5 @@
       "worldWidth": 49
     }
   ],
-  "updatedDate": "2026-11-10"
+  "updatedDate": "2026-11-12"
 }

@@ -647,7 +647,7 @@ HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1
 迷雾内侧羽化变更时，inward-feather-fog-v1保留基础雾格sharedEdges/rasterEdges/opacity，另要求featherGeometry/featherMasks/featherPixels/featherBounded/enemyVisibility严格为true，核对真实节点位置/精确菱形裁切/纹理身份、黑色RGBA像素的外部透明与alpha上限、节点缓存预算及原known规则对应的敌军隐藏。featherCounts严格为三个整数[已建节点,活动节点,纹理数]，0<活动≤已建≤tileCount，0<纹理≤95；拒绝缺项、布尔冒充、超量、空羽化及检查失败。静态像素/节点合同不能证明雾边美观或长期FPS，须复核同SHA原生地图/地战/海空/缩放图，不放宽基础雾或可见性规则。
 
 
-连续地表改动须核对两项显式RGB8材质与原RGBA兵模的独立格式合同，37项source/bundle的CRC/尺寸/摘要，保留五类PNG filter正例及损坏/单色/格式负例。ready的terrainSurface为7项数组：continuous-terrain-v1、实际像素宽高、真实格数、岸数、材质2、八项mask255；逐项拒绝布尔/浮点冒充、缺项、超4096px/比例错误、格/岸数错误、缺材质或mask缺位/溢出。原生mask取实际地表节点/纹理/几何、有界材质解码、烘焙alpha中心与共享边/透明角、陆水掩模、当前地形快照和岸线，不用文件存在替代真实挂载。原25HUD/50详情、单位/迷雾合同与24正式PNG保留；共享渲染变更按原生地图、五页、陆海空图逐张确认接缝、层级与文字。CPU/像素合同不代替实际GPU、触控或长期性能。
+连续地表改动须核对两项显式RGB8材质与原RGBA兵模的独立格式合同，37项source/bundle的CRC/尺寸/摘要，保留五类PNG filter正例及损坏/单色/格式负例。ready的terrainSurface为10项数组：rounded-coast-v2、实际像素宽高、真实格数、岸数、材质2、闭合轮廓数、曲线顶点数、每格五点的采样数、九项mask511；逐项拒绝布尔/浮点冒充、缺项、旧7项合同、超4096px/比例错误、格/岸数错误、缺材质、空/越界轮廓与曲线、采样数错误或mask缺位/溢出。原生mask取实际地表节点/纹理/几何、有界材质解码、烘焙alpha中心与共享边/透明角、陆水掩模、当前地形快照和岸线，另要求真实闭合曲线完整有界、全部格中心及四个内部偏移点陆水分类一致，不用文件存在替代真实挂载。原25HUD/50详情、单位/迷雾合同与24正式PNG保留；共享渲染变更按原生地图、五页、陆海空图逐张确认接缝、层级与文字。CPU/像素合同不代替实际GPU、触控或长期性能。
 
 
 雾层栅格样式改变时，原生基础雾rasterEdges与羽化几何raster还检查实际lineWidth=0，保留精确path/位置、颜色语义、深度误差、alpha、纹理/像素/边缘组合及原可见性门槛；正式图按固定1.0和0.6相机样本查看雾格细线，不能把属性检查等同于细线已消失。坦克换图沿用原八向/镜像/几何/恢复与逐格alpha合同，并核对Build页生产图和地战/战损原生PNG的完整模型与一致材质。
@@ -660,3 +660,6 @@ HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1
 
 
 预热收尾不单独terminate：HUD验证和可选诊断之后，按原snapshot协议冻结仍存活App的当前ready字节；正式场景维持原`launch --terminate-running-process`、独立nonce/PID和24图。直接回归覆盖活体快照/下一nonce/后续live追加、坏HUD/几何失效/耗尽deadline停止、不运行记录优先报告原failureStage，以及虚报success仍受nonce门槛拒绝。真实云端需看到prewarm-trace-snapshot及正式场景完成；只有预热或HUD通过不能称24图已通过。不加预算、不重启设备、不放松ready/PNG/gate。
+
+
+固定fighter-strike取景必须同时保留fighterTarget/impactArt与fighterUnobscured/targetUnobscured。原生使用完整图集格/目标兵模框并扩4pt，转换到真实HUD后与七面板/安全区比较；fixtureFraming以fighter-framing-v1保存safe/art/panels矩形，runner和metadata直接复核两兵模均在安全区内且与每个面板不交。负例覆盖缺项/旧policy/错类型/布尔或非有限坐标/空框/屏外/各面板遮挡及数值假true。正式PNG仍须目视确认飞机、炮台、攻击特效和HUD完整；该合同不等于真实触控或长期性能。

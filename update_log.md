@@ -6597,3 +6597,14 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 
 - 从上述直接证据修复：archive_prewarm先验证HUD/归档诊断/冻结当前ready，去掉单独simctl terminate与5秒settle。snapshot本来支持存活App，正式capture也如此；原每场景launch --terminate-running-process仍负责新进程和新nonce。没有降低ready、PNG、24集合或改预算/设备/重试；未回滚HUD。
 - 场景gate优先拒绝未成功项并显示原failureStage，再检查nonce；直接合成回归覆盖预热归档、快照后live追加与新nonce、坏HUD/失效ready/deadline停止、未运行误诊及假绿nonce拒绝。本机只做相关AST/diff/链接；修复与新布局均待新SHA双build和全24原图正式复核。
+
+
+## v6.26 平滑海岸与空袭画面（实现待云端）
+
+日期：2026-11-12。
+
+- 接续main/0ef2542，fetch与安全pull无远端增量，保留旧文档/Team ID/归档。重新下载v6.25 artifact13745476584，82314713bytes/183项，官方摘要/未加密/CRC/身份/manifest/JUnit/双build与24图齐全；原图确认fighter-strike飞机被顶部卡遮挡。旧日志已记录过全24目视，本轮重点重看直接相关原图，不拿旧包验收新实现。
+- 同一GameScene连接真实水格闭合轮廓，内部岸顶点有限曲线化、直线段最多1.8世界单位微起伏，保留地图外边/端点；水面/湿沙/浅滩/浪线/道路裁切同源。仍一次烘焙；terrain、导航、玩家/AI、视野、经济与胜负读取原状态。ready升级rounded-coast-v2，保留八项并增加完整有界轮廓与每格五点分类检查。
+- 固定fighter-strike重排飞机和相机，完整飞机格/炮台兵模框各扩4pt后与全部七HUD面板/安全区比较；ready保存实际矩形供runner/metadata直接复核。新增直接正负例，旧海岸合同不得冒充通过。
+- 内置imagegen实际调用4次：2版旋翼盘不合格，仅留目录1/v6.26-candidates；选定石墨灰八向和匹配单幅，原样复制用户目录1与项目。图集1774×887 RGBA/最小格边距43px，预览1254×1254 RGBA。提示词/摘要见md/art/v6.26-generation-prompts.json，无脚本修图。旋翼仍为静态方向模型，不称已完成独立动画。
+- 本机仅Git/diff、AST/JSON/资源元数据/摘要与链接检查；云端精确SHA双build/41source=bundle/原HUD/海岸与空袭合同/全部24原图仍待验证。未本机编译、App/模拟器/simctl或CI测试，未开子智能体。未宣称高档品质或完整复刻已完成。

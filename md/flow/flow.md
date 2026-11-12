@@ -365,7 +365,7 @@ updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog til
 
 ## 连续地表渲染
 
-`drawMap → drawContinuousTerrain`将真实tile边合并为footprint/sea掩模，以两张最长1024px的原创RGB材质在统一世界坐标镜像重复，一次烘焙最长4096px底材；唯一`terrain:continuous-surface`位于mapNode的z=-100。旧逐格底纹与水格浅滩/波浪不再创建，道路/油污/场景/实体/迷雾保留。岸线浅滩与碎浪裁在真实水域；重开重新烘焙并记录实际地形快照，不改规则。HUD两张灰度渐层共享缓存通过fillTexture与原颜色混合，原布局与路由仍来自HUDLayout。ready用紧凑terrainSurface数组记录实际像素尺寸/格数/岸数/材质数与八项真实检查mask；source/bundle区分RGB地表与RGBA单位。来源见[连续地表](../art/v6.20-continuous-terrain.md)。
+`drawMap → drawContinuousTerrain`将真实tile边合并为footprint/sea掩模，以两张最长1024px的原创RGB材质在统一世界坐标镜像重复，一次烘焙最长4096px底材；唯一`terrain:continuous-surface`位于mapNode的z=-100。旧逐格底纹与水格浅滩/波浪不再创建，道路/油污/场景/实体/迷雾保留。岸线浅滩与碎浪裁在真实水域；重开重新烘焙并记录实际地形快照，不改规则。HUD两张灰度渐层共享缓存通过fillTexture与原颜色混合，原布局与路由仍来自HUDLayout。waterContours沿真实水格外边以精确整数顶点连接闭合轮廓，roundedWaterPaths保留地图外边界/海岸端点，在内部海岸作有界曲线与微起伏。sea、水侧碎浪和land侧湿沙共用曲线；land为footprint减sea的even-odd掩模，道路同源裁切。ready用rounded-coast-v2紧凑数组记录实际像素尺寸/格数/岸数/材质数/闭合轮廓数/曲线数/采样数与九项真实检查mask；保留原八项并检查轮廓完整有界及每格中心/四偏移共五点的陆水分类。source/bundle区分RGB地表与RGBA单位。来源见[连续地表](../art/v6.20-continuous-terrain.md)。
 
 
 ## 环境细节与战术分组
@@ -383,3 +383,6 @@ updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog til
 
 
 预热归档使用`archive_prewarm`顺序收集已验证HUD、非gate渲染诊断与当前latest-ready快照。它和正式capture一样在App存活时冻结字节，不单独调用simctl terminate或等待退出；随后每次正式launch仍用原`--terminate-running-process`和独立nonce启动。snapshot的稳定帧/ready匹配、不可变摘要及原24图门槛不变。场景验证先拒绝not_run/running/failure并带原failureStage，再检查所有已成功launch的独立nonce，避免把尚未启动的空记录误称重复nonce。
+
+
+`fighter-strike`固定取景把飞机放到顶部选择卡下方；ciArtworkFrame经真实父节点→hud转换取得完整图集格/目标兵模框并扩4pt，原生fixture要求两者与全部七面板不交且在安全区内。ready的fixtureFraming保存safe/art/panels实际矩形；scene_evidence由runner与metadata共享直接复核，不以单位中心或图片存在代替无遮挡。直升机八向和单幅采用同一石墨灰模型，解码/尺寸/原方向逻辑保持；来源见[海岸与空军](../art/v6.26-coast-aircraft.md)。

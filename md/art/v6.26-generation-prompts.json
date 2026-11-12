@@ -1,0 +1,221 @@
+{
+  "date": "2026-11-12",
+  "tool": "built-in image_gen; original outputs copied without pixel editing",
+  "assets": [
+    {
+      "role": "rejected rotor-disc candidate",
+      "prompt": "Edit target: this project's existing 4 by 2 helicopter direction atlas. Create a production-ready ORIGINAL detailed RTS helicopter sprite sheet with the SAME eight cell placements, same 4-column/2-row grid, same orthographic camera, same cell-scale and center, and exactly the same eight nose headings: first row E, NE, N, NW; second row W, SW, S, SE. Preserve the helicopter's coherent armored attack-helicopter silhouette, glass cockpit, landing wheels, short weapons wings, twin engines and tail across all views. Improve only materials, edge cleanliness and rotor portrayal: change the faded olive body to restrained matte charcoal/graphite armor matching our tank model; subtle warm sand wear in panel recesses, finely rendered vents, rivets, panel breaks, desaturated teal dark cockpit glass, dark titanium rocket pods, tiny controlled metal highlights, NO colored edge fringe. The main rotors should read as a rapidly spinning translucent elliptical rotor disc with two subtle swept blade arcs and a crisp central hub, not four stationary opaque cross-shaped blades; elliptical disc is horizontal in the same isometric ground perspective. Preserve all noses/tails/wings and the full rotor disc inside each cell, with broad true transparent margins at all four edges. No props, people, ground plane, background, flags, lettering, labels, grid lines, watermark, glow, aura, green halo or cast shadow. True clean transparent alpha background. Same low isometric elevation, soft upper-left desert sunlight, finely textured pre-rendered 3D game asset, clear readable at small gameplay scale. Do not change the atlas layout, direction order, scale between directions, or helicopter identity. The second supplied image is a material palette reference only, never replace the helicopter with a tank.",
+      "source": "/Users/a114514/.codex/generated_images/01a1cfab-1d94-7843-95d8-836e1f04a81a/exec-a08c0d51-8cbc-40ac-9260-3d80e5513e01.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.26-candidates/helicopter-disc.png",
+      "status": "rejected: rotor discs too opaque; never installed",
+      "width": 1774,
+      "height": 887,
+      "mode": "RGBA",
+      "bytes": 947946,
+      "sha256": "04200210104337b5769ad2f901ba9613023f80e72a7544bb39ff7e59ed4f22a9",
+      "contentBBoxAlpha32": [
+        66,
+        117,
+        1700,
+        807
+      ]
+    },
+    {
+      "role": "rejected rotor-disc refinement",
+      "prompt": "Edit ONLY the main rotor discs in this 4x2 transparent helicopter atlas. Keep every helicopter body, weapon, nose, tail, cockpit, material, size, cell position, heading and outer transparency pixel-aligned and visually unchanged. The gray discs are currently far too opaque and look like metal plates. Make each main rotor disc extremely faint and genuinely translucent: most of the disc area must have alpha roughly 18-35 out of 255 (7-14 percent opacity), showing the transparent background or helicopter beneath, with only two very subtle curved motion streaks no more than 20 percent opacity. Preserve the small central rotor hubs fully opaque, with a fine soft dark rim and no solid gray fill. No stationary four-blade cross. Main rotor disc elliptical perspective and silhouette stay the same. Preserve the graphite helicopter body opacity, all 8 directions E NE N NW W SW S SE, 4x2 layout, all margins, and real transparent background. No text, grid, glow, background, white matte or new objects. Output genuine transparent RGBA.",
+      "source": "/Users/a114514/.codex/generated_images/01a1cfab-1d94-7843-95d8-836e1f04a81a/exec-ff2b83e9-8f0e-4623-b128-841efb56605d.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.26-candidates/helicopter-disc-refined.png",
+      "status": "rejected: noisy alpha, loss of cell margins; never installed",
+      "width": 1774,
+      "height": 887,
+      "mode": "RGBA",
+      "bytes": 1432662,
+      "sha256": "499949bcf9ff6703f2cc2ed0e42c60a0263cd8f907ead954148b5c09ca5d53d5",
+      "contentBBoxAlpha32": [
+        66,
+        110,
+        1705,
+        807
+      ]
+    },
+    {
+      "role": "selected helicopter direction atlas",
+      "prompt": "Edit target: original transparent 4x2 helicopter atlas in image 1. Image 2 is only the project's graphite tank material reference. Recolor and refine ONLY the helicopter body surfaces and their edge pixels from olive green to matte graphite charcoal gray matching image 2, with subtle desert dust in panel seams, restrained metal highlights and clean dark edges. Remove any green fringe. Keep the exact original helicopter identity, silhouette, camera, 8 directions, layout, positions, scale, landing gear, rocket pods, cockpit, wings and tail. Keep all original four solid main rotor blades geometrically unchanged: do NOT add any rotor disc, motion blur, halo, haze or smoke. No image rescaling. Every complete helicopter must remain within its original equal cell with transparent margins; row1 E NE N NW; row2 W SW S SE. 4 columns, 2 rows. Fine original pre-rendered 3D RTS asset. Preserve actual transparent alpha, no background, no white matte, no shadows on a floor, no text, no grid lines, no logo. Body and small hardware should read as sophisticated slate-gray armor with desaturated teal glass, never black plastic or glossy chrome. The only change is coherent charcoal material and edge cleanup.",
+      "source": "/Users/a114514/.codex/generated_images/01a1cfab-1d94-7843-95d8-836e1f04a81a/exec-c0541cc0-8603-4222-92cf-e47668cbd3a2.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.26-helicopter-eight-graphite.png",
+      "projectFile": "DesertFrontline/Art/Directions/helicopter-eight.png",
+      "status": "selected; cloud verification pending",
+      "references": [
+        "DesertFrontline/Art/Directions/helicopter-eight.png (previous v6.11 atlas; edit target)",
+        "DesertFrontline/Art/Directions/tank-eight.png (palette only)"
+      ],
+      "width": 1774,
+      "height": 887,
+      "mode": "RGBA",
+      "bytes": 840678,
+      "sha256": "f7bd3e6d8cb0b33c9227484d41498385956b61bc1d5409d5ea57102c3d1c661b",
+      "contentBBoxAlpha32": [
+        73,
+        114,
+        1685,
+        807
+      ],
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "cells": [
+        {
+          "heading": "E",
+          "cellSize": [
+            443,
+            443
+          ],
+          "bboxAlpha32": [
+            80,
+            150,
+            400,
+            322
+          ],
+          "margin": 43,
+          "alphaSha256": "7bed0b71c5cdc4e4e1f09909bd9708eeb520dc2c92708295ac2b889641661937"
+        },
+        {
+          "heading": "NE",
+          "cellSize": [
+            444,
+            443
+          ],
+          "bboxAlpha32": [
+            81,
+            125,
+            373,
+            347
+          ],
+          "margin": 71,
+          "alphaSha256": "fa903b5b4b5e3c4f937389b09c163ad20456ba6d8baeecf5e7a99994a5fc61cb"
+        },
+        {
+          "heading": "N",
+          "cellSize": [
+            443,
+            443
+          ],
+          "bboxAlpha32": [
+            108,
+            114,
+            335,
+            377
+          ],
+          "margin": 66,
+          "alphaSha256": "c2e2856d1c890911972b81d1f3d7328034db8754058eafa51c98cfad2e830fd1"
+        },
+        {
+          "heading": "NW",
+          "cellSize": [
+            444,
+            443
+          ],
+          "bboxAlpha32": [
+            63,
+            129,
+            355,
+            357
+          ],
+          "margin": 63,
+          "alphaSha256": "12b389727fb89ae22ffb0ba7756f8993551500fc8d2abe845145ba3137933309"
+        },
+        {
+          "heading": "W",
+          "cellSize": [
+            443,
+            444
+          ],
+          "bboxAlpha32": [
+            73,
+            142,
+            388,
+            313
+          ],
+          "margin": 55,
+          "alphaSha256": "b7dc06d89742cc2d58052518ba2b0d99bdec861eed1dc77fbb6fb011c81271d3"
+        },
+        {
+          "heading": "SW",
+          "cellSize": [
+            444,
+            444
+          ],
+          "bboxAlpha32": [
+            98,
+            74,
+            360,
+            342
+          ],
+          "margin": 74,
+          "alphaSha256": "3ff30d6246d1b47bcaa80c3f491726a4eb37287e12494afd943fa54f959ab6b8"
+        },
+        {
+          "heading": "S",
+          "cellSize": [
+            443,
+            444
+          ],
+          "bboxAlpha32": [
+            106,
+            67,
+            334,
+            364
+          ],
+          "margin": 67,
+          "alphaSha256": "44f2144ecb983c76e0ab9979aa3d68fbb2c7f19868132c15df8c7c7e688835db"
+        },
+        {
+          "heading": "SE",
+          "cellSize": [
+            444,
+            444
+          ],
+          "bboxAlpha32": [
+            87,
+            77,
+            341,
+            345
+          ],
+          "margin": 77,
+          "alphaSha256": "8c25a9d7c1cf605a3f7d32fe5f2167c7e31810293d12397b42d8570630669cc0"
+        }
+      ]
+    },
+    {
+      "role": "selected matching helicopter preview",
+      "prompt": "Create one transparent production-preview sprite of EXACTLY the same graphite charcoal attack helicopter as the bottom-right (SE-facing) helicopter in this project's supplied eight-direction atlas. Same model, nose toward lower-right, same 30 degree orthographic isometric camera, same slate armor plates with subtle sand wear, teal dark cockpit glass, detailed twin engine vents, rocket pods, landing wheels, tail and four solid dark rotor blades. No spinning disc or halo. High quality pre-rendered 3D RTS game asset. Entire helicopter and every rotor tip fully visible centered within the middle 75 percent of a square canvas with clean generous transparent margins. Preserve all model details and graphite material palette. ONLY one helicopter, no duplicates or grid, no ground, no cast shadow on floor, no background, no white matte, no text, no flags or symbols. Genuine transparent RGBA alpha. This is a matching standalone preview, the reference determines model identity and palette.",
+      "source": "/Users/a114514/.codex/generated_images/01a1cfab-1d94-7843-95d8-836e1f04a81a/exec-d4115050-94be-40f1-b7de-16e848e5ac97.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.26-helicopter-graphite.png",
+      "projectFile": "DesertFrontline/Art/Units/helicopter.png",
+      "status": "selected; cloud verification pending",
+      "references": [
+        "v6.26-helicopter-eight-graphite.png (model identity and palette)"
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "bytes": 784635,
+      "sha256": "7b624979634b95383a5947491e031642575d3e0f1f94292fd43b8c13986ca29d",
+      "contentBBoxAlpha32": [
+        192,
+        170,
+        1025,
+        1033
+      ],
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}
