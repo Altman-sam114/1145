@@ -6637,3 +6637,19 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 接续已正式验收58c8171并fetch/pull确认main无增量。根据同SHA全24原图继续减少场景上方重复教学条与过亮确认圈；基本指令仍在空选择摘要中，启动不再覆盖fixture/实际消息。命令成功/失败和警告沿原3.2+0.45秒时钟、透明背景同步与world透传链路。
 - MOVE/AMOV/ATK/STOP/SEL确认沿原effectsLayer、落点、footprint与约0.68秒生命周期；统一HUD柔青/金/珊瑚、1.35pt细线、开放中心且无光晕，AMOV去重双环、ATK去掉重复双V。caption改Avenir Next和局部测量的小深色字底，真实累积框仍进入三指令安全区/HUD避让合同。没有改输入路由、订单、选择、玩家/AI、HP/伤害、迷雾或重置状态。
 - 本机只静态diff/JSON/文档链接，不新增镜像绘制实现的测试。现有25HUD/50详情、75/225路由/消息透传、三指令可见性和24原生图直接验证；当前workflow无定向入口，共享默认消息和确认影响全部场景，沿原完整集合。云端精确SHA双build/134脚本/41资源及全24PNG尚待验证，不预先宣称画面已通过。
+
+
+## v6.28 正式云端失败：原生截图OCR超时
+
+- main/c1f11342c4be5e95bfabd5e21583289491cff7d1，run43229788988/attempt1/artifact13951400125；未加密ZIP11427265bytes/55项，官方digestf4f41fac9d680fe17451c72c092352a7eabd971e4887818c349a8fdc3bfea9a5。CRC/身份/manifest/JUnit/双BUILD SUCCEEDED/134脚本0失败/41source=bundle/25HUD+50详情已核对；包/private/tmp/desert-frontline-review-43229788988-attempt1/，review-failure.json保留失败。
+- generic约52秒、sim50.831秒，boot-wait125.994/install99.550/预热minimum90.147秒。首正式tactical场景实际ready通过，原PNG3799139bytes/1206×2622/SHAfecf31cf3a927d600933a97e0df9d1de127f85e06750bb68b9e58a3ceca747bc已生成，I/O16.146秒成功；随后probe:tactical:screenshot:visibility用满15秒退出124（stage16.129秒），原候选与日志保留，work484.390/cleanup34.480秒。0正式完成/1失败/23未运行，JUnit10/3failure/1准确XCTest skip，未称UI全图验收或编译失败。
+- 原始portrait候选已目视：启动重复教学条确已消失、世界/HUD存在，没有Apple通知；不是正式24场景证据。四个旧Vision真实fixture均通过1.182…1.948秒；实际App并发运行后的首图OCR慢，证据还不能断言GPU竞争是唯一根因。
+- 下一有限修复v6.29：ImageIO仅在内存生成最长1280px分析图、Vision fast并指定CPU；原PNG/摘要不改。报告写明实际分析尺寸/设置，runner/metadata严格验证新policy。保存helper阶段耗时和失败回执/日志，并将本次慢PNG作为有来源的历史清晰fixture，云端两方向重放；不加15秒/180秒预算、不放宽空OCR/污染/场景身份门槛或退回本机。
+
+
+## v6.29 有界CPU截图检测（实现待云端）
+
+- 以c1f1134/run43229788988首张原生OCR15秒超时为直接依据；不回滚已通过双build/HUD的UI，也不增预算。helper改为ImageIO内存最长1280px分析图、Vision fast且CPU-only，记录实际尺寸/请求设置与阶段耗时，仍绑定未修改原PNG摘要/宽高。system-banner-ocr-v2由runner/metadata共享严格验证；空OCR、污染和所有原失败/取消/场景身份门槛保留。GPU竞争只是待复核的可能原因，不写成已证实根因。
+- 本次3799139bytes原始portrait慢图逐字节加入capture-slow-clear.png，来源覆写明确指向v6.28失败run/artifact/SHA；既有两图不变。prepare按三份来源逐一横/竖重放共6例，case唯一且按实际原方向决定sips90/270，仅检测器使用。它们都不是当前v6.29正式玩法截图。
+- inspection即使抛错，也把同一mutable descriptor内的owned CLI回执和原日志保存到attempt/manifest；新增直接合成回归验证超时停在单次、保留原候选/receipt/log与包装失败，扩展严格analysis缺项/类型/超量/比例/GPU/等级负例。预期135脚本；本机不执行测试/Swift/OCR，只静态解析与diff/链接。
+- 待精确新SHA云端generic/sim、6份真实检测器样本、全部24正式图与前一轮UI样式目视。检测设置遵循Apple ImageIO/Vision官方文档，CPU-only旧API的SDK弃用提示不等于本轮构建失败；实际编译以云端日志为准。

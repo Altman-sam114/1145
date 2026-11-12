@@ -18,6 +18,21 @@
       "bytes": 2895029,
       "sha256": "dd9648090a019106f8a5a869be6daf65cc73e7ad31e18da9f63897a6a0a215a8",
       "originalFile": "simulator-fighter-strike.png"
+    },
+    {
+      "file": "capture-slow-clear.png",
+      "case": "slow-clear",
+      "expected": "clear",
+      "bytes": 3799139,
+      "sha256": "fecf31cf3a927d600933a97e0df9d1de127f85e06750bb68b9e58a3ceca747bc",
+      "originalFile": "capture-09130c5d933f4f7f9f9743ab2c4c3205-1.png",
+      "source": {
+        "runId": "43229788988",
+        "runAttempt": 1,
+        "commitSha": "c1f11342c4be5e95bfabd5e21583289491cff7d1",
+        "artifactId": 13951400125,
+        "role": "historical raw candidate whose OCR timed out; not an accepted screenshot"
+      }
     }
   ]
 }

@@ -388,6 +388,9 @@ updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog til
 `fighter-strike`固定取景把飞机放到顶部选择卡下方；ciArtworkFrame经真实父节点→hud转换取得完整图集格/目标兵模框并扩4pt，原生fixture要求两者与全部七面板不交且在安全区内。ready的fixtureFraming保存safe/art/panels实际矩形；scene_evidence由runner与metadata共享直接复核，不以单位中心或图片存在代替无遮挡。直升机八向和单幅采用同一石墨灰模型，解码/尺寸/原方向逻辑保持；来源见[海岸与空军](../art/v6.26-coast-aircraft.md)。
 
 
-原生截图现使用 `same-scene-visible-screenshot-180-once-v2`：原45秒首次I/O、180秒共享上限与最多2次保留；成功I/O后用云端编译的系统Vision helper识别未经修改PNG的顶部四分之一区域，按实际portrait270/landscape0方向解析。每次OCR有独立JSON/原始日志/owned CLI回执，报告绑定原图bytes/SHA/宽高，runner和metadata重新从识别文字推导clear/obstructed。仅已见Apple Intelligence横幅可在首图保留候选后等6秒重读，设备/PID/nonce/ready保持；旧owned-CLI超时恢复仍保留，二者共用最多2次。OCR失败、普通错误、取消、场景变化、第二次通知或预算不足均停止。仅clear原图可晋升正式截图，再沿原sips规范化，不遮挡通知或修补像素。
+原生截图现使用 `same-scene-visible-screenshot-180-once-v2`：原45秒首次I/O、180秒共享上限与最多2次保留；成功I/O后用云端编译的系统Vision helper识别未经修改PNG的顶部四分之一区域，按实际portrait270/landscape0方向解析。每次OCR有独立JSON/原始日志/owned CLI回执，报告绑定原图bytes/SHA/宽高，runner和metadata重新从识别文字推导clear/obstructed。system-banner-ocr-v2额外记录thumbnail-cpu-fast-v1：ImageIO仅在内存解码最长1280px且保留比例的分析图，Vision fast指定CPU，原PNG不改；实际分析尺寸/上限/识别等级/CPU布尔由共享验证器严格复核，旧全尺寸GPU报告不能冒充。helper写阶段计时，检测异常也保留partial回执/原始日志供包装；15秒检测与原截图总预算不变。仅已见Apple Intelligence横幅可在首图保留候选后等6秒重读，设备/PID/nonce/ready保持；旧owned-CLI超时恢复仍保留，二者共用最多2次。OCR失败、普通错误、取消、场景变化、第二次通知或预算不足均停止。仅clear原图可晋升正式截图，再沿原sips规范化，不遮挡通知或修补像素。
 
-`prepare_capture_inspector`在云端编译helper后，先用两份带来源/摘要的历史官方PNG检查污染/清晰两态，再用云端sips生成portrait版本检查两个方向，共4例。它们是检测器fixture，不能代替当前游戏图；原24独立正式PNG和目视仍保留。原生Vision来源见[Apple文字识别文档](https://developer.apple.com/documentation/vision/recognizing-text-in-images)。检测目前针对已见Apple Intelligence通知，不宣称识别所有系统浮层。
+`prepare_capture_inspector`在云端编译helper后，按来源清单逐份检查历史污染/清晰PNG，包含实际OCR超时的原始portrait候选；云端sips只为检测器生成另一方向，横竖两态都检查，按唯一case命名。它们是检测器fixture，不能代替当前游戏图；原24独立正式PNG和目视仍保留。原生Vision来源见[Apple文字识别文档](https://developer.apple.com/documentation/vision/recognizing-text-in-images)。检测目前针对已见Apple Intelligence通知，不宣称识别所有系统浮层。
+
+
+分析图使用[ImageIO缩略图上限](https://developer.apple.com/documentation/imageio/kcgimagesourcethumbnailmaxpixelsize)；[Vision CPU设置](https://developer.apple.com/documentation/vision/vnrequest/usescpuonly)与[识别等级](https://developer.apple.com/documentation/vision/vnrecognizetextrequest/recognitionlevel)仅作用于检测器。CPU设置API在新SDK有弃用提示，但仍沿当前VNRecognizeTextRequest兼容入口；不引入依赖或修改游戏资源。

@@ -1256,15 +1256,20 @@ class Runner:
             validate_normalization(record)
             self.remaining()
 
-    def inspect_capture(self, name, path, prefix, cap):
-        descriptor = dict(process={})
+    def inspect_capture(self, name, path, prefix, cap, descriptor=None):
+        if descriptor is None:
+            descriptor = {}
+        descriptor["process"] = {}
         output = prefix + ".json"
         log = prefix + ".log"
-        self.command(name, [str(Path(".derivedData-sim/capture-visibility").resolve()), str(path.resolve()),
-                            str((self.directory / output).resolve())], cap=cap,
-                     receipt=descriptor["process"], log=log, raw_log=True)
+        try:
+            self.command(name, [str(Path(".derivedData-sim/capture-visibility").resolve()), str(path.resolve()),
+                                str((self.directory / output).resolve())], cap=cap,
+                         receipt=descriptor["process"], log=log, raw_log=True)
+        finally:
+            if (self.directory / log).is_file():
+                descriptor["output"], _ = file_evidence(self.directory, log)
         descriptor["report"], _ = file_evidence(self.directory, output, limit=32768)
-        descriptor["output"], _ = file_evidence(self.directory, log)
         status = read_visibility(self.directory, descriptor["report"], png_info(path))
         return descriptor, status
 
@@ -1279,12 +1284,15 @@ class Runner:
             data = source.read_bytes()
             if len(data) != fixture["bytes"] or hashlib.sha256(data).hexdigest() != fixture["sha256"]:
                 raise SceneFailure("Historical visibility fixture differs from provenance")
+            image = png_info(source)
+            original_orientation = "portrait" if image["height"] > image["width"] else "landscape"
             for orientation in ("landscape", "portrait"):
-                prefix = f"visibility-fixture-{fixture['expected']}-{orientation}"
+                prefix = f"visibility-fixture-{fixture.get('case', fixture['expected'])}-{orientation}"
                 target = source
-                if orientation == "portrait":
+                if orientation != original_orientation:
                     target = self.directory / (prefix + ".png")
-                    self.command(prefix + ":rotate", ["/usr/bin/sips", "--rotate", "90", str(source), "--out", str(target)], cap=15)
+                    degrees = "90" if orientation == "portrait" else "270"
+                    self.command(prefix + ":rotate", ["/usr/bin/sips", "--rotate", degrees, str(source), "--out", str(target)], cap=15)
                 descriptor, status = self.inspect_capture(prefix, target, prefix, 15)
                 if status != fixture["expected"]:
                     raise SceneFailure(f"Visibility detector failed {prefix}: {status}")
@@ -1330,9 +1338,9 @@ class Runner:
                     visibility_cap = min(15, local_deadline - time.monotonic() - 2)
                     if visibility_cap <= 0:
                         raise ProbeFailure("Screenshot inspection budget exhausted", 124)
-                    visibility, status = self.inspect_capture(name + ":visibility", candidate, prefix,
-                                                              visibility_cap)
-                    attempt["visibility"] = visibility
+                    attempt["visibility"] = {}
+                    _, status = self.inspect_capture(name + ":visibility", candidate, prefix,
+                                                     visibility_cap, descriptor=attempt["visibility"])
                     if not alive(record["pid"]) or latest_ready(trace_records(self.summary, scene, self.directory), definition) != scene["ready"]:
                         raise SceneFailure("Screenshot scene changed or app exited during capture")
                     if status == "obstructed":

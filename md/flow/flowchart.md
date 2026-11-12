@@ -537,11 +537,11 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  Fixtures["历史污染/清晰PNG + portrait旋转 / 云端4例"] --> OCR["云端Vision helper / 顶部ROI / 方向归一"]
+  Fixtures["历史污染/清晰/超时原图 / 横竖两态云端重放"] --> OCR["云端Vision helper / 内存1280px / CPU fast / 顶部ROI / 原图摘要"]
   Native["当前同设备/PID/nonce/ready的原生PNG"] --> OCR
   OCR --> Status{"已知Apple通知?"}
   Status -- "首图是" --> Keep["保留候选/报告 / 等6秒 / 原180秒内第2次"]
   Keep --> Native
-  Status -- "第二图是或OCR失败" --> Failure["停止 / 真实失败证据"]
+  Status -- "第二图是或OCR失败" --> Failure["停止 / 原图+阶段日志+partial回执"]
   Status -- 否 --> Formal["clear原图 / 原sips规范化 / metadata复核 / 正式PNG"]
 ```

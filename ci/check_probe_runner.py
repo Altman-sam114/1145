@@ -384,21 +384,29 @@ class FakeRunner(Runner):
             if kwargs.get("log"):
                 (self.directory / kwargs["log"]).write_text("synthetic screenshot CLI schema fixture only\n")
 
-    def inspect_capture(self, name, path, prefix, cap):
+    def inspect_capture(self, name, path, prefix, cap, descriptor=None):
         # Synthetic schema only; the actual Vision engine is exercised separately
         # on historical cloud PNGs during the real runner's prepare stage.
         statuses = getattr(self, "visibility_statuses", [])
         status = statuses.pop(0) if statuses else "clear"
-        report = dict(schemaVersion=1, policy="system-banner-ocr-v1", engine="Vision.VNRecognizeTextRequest",
-                      status=status, image=png_info(path), rotationDegrees=0, region=[0, 0.75, 1, 0.25],
+        image = png_info(path)
+        scale = min(1, 1280 / max(image["width"], image["height"]))
+        report = dict(schemaVersion=1, policy="system-banner-ocr-v2", engine="Vision.VNRecognizeTextRequest",
+                      status=status, image=image, rotationDegrees=0, region=[0, 0.75, 1, 0.25],
+                      analysis=dict(policy="thumbnail-cpu-fast-v1", maxPixelSize=1280, cpuOnly=True,
+                                    recognitionLevel="fast", width=round(image["width"] * scale),
+                                    height=round(image["height"] * scale)),
                       observations=[dict(text="Ready for Apple Intelligence" if status == "obstructed" else "$5200 UNITS 8",
                                          confidence=0.9, bounds=[0.2, 0.8, 0.5, 0.1])])
         output = self.directory / (prefix + ".json")
         output.write_text(json.dumps(report))
         log = self.directory / (prefix + ".log")
         log.write_text("synthetic OCR schema, not Vision execution\n")
-        return dict(report=file_evidence(self.directory, output.name)[0], process=unit_cli_receipt(cap=cap),
-                    output=file_evidence(self.directory, log.name)[0]), status
+        if descriptor is None:
+            descriptor = {}
+        descriptor.update(report=file_evidence(self.directory, output.name)[0], process=unit_cli_receipt(cap=cap),
+                          output=file_evidence(self.directory, log.name)[0])
+        return descriptor, status
 
     def work(self):
         boot_fixture(self)
@@ -2540,10 +2548,10 @@ class SceneEvidenceTests(unittest.TestCase):
                 with patch("simulator_probe.time.monotonic", side_effect=lambda: clock[0]):
                     self.runner = FakeRunner(self.directory)
                     record, path = self.screenshot_context()
-                    def inspect(*args):
+                    def inspect(*args, **kwargs):
                         if defect == "insufficient-budget":
                             clock[0] = 174
-                            return FakeRunner.inspect_capture(self.runner, *args)
+                            return FakeRunner.inspect_capture(self.runner, *args, **kwargs)
                         raise ProbeFailure("OCR failed", 124 if defect == "ocr-timeout" else 1)
                     self.runner.visibility_statuses = ["obstructed"]
                     self.runner.inspect_capture = inspect
@@ -2552,13 +2560,40 @@ class SceneEvidenceTests(unittest.TestCase):
                     self.assertEqual(len(record["screenCapture"]["attempts"]), 1)
                     self.assertFalse(path.exists())
 
+    def test_ocr_timeout_retains_partial_receipt_log_and_original_candidate(self):
+        record, path = self.screenshot_context()
+        self.runner.inspect_capture = lambda *args, **kwargs: Runner.inspect_capture(self.runner, *args, **kwargs)
+        def failed(name, argv, cap, receipt, log, raw_log):
+            receipt.update(unit_cli_receipt(124, cap, timeout=True))
+            (self.directory / log).write_text("synthetic stage=recognize-start; no Vision executed\n")
+            raise ProbeFailure("Synthetic OCR deadline", 124)
+        self.runner.command = failed
+        with self.assertRaisesRegex(ProbeFailure, "OCR deadline"):
+            self.runner.capture_scene_screenshot(self.definition, record, path)
+        attempts = record["screenCapture"]["attempts"]
+        self.assertEqual(len(attempts), 1)
+        attempt = attempts[0]
+        self.assertEqual(attempt["retryDecision"], "stop")
+        self.assertFalse(path.exists())
+        self.assertTrue((self.directory / attempt["candidate"]).is_file())
+        visibility = attempt["visibility"]
+        self.assertEqual(visibility["process"]["trigger"], "timeout")
+        self.assertTrue(cli_receipt_complete(visibility["process"]))
+        self.assertEqual(visibility["output"], file_evidence(self.directory, visibility["output"]["path"])[0])
+        self.assertNotIn("report", visibility)
+        manifest = self.package(self.runner)
+        self.assertEqual(manifest["probeIntegrityOutcome"], "failure")
+        self.assertIn("ci-results/" + visibility["output"]["path"], manifest["projectSpecificReports"])
+
     def test_visibility_rejects_empty_false_clear_changed_pixels_and_invalid_protocol(self):
         record, path = self.screenshot_context()
         self.runner.capture_scene_screenshot(self.definition, record, path)
         record["rawImage"] = png_info(path)
         baseline = record["screenCapture"]["attempts"][0]["visibility"]
         report = json.loads((self.directory / baseline["report"]["path"]).read_text())
-        for defect in ("policy", "image", "rotation", "empty", "false-clear", "bool-confidence", "nan", "bounds"):
+        for defect in ("policy", "image", "rotation", "empty", "false-clear", "bool-confidence", "nan", "bounds",
+                       "analysis-missing", "analysis-policy", "analysis-cpu", "analysis-numeric-cpu", "analysis-level",
+                       "analysis-cap", "analysis-bool", "analysis-big", "analysis-aspect", "analysis-float"):
             with self.subTest(defect=defect):
                 altered = json.loads(json.dumps(report))
                 if defect == "policy": altered["policy"] = "no-inspection"
@@ -2569,6 +2604,16 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "bool-confidence": altered["observations"][0]["confidence"] = True
                 elif defect == "nan": altered["observations"][0]["confidence"] = float("nan")
                 elif defect == "bounds": altered["observations"][0]["bounds"] = [0, 0, 0, 0]
+                elif defect == "analysis-missing": altered.pop("analysis")
+                elif defect == "analysis-policy": altered["analysis"]["policy"] = "full-resolution-gpu"
+                elif defect == "analysis-cpu": altered["analysis"]["cpuOnly"] = False
+                elif defect == "analysis-numeric-cpu": altered["analysis"]["cpuOnly"] = 1
+                elif defect == "analysis-level": altered["analysis"]["recognitionLevel"] = "accurate"
+                elif defect == "analysis-cap": altered["analysis"]["maxPixelSize"] = 4096
+                elif defect == "analysis-bool": altered["analysis"]["width"] = True
+                elif defect == "analysis-big": altered["analysis"]["width"] = 1281
+                elif defect == "analysis-aspect": altered["analysis"]["height"] = 1
+                elif defect == "analysis-float": altered["analysis"]["width"] = float(altered["analysis"]["width"])
                 with self.assertRaises(ValueError): validate_visibility(altered, record["rawImage"])
         self.runner.work()
         self.runner.summary.update(status="success", integrityOutcome="success")
