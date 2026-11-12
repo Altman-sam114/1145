@@ -44,7 +44,7 @@
       "source": "/Users/a114514/.codex/generated_images/01a1cfab-1d94-7843-95d8-836e1f04a81a/exec-c0541cc0-8603-4222-92cf-e47668cbd3a2.png",
       "savedFile": "/Users/a114514/.codex/generated_images/1/v6.26-helicopter-eight-graphite.png",
       "projectFile": "DesertFrontline/Art/Directions/helicopter-eight.png",
-      "status": "selected; cloud verification pending",
+      "status": "integrated; verified against exact SHA 58c8171ea449b6d3212d76ebdf1da41eea7e5ba9, run 43224313262 attempt 1",
       "references": [
         "DesertFrontline/Art/Directions/helicopter-eight.png (previous v6.11 atlas; edit target)",
         "DesertFrontline/Art/Directions/tank-eight.png (palette only)"
@@ -195,7 +195,7 @@
       "source": "/Users/a114514/.codex/generated_images/01a1cfab-1d94-7843-95d8-836e1f04a81a/exec-d4115050-94be-40f1-b7de-16e848e5ac97.png",
       "savedFile": "/Users/a114514/.codex/generated_images/1/v6.26-helicopter-graphite.png",
       "projectFile": "DesertFrontline/Art/Units/helicopter.png",
-      "status": "selected; cloud verification pending",
+      "status": "integrated; verified against exact SHA 58c8171ea449b6d3212d76ebdf1da41eea7e5ba9, run 43224313262 attempt 1",
       "references": [
         "v6.26-helicopter-eight-graphite.png (model identity and palette)"
       ],

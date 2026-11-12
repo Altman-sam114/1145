@@ -6621,3 +6621,19 @@ v6.9 官方复核（2026-11-09）：main `b096db605b190119cc9acc05e48b194d6ac683
 - 保留App/素材/玩法；只修采集假绿缺口。云端编译系统Vision helper，顶部ROI读取原生PNG并绑定图摘要/方向；识别已见Apple Intelligence横幅，报告原始文字/几何。两份v6.26官方PNG逐字节作为有来源的污染/清晰fixture，云端再旋转成portrait，共4例先检检测器，不冒称当前玩法。
 - 成功I/O必须OCR clear才晋升正式图。首图已知通知可保留污染候选、同设备/PID/nonce/ready内等6秒重读；旧超时恢复保留，共用原180秒/最多2次。OCR失败、普通错误、取消、变更场景、预算不足或第二次通知停止。metadata独立核对报告/日志/CLI回执/原图摘要并重算状态；未遮通知、修图、放宽预算或重启设备。
 - 本机仅AST/JSON/元数据/diff与文档链接；待精确新SHA云端generic/sim双build、检测器4例、134脚本、41source=bundle、原HUD和全部24正式PNG目视。完整复刻、独立动画、真实触控/完整对局/SKRM与长期FPS仍未完成。
+
+
+## v6.27 正式云端与全部原图复核
+
+- main/58c8171ea449b6d3212d76ebdf1da41eea7e5ba9，run43224313262/attempt1/artifact13948570104。未加密ZIP88580899bytes/242项，官方digest3d10796726d9b2c50459223d0879e624fb88a4b247ccddd9dfb989f429ad716e；branch/SHA/run/attempt/CRC/摘要、manifest/JUnit/双build/日志已核对。证据/private/tmp/desert-frontline-review-43224313262-attempt1/，只读审计/private/tmp/desert-review-v6.27.py。资源manifest仍v6.26/41项，与新CI版本不是同一版本字段。
+- generic约25秒，模拟器BUILD SUCCEEDED，134脚本回归与10资源方法、41source=bundle、25HUD/50详情、75份edge-console/225程序化透传和24独立PID/nonce/原生PNG/trace通过。JUnit10/0failure/1准确XCTest skip，无XCTest target；ready最大7645/8000，实际海岸[rounded-coast-v2,3483,1742,720,33,2,1,32,3600,511]。native约350秒，work346.080/cleanup3.866秒，无失败stage；不把本次更快等同于云端抖动永久消失。
+- 真实Vision helper编译5.837秒，四个有来源的历史污染/清晰/横竖向fixture均识别正确；当前24张全部首图clear。当前run未触发真实通知重读，不能宣称原生恢复路径已经实遇；恢复路由/预算/拒绝由直接合成回归覆盖。
+- 全24官方原图逐张目视完成：无系统通知、App黑屏、缺世界层或实底贴图；海岸曲线连续、fighter-strike飞机及炮台避开HUD、石墨直升机完整可见，Info/Close详情、五分类、停止/集火/触控辅助文字可读。画面验收通过本轮有限目标；教学提示、过亮指令圈和部分背景单位仍可能受HUD遮挡，不能泛称全部兵模无遮挡。
+- v6.26生图4次/选入2份正式验收，原图与拒绝候选保留用户目录1；独立动画、真实UITouch、完整对局/SKRM、长期FPS、战役/多人及完整复刻仍未完成。不本机编译/运行/测试，不开子智能体。
+
+
+## v6.28 指令确认与启动战场留白（实现待云端）
+
+- 接续已正式验收58c8171并fetch/pull确认main无增量。根据同SHA全24原图继续减少场景上方重复教学条与过亮确认圈；基本指令仍在空选择摘要中，启动不再覆盖fixture/实际消息。命令成功/失败和警告沿原3.2+0.45秒时钟、透明背景同步与world透传链路。
+- MOVE/AMOV/ATK/STOP/SEL确认沿原effectsLayer、落点、footprint与约0.68秒生命周期；统一HUD柔青/金/珊瑚、1.35pt细线、开放中心且无光晕，AMOV去重双环、ATK去掉重复双V。caption改Avenir Next和局部测量的小深色字底，真实累积框仍进入三指令安全区/HUD避让合同。没有改输入路由、订单、选择、玩家/AI、HP/伤害、迷雾或重置状态。
+- 本机只静态diff/JSON/文档链接，不新增镜像绘制实现的测试。现有25HUD/50详情、75/225路由/消息透传、三指令可见性和24原生图直接验证；当前workflow无定向入口，共享默认消息和确认影响全部场景，沿原完整集合。云端精确SHA双build/134脚本/41资源及全24PNG尚待验证，不预先宣称画面已通过。

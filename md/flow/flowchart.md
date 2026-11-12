@@ -8,7 +8,7 @@ Helicopter 的既有 salvo 共享入口还按 `updateAirShadow(...)` 的世界�
 
 海军实体的 `navalWakeNode` 与选中艏向箭头都在实体配置阶段一次性预创建：Battleship / Carrier 依舰体尺度绘制艏部 V 形浅水冲洗、近 / 远段递减尾流、泡沫边与舰艉推进器扰流，Submarine 仅保留低透明扰动；移动时 `updateNavalWake` 用同一 `localWakeDirection` 与 `xScale` 镜像同时旋转尾流和箭头。选择刷新只让玩家选中、存活且可见的三类海军显示箭头；停止保留最后 rotation，取消选择、死亡、重开和 fog 隐藏继续复用实体父节点生命周期，不新增状态、每帧节点或第 25 次探针。读图：海军 movement direction 分流到既有 wake rotation 与 heading cue rotation，selection / alive / fog 门槛控制 cue 显隐。
 
-`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:detailsExpanded:)` 是绘制、触摸和云端契约的唯一框来源。小屏默认44pt选择卡只显示单位/数量、HP与当前状态，44pt Info/Close经同一route切换100pt五事实与队列；平板默认52pt、展开156pt。切页/详情切换保留选择、生产与互斥pending，SKRM收起详情。底部56pt动作区保留44pt控件，任务卡36pt/必要文字槽12pt，小地图去除重复图例边带。短消息由单调时钟驱动，3.2s后在0.45s内连背景完全淡出，隐形区域归还world路由；提示期限不因HUD重建重置。双指仍优先pan/pinch，其他可见静态面板与间隙仍inert。`HUDPalette`与共享命令符号/生产纹理沿用；25组生产契约增加50次详情状态检查、五项事实互不重叠、hidden-toast路由和精确恢复，原标签/投影/失败门槛保留。
+`HudPage` 保留全部 26 个 `HudAction` 的五页映射，显示名为 Orders / Build / Air / Fleet / Support；`HUDLayout(size:insets:page:detailsExpanded:)` 是绘制、触摸和云端契约的唯一框来源。小屏默认44pt选择卡只显示单位/数量、HP与当前状态，44pt Info/Close经同一route切换100pt五事实与队列；平板默认52pt、展开156pt。切页/详情切换保留选择、生产与互斥pending，SKRM收起详情。底部56pt动作区保留44pt控件，任务卡36pt/必要文字槽12pt，小地图去除重复图例边带。启动指引只保留在空选择摘要，不再额外弹出默认消息横幅；实际命令/警告短消息仍由单调时钟驱动，3.2s后在0.45s内连背景完全淡出，隐形区域归还world路由；提示期限不因HUD重建重置。双指仍优先pan/pinch，其他可见静态面板与间隙仍inert。`HUDPalette`与共享命令符号/生产纹理沿用；25组生产契约增加50次详情状态检查、五项事实互不重叠、hidden-toast路由和精确恢复，原标签/投影/失败门槛保留。
 
 两张原创透明Effects纹理与实体共用384px解码/alpha裁边，`showArtworkImpact`只投影原效果入口，在0.48–0.56s内有界清理；水柱、火焰烟尘、舰载机原飞机纹理和细化弹道继续沿原可见性/发射延迟/单次伤害链路。ready要求两图实际解码及相关固定场景真实挂载；正常任务标题/正文和默认摘要由`essentialHUDTextCompleteness`要求完整sourceText，原长文本拟合/ellipsis与边界门槛保留。
 
@@ -31,7 +31,7 @@ flowchart TD
   Init --> Loop["GameScene.update 每帧循环\n统一推进游戏状态"]
   Loop --> Build["施工 / 生产\n建筑进度、RAD/SON/GT/SAM/CB、AA Truck、旗点覆盖、BuildOrder、航母3PAD甲板状态/起飞反馈、出兵、集结点与面板状态"]
   Loop --> Economy["经济 / 占领\nHQ、油井、旗点收入/视野/覆盖、旗点奖金与占领进度"]
-  Loop --> Commands["移动 / 命令\nMOVE青绿落点、AMOV琥珀双环、已知目标红色虚线环+橙色双V、STOP一键清理、TGT循环视野内已知合法目标/混编只改合法攻击者、沙地/油地陆军方向胎迹与尘团、海军方向航迹、空军方向投影/84间距/同阵营避让/攻击环站位、HOLD、Carrier guard wing最多2架anchor station/分配组成cue/脱离反馈、已知HQ指引和面板摘要、路径和编队"]
+  Loop --> Commands["移动 / 命令\nMOVE柔青细线落点、AMOV金色虚线环、已知目标珊瑚细虚线环与深色字牌、STOP一键清理、TGT循环视野内已知合法目标/混编只改合法攻击者、沙地/油地陆军方向胎迹与尘团、海军方向航迹、空军方向投影/84间距/同阵营避让/攻击环站位、HOLD、Carrier guard wing最多2架anchor station/分配组成cue/脱离反馈、已知HQ指引和面板摘要、路径和编队"]
   Loop --> Combat["战斗 / 维修\n单选 Blue HMV/TNK/ART/HEL/JET 显示 attackRange 只读陆空射程椭圆，多选/AA/SAM/Mechanic/结构/海军/pending 隐藏；合法主目标/Engaged/Ready/Wounded/Critical只读态势、已知来袭攻击者单次快照/IN方向标、共享FOCUS目标百分比/分段血条、未完工攻击结构禁火、SAM/AA 防空与选中空军已知覆盖威胁圈/顶标/摘要、岸防反舰、目标搜索、Carrier guard wing近域威胁优先、Mechanic自动维修双层束/目标十字/双方已知过滤、有效伤害、Artillery已知炮位炮口焰/烟尘/炮线、玩家可知 Fighter 对空双翼下错发导弹/单次命中、其他空战导弹烟迹/弹体/命中环、已知 Carrier 三机错列俯冲/双反舰弹/方向化近舷水溅射与近失回响/舰体命中且单次伤害、已知战列舰/岸防双发齐射、岸防双炮后坐/炮床冲击/岸边尘浪与可见水面主副水柱/舰体命中、已知潜艇 direct-fire 双压力环/水沫/气泡 ASW HIT、潜艇局部艏艉/潜望镜/声呐穹顶细节与已知接触 cue、支援命中潜艇短暴露、击杀 XP、老兵徽章、死亡清理"]
   Loop --> CarrierAirVisual["Carrier 对空纯视觉\nCV INTERCEPT 甲板脉冲 / 舰载战斗机 / 导引光迹 / 空中命中环\n只在既有 fire 已接受且目标已知时创建短生命周期 effectsLayer 节点"]
   CarrierAirVisual --> Render
@@ -74,7 +74,7 @@ flowchart TD
   Pending -- "建筑" --> Place["放置预览 / placeStructure\n检查视野、基地/旗点覆盖、地形规则和资金"]
   Pending -- "支援技能" --> Support["executeSupportPower\n检查资金、冷却、资产需求、效果"]
   Pending -- "集结点" --> Rally["setRallyPoint\npending面板显示来源摘要\n生产来源设置出兵目标"]
-  Pending -- "AMOV" --> AttackMove["issueAttackMoveOrder\n编队推进并沿途交战\n琥珀AMOV双环落点"]
+  Pending -- "AMOV" --> AttackMove["issueAttackMoveOrder\n编队推进并沿途交战\n金色AMOV虚线落点与深色字牌"]
   Place -- "无效目标" --> Denied["showDeniedMarker\n点击位置短暂红橙拒绝反馈"]
   Support -- "无效目标" --> Denied
   Rally -- "无有效来源" --> Denied
@@ -85,7 +85,7 @@ flowchart TD
   WorldTap -- "精确敌军" --> Attack["issueDirectAttackOrder\n不可攻击时NO ATK且不穿透"]
   WorldTap -- "无精确实体/合法敌军辅助" --> AssistAttack["玩家已知 + selected operational canAttack\n26pt屏幕半径/距离桶-ID首项/不循环\nATK TAP CODE"]
   AssistAttack --> Attack
-  Attack --> AttackResult["兼容攻击者设置attackTarget\n红色虚线footprint-aware目标环 + 橙色双V cue\n必要时提示CV guard released"]
+  Attack --> AttackResult["兼容攻击者设置attackTarget\n珊瑚细虚线footprint-aware目标环 + 深色ATK字牌\n必要时提示CV guard released"]
   WorldTap -- "地面" --> Move["issueFormationMove\n按陆空海分组移动\n青绿色MOVE落点\n必要时提示CV guard released"]
   Attack -- "选中单位都不能攻击" --> Denied
   Move -- "无移动单位或集结来源" --> Denied

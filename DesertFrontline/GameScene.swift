@@ -1526,6 +1526,8 @@ final class GameScene: SKScene {
         ciBeacon("units-start")
         spawnInitialForces()
         ciEndStage("units")
+        // The selection summary already explains tap-to-command; keep the field clear on launch.
+        setMessageOpacity(0)
         layoutHUD()
         ciBeacon("fog-start")
         updateFog(force: true)
@@ -1542,7 +1544,6 @@ final class GameScene: SKScene {
         if isCICaptureMode { ciFixtureCamera = cameraRig.position }
         ciEndStage("fixture")
         updateHUD()
-        showMessage("Tap a unit, then tap ground to move. Secure the oil fields.", color: .white)
         sceneInitializationComplete = true
         ciEndStage("initialization")
     }
@@ -15584,7 +15585,7 @@ final class GameScene: SKScene {
     }
 
     private func showMoveMarker(at point: CGPoint, persistent: Bool = false) {
-        let color = UIColor(red: 0.24, green: 1.0, blue: 0.62, alpha: 1.0)
+        let color = HUDPalette.cyan
         let node = SKNode()
         if isCICaptureMode && persistent { node.name = "ci:marker:move" }
         node.position = point
@@ -15592,9 +15593,8 @@ final class GameScene: SKScene {
 
         let ring = SKShapeNode(ellipseOf: CGSize(width: 50, height: 24))
         ring.strokeColor = color
-        ring.fillColor = color.withAlphaComponent(0.12)
-        ring.lineWidth = 3
-        ring.glowWidth = 1.5
+        ring.fillColor = .clear
+        ring.lineWidth = 1.35
         node.addChild(ring)
 
         let arrowPath = CGMutablePath()
@@ -15610,7 +15610,7 @@ final class GameScene: SKScene {
         }
         let arrow = SKShapeNode(path: arrowPath)
         arrow.strokeColor = color
-        arrow.lineWidth = 3
+        arrow.lineWidth = 1.5
         arrow.lineCap = .round
         arrow.lineJoin = .round
         node.addChild(arrow)
@@ -15621,24 +15621,18 @@ final class GameScene: SKScene {
     }
 
     private func showAttackMoveMarker(at point: CGPoint, persistent: Bool = false) {
-        let color = UIColor(red: 1.0, green: 0.58, blue: 0.20, alpha: 1.0)
+        let color = HUDPalette.gold
         let node = SKNode()
         if isCICaptureMode && persistent { node.name = "ci:marker:attack-move" }
         node.position = point
         node.zPosition = 266
 
-        let ring = SKShapeNode(ellipseOf: CGSize(width: 62, height: 30))
+        let ringPath = CGPath(ellipseIn: CGRect(x: -31, y: -15, width: 62, height: 30), transform: nil)
+        let ring = SKShapeNode(path: ringPath.copy(dashingWithPhase: 0, lengths: [5, 3]))
         ring.strokeColor = color
-        ring.fillColor = color.withAlphaComponent(0.14)
-        ring.lineWidth = 3
-        ring.glowWidth = 2
+        ring.fillColor = .clear
+        ring.lineWidth = 1.35
         node.addChild(ring)
-
-        let innerRing = SKShapeNode(ellipseOf: CGSize(width: 38, height: 18))
-        innerRing.strokeColor = color.withAlphaComponent(0.78)
-        innerRing.fillColor = .clear
-        innerRing.lineWidth = 2
-        node.addChild(innerRing)
 
         let crossPath = CGMutablePath()
         crossPath.move(to: CGPoint(x: -18, y: 0))
@@ -15650,7 +15644,7 @@ final class GameScene: SKScene {
         crossPath.addLine(to: CGPoint(x: 8, y: -7))
         let cross = SKShapeNode(path: crossPath)
         cross.strokeColor = color
-        cross.lineWidth = 3
+        cross.lineWidth = 1.5
         cross.lineCap = .round
         cross.lineJoin = .round
         node.addChild(cross)
@@ -15661,8 +15655,7 @@ final class GameScene: SKScene {
     }
 
     private func showAttackTargetMarker(at point: CGPoint, footprint: CGFloat, label: String, persistent: Bool = false) {
-        let color = UIColor(red: 1.0, green: 0.25, blue: 0.16, alpha: 1.0)
-        let cueColor = UIColor(red: 1.0, green: 0.67, blue: 0.18, alpha: 1.0)
+        let color = HUDPalette.warning
         let width = max(64, min(112, footprint * 1.55))
         let height = max(34, width * 0.52)
         let node = SKNode()
@@ -15674,50 +15667,17 @@ final class GameScene: SKScene {
         let ringPath = CGPath(ellipseIn: ringRect, transform: nil)
         let dashedRingPath = ringPath.copy(dashingWithPhase: 0, lengths: [9, 6])
 
-        let ringFill = SKShapeNode(path: ringPath)
-        ringFill.strokeColor = .clear
-        ringFill.fillColor = color.withAlphaComponent(0.035)
-        node.addChild(ringFill)
-
         let ringBack = SKShapeNode(path: dashedRingPath)
         ringBack.strokeColor = UIColor(red: 0.12, green: 0.03, blue: 0.02, alpha: 0.58)
-        ringBack.lineWidth = 5.2
+        ringBack.lineWidth = 2.8
         ringBack.lineCap = .round
         node.addChild(ringBack)
 
         let ring = SKShapeNode(path: dashedRingPath)
-        ring.strokeColor = color.withAlphaComponent(0.96)
-        ring.lineWidth = 2.8
+        ring.strokeColor = color.withAlphaComponent(0.94)
+        ring.lineWidth = 1.35
         ring.lineCap = .round
-        ring.glowWidth = 0.9
         node.addChild(ring)
-
-        let cueWidth = max(8, min(13, width * 0.12))
-        let cueHeight = max(6, min(8, width * 0.075))
-        let cueGap = max(5, min(9, width * 0.07))
-        let cueCenterY = height * 0.20
-        let cueCenterOffset = (cueWidth + cueGap) * 0.5
-        let cuePath = CGMutablePath()
-        for centerX in [-cueCenterOffset, cueCenterOffset] {
-            cuePath.move(to: CGPoint(x: centerX - cueWidth * 0.5, y: cueCenterY + cueHeight * 0.5))
-            cuePath.addLine(to: CGPoint(x: centerX, y: cueCenterY - cueHeight * 0.5))
-            cuePath.addLine(to: CGPoint(x: centerX + cueWidth * 0.5, y: cueCenterY + cueHeight * 0.5))
-        }
-
-        let cueBack = SKShapeNode(path: cuePath)
-        cueBack.strokeColor = UIColor(red: 0.16, green: 0.05, blue: 0.01, alpha: 0.82)
-        cueBack.lineWidth = 5.2
-        cueBack.lineCap = .round
-        cueBack.lineJoin = .round
-        node.addChild(cueBack)
-
-        let cue = SKShapeNode(path: cuePath)
-        cue.strokeColor = cueColor
-        cue.lineWidth = 2.5
-        cue.lineCap = .round
-        cue.lineJoin = .round
-        cue.glowWidth = 0.8
-        node.addChild(cue)
 
         // Keep the attack caption below the focus health segments when both markers share a target.
         let labelY = attackTargetMarkerLabelY(footprint: footprint, height: height)
@@ -15731,22 +15691,21 @@ final class GameScene: SKScene {
     }
 
     private func showStopMarker(at point: CGPoint, count: Int, persistent: Bool = false) {
-        let color = UIColor(red: 1.0, green: 0.34, blue: 0.22, alpha: 1.0)
+        let color = HUDPalette.warning
         let node = SKNode()
         node.position = point
         node.zPosition = 270
 
-        let ring = SKShapeNode(ellipseOf: CGSize(width: 70, height: 34))
-        ring.fillColor = color.withAlphaComponent(0.14)
+        let ring = SKShapeNode(ellipseOf: CGSize(width: 58, height: 28))
+        ring.fillColor = .clear
         ring.strokeColor = color
-        ring.lineWidth = 3.5
-        ring.glowWidth = 2
+        ring.lineWidth = 1.35
         node.addChild(ring)
 
         let stopBack = SKShapeNode(rectOf: CGSize(width: 22, height: 16), cornerRadius: 2)
-        stopBack.fillColor = color.withAlphaComponent(0.92)
-        stopBack.strokeColor = UIColor.white.withAlphaComponent(0.95)
-        stopBack.lineWidth = 1.5
+        stopBack.fillColor = HUDPalette.panelDeep
+        stopBack.strokeColor = color
+        stopBack.lineWidth = 1
         node.addChild(stopBack)
 
         let stopBars = CGMutablePath()
@@ -15755,12 +15714,12 @@ final class GameScene: SKScene {
         stopBars.move(to: CGPoint(x: 4, y: -5))
         stopBars.addLine(to: CGPoint(x: 4, y: 5))
         let bars = SKShapeNode(path: stopBars)
-        bars.strokeColor = .white
-        bars.lineWidth = 3
+        bars.strokeColor = color
+        bars.lineWidth = 1.8
         bars.lineCap = .square
         node.addChild(bars)
 
-        node.addChild(commandMarkerLabel(text: "STOP \(count)", color: color, y: 28))
+        node.addChild(commandMarkerLabel(text: "STOP \(count)", color: color, y: 24))
         presentCommandMarker(node, persistent: persistent, exitScale: 1.18)
     }
 
@@ -15771,16 +15730,15 @@ final class GameScene: SKScene {
         code: String,
         persistent: Bool = false
     ) {
-        let color = UIColor(red: 0.34, green: 0.92, blue: 1.0, alpha: 1.0)
+        let color = HUDPalette.cyan
         let node = SKNode()
         node.position = point
         node.zPosition = 268
 
         let ring = SKShapeNode(ellipseOf: CGSize(width: 62, height: 31))
-        ring.fillColor = color.withAlphaComponent(0.10)
+        ring.fillColor = .clear
         ring.strokeColor = color
-        ring.lineWidth = 3
-        ring.glowWidth = 1.5
+        ring.lineWidth = 1.35
         node.addChild(ring)
 
         let pointerPath = CGMutablePath()
@@ -15792,7 +15750,7 @@ final class GameScene: SKScene {
         pointerPath.addLine(to: CGPoint(x: 0, y: 8))
         let pointer = SKShapeNode(path: pointerPath)
         pointer.strokeColor = color
-        pointer.lineWidth = 2.5
+        pointer.lineWidth = 1.5
         pointer.lineCap = .round
         node.addChild(pointer)
         node.addChild(commandMarkerLabel(text: "SEL \(index)/\(total) \(code)", color: color, y: 29))
@@ -15800,12 +15758,19 @@ final class GameScene: SKScene {
     }
 
     private func commandMarkerLabel(text: String, color: UIColor, y: CGFloat) -> SKLabelNode {
-        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        let label = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
         label.text = text
-        label.fontSize = 11
+        label.fontSize = 9.5
         label.fontColor = color
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
+        // Measure in label-local space so the complete plate participates in marker framing.
+        let plate = SKShapeNode(rect: label.frame.insetBy(dx: -5, dy: -3), cornerRadius: 3)
+        plate.fillColor = HUDPalette.panelDeep.withAlphaComponent(0.90)
+        plate.strokeColor = color.withAlphaComponent(0.48)
+        plate.lineWidth = 0.5
+        plate.zPosition = -1
+        label.addChild(plate)
         label.position = CGPoint(x: 0, y: y)
         return label
     }
