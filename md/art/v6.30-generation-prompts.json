@@ -8,7 +8,7 @@
       "source": "/Users/a114514/.codex/generated_images/01a1d834-9c87-7d00-8a12-12430c779e05/exec-16dc6a9c-606f-4ba1-bbe7-6b52a67172dd.png",
       "savedFile": "/Users/a114514/.codex/generated_images/1/v6.30-mobile-aa-eight.png",
       "projectFile": "DesertFrontline/Art/Directions/mobile-aa-eight.png",
-      "status": "integrated; exact-SHA cloud verification pending",
+      "status": "integrated; verified against exact SHA 47228f257b2661a9da11618baaf62bfc01ad44d8, run 43568730502 attempt 1; all 24 official native PNGs visually reviewed",
       "references": [
         "DesertFrontline/Art/Directions/mobile-aa-eight.png (v6.18 identity)",
         "DesertFrontline/Art/Directions/tank-eight.png (direction layout and material)"
@@ -32,7 +32,7 @@
       "source": "/Users/a114514/.codex/generated_images/01a1d834-9c87-7d00-8a12-12430c779e05/exec-91881938-662d-4d07-9524-0ebceeecd817.png",
       "savedFile": "/Users/a114514/.codex/generated_images/1/v6.30-mobile-aa.png",
       "projectFile": "DesertFrontline/Art/Units/mobile-aa.png",
-      "status": "integrated; exact-SHA cloud verification pending",
+      "status": "integrated; verified against exact SHA 47228f257b2661a9da11618baaf62bfc01ad44d8, run 43568730502 attempt 1; all 24 official native PNGs visually reviewed",
       "references": [
         "v6.30-mobile-aa-eight.png (identity and finish)"
       ],

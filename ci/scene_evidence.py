@@ -173,6 +173,10 @@ def latest_ready(records, definition):
                    or any(case.get(key) is not True for key in ("positive", "negative", "geometry"))
                    for index, case in enumerate(cases))):
         raise ValueError("Scene ready tank direction artwork missing, mirrored incorrectly or not restored")
+    contact = artwork.get("groundContact") if isinstance(artwork, dict) else None
+    if (not isinstance(contact, list) or len(contact) != 2 or contact[0] != "soft-contact-v1"
+            or type(contact[1]) is not int or contact[1] != 4095):
+        raise ValueError("Scene ground contact shadows incomplete, mirrored incorrectly or not restored")
     naval = artwork.get("navalDirections")
     naval_kinds = {"battleship", "carrier", "submarine"}
     masks = naval.get("masks") if isinstance(naval, dict) else None

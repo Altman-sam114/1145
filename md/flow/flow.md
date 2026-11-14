@@ -401,3 +401,12 @@ updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog til
 防空车八向与匹配单幅使用[当前原创资源](../art/v6.30-air-defense-art.md)，原96世界格/锚点/1536px图集缓存和SE生产预览来源不变。`configureAirDefenseThreatNodes`预建两层紧凑珊瑚细线箭头、小圆点和无glow/无填充射程圈；`configureIncomingThreatMarkerNode`预建同语义双方向细线与深色`IN n`字底。既有known/operational/selected筛选、最近威胁旋转、父镜像、伤害与清理仍由原实体链路处理，不增加检测或战斗状态。
 
 截图180秒共享预算内，I/O每次准入保留25秒给完整15秒Vision和PNG/回执收尾；首次I/O仍最多45秒、总共最多两次，同一设备/PID/nonce/ready不变。命令也在全局工作deadline中保留这25秒。I/O后若任一本地/全局剩余不足17秒，保留候选和失败回执并停止，不发起缩短为1秒的OCR。metadata独立要求完整15秒检测额度；不增加总体预算、不改用离屏图或跳过通知门槛。
+
+
+### 陆军接触影与克制的武器闪光
+
+`directionArtworkTextures`只为坦克/侦察/火炮/防空/维修的40个图集格读取已解码≤384px像素，缓存alpha≥48主体下部30%的归一化接触边界，不修改原PNG或运行态坐标。`groundContactFrame`保持原兵模大小与(0.5,0.25)锚点，将边界换算为4…10世界单位高的接触影；所有实体共用一份64px径向透明黑纹理。`configureEntityNode`为有真实图集的陆军隐藏旧硬影、预建一个`ground-contact`子节点，`updateDirectionalArtworkFacing`只更新其尺寸/位置/父镜像补偿，正常转向/选择/AI与CI同源。实体死亡/重开沿父节点清理；缓存没有第二套玩法状态。
+
+`auditGroundContactShadows`在同一个原生场景中检查五类×八向×正负父镜像共80次真实渲染姿态、节点/纹理复用、旧影隐藏与坐标/几何恢复；缺种类时明确使用detached renderer而不加入对局。`artwork.groundContact`紧凑数组为`[soft-contact-v1,4095]`：0…9位按坦克/侦察/火炮/防空/维修的正负镜像各自覆盖全部八向，10位为实际共享纹理透明角与暗心，11位为精确恢复与当前实体姿态。Python只复核格式与位掩码，不重新实现Swift几何。
+
+AA实际发射使用短细雷达椭圆/扫线与暖色短尾焰；火炮/海军炮口缩为窄闪和淡烟；声呐命中保留双细圈、小水泡、水柱及深色`ASW HIT`字牌。原两弹、发射错时、可见性、命中入口和移除时限保持，未增加伤害/检测回调。此处不改变地图/建筑的跨层遮挡，也不声称完成真实触控/对局或长期性能验证。

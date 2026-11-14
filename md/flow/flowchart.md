@@ -563,3 +563,20 @@ flowchart TD
   Status -- 首图已知通知且允许重读 --> Admit
   Status -- 错误或第二次通知 --> Fail
 ```
+
+
+## 陆军接触影的复用
+
+读图说明：接触边界由实际图集解码一次，实体只保留一个阴影节点；转向更新同一个节点，既不移动兵模也不改变玩法坐标。云端验证检查真实节点/像素与恢复，最终贴地感仍须看同SHA正式图。
+
+```mermaid
+flowchart LR
+  Atlas["40格真实alpha / 每格≤384px"] --> Bounds["下部30%接触边界缓存"]
+  Shared["共享64px径向柔影纹理"] --> Shadow["每个陆军预建一个ground-contact"]
+  Bounds --> Shadow
+  Facing["原八向入口 / 父镜像"] --> Pose["同一阴影的位置与尺寸更新"]
+  Shadow --> Pose
+  Pose --> Lifecycle["同实体fog / 死亡 / SKRM清理"]
+  Pose --> Audit["云端80姿态 / 像素 / 复用 / 恢复"]
+  Audit --> PNG["同SHA原生PNG逐张目视"]
+```

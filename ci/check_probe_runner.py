@@ -92,6 +92,7 @@ def scene_fixture(runner, definition, probe_id, nonce=None, extra_ready=None, se
                              enemyVisibility=True)),
          renderConfiguration=dict(automaticCulling=False, ignoresSiblingOrder=False, viewClass="GameRenderView"),
          artwork=dict(scenery=dict(policy="scenery-v1", textures=7, counts=[1] * 7, mask=127),
+                      groundContact=["soft-contact-v1", 4095],
                       tankDirections=dict(policy="tank-eight-v1", file="Art/Directions/tank-eight.png",
                      textureCount=8, stateRestored=True, posesValid=True,
                      cases=[dict(heading=index, positive=True, negative=True, geometry=True) for index in range(8)]),
@@ -1924,6 +1925,32 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "extra-key": scenery["fallback"] = True
                 with self.assertRaisesRegex(ValueError, "scenery"):
                     latest_ready(records, self.definition)
+
+    def test_ground_contact_rejects_missing_mirror_pixel_restore_bits_and_invalid_types(self):
+        for defect in ("missing", "type", "short", "extra", "policy", "bool", "float", "negative", *range(12), "overflow"):
+            with self.subTest(defect=defect):
+                records = self.records(self.scene()["scene"])
+                art = records[-1]["artwork"]
+                if defect == "missing": art.pop("groundContact")
+                elif defect == "type": art["groundContact"] = {}
+                elif defect == "short": art["groundContact"].pop()
+                elif defect == "extra": art["groundContact"].append(True)
+                elif defect == "policy": art["groundContact"][0] = "hard-ellipse"
+                elif defect == "bool": art["groundContact"][1] = True
+                elif defect == "float": art["groundContact"][1] = 4095.0
+                elif defect == "negative": art["groundContact"][1] = -1
+                elif type(defect) is int: art["groundContact"][1] &= ~(1 << defect)
+                else: art["groundContact"][1] = 8191
+                with self.assertRaisesRegex(ValueError, "ground contact"):
+                    latest_ready(records, self.definition)
+        self.runner.work()
+        self.runner.summary.update(status="success", integrityOutcome="success")
+        self.assertEqual(self.package(self.runner)["probeIntegrityOutcome"], "success")
+        scene = self.runner.summary["probes"][0]["scene"]
+        records = self.records(scene)
+        records[-1]["artwork"].pop("groundContact")
+        self.rewrite(scene, records)
+        self.assertEqual(self.package(self.runner)["probeIntegrityOutcome"], "failure")
 
     def test_continuous_terrain_rejects_missing_wrong_material_and_incomplete_coverage(self):
         for defect in ("missing", "type", "short", "long", "policy", "bool", "float", "empty", "oversize",

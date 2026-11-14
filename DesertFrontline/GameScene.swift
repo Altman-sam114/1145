@@ -1148,6 +1148,7 @@ private final class GameEntity {
     var rallyPoint: CGPoint?
     let node = SKNode()
     var artworkNode: SKSpriteNode?
+    var groundContactShadow: SKSpriteNode?
     // Last rendered view only; movement, targeting and combat keep their existing state.
     var artworkHeading = 7
     let selectionNode: SKShapeNode
@@ -1279,6 +1280,9 @@ final class GameScene: SKScene {
     private var tankDirectionTextures: [SKTexture] = []
     private let directionalGroundKinds: [EntityKind] = [.humvee, .artillery, .aaTruck, .mechanic]
     private var groundDirectionTextures: [EntityKind: [SKTexture]] = [:]
+    private var groundContactBounds: [String: [CGRect]] = [:]
+    private var groundContactTexture: SKTexture?
+    private var ciGroundContactMask = 0
     private var ciGroundDirectionSamples: [String: [Int]] = [:]
     private var ciGroundDirectionRestored = false
     private let directionalNavalKinds: [EntityKind] = [.battleship, .carrier, .submarine]
@@ -1539,6 +1543,7 @@ final class GameScene: SKScene {
             auditAirDirectionArtwork()
             auditNavalDirectionArtwork()
             auditGroundDirectionArtwork()
+            auditGroundContactShadows()
             auditTacticalOverlayRendering()
         }
         if isCICaptureMode { ciFixtureCamera = cameraRig.position }
@@ -1938,7 +1943,7 @@ final class GameScene: SKScene {
                 ciTankDirectionRestored && ciTankDirectionCases.count == 8 && tankArtworkPosesValid() &&
                 ciAirDirectionRestored && airArtworkPosesValid() &&
                 ciNavalDirectionRestored && navalArtworkPosesValid() &&
-                ciGroundDirectionRestored && groundArtworkPosesValid() &&
+                ciGroundDirectionRestored && groundArtworkPosesValid() && ciGroundContactMask == 4095 && groundContactPosesValid() &&
                 ciOverlayChecks.count == 4 && ciOverlayChecks.values.allSatisfy({ $0 }),
             "hud": hudNode.parent === self && !hudNode.isHidden && hudNode.alpha > 0 && panelNames.count == 7 &&
                 hudPageShapes.count == 5 && Set(hudButtonShapes.keys) == Set(hudPage.actions) && controlsHaveText &&
@@ -1960,6 +1965,7 @@ final class GameScene: SKScene {
                                                     "airDirections": airArtworkEvidence(),
                                                     "navalDirections": navalArtworkEvidence(),
                                                     "groundDirections": groundArtworkEvidence(),
+                                                    "groundContact": ["soft-contact-v1", ciGroundContactMask],
                                                     "terrainSurface": terrainSurfaceEvidence(),
                                                     "fogSurface": fogSurfaceChecks,
                                                     "fogGeometry": ciFogFeatherDiagnostic(),
@@ -2008,6 +2014,7 @@ final class GameScene: SKScene {
                         "airDirections": airArtworkEvidence(),
                         "navalDirections": navalArtworkEvidence(),
                         "groundDirections": groundArtworkEvidence(),
+                        "groundContact": ["soft-contact-v1", ciGroundContactMask],
                         "effectTextures": Self.effectArtworkNames.compactMap { name -> [String: Any]? in
                             guard let texture = effectArtworkTextures[name] else { return nil }
                             return ["file": "Art/Effects/\(name).png", "width": texture.size().width, "height": texture.size().height]
@@ -3467,6 +3474,14 @@ final class GameScene: SKScene {
                 kCGImageSourceShouldCacheImmediately: true
               ] as CFDictionary) else { return nil }
         // Equal cells preserve physical scale across narrow front/rear and wide side views.
+        if name == "tank-eight" || directionalGroundKinds.contains(where: { "\($0.artworkName ?? "")-eight" == name }) {
+            let bounds = (0..<8).compactMap { index -> CGRect? in
+                let frame = CGRect(x: CGFloat(index % 4 * image.width / 4), y: CGFloat(index / 4 * image.height / 2),
+                                   width: CGFloat(image.width / 4), height: CGFloat(image.height / 2))
+                return image.cropping(to: frame).flatMap { groundContactBounds(in: $0) }
+            }
+            if bounds.count == 8 { groundContactBounds[name] = bounds }
+        }
         let atlas = SKTexture(cgImage: image)
         atlas.filteringMode = .linear
         return (0..<8).map { index in
@@ -3512,6 +3527,141 @@ final class GameScene: SKScene {
         if sprite.texture !== texture { sprite.texture = texture }
         let mirror: CGFloat = entity.node.xScale < 0 ? -1 : 1
         if sprite.xScale != mirror { sprite.xScale = mirror }
+        updateGroundContactShadow(for: entity)
+    }
+
+    // Read the lower opaque body once per decoded atlas cell. Guns, radar and
+    // transparent padding must not determine the tire/track contact width.
+    private func groundContactBounds(in image: CGImage) -> CGRect? {
+        let width = image.width, height = image.height
+        guard width > 0, height > 0, width <= 384, height <= 384,
+              let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue)
+        else { return nil }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
+        guard let data = context.data else { return nil }
+        let pixels = data.assumingMemoryBound(to: UInt8.self)
+        var top = height, bottom = -1
+        for y in 0..<height where (0..<width).contains(where: { pixels[(y * width + $0) * 4 + 3] >= 48 }) {
+            top = min(top, y); bottom = max(bottom, y)
+        }
+        guard bottom >= top else { return nil }
+        let bandTop = bottom - max(1, Int(CGFloat(bottom - top + 1) * 0.30))
+        var left = width, right = -1
+        for y in max(top, bandTop)...bottom {
+            for x in 0..<width where pixels[(y * width + x) * 4 + 3] >= 48 {
+                left = min(left, x); right = max(right, x)
+            }
+        }
+        guard right >= left else { return nil }
+        return CGRect(x: CGFloat(left) / CGFloat(width), y: 1 - CGFloat(bottom + 1) / CGFloat(height),
+                      width: CGFloat(right - left + 1) / CGFloat(width),
+                      height: CGFloat(bottom - max(top, bandTop) + 1) / CGFloat(height))
+    }
+
+    private func softGroundContactTexture() -> SKTexture {
+        if let texture = groundContactTexture { return texture }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64), format: format).image { renderer in
+            let colors = [UIColor(white: 0, alpha: 0.38).cgColor, UIColor(white: 0, alpha: 0.22).cgColor,
+                          UIColor(white: 0, alpha: 0).cgColor] as CFArray
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.38, 1]) {
+                renderer.cgContext.drawRadialGradient(gradient, startCenter: CGPoint(x: 32, y: 32), startRadius: 0,
+                    endCenter: CGPoint(x: 32, y: 32), endRadius: 31, options: [])
+            }
+        }
+        let texture = SKTexture(image: image)
+        texture.filteringMode = .linear
+        groundContactTexture = texture
+        return texture
+    }
+
+    private func groundContactFrame(for entity: GameEntity) -> CGRect? {
+        guard !entity.kind.isStructure, entity.kind.domain == .land, let sprite = entity.artworkNode,
+              let name = entity.kind.artworkName, let bounds = groundContactBounds["\(name)-eight"],
+              bounds.indices.contains(entity.artworkHeading) else { return nil }
+        let normalized = bounds[entity.artworkHeading]
+        let contact = CGRect(x: (normalized.minX - sprite.anchorPoint.x) * sprite.size.width,
+                             y: (normalized.minY - sprite.anchorPoint.y) * sprite.size.height,
+                             width: normalized.width * sprite.size.width, height: normalized.height * sprite.size.height)
+        let height = min(10, max(4, contact.height * 0.7))
+        let width = max(4, contact.width * 1.02)
+        return CGRect(x: contact.midX - width / 2, y: contact.minY - height * 0.25, width: width, height: height)
+    }
+
+    private func updateGroundContactShadow(for entity: GameEntity) {
+        guard let shadow = entity.groundContactShadow, let frame = groundContactFrame(for: entity) else { return }
+        let mirror: CGFloat = entity.node.xScale < 0 ? -1 : 1
+        shadow.position = CGPoint(x: frame.midX * mirror, y: frame.midY)
+        shadow.size = frame.size
+        shadow.xScale = mirror
+    }
+
+    private func groundContactPoseValid(_ unit: GameEntity) -> Bool {
+        guard let body = unit.artworkNode, let shadow = unit.groundContactShadow,
+              let frame = groundContactFrame(for: unit), let texture = groundContactTexture else { return false }
+        let mirror: CGFloat = unit.node.xScale < 0 ? -1 : 1
+        return shadow.parent === body.parent && shadow.texture === texture && !shadow.isHidden && shadow.alpha == 1 &&
+            shadow.size == frame.size && shadow.position == CGPoint(x: frame.midX * mirror, y: frame.midY) &&
+            shadow.xScale * unit.node.xScale == 1 && shadow.yScale == 1 && shadow.zRotation == 0 && shadow.zPosition == -2 &&
+            frame.minX.isFinite && frame.minY.isFinite && frame.width > 0 && frame.width <= body.size.width * 1.02 &&
+            frame.height >= 4 && frame.height <= 10 && shadow.parent?.children.filter({ $0.name == "ground-contact" }).count == 1 &&
+            body.parent?.childNode(withName: "base-shadow")?.isHidden == true
+    }
+
+    private func groundContactPosesValid() -> Bool {
+        entities.values.filter { $0.isAlive && $0.kind.domain == .land && !$0.kind.isStructure }.allSatisfy(groundContactPoseValid)
+    }
+
+    private func auditGroundContactShadows() {
+        ciGroundContactMask = 0
+        let kinds: [EntityKind] = [.tank] + directionalGroundKinds
+        var restored = true
+        for (kindIndex, kind) in kinds.enumerated() {
+            let live = entities.values.sorted { $0.id < $1.id }.first { $0.isAlive && $0.kind == kind }
+            let unit = live ?? GameEntity(id: -1, kind: kind, faction: .player, position: .zero)
+            if live == nil { configureEntityNode(unit) }
+            let textures = kind == .tank ? tankDirectionTextures : (groundDirectionTextures[kind] ?? [])
+            guard let body = unit.artworkNode, let shadow = unit.groundContactShadow, textures.count == 8 else { return }
+            updateGroundContactShadow(for: unit)
+            let saved = (unit.artworkHeading, unit.node.xScale, body.texture, body.xScale,
+                         shadow.position, shadow.size, shadow.xScale, unit.node.position)
+            let nodeCount = shadow.parent?.children.count
+            for (signIndex, sign) in [CGFloat(1), CGFloat(-1)].enumerated() {
+                var valid = true
+                for index in 0..<8 {
+                    unit.node.xScale = sign
+                    let direction = CGPoint(x: cos(CGFloat(index) * .pi / 4), y: sin(CGFloat(index) * .pi / 4))
+                    updateDirectionalArtworkFacing(unit, direction: direction, textures: textures)
+                    valid = valid && unit.artworkHeading == index && groundContactPoseValid(unit) &&
+                        shadow === unit.groundContactShadow && shadow.parent?.children.count == nodeCount &&
+                        body.position == .zero && body.anchorPoint == CGPoint(x: 0.5, y: 0.25) && unit.node.position == saved.7
+                }
+                if valid { ciGroundContactMask |= 1 << (kindIndex * 2 + signIndex) }
+            }
+            unit.artworkHeading = saved.0
+            unit.node.xScale = saved.1
+            updateDirectionalArtworkFacing(unit, direction: nil, textures: textures)
+            restored = restored && body.texture === saved.2 && body.xScale == saved.3 && shadow.position == saved.4 &&
+                shadow.size == saved.5 && shadow.xScale == saved.6 && unit.node.position == saved.7 && groundContactPoseValid(unit)
+        }
+        if let image = groundContactTexture?.cgImage(), image.width == 64, image.height == 64 {
+            // The generated texture has transparent corners and a dark nonempty core.
+            // Alpha location is SDK-dependent; normalize before interpreting channels.
+            if let context = CGContext(data: nil, width: 64, height: 64, bitsPerComponent: 8, bytesPerRow: 256,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) {
+                context.draw(image, in: CGRect(x: 0, y: 0, width: 64, height: 64))
+                if let raw = context.data?.assumingMemoryBound(to: UInt8.self),
+                   raw[3] == 0 && raw[63 * 4 + 3] == 0 && raw[63 * 256 + 3] == 0 && raw[64 * 256 - 1] == 0 &&
+                   raw[32 * 256 + 32 * 4 + 3] > 0 && raw[32 * 256 + 32 * 4] == 0 {
+                    ciGroundContactMask |= 1 << 10
+                }
+            }
+        }
+        if restored && groundContactPosesValid() { ciGroundContactMask |= 1 << 11 }
     }
 
     private func updateAirArtworkFacing(_ entity: GameEntity, direction: CGPoint?) {
@@ -3703,6 +3853,7 @@ final class GameScene: SKScene {
             unit.node.xScale = saved.1
             sprite.texture = saved.2
             sprite.xScale = saved.3
+            updateGroundContactShadow(for: unit)
             restored.append(unit.artworkHeading == saved.0 && unit.node.xScale == saved.1 &&
                 sprite.texture === saved.2 && sprite.xScale == saved.3 && sprite.size == geometry.0 &&
                 sprite.anchorPoint == geometry.1 && sprite.position == geometry.2 && unit.node.position == geometry.3 &&
@@ -3828,6 +3979,7 @@ final class GameScene: SKScene {
         tank.node.xScale = saved.1
         sprite.texture = saved.2
         sprite.xScale = saved.3
+        updateGroundContactShadow(for: tank)
         ciTankDirectionRestored = tank.artworkHeading == saved.0 && tank.node.xScale == saved.1 &&
             sprite.texture === saved.2 && sprite.xScale == saved.3 && sprite.size == geometry.0 &&
             sprite.anchorPoint == geometry.1 && sprite.position == geometry.2 && tank.node.position == geometry.3 &&
@@ -4016,6 +4168,7 @@ final class GameScene: SKScene {
         entity.node.addChild(base)
 
         let shadow = SKShapeNode(ellipseOf: CGSize(width: entity.kind.footprint * 1.35, height: entity.kind.footprint * 0.55))
+        shadow.name = "base-shadow"
         shadow.fillColor = UIColor.black.withAlphaComponent(0.28)
         shadow.strokeColor = .clear
         shadow.position = CGPoint(x: 0, y: -6)
@@ -4034,6 +4187,16 @@ final class GameScene: SKScene {
             case .battleship, .submarine, .carrier:
                 addNavalUnitBody(for: entity, to: base)
             }
+        }
+
+        if !entity.kind.isStructure, entity.kind.domain == .land, groundContactFrame(for: entity) != nil {
+            shadow.isHidden = true
+            let contact = SKSpriteNode(texture: softGroundContactTexture())
+            contact.name = "ground-contact"
+            contact.zPosition = -2
+            base.addChild(contact)
+            entity.groundContactShadow = contact
+            updateGroundContactShadow(for: entity)
         }
 
         configureNavalWakeNode(for: entity)
@@ -16272,21 +16435,22 @@ final class GameScene: SKScene {
             : UIColor(red: 0.28, green: 0.92, blue: 1.0, alpha: 1.0)
 
         let radarNode = SKNode()
+        radarNode.name = "combat:aa-launch"
         radarNode.position = start + direction * 5
         radarNode.zPosition = 281
-        let radarRing = SKShapeNode(circleOfRadius: 27)
-        radarRing.fillColor = color.withAlphaComponent(0.05)
-        radarRing.strokeColor = color.withAlphaComponent(0.72)
-        radarRing.lineWidth = 1.5
-        radarRing.glowWidth = 1
+        let radarRing = SKShapeNode(ellipseOf: CGSize(width: 24, height: 10))
+        radarRing.fillColor = .clear
+        radarRing.strokeColor = color.withAlphaComponent(0.52)
+        radarRing.lineWidth = 0.8
+        radarRing.glowWidth = 0
         radarNode.addChild(radarRing)
         let sweepPath = CGMutablePath()
         sweepPath.move(to: .zero)
-        sweepPath.addLine(to: direction * 35)
+        sweepPath.addLine(to: direction * 14)
         let radarSweep = SKShapeNode(path: sweepPath)
-        radarSweep.strokeColor = color.withAlphaComponent(0.84)
-        radarSweep.lineWidth = 2
-        radarSweep.glowWidth = 2
+        radarSweep.strokeColor = color.withAlphaComponent(0.52)
+        radarSweep.lineWidth = 0.8
+        radarSweep.glowWidth = 0
         radarNode.addChild(radarSweep)
         effectsLayer.addChild(radarNode)
 
@@ -16305,20 +16469,20 @@ final class GameScene: SKScene {
             )
 
             let flash = SKNode()
+            flash.name = "combat:aa-flash"
             flash.position = launchPoint
+            flash.zRotation = atan2(direction.y, direction.x)
             flash.zPosition = 285
-            let core = SKShapeNode(circleOfRadius: 4.5)
+            let core = SKShapeNode(ellipseOf: CGSize(width: 5, height: 2.5))
             core.fillColor = UIColor.white
-            core.strokeColor = color
-            core.lineWidth = 1.5
-            core.glowWidth = 3
+            core.strokeColor = HUDPalette.gold.withAlphaComponent(0.8)
+            core.lineWidth = 0.5
+            core.glowWidth = 0.4
             flash.addChild(core)
-            for sparkIndex in 0..<4 {
-                let angle = CGFloat(sparkIndex) * .pi / 2
-                let spark = SKShapeNode(rectOf: CGSize(width: 11, height: 1.8), cornerRadius: 0.8)
-                spark.position = CGPoint(x: cos(angle) * 6, y: sin(angle) * 6)
-                spark.zRotation = angle
-                spark.fillColor = sparkIndex.isMultiple(of: 2) ? UIColor.white : color
+            for sparkIndex in 0..<2 {
+                let spark = SKShapeNode(rectOf: CGSize(width: 5, height: 0.8), cornerRadius: 0.4)
+                spark.position = CGPoint(x: -5 - CGFloat(sparkIndex) * 3, y: sparkIndex == 0 ? -1 : 1)
+                spark.fillColor = HUDPalette.gold.withAlphaComponent(0.72)
                 spark.strokeColor = .clear
                 flash.addChild(spark)
             }
@@ -16866,20 +17030,22 @@ final class GameScene: SKScene {
             shell.zPosition = 285
             effectsLayer.addChild(shell)
 
-            let flash = SKShapeNode(circleOfRadius: 4.5)
+            let flash = SKShapeNode(ellipseOf: CGSize(width: 8, height: 3))
+            flash.name = "combat:naval-flash"
             flash.position = muzzle
+            flash.zRotation = atan2(direction.y, direction.x)
             flash.fillColor = UIColor(red: 1.0, green: 0.84, blue: 0.38, alpha: 0.92)
-            flash.strokeColor = UIColor.white.withAlphaComponent(0.94)
-            flash.lineWidth = 1.5
-            flash.glowWidth = 1.5
+            flash.strokeColor = UIColor.white.withAlphaComponent(0.70)
+            flash.lineWidth = 0.6
+            flash.glowWidth = 0.4
             flash.zPosition = 286
             effectsLayer.addChild(flash)
 
-            let smoke = SKShapeNode(ellipseOf: CGSize(width: 24, height: 13))
+            let smoke = SKShapeNode(ellipseOf: CGSize(width: 18, height: 7))
             smoke.position = muzzle - direction * 8
-            smoke.fillColor = UIColor(white: 0.76, alpha: 0.38)
-            smoke.strokeColor = UIColor(white: 0.92, alpha: 0.22)
-            smoke.lineWidth = 1
+            smoke.fillColor = UIColor(white: 0.76, alpha: 0.22)
+            smoke.strokeColor = .clear
+            smoke.lineWidth = 0
             smoke.zRotation = atan2(direction.y, direction.x)
             smoke.zPosition = 281
             effectsLayer.addChild(smoke)
@@ -17039,27 +17205,28 @@ final class GameScene: SKScene {
         let direction = (end - start).normalized
         let angle = atan2(direction.y, direction.x)
         let root = SKNode()
+        root.name = "combat:artillery-flash"
         root.position = start + direction * 46
         root.zRotation = angle
         root.zPosition = 288
         effectsLayer.addChild(root)
 
         let flashPath = CGMutablePath()
-        flashPath.move(to: CGPoint(x: -5, y: 0))
-        flashPath.addLine(to: CGPoint(x: 18, y: 10))
-        flashPath.addLine(to: CGPoint(x: 28, y: 0))
-        flashPath.addLine(to: CGPoint(x: 18, y: -10))
+        flashPath.move(to: CGPoint(x: -3, y: 0))
+        flashPath.addLine(to: CGPoint(x: 8, y: 3.5))
+        flashPath.addLine(to: CGPoint(x: 17, y: 0))
+        flashPath.addLine(to: CGPoint(x: 8, y: -3.5))
         flashPath.closeSubpath()
         let flash = SKShapeNode(path: flashPath)
         flash.fillColor = faction == .enemy
             ? UIColor(red: 1.0, green: 0.42, blue: 0.18, alpha: 0.92)
             : UIColor(red: 1.0, green: 0.78, blue: 0.22, alpha: 0.96)
-        flash.strokeColor = UIColor.white.withAlphaComponent(0.88)
-        flash.lineWidth = 1.2
-        flash.glowWidth = 5
+        flash.strokeColor = UIColor.white.withAlphaComponent(0.64)
+        flash.lineWidth = 0.6
+        flash.glowWidth = 0.5
         root.addChild(flash)
 
-        let core = SKShapeNode(circleOfRadius: 5)
+        let core = SKShapeNode(ellipseOf: CGSize(width: 5, height: 2.5))
         core.fillColor = UIColor(white: 1.0, alpha: 0.96)
         core.strokeColor = .clear
         core.position = CGPoint(x: 3, y: 0)
@@ -17067,9 +17234,9 @@ final class GameScene: SKScene {
         root.addChild(core)
 
         for index in 0..<3 {
-            let smoke = SKShapeNode(circleOfRadius: CGFloat(5 + index * 2))
-            smoke.position = CGPoint(x: CGFloat(22 + index * 8), y: CGFloat(index - 1) * 5)
-            smoke.fillColor = UIColor(white: CGFloat(0.60 + Double(index) * 0.08), alpha: 0.42)
+            let smoke = SKShapeNode(circleOfRadius: CGFloat(3 + index * 1))
+            smoke.position = CGPoint(x: CGFloat(13 + index * 5), y: CGFloat(index - 1) * 2)
+            smoke.fillColor = UIColor(white: CGFloat(0.60 + Double(index) * 0.08), alpha: 0.24)
             smoke.strokeColor = .clear
             smoke.zPosition = -1
             root.addChild(smoke)
@@ -17771,9 +17938,9 @@ final class GameScene: SKScene {
             : UIColor(red: 0.32, green: 0.92, blue: 1.0, alpha: 1.0)
         let ring = SKShapeNode(ellipseOf: CGSize(width: 62, height: 28))
         ring.position = point
-        ring.fillColor = color.withAlphaComponent(0.10)
-        ring.strokeColor = color.withAlphaComponent(0.95)
-        ring.lineWidth = 2
+        ring.fillColor = .clear
+        ring.strokeColor = color.withAlphaComponent(0.56)
+        ring.lineWidth = 0.85
         ring.zPosition = 278
         effectsLayer.addChild(ring)
         ring.run(.sequence([.group([.scale(to: 2.1, duration: 0.45), .fadeOut(withDuration: 0.45)]), .removeFromParent()]))
@@ -17789,19 +17956,20 @@ final class GameScene: SKScene {
             : UIColor(red: 0.28, green: 0.95, blue: 1.0, alpha: 1.0)
 
         let root = SKNode()
+        root.name = "combat:asw-hit"
         root.position = point
         root.zPosition = 282
 
-        let outerRing = SKShapeNode(ellipseOf: CGSize(width: 70, height: 28))
-        outerRing.fillColor = color.withAlphaComponent(0.06)
-        outerRing.strokeColor = color.withAlphaComponent(0.78)
-        outerRing.lineWidth = 2
+        let outerRing = SKShapeNode(ellipseOf: CGSize(width: 62, height: 24))
+        outerRing.fillColor = .clear
+        outerRing.strokeColor = color.withAlphaComponent(0.62)
+        outerRing.lineWidth = 0.85
         root.addChild(outerRing)
 
-        let innerRing = SKShapeNode(ellipseOf: CGSize(width: 44, height: 17))
-        innerRing.fillColor = UIColor.white.withAlphaComponent(0.08)
-        innerRing.strokeColor = color.withAlphaComponent(0.98)
-        innerRing.lineWidth = 2.8
+        let innerRing = SKShapeNode(ellipseOf: CGSize(width: 36, height: 14))
+        innerRing.fillColor = .clear
+        innerRing.strokeColor = color.withAlphaComponent(0.72)
+        innerRing.lineWidth = 0.75
         innerRing.zPosition = 1
         root.addChild(innerRing)
 
@@ -17836,18 +18004,25 @@ final class GameScene: SKScene {
         ]
         var bubbles: [SKShapeNode] = []
         for (index, offset) in bubbleOffsets.enumerated() {
-            let bubble = SKShapeNode(circleOfRadius: index.isMultiple(of: 2) ? 2.8 : 2.1)
+            let bubble = SKShapeNode(circleOfRadius: index.isMultiple(of: 2) ? 1.4 : 1.1)
             bubble.position = offset
-            bubble.fillColor = index.isMultiple(of: 2) ? color.withAlphaComponent(0.86) : UIColor.white
+            bubble.fillColor = index.isMultiple(of: 2) ? color.withAlphaComponent(0.65) : UIColor.white.withAlphaComponent(0.75)
             bubble.strokeColor = .clear
             bubble.zPosition = 3
             root.addChild(bubble)
             bubbles.append(bubble)
         }
 
-        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        let labelBack = SKShapeNode(rectOf: CGSize(width: 61, height: 15), cornerRadius: 3)
+        labelBack.fillColor = HUDPalette.panelDeep.withAlphaComponent(0.95)
+        labelBack.strokeColor = color.withAlphaComponent(0.48)
+        labelBack.lineWidth = 0.5
+        labelBack.position = CGPoint(x: 0, y: 37)
+        labelBack.zPosition = 3.5
+        root.addChild(labelBack)
+        let label = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
         label.text = "ASW HIT"
-        label.fontSize = 10
+        label.fontSize = 9
         label.fontColor = color
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
