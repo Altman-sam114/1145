@@ -2484,7 +2484,8 @@ class SceneEvidenceTests(unittest.TestCase):
     def screenshot_context(self):
         self.runner.current_definition = self.definition
         self.runner.summary["selectedDevice"] = self.runner.device
-        record = self.scene()
+        record = self.runner.summary["probes"][0]
+        record.update(self.scene())
         return record, self.directory / self.definition["png"]
 
     def test_screenshot_timeout_retries_once_same_scene_and_isolates_late_output(self):
@@ -2541,6 +2542,60 @@ class SceneEvidenceTests(unittest.TestCase):
                     self.assertTrue((self.directory / attempts[0]["candidate"]).is_file())
                     self.assertEqual(record["screenCapture"]["elapsedSeconds"], 6)
 
+    def test_slow_screenshot_retry_leaves_full_ocr_in_both_deadlines(self):
+        # Synthetic timing/CLI receipts only; this does not execute Vision or simctl.
+        for shared_deadline in (1440, 170):
+            with self.subTest(shared_deadline=shared_deadline):
+                clock, caps, inspection_caps = [0.0], [], []
+                with patch("simulator_probe.time.monotonic", side_effect=lambda: clock[0]):
+                    self.runner = FakeRunner(self.directory)
+                    self.runner.deadline = shared_deadline
+                    record, path = self.screenshot_context()
+                    original_io = self.runner.simctl
+                    original_inspection = self.runner.inspect_capture
+                    def slow_io(name, *args, **kwargs):
+                        caps.append(kwargs["cap"])
+                        if len(caps) == 1:
+                            kwargs["receipt"].update(unit_cli_receipt(124, kwargs["cap"], timeout=True))
+                            (self.directory / kwargs["log"]).write_text("synthetic timeout and cleanup\n")
+                            clock[0] += 52
+                            raise ProbeFailure("synthetic screenshot timeout", 124)
+                        original_io(name, *args, **kwargs)
+                        clock[0] += kwargs["cap"] - 0.5 + 2  # CLI, then receipt/PNG overhead.
+                    def slow_inspection(*args, **kwargs):
+                        inspection_caps.append(args[3])
+                        clock[0] += 14
+                        return original_inspection(*args, **kwargs)
+                    self.runner.simctl = slow_io
+                    self.runner.inspect_capture = slow_inspection
+                    self.runner.capture_scene_screenshot(self.definition, record, path)
+                    record["rawImage"] = png_info(path)
+                    validate_screenshot_capture(self.runner.summary, record, self.directory)
+                    self.assertEqual(len(caps), 2)
+                    self.assertEqual(inspection_caps, [15])
+                    self.assertLessEqual(caps[1], min(180, shared_deadline) - 52 - 25)
+                    self.assertLess(clock[0], min(180, shared_deadline))
+                    self.assertEqual(self.runner.deadline, shared_deadline)
+
+    def test_exhausted_inspection_reserve_stops_before_helper_without_retry(self):
+        clock = [0.0]
+        with patch("simulator_probe.time.monotonic", side_effect=lambda: clock[0]):
+            self.runner = FakeRunner(self.directory)
+            record, path = self.screenshot_context()
+            self.runner.inspect_capture = Mock(side_effect=AssertionError("short OCR must not run"))
+            def slow_png(candidate):
+                image = png_info(candidate)
+                clock[0] = 168
+                return image
+            with patch("simulator_probe.png_info", side_effect=slow_png):
+                with self.assertRaisesRegex(ProbeFailure, "inspection reserve exhausted"):
+                    self.runner.capture_scene_screenshot(self.definition, record, path)
+            self.runner.inspect_capture.assert_not_called()
+            self.assertEqual(len(record["screenCapture"]["attempts"]), 1)
+            self.assertEqual(record["screenCapture"]["attempts"][0]["retryDecision"], "stop")
+            self.assertFalse(path.exists())
+            self.assertTrue((self.directory / record["screenCapture"]["attempts"][0]["candidate"]).is_file())
+
     def test_ocr_failure_or_insufficient_budget_never_authorizes_another_capture(self):
         for defect in ("ocr-timeout", "ocr-error", "insufficient-budget"):
             with self.subTest(defect=defect):
@@ -2596,6 +2651,7 @@ class SceneEvidenceTests(unittest.TestCase):
                        "analysis-cap", "analysis-bool", "analysis-big", "analysis-aspect", "analysis-float"):
             with self.subTest(defect=defect):
                 altered = json.loads(json.dumps(report))
+                expected_image = record["rawImage"]
                 if defect == "policy": altered["policy"] = "no-inspection"
                 elif defect == "image": altered["image"]["sha256"] = "0" * 64
                 elif defect == "rotation": altered["rotationDegrees"] = 270
@@ -2612,9 +2668,14 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "analysis-cap": altered["analysis"]["maxPixelSize"] = 4096
                 elif defect == "analysis-bool": altered["analysis"]["width"] = True
                 elif defect == "analysis-big": altered["analysis"]["width"] = 1281
-                elif defect == "analysis-aspect": altered["analysis"]["height"] = 1
+                elif defect == "analysis-aspect":
+                    # The usual schema PNG is only 2x1; height=1 was not a mutation.
+                    # Keep dimensions bounded and the long edge correct, isolating aspect.
+                    expected_image = dict(record["rawImage"], width=2000, height=1000)
+                    altered["image"] = expected_image
+                    altered["analysis"].update(width=1280, height=600)
                 elif defect == "analysis-float": altered["analysis"]["width"] = float(altered["analysis"]["width"])
-                with self.assertRaises(ValueError): validate_visibility(altered, record["rawImage"])
+                with self.assertRaises(ValueError): validate_visibility(altered, expected_image)
         self.runner.work()
         self.runner.summary.update(status="success", integrityOutcome="success")
         self.assertEqual(self.package(self.runner)["probeIntegrityOutcome"], "success")
@@ -2650,7 +2711,7 @@ class SceneEvidenceTests(unittest.TestCase):
         self.runner.capture_scene_screenshot(self.definition, record, path)
         record["rawImage"] = png_info(path)
         validate_screenshot_capture(self.runner.summary, record, self.directory)
-        for defect in ("policy", "pid", "nonce", "device", "sequence", "budget", "elapsed", "cap", "cleanup", "image", "output", "argv", "candidate", "bool-index"):
+        for defect in ("policy", "pid", "nonce", "device", "sequence", "budget", "elapsed", "cap", "cleanup", "image", "output", "argv", "candidate", "bool-index", "short-ocr"):
             with self.subTest(defect=defect):
                 altered = json.loads(json.dumps(record));e = altered["screenCapture"];a = e["attempts"][0]
                 if defect == "policy": e["policy"] = "unbounded-retry"
@@ -2667,6 +2728,7 @@ class SceneEvidenceTests(unittest.TestCase):
                 elif defect == "argv": a["argv"][1] = "different-device"
                 elif defect == "candidate": a["candidate"] = "stale.png"
                 elif defect == "bool-index": a["attempt"] = True
+                elif defect == "short-ocr": a["visibility"]["process"]["limitSeconds"] = 1
                 with self.assertRaises((ProbeFailure, ValueError)):
                     validate_screenshot_capture(self.runner.summary, altered, self.directory)
 

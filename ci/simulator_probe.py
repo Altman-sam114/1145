@@ -39,6 +39,9 @@ BOOT_OUTPUT_LIMIT = 1024 * 1024
 SCREENSHOT_POLICY = "same-scene-visible-screenshot-180-once-v2"
 SCREENSHOT_BUDGET = 180
 SCREENSHOT_FIRST_CAP = 45
+SCREENSHOT_INSPECTION_CAP = 15
+# Inside the existing 180s: full OCR plus PNG/receipt/trace bookkeeping.
+SCREENSHOT_FINISH_RESERVE = 25
 
 
 class ProbeFailure(Exception):
@@ -137,7 +140,8 @@ def validate_screenshot_capture(summary, record, directory):
         if (type(attempt.get("attempt")) is not int or attempt["attempt"] != index or attempt.get("candidate") != expected
                 or len(argv) != 4 or argv[:3] != ["io", evidence["deviceUDID"], "screenshot"]
                 or Path(argv[-1]).name != expected or not Path(argv[-1]).is_absolute()
-                or type(cap) not in (int, float) or not 0 < cap <= (SCREENSHOT_FIRST_CAP if index == 1 else SCREENSHOT_BUDGET)
+                or type(cap) not in (int, float) or not 0 < cap <= (
+                    SCREENSHOT_FIRST_CAP if index == 1 else SCREENSHOT_BUDGET - SCREENSHOT_FINISH_RESERVE)
                 or process.get("limitSeconds", 0) > cap or not cli_receipt_complete(process)
                 or process.get("elapsedSeconds", 0) > evidence["elapsedSeconds"] + 0.01
                 or process.get("exitCode") != attempt.get("exitCode")):
@@ -160,7 +164,7 @@ def validate_screenshot_capture(summary, record, directory):
             actual, _ = file_evidence(directory, log.get("path"))
             if (descriptor.get("path") != prefix + ".json" or log.get("path") != prefix + ".log" or actual != log
                     or not cli_receipt_complete(receipt) or receipt.get("trigger") != "exit" or receipt.get("exitCode") != 0
-                    or not 0 < receipt.get("limitSeconds", 0) <= 15
+                    or receipt.get("limitSeconds") != SCREENSHOT_INSPECTION_CAP
                     or read_visibility(directory, descriptor, attempt.get("image")) != ("clear" if last else "obstructed")):
                 raise SceneFailure("Screenshot visibility inspection incomplete or obstructed")
         if not last:
@@ -1310,13 +1314,14 @@ class Runner:
         record["screenCapture"] = evidence
         try:
             for index in (1, 2):
-                self.remaining(2)
+                self.remaining(SCREENSHOT_FINISH_RESERVE)
                 # A retry is another screen read of this exact live scene, never a
                 # relaunch, reboot, alternate renderer or substitute image.
                 if not alive(record["pid"]) or latest_ready(trace_records(self.summary, scene, self.directory), definition) != scene["ready"]:
                     raise SceneFailure("Screenshot scene changed or app exited before capture")
                 cap = min(SCREENSHOT_FIRST_CAP if index == 1 else SCREENSHOT_BUDGET,
-                          local_deadline - time.monotonic() - 2)
+                          local_deadline - time.monotonic() - SCREENSHOT_FINISH_RESERVE,
+                          self.remaining(SCREENSHOT_FINISH_RESERVE) - SCREENSHOT_FINISH_RESERVE)
                 if cap <= 0:
                     raise ProbeFailure("Screenshot shared 180s budget exhausted", 124)
                 candidate = self.directory / f"capture-{scene['nonce']}-{index}.png"
@@ -1329,15 +1334,16 @@ class Runner:
                 evidence["attempts"].append(attempt)
                 try:
                     name = f"probe:{definition['id']}:screenshot" + (":retry" if index == 2 else "")
-                    self.simctl(name, *args, cap=cap, receipt=attempt["process"], log=log, raw_log=True)
+                    self.simctl(name, *args, cap=cap, reserve=SCREENSHOT_FINISH_RESERVE,
+                                receipt=attempt["process"], log=log, raw_log=True)
                     if (not cli_receipt_complete(attempt["process"]) or attempt["process"].get("trigger") != "exit"
                             or attempt["process"].get("exitCode") != 0):
                         raise SceneFailure("Screenshot CLI cleanup/completion unconfirmed")
                     attempt["image"] = png_info(candidate)
                     prefix = f"capture-{scene['nonce']}-{index}-visibility"
-                    visibility_cap = min(15, local_deadline - time.monotonic() - 2)
-                    if visibility_cap <= 0:
-                        raise ProbeFailure("Screenshot inspection budget exhausted", 124)
+                    visibility_cap = SCREENSHOT_INSPECTION_CAP
+                    if min(local_deadline - time.monotonic(), self.remaining()) <= visibility_cap + 2:
+                        raise ProbeFailure("Screenshot inspection reserve exhausted", 124)
                     attempt["visibility"] = {}
                     _, status = self.inspect_capture(name + ":visibility", candidate, prefix,
                                                      visibility_cap, descriptor=attempt["visibility"])

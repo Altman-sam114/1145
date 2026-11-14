@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.26",
+  "version": "v6.30",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.26-coast-aircraft.md",
+  "promptDocument": "md/art/v6.30-air-defense-art.md",
   "assets": [
     {
       "kind": "humvee",
@@ -49,9 +49,9 @@
     {
       "kind": "aaTruck",
       "file": "Units/mobile-aa.png",
-      "sourceFile": "call_92e75141d50746bca6094692226fb50b.png",
-      "bytes": 1631165,
-      "sha256": "3be565d6e70580b5b9d9e3bff6bd9b169d8149c46d9f7349989b670181bae4bf",
+      "sourceFile": "/Users/a114514/.codex/generated_images/01a1d834-9c87-7d00-8a12-12430c779e05/exec-91881938-662d-4d07-9524-0ebceeecd817.png",
+      "bytes": 1368447,
+      "sha256": "12fe6802b7eb1161a28d00fe0d74480e9fb9fdf5b53f3079ab536dc4459397b3",
       "width": 1254,
       "height": 1254,
       "worldWidth": 66
@@ -420,9 +420,9 @@
     {
       "kind": "mobileAADirections",
       "file": "Directions/mobile-aa-eight.png",
-      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.18-mobile-aa-eight.png",
-      "bytes": 1261881,
-      "sha256": "3438813d2a0da17047f40ae3571eae8b1e2bb83f54f8a39f3c69cdfd852de62e",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.30-mobile-aa-eight.png",
+      "bytes": 1518208,
+      "sha256": "62992ebe1fe6f73010b3b25f3bc0bf8ca56629296820a2a2e4c6189fe951a222",
       "width": 1774,
       "height": 887,
       "columns": 4,

@@ -15490,54 +15490,54 @@ final class GameScene: SKScene {
             ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2),
             transform: nil
         )
-        entity.airDefenseThreatCoverageNode.fillColor = UIColor(red: 1.0, green: 0.22, blue: 0.12, alpha: 0.018)
-        entity.airDefenseThreatCoverageNode.strokeColor = UIColor(red: 1.0, green: 0.36, blue: 0.16, alpha: 0.56)
-        entity.airDefenseThreatCoverageNode.lineWidth = entity.kind == .samSite ? 2.8 : 2.2
-        entity.airDefenseThreatCoverageNode.glowWidth = 1.4
+        entity.airDefenseThreatCoverageNode.fillColor = .clear
+        entity.airDefenseThreatCoverageNode.strokeColor = HUDPalette.warning.withAlphaComponent(0.66)
+        entity.airDefenseThreatCoverageNode.lineWidth = 1.2
+        entity.airDefenseThreatCoverageNode.glowWidth = 0
         entity.airDefenseThreatCoverageNode.zPosition = -7
         entity.airDefenseThreatCoverageNode.isHidden = true
 
-        let markerColor = UIColor(red: 1.0, green: 0.52, blue: 0.16, alpha: 1.0)
-        let markerBaseY = entity.kind.footprint * 0.52 + 34
-        for index in 0..<3 {
+        let markerColor = HUDPalette.warning
+        let markerBaseY = entity.kind.footprint * 0.52 + 29
+        for index in 0..<2 {
             let path = CGMutablePath()
-            path.move(to: CGPoint(x: -8, y: 4))
-            path.addLine(to: CGPoint(x: 0, y: -4))
-            path.addLine(to: CGPoint(x: 8, y: 4))
+            path.move(to: CGPoint(x: -6, y: 3))
+            path.addLine(to: CGPoint(x: 0, y: -3))
+            path.addLine(to: CGPoint(x: 6, y: 3))
             let chevron = SKShapeNode(path: path)
-            chevron.position = CGPoint(x: 0, y: markerBaseY + CGFloat(index) * 9)
-            chevron.strokeColor = markerColor.withAlphaComponent(1.0 - CGFloat(index) * 0.18)
-            chevron.lineWidth = 3
+            chevron.position = CGPoint(x: 0, y: markerBaseY + CGFloat(index) * 7)
+            chevron.strokeColor = markerColor.withAlphaComponent(1.0 - CGFloat(index) * 0.24)
+            chevron.lineWidth = 1.5
             chevron.lineCap = .round
             chevron.lineJoin = .round
-            chevron.glowWidth = 1
+            chevron.glowWidth = 0
             entity.airDefenseThreatMarkerNode.addChild(chevron)
         }
-        let core = SKShapeNode(circleOfRadius: 4)
-        core.position = CGPoint(x: 0, y: markerBaseY - 10)
-        core.fillColor = UIColor(red: 1.0, green: 0.24, blue: 0.14, alpha: 1.0)
-        core.strokeColor = UIColor.white.withAlphaComponent(0.92)
-        core.lineWidth = 1.2
+        let core = SKShapeNode(circleOfRadius: 2.5)
+        core.position = CGPoint(x: 0, y: markerBaseY - 8)
+        core.fillColor = markerColor
+        core.strokeColor = HUDPalette.panelDeep
+        core.lineWidth = 1
         entity.airDefenseThreatMarkerNode.addChild(core)
         entity.airDefenseThreatMarkerNode.zPosition = 32
         entity.airDefenseThreatMarkerNode.isHidden = true
     }
 
     private func configureIncomingThreatMarkerNode(for entity: GameEntity) {
-        let warningColor = UIColor(red: 1.0, green: 0.30, blue: 0.14, alpha: 1.0)
+        let warningColor = HUDPalette.warning
         let arrowRadius = entity.kind.footprint * 0.78 + 10
         for index in 0..<2 {
-            let inset = CGFloat(index) * 9
+            let inset = CGFloat(index) * 6
             let path = CGMutablePath()
-            path.move(to: CGPoint(x: arrowRadius + inset - 9, y: -7))
+            path.move(to: CGPoint(x: arrowRadius + inset - 6, y: -4.5))
             path.addLine(to: CGPoint(x: arrowRadius + inset, y: 0))
-            path.addLine(to: CGPoint(x: arrowRadius + inset - 9, y: 7))
+            path.addLine(to: CGPoint(x: arrowRadius + inset - 6, y: 4.5))
             let chevron = SKShapeNode(path: path)
-            chevron.strokeColor = index == 0 ? UIColor.white.withAlphaComponent(0.94) : warningColor
-            chevron.lineWidth = index == 0 ? 2.2 : 3.2
+            chevron.strokeColor = index == 0 ? HUDPalette.text : warningColor
+            chevron.lineWidth = 1.5
             chevron.lineCap = .round
             chevron.lineJoin = .round
-            chevron.glowWidth = index == 0 ? 0.6 : 1.4
+            chevron.glowWidth = 0
             entity.incomingThreatDirectionNode.addChild(chevron)
         }
         entity.incomingThreatMarkerNode.addChild(entity.incomingThreatDirectionNode)
@@ -15545,10 +15545,10 @@ final class GameScene: SKScene {
         let labelY = -entity.kind.footprint * 0.48 - 16
         let labelBack = SKShapeNode(rectOf: CGSize(width: 36, height: 15), cornerRadius: 3)
         labelBack.position = CGPoint(x: 0, y: labelY)
-        labelBack.fillColor = UIColor(red: 0.22, green: 0.04, blue: 0.02, alpha: 0.88)
-        labelBack.strokeColor = warningColor
-        labelBack.lineWidth = 1.5
-        labelBack.glowWidth = 0.8
+        labelBack.fillColor = HUDPalette.panelDeep.withAlphaComponent(0.96)
+        labelBack.strokeColor = warningColor.withAlphaComponent(0.75)
+        labelBack.lineWidth = 0.75
+        labelBack.glowWidth = 0
         entity.incomingThreatMarkerNode.addChild(labelBack)
 
         entity.incomingThreatCountLabel.text = "IN 1"

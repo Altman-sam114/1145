@@ -545,3 +545,21 @@ flowchart LR
   Status -- "第二图是或OCR失败" --> Failure["停止 / 原图+阶段日志+partial回执"]
   Status -- 否 --> Formal["clear原图 / 原sips规范化 / metadata复核 / 正式PNG"]
 ```
+
+
+## 截图检测的预算分配
+
+读图说明：所有路径仍在同一180秒与全局工作deadline内，I/O不能占用最后的检测与收尾时间；只有原规则允许的CLI超时或明确系统通知可重读一次，检测预算不足则保留原图并失败。
+
+```mermaid
+flowchart TD
+  Ready["同一存活场景 / ready"] --> Admit["I/O准入：预留25秒检测与收尾"]
+  Admit --> IO["原生截图：首次最多45秒 / 最多两次"]
+  IO --> Budget{"本地与全局剩余均大于17秒？"}
+  Budget -- 是 --> OCR["完整15秒额度 / CPU fast Vision"]
+  Budget -- 否 --> Fail["保留原图、日志和回执 / 失败"]
+  OCR --> Status{"检测结果"}
+  Status -- clear --> PNG["核对身份并保存正式PNG"]
+  Status -- 首图已知通知且允许重读 --> Admit
+  Status -- 错误或第二次通知 --> Fail
+```

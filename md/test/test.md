@@ -668,3 +668,6 @@ HUD分类使用单标题时，原生ready的hudText必须为single-title-tabs-v1
 截图可见性采用same-scene-visible-screenshot-180-once-v2：全部成功截图必须有system-banner-ocr-v2、系统Vision引擎、原图bytes/SHA/宽高、正确方向/顶部ROI、非空有界OCR文字与几何、正常退出回收回执和原始日志。runner/metadata从识别文字独立推导clear/obstructed，拒绝缺报告、摘要变化、旧策略、空文字、非有限/布尔数值、方向错误或假clear。仅首图明确识别Apple Intelligence通知且原设备/PID/nonce/ready仍有效时可等6秒重读一次，保留污染候选与报告；两次总预算180秒、最多2次不变，不能再叠加第三次超时恢复。第二次通知、OCR错误/超时、普通I/O失败、取消、场景变化或剩余不足停止。既有owned-CLI超时恢复与负例保留。analysis必须是thumbnail-cpu-fast-v1、最大边1280、有限正整数尺寸且比例与原图一致、CPU严格true、fast等级；缺项/旧policy/浮点或布尔冒充尺寸/错误上限/全图GPU/缩放或比例不符均拒绝。helper阶段计时与失败partial回执/原始日志保留在对应attempt和manifest；检测15秒上限不变。
 
 真实云端在同一runner准备阶段编译Vision helper，按来源清单检查历史污染/清晰PNG和实际超时候选，并在云端旋转为另一方向，逐份横/竖两态重放，保存visibility-fixtures.json/实际OCR报告/日志；这些是历史检测器fixture，不是当前玩法证据。全部当前24图仍须逐张目视，未知系统浮层不由该窄OCR门槛保证。相关Python回归只验证schema/路由/预算/拒绝与包装负例，不能冒充Vision执行；本机不编译helper或运行OCR。
+
+
+截图I/O必须在原180秒及全局deadline内预留25秒，检测正常准入使用完整15秒额度；剩余不足17秒时停止并留证，不用过短OCR超时替代明确预算不足。定向云端回归覆盖第一次CLI超时后慢重读、局部/全局deadline、完整OCR与超慢PNG bookkeeping停止，metadata拒绝1秒额度。失败留证用例把实际记录接入summary后检查manifest；比例负例使用明确错误比例的有界1280×600分析尺寸对应2000×1000原图，不能把原2×1的高度再次设1当作变异。所有这些用例只在云端运行。防空警示样式与AA换图仍按原方向/镜像/资源和迷雾合同，目视同SHA的tactical/air/mobile-aa/incoming等正式图，静态合同不证明美观或真实触控。

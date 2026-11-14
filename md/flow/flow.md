@@ -394,3 +394,10 @@ updateFog先按原逻辑计算visible/explored/supportReveal及0/.48/.86 fog til
 
 
 分析图使用[ImageIO缩略图上限](https://developer.apple.com/documentation/imageio/kcgimagesourcethumbnailmaxpixelsize)；[Vision CPU设置](https://developer.apple.com/documentation/vision/vnrequest/usescpuonly)与[识别等级](https://developer.apple.com/documentation/vision/vnrecognizetextrequest/recognitionlevel)仅作用于检测器。CPU设置API在新SDK有弃用提示，但仍沿当前VNRecognizeTextRequest兼容入口；不引入依赖或修改游戏资源。
+
+
+### 防空车与警示层
+
+防空车八向与匹配单幅使用[当前原创资源](../art/v6.30-air-defense-art.md)，原96世界格/锚点/1536px图集缓存和SE生产预览来源不变。`configureAirDefenseThreatNodes`预建两层紧凑珊瑚细线箭头、小圆点和无glow/无填充射程圈；`configureIncomingThreatMarkerNode`预建同语义双方向细线与深色`IN n`字底。既有known/operational/selected筛选、最近威胁旋转、父镜像、伤害与清理仍由原实体链路处理，不增加检测或战斗状态。
+
+截图180秒共享预算内，I/O每次准入保留25秒给完整15秒Vision和PNG/回执收尾；首次I/O仍最多45秒、总共最多两次，同一设备/PID/nonce/ready不变。命令也在全局工作deadline中保留这25秒。I/O后若任一本地/全局剩余不足17秒，保留候选和失败回执并停止，不发起缩短为1秒的OCR。metadata独立要求完整15秒检测额度；不增加总体预算、不改用离屏图或跳过通知门槛。

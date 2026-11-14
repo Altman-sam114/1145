@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-14",
+  "tool": "built-in image_gen; raw original PNGs copied without pixel editing",
+  "assets": [
+    {
+      "role": "mobile air-defense eight-direction atlas",
+      "prompt": "Use case: stylized-concept. Create a production-ready original 4-column by 2-row transparent eight-direction RTS sprite atlas of ONE consistent six-wheeled armored mobile air-defense truck. Reference image 1 is the vehicle identity reference: six tires, armored forward cab, rear turret with four long missiles and one rectangular radar panel; keep that recognizable design. Reference image 2 is STRICTLY the correct eight-direction layout/camera and the restrained graphite material reference. Correct the direction errors of reference 1: the truck must point in the EXACT SAME directions as the tank in corresponding cells of reference 2. Row 1: E (nose right), NE (nose upper-right, see the truck's rear and right flank), N (nose away/up, see rear bumper, NOT front grille), NW (nose upper-left, rear and left flank). Row 2: W (nose left), SW (nose lower-left, see front grille and right flank), S (nose down/towards viewer, front grille and windshield), SE (nose lower-right, front grille and left flank). No repeated north/south or front/rear views. Fixed orthographic camera looking down at a low 30-degree isometric elevation, consistent model proportions and scale in eight equal square cells, same wheelbase and hardware. Aim for premium pre-rendered 3D RTS detail: sophisticated matte graphite armor with broad readable surfaces, warm fine desert dust only inside recesses and at the tires, restrained steel edge highlights, crisp deep panel seams and vents, tiny clean bolts, rubber tire tread, desaturated dark teal window glass, dark titanium launcher with four pale missile tips, charcoal mesh radar panel. One uniform upper-left sunlight direction across the whole sheet. Keep each complete radar, all missile tips, antenna and tires fully inside its own cell with generous true transparent margins on all sides, about 12 percent. Vehicle centers match reference 2 cell centers, no clipping or overlap. No floor or cast shadow, no ground, no water, no exhaust or effects, no backdrop, no labels, no numbers, no text, no logos, no flag, no green fringe, no glow, no grid lines. Genuine transparent RGBA background. This is the actual game sprite atlas, not a concept presentation or collage.",
+      "source": "/Users/a114514/.codex/generated_images/01a1d834-9c87-7d00-8a12-12430c779e05/exec-16dc6a9c-606f-4ba1-bbe7-6b52a67172dd.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.30-mobile-aa-eight.png",
+      "projectFile": "DesertFrontline/Art/Directions/mobile-aa-eight.png",
+      "status": "integrated; exact-SHA cloud verification pending",
+      "references": [
+        "DesertFrontline/Art/Directions/mobile-aa-eight.png (v6.18 identity)",
+        "DesertFrontline/Art/Directions/tank-eight.png (direction layout and material)"
+      ],
+      "width": 1774,
+      "height": 887,
+      "mode": "RGBA",
+      "bytes": 1518208,
+      "sha256": "62992ebe1fe6f73010b3b25f3bc0bf8ca56629296820a2a2e4c6189fe951a222",
+      "contentBBoxAlpha32": [
+        35,
+        46,
+        1715,
+        840
+      ],
+      "minimumCellMarginAlpha32": 24
+    },
+    {
+      "role": "matching SE single portrait / fallback",
+      "prompt": "Use case: stylized-concept. Generate one original production-portrait sprite of precisely the same six-wheel armored air-defense truck as the bottom-right SE-facing vehicle in the supplied eight-direction atlas. That image is the strict model identity, finish, camera and lighting reference. Nose points toward lower-right, front grille, armored windshield and left vehicle flank visible, orthographic isometric 30-degree downward elevation. Same four missiles, same rectangular charcoal mesh radar raised over rear turret, same six large dusty rubber tires, graphite armored cab and hardware, subtle warm desert dust in recesses and restrained metal wear, dark desaturated teal glass, crisp panel seams and vents, four pale missile tips, upper-left sunlight. Premium detailed pre-rendered 3D RTS game asset. One single complete vehicle only, centered in a square with broad clean transparent margins, radar and missiles and every tire fully inside middle 75 percent. No duplicate vehicles or grid, no floor, no cast shadow, no environment, no effects, no background, no labels, no text, no flag or logo, no glow, no colored fringe. Genuine transparent RGBA. This must match the reference sheet, not be a new vehicle variant.",
+      "source": "/Users/a114514/.codex/generated_images/01a1d834-9c87-7d00-8a12-12430c779e05/exec-91881938-662d-4d07-9524-0ebceeecd817.png",
+      "savedFile": "/Users/a114514/.codex/generated_images/1/v6.30-mobile-aa.png",
+      "projectFile": "DesertFrontline/Art/Units/mobile-aa.png",
+      "status": "integrated; exact-SHA cloud verification pending",
+      "references": [
+        "v6.30-mobile-aa-eight.png (identity and finish)"
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "bytes": 1368447,
+      "sha256": "12fe6802b7eb1161a28d00fe0d74480e9fb9fdf5b53f3079ab536dc4459397b3",
+      "contentBBoxAlpha32": [
+        169,
+        104,
+        1099,
+        1109
+      ]
+    }
+  ]
+}
