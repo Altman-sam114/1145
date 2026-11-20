@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.30",
+  "version": "v6.32",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.30-air-defense-art.md",
+  "promptDocument": "md/art/v6.32-scout-art.md",
   "assets": [
     {
       "kind": "humvee",
@@ -366,9 +366,9 @@
     {
       "kind": "scoutDirections",
       "file": "Directions/scout-eight.png",
-      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.18-scout-eight.png",
-      "bytes": 1129464,
-      "sha256": "26eeb8100b0596f5f986113c0566fed2e6f448086b2951f17ceb3d7ccf86c3cb",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.32-scout-eight.png",
+      "bytes": 1385153,
+      "sha256": "039f370c6a49c06625dcd3082f121a5e41ec8c6d2f1b9f15448b9aef1f62afa1",
       "width": 1774,
       "height": 887,
       "columns": 4,

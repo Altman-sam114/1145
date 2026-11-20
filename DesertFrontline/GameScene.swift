@@ -3604,8 +3604,12 @@ final class GameScene: SKScene {
         guard let body = unit.artworkNode, let shadow = unit.groundContactShadow,
               let frame = groundContactFrame(for: unit), let texture = groundContactTexture else { return false }
         let mirror: CGFloat = unit.node.xScale < 0 ? -1 : 1
+        // SpriteKit can round geometry when it stores node properties; compare
+        // sub-pixel coordinates with a small tolerance instead of exact equality.
+        let close: (CGFloat, CGFloat) -> Bool = { abs($0 - $1) < 0.01 }
         return shadow.parent === body.parent && shadow.texture === texture && !shadow.isHidden && shadow.alpha == 1 &&
-            shadow.size == frame.size && shadow.position == CGPoint(x: frame.midX * mirror, y: frame.midY) &&
+            close(shadow.size.width, frame.width) && close(shadow.size.height, frame.height) &&
+            close(shadow.position.x, frame.midX * mirror) && close(shadow.position.y, frame.midY) &&
             shadow.xScale * unit.node.xScale == 1 && shadow.yScale == 1 && shadow.zRotation == 0 && shadow.zPosition == -2 &&
             frame.minX.isFinite && frame.minY.isFinite && frame.width > 0 && frame.width <= body.size.width * 1.02 &&
             frame.height >= 4 && frame.height <= 10 && shadow.parent?.children.filter({ $0.name == "ground-contact" }).count == 1 &&
@@ -3620,6 +3624,7 @@ final class GameScene: SKScene {
         ciGroundContactMask = 0
         let kinds: [EntityKind] = [.tank] + directionalGroundKinds
         var restored = true
+        var reportedFailure = false
         for (kindIndex, kind) in kinds.enumerated() {
             let live = entities.values.sorted { $0.id < $1.id }.first { $0.isAlive && $0.kind == kind }
             let unit = live ?? GameEntity(id: -1, kind: kind, faction: .player, position: .zero)
@@ -3636,6 +3641,10 @@ final class GameScene: SKScene {
                     unit.node.xScale = sign
                     let direction = CGPoint(x: cos(CGFloat(index) * .pi / 4), y: sin(CGFloat(index) * .pi / 4))
                     updateDirectionalArtworkFacing(unit, direction: direction, textures: textures)
+                    if !reportedFailure && !groundContactPoseValid(unit), let frame = groundContactFrame(for: unit) {
+                        reportedFailure = true
+                        print("Ground contact invalid: kind=\(kind) heading=\(index) sign=\(sign) frame=\(frame) size=\(shadow.size) position=\(shadow.position) scale=\(shadow.xScale),\(unit.node.xScale) hidden=\(shadow.isHidden) alpha=\(shadow.alpha) z=\(shadow.zPosition) sameParent=\(shadow.parent === body.parent) sameTexture=\(shadow.texture === groundContactTexture) baseHidden=\(String(describing: body.parent?.childNode(withName: "base-shadow")?.isHidden))")
+                    }
                     valid = valid && unit.artworkHeading == index && groundContactPoseValid(unit) &&
                         shadow === unit.groundContactShadow && shadow.parent?.children.count == nodeCount &&
                         body.position == .zero && body.anchorPoint == CGPoint(x: 0.5, y: 0.25) && unit.node.position == saved.7
@@ -3645,8 +3654,10 @@ final class GameScene: SKScene {
             unit.artworkHeading = saved.0
             unit.node.xScale = saved.1
             updateDirectionalArtworkFacing(unit, direction: nil, textures: textures)
-            restored = restored && body.texture === saved.2 && body.xScale == saved.3 && shadow.position == saved.4 &&
-                shadow.size == saved.5 && shadow.xScale == saved.6 && unit.node.position == saved.7 && groundContactPoseValid(unit)
+            restored = restored && body.texture === saved.2 && body.xScale == saved.3 &&
+                abs(shadow.position.x - saved.4.x) < 0.01 && abs(shadow.position.y - saved.4.y) < 0.01 &&
+                abs(shadow.size.width - saved.5.width) < 0.01 && abs(shadow.size.height - saved.5.height) < 0.01 &&
+                shadow.xScale == saved.6 && unit.node.position == saved.7 && groundContactPoseValid(unit)
         }
         if let image = groundContactTexture?.cgImage(), image.width == 64, image.height == 64 {
             // The generated texture has transparent corners and a dark nonempty core.
