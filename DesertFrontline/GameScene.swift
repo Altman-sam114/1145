@@ -1539,6 +1539,15 @@ final class GameScene: SKScene {
         ciBeacon("fixture-start")
         prepareCICaptureScene()
         if isCICaptureMode {
+            // Capture fixtures can mirror several units directly before the
+            // first update tick. Synchronize their sprites and contact shadows.
+            for entity in entities.values where entity.isAlive && entity.kind.domain == .land && !entity.kind.isStructure {
+                if entity.kind == .tank {
+                    updateTankArtworkFacing(entity, direction: nil)
+                } else if let textures = groundDirectionTextures[entity.kind] {
+                    updateDirectionalArtworkFacing(entity, direction: nil, textures: textures)
+                }
+            }
             auditTankDirectionArtwork()
             auditAirDirectionArtwork()
             auditNavalDirectionArtwork()

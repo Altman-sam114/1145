@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.32",
+  "version": "v6.33",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.32-scout-art.md",
+  "promptDocument": "md/art/v6.33-artwork.md",
   "assets": [
     {
       "kind": "humvee",
@@ -340,9 +340,9 @@
     {
       "kind": "carrierDirections",
       "file": "Directions/carrier-eight.png",
-      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.13-carrier-eight.png",
-      "bytes": 657689,
-      "sha256": "17ef68a35427dba2d7ac8e5d2b325883813924cf5a02bc9cae9a6964e47e411e",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.33-carrier-eight.png",
+      "bytes": 904558,
+      "sha256": "6044b10a2161b510dde82cf0bf13913ba343a0cf8c572d2d6b3242ca53c05a53",
       "width": 1774,
       "height": 887,
       "columns": 4,
@@ -393,9 +393,9 @@
     {
       "kind": "artilleryDirections",
       "file": "Directions/artillery-eight.png",
-      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.18-artillery-eight.png",
-      "bytes": 862510,
-      "sha256": "346444911b42b800127c089fefdda4583316553695bd1df7e3cc9f9f27f5876e",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.33-artillery-eight-candidate.png",
+      "bytes": 1020063,
+      "sha256": "bc0860fddcd9bed6222e313ca6fc4fbfbb01476a7171213da5fdb0d2636e54e9",
       "width": 1774,
       "height": 887,
       "columns": 4,
