@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.33",
+  "version": "v6.34",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.33-artwork.md",
+  "promptDocument": "md/art/v6.34-repair-truck-art.md",
   "assets": [
     {
       "kind": "humvee",
@@ -447,9 +447,9 @@
     {
       "kind": "repairTruckDirections",
       "file": "Directions/repair-truck-eight.png",
-      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.18-repair-truck-eight.png",
-      "bytes": 1446797,
-      "sha256": "395d2c5ed29534a4acb8086b72e2af92080fb59182b633e60c904be0fb862bc7",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.34-repair-truck-eight.png",
+      "bytes": 1597272,
+      "sha256": "728a199b22d26444cf4d9b361f354531518630fb7590996df9309909c75a9a96",
       "width": 1774,
       "height": 887,
       "columns": 4,
