@@ -1376,6 +1376,7 @@ final class GameScene: SKScene {
 
     private var lastUpdateTime: TimeInterval = 0
     private var incomeAccumulator: TimeInterval = 0
+    private var incomeFeedbackCounter = 0
     private var aiAccumulator: TimeInterval = 0
     private var fogAccumulator: TimeInterval = 0
     private var lastPlayerAttackAlertTime: TimeInterval = -100
@@ -4411,6 +4412,15 @@ final class GameScene: SKScene {
             structureShadow.alpha = 0.62
             structureShadow.zPosition = -2
             base.addChild(structureShadow)
+        } else if entity.kind.domain == .naval {
+            shadow.isHidden = true
+            let hullShadow = SKSpriteNode(texture: softGroundContactTexture())
+            hullShadow.name = "naval-hull-contact"
+            hullShadow.size = CGSize(width: entity.kind.artworkWidth * 0.94, height: entity.kind.artworkWidth * 0.36)
+            hullShadow.position = CGPoint(x: 0, y: -7)
+            hullShadow.alpha = entity.kind == .submarine ? 0.34 : 0.48
+            hullShadow.zPosition = -2
+            base.addChild(hullShadow)
         }
 
         configureNavalWakeNode(for: entity)
@@ -5822,19 +5832,21 @@ final class GameScene: SKScene {
             entity.damageStateNode.addChild(smoke)
         }
 
-        let fireGlow = SKShapeNode(ellipseOf: CGSize(width: 15 * domainScale, height: 9 * domainScale))
-        fireGlow.fillColor = UIColor(red: 1.0, green: 0.28, blue: 0.06, alpha: 0.76)
-        fireGlow.strokeColor = UIColor(red: 1.0, green: 0.76, blue: 0.20, alpha: 0.88)
-        fireGlow.lineWidth = 1.2
-        fireGlow.glowWidth = 2.5
-        entity.damageFireNode.addChild(fireGlow)
-
-        let fireCore = SKShapeNode(circleOfRadius: 3.2 * domainScale)
-        fireCore.position = CGPoint(x: 1, y: 1)
-        fireCore.fillColor = UIColor(white: 1.0, alpha: 0.96)
-        fireCore.strokeColor = .clear
-        fireCore.zPosition = 1
-        entity.damageFireNode.addChild(fireCore)
+        if let fireTexture = effectArtworkTexture(named: "impact-burst") {
+            let fireSprite = SKSpriteNode(texture: fireTexture)
+            let fireWidth: CGFloat = 24 * domainScale
+            fireSprite.size = CGSize(width: fireWidth, height: fireWidth * fireTexture.size().height / max(fireTexture.size().width, 1))
+            fireSprite.anchorPoint = CGPoint(x: 0.5, y: 0.25)
+            fireSprite.alpha = 0.88
+            entity.damageFireNode.addChild(fireSprite)
+        } else {
+            let fireGlow = SKShapeNode(ellipseOf: CGSize(width: 15 * domainScale, height: 9 * domainScale))
+            fireGlow.fillColor = UIColor(red: 1.0, green: 0.28, blue: 0.06, alpha: 0.76)
+            fireGlow.strokeColor = UIColor(red: 1.0, green: 0.76, blue: 0.20, alpha: 0.88)
+            fireGlow.lineWidth = 1.2
+            fireGlow.glowWidth = 0
+            entity.damageFireNode.addChild(fireGlow)
+        }
         entity.damageFireNode.position = CGPoint(x: 0, y: 2)
         entity.damageFireNode.zPosition = 5
         entity.damageStateNode.addChild(entity.damageFireNode)
@@ -5849,9 +5861,9 @@ final class GameScene: SKScene {
             breachPath.addLine(to: CGPoint(x: -2, y: 0))
             breachPath.closeSubpath()
             let breach = SKShapeNode(path: breachPath)
-            breach.fillColor = UIColor(white: 0.035, alpha: 0.92)
-            breach.strokeColor = UIColor(red: 0.95, green: 0.34, blue: 0.12, alpha: 0.66)
-            breach.lineWidth = 1.2
+            breach.fillColor = UIColor(white: 0.035, alpha: 0.78)
+            breach.strokeColor = UIColor(red: 0.95, green: 0.34, blue: 0.12, alpha: 0.45)
+            breach.lineWidth = 1.0
             entity.battleshipDamageBreachNode.addChild(breach)
 
             let tearPath = CGMutablePath()
@@ -5861,27 +5873,29 @@ final class GameScene: SKScene {
             tearPath.move(to: CGPoint(x: -7, y: -1))
             tearPath.addLine(to: CGPoint(x: 1, y: 1))
             let tear = SKShapeNode(path: tearPath)
-            tear.strokeColor = UIColor(white: 0.08, alpha: 0.96)
-            tear.lineWidth = 2.2
+            tear.strokeColor = UIColor(white: 0.08, alpha: 0.85)
+            tear.lineWidth = 1.8
             tear.lineCap = .round
             entity.battleshipDamageBreachNode.addChild(tear)
             entity.battleshipDamageBreachNode.position = CGPoint(x: 7, y: -4)
             entity.battleshipDamageBreachNode.zPosition = 4
             entity.damageStateNode.addChild(entity.battleshipDamageBreachNode)
 
-            let hotspot = SKShapeNode(ellipseOf: CGSize(width: 18, height: 10))
-            hotspot.fillColor = UIColor(red: 0.94, green: 0.16, blue: 0.04, alpha: 0.78)
-            hotspot.strokeColor = UIColor(red: 1.0, green: 0.72, blue: 0.16, alpha: 0.92)
-            hotspot.lineWidth = 1.2
-            hotspot.glowWidth = 2
-            entity.battleshipCriticalDamageNode.addChild(hotspot)
-
-            let hotCore = SKShapeNode(circleOfRadius: 2.8)
-            hotCore.position = CGPoint(x: 2, y: 1)
-            hotCore.fillColor = UIColor(white: 1.0, alpha: 0.96)
-            hotCore.strokeColor = .clear
-            hotCore.zPosition = 1
-            entity.battleshipCriticalDamageNode.addChild(hotCore)
+            if let hotTexture = effectArtworkTexture(named: "impact-burst") {
+                let hotSprite = SKSpriteNode(texture: hotTexture)
+                let hotWidth: CGFloat = 22
+                hotSprite.size = CGSize(width: hotWidth, height: hotWidth * hotTexture.size().height / max(hotTexture.size().width, 1))
+                hotSprite.anchorPoint = CGPoint(x: 0.5, y: 0.25)
+                hotSprite.alpha = 0.84
+                entity.battleshipCriticalDamageNode.addChild(hotSprite)
+            } else {
+                let hotspot = SKShapeNode(ellipseOf: CGSize(width: 18, height: 10))
+                hotspot.fillColor = UIColor(red: 0.94, green: 0.16, blue: 0.04, alpha: 0.78)
+                hotspot.strokeColor = UIColor(red: 1.0, green: 0.72, blue: 0.16, alpha: 0.92)
+                hotspot.lineWidth = 1.2
+                hotspot.glowWidth = 0
+                entity.battleshipCriticalDamageNode.addChild(hotspot)
+            }
             entity.battleshipCriticalDamageNode.position = CGPoint(x: -18, y: -5)
             entity.battleshipCriticalDamageNode.zPosition = 6
             entity.battleshipCriticalDamageNode.isHidden = true
@@ -6372,14 +6386,14 @@ final class GameScene: SKScene {
         let isSubmarine = entity.kind == .submarine
         let bowX: CGFloat = -(isCarrier ? 45 : (entity.kind == .battleship ? 36 : 27))
         if let wakeTexture = effectArtworkTexture(named: "naval-wake") {
-            let wakeWidth: CGFloat = isCarrier ? 176 : (entity.kind == .battleship ? 136 : 86)
+            let wakeWidth: CGFloat = isCarrier ? 164 : (entity.kind == .battleship ? 128 : 82)
             let wakeHeight = wakeWidth * wakeTexture.size().height / max(wakeTexture.size().width, 1)
             let wakeSprite = SKSpriteNode(texture: wakeTexture)
             wakeSprite.name = "naval:textured-wake"
             wakeSprite.size = CGSize(width: wakeWidth, height: wakeHeight)
-            wakeSprite.anchorPoint = CGPoint(x: 0.14, y: 0.5)
-            wakeSprite.position = CGPoint(x: bowX * 0.55, y: 0)
-            wakeSprite.alpha = isSubmarine ? 0.36 : (isCarrier ? 0.84 : 0.78)
+            wakeSprite.anchorPoint = CGPoint(x: 0.22, y: 0.5)
+            wakeSprite.position = CGPoint(x: bowX * 0.32, y: 0)
+            wakeSprite.alpha = isSubmarine ? 0.30 : (isCarrier ? 0.64 : 0.60)
             entity.navalWakeNode.addChild(wakeSprite)
             entity.navalWakeNode.zPosition = -3
             entity.navalWakeNode.isHidden = true
@@ -10782,6 +10796,7 @@ final class GameScene: SKScene {
         victoryState = nil
         completedMissionStages.removeAll()
         incomeAccumulator = 0
+        incomeFeedbackCounter = 0
         aiAccumulator = 0
         fogAccumulator = 0
         lastPlayerAttackAlertTime = -100
@@ -11343,12 +11358,20 @@ final class GameScene: SKScene {
         let guardReleaseWing = carrierGuardReleaseWing(for: mobileUnits)
         var markerPoints: [CGPoint] = []
         var activeGroups = 0
-        for domain in [Domain.land, .air, .naval] {
+        var carrierGroupAnchor: CGPoint?
+        var carrierGroupFacing: CGPoint?
+        // Process naval before air so a combined Carrier + Air Strike Group anchors its air wing to the Carrier CSG.
+        for domain in [Domain.land, .naval, .air] {
             let group = mobileUnits.filter { $0.kind.domain == domain }
             guard !group.isEmpty else { continue }
 
             activeGroups += 1
-            let anchor = navigablePoint(for: domain, near: point)
+            let anchor: CGPoint
+            if domain == .air, let csgAnchor = carrierGroupAnchor {
+                anchor = csgAnchor + (carrierGroupFacing ?? CGPoint(x: 1, y: 0)) * 26
+            } else {
+                anchor = navigablePoint(for: domain, near: point)
+            }
             let ordered = group.sorted { left, right in
                 let leftPriority = formationPriority(for: left.kind)
                 let rightPriority = formationPriority(for: right.kind)
@@ -11358,9 +11381,14 @@ final class GameScene: SKScene {
                 return leftPriority < rightPriority
             }
             let facing = formationFacing(for: ordered, toward: anchor)
-            let offsets = formationOffsets(count: ordered.count, domain: domain, facing: facing)
+            if domain == .naval && ordered.contains(where: { $0.kind == .carrier }) {
+                carrierGroupAnchor = anchor
+                carrierGroupFacing = facing
+            }
+            let offsets = formationOffsets(for: ordered, domain: domain, facing: facing)
             for (index, unit) in ordered.enumerated() {
-                let unitDestination = navigablePoint(for: domain, near: anchor + offsets[index])
+                let targetPoint = anchor + offsets[index]
+                let unitDestination = navigablePoint(for: domain, near: targetPoint)
                 unit.holdPosition = nil
                 clearCarrierGuardAnchor(for: unit)
                 unit.attackTarget = nil
@@ -11419,19 +11447,91 @@ final class GameScene: SKScene {
         return CGPoint(x: 1, y: 0)
     }
 
+    private func formationOffsets(for units: [GameEntity], domain: Domain, facing: CGPoint) -> [CGPoint] {
+        guard units.count > 1 else { return [.zero] }
+        let side = CGPoint(x: -facing.y, y: facing.x)
+
+        // Carrier Strike Group (CSG): protect Carriers in the rear core, Battleships on armored screen, Submarines on forward picket.
+        if domain == .naval, units.contains(where: { $0.kind == .carrier }) {
+            let carriers = units.filter { $0.kind == .carrier }
+            let battleships = units.filter { $0.kind == .battleship }
+            let submarines = units.filter { $0.kind == .submarine }
+            var assigned: [Int: CGPoint] = [:]
+            for (i, ship) in carriers.enumerated() {
+                let spread = CGFloat(i) - CGFloat(carriers.count - 1) * 0.5
+                assigned[ship.id] = side * (spread * 96) + facing * (-18)
+            }
+            for (i, ship) in battleships.enumerated() {
+                let spread = CGFloat(i) - CGFloat(battleships.count - 1) * 0.5
+                let lateral = battleships.count == 1 ? 0 : (spread * 92)
+                let forward: CGFloat = battleships.count == 1 ? 86 : (82 - abs(spread) * 18)
+                assigned[ship.id] = side * lateral + facing * forward
+            }
+            for (i, ship) in submarines.enumerated() {
+                let spread = CGFloat(i) - CGFloat(submarines.count - 1) * 0.5
+                let lateral = submarines.count == 1 ? 42 : (spread * 86)
+                assigned[ship.id] = side * lateral + facing * 124
+            }
+            return units.map { assigned[$0.id] ?? .zero }
+        }
+
+        // Air Squadron: swept military V-chevron with wide separation.
+        if domain == .air {
+            let spacing = airFormationSpacing
+            return units.indices.map { index in
+                if index == 0 { return facing * 14 }
+                let wing = (index + 1) / 2
+                let sideSign: CGFloat = index.isMultiple(of: 2) ? 1 : -1
+                return side * (sideSign * CGFloat(wing) * spacing * 0.72) + facing * (-CGFloat(wing) * spacing * 0.52 + 14)
+            }
+        }
+
+        // Combined-Arms Land Formation: frontline armor/vanguard, mid support (Mechanic), rear fire-support (Artillery).
+        if domain == .land {
+            let vanguard = units.filter { $0.kind == .tank || $0.kind == .humvee || $0.kind == .aaTruck }
+            let support = units.filter { $0.kind == .mechanic }
+            let artillery = units.filter { $0.kind == .artillery }
+            if !vanguard.isEmpty && (!support.isEmpty || !artillery.isEmpty) {
+                var assigned: [Int: CGPoint] = [:]
+                let frontCols = max(1, min(4, vanguard.count))
+                for (i, unit) in vanguard.enumerated() {
+                    let row = i / frontCols
+                    let col = i % frontCols
+                    let rowCount = min(frontCols, vanguard.count - row * frontCols)
+                    let lateral = (CGFloat(col) - CGFloat(rowCount - 1) * 0.5) * 48
+                    let depth = 18 - CGFloat(row) * 38 - (unit.kind == .humvee ? -10 : 0)
+                    assigned[unit.id] = side * lateral + facing * depth
+                }
+                let supportBack = -CGFloat((vanguard.count - 1) / frontCols + 1) * 38 - 6
+                for (i, unit) in support.enumerated() {
+                    let lateral = (CGFloat(i) - CGFloat(support.count - 1) * 0.5) * 46
+                    assigned[unit.id] = side * lateral + facing * supportBack
+                }
+                let artyBack = supportBack - (support.isEmpty ? 12 : 44)
+                for (i, unit) in artillery.enumerated() {
+                    let lateral = (CGFloat(i) - CGFloat(artillery.count - 1) * 0.5) * 56
+                    assigned[unit.id] = side * lateral + facing * artyBack
+                }
+                return units.map { assigned[$0.id] ?? .zero }
+            }
+        }
+
+        return formationOffsets(count: units.count, domain: domain, facing: facing)
+    }
+
     private func formationOffsets(count: Int, domain: Domain, facing: CGPoint) -> [CGPoint] {
         guard count > 1 else { return [.zero] }
         let columns = Int(ceil(sqrt(Double(count))))
         let spacing: CGFloat
         switch domain {
         case .land:
-            spacing = 40
+            spacing = 46
         case .air:
             spacing = airFormationSpacing
         case .naval:
-            spacing = 70
+            spacing = 82
         case .structure:
-            spacing = 40
+            spacing = 44
         }
         let side = CGPoint(x: -facing.y, y: facing.x)
         return (0..<count).map { index in
@@ -11439,7 +11539,7 @@ final class GameScene: SKScene {
             let col = index % columns
             let rowCount = min(columns, count - row * columns)
             let sideIndex = CGFloat(col) - CGFloat(rowCount - 1) / 2
-            let backDistance = CGFloat(row) * spacing * 0.72
+            let backDistance = CGFloat(row) * spacing * 0.76
             return side * (sideIndex * spacing) + facing * (-backDistance)
         }
     }
@@ -11739,6 +11839,38 @@ final class GameScene: SKScene {
         incomeAccumulator -= 1.0
         changeMoney(for: .player, by: incomePerTick(for: .player))
         changeMoney(for: .enemy, by: incomePerTick(for: .enemy) + aiDifficulty.incomeBonus)
+
+        incomeFeedbackCounter += 1
+        guard !isCICaptureMode, incomeFeedbackCounter.isMultiple(of: 4) else { return }
+        let visibleRect = visibleWorldRect()
+        for derrick in entities.values where derrick.kind == .oilDerrick && derrick.faction == .player && derrick.isAlive && derrick.isOperational {
+            guard visibleRect.contains(derrick.node.position) else { continue }
+            showIncomeFloater(at: derrick.node.position + CGPoint(x: 0, y: 26), text: "+$145")
+        }
+        for point in controlPoints where point.faction == .player && visibleRect.contains(point.node.position) {
+            showIncomeFloater(at: point.node.position + CGPoint(x: 0, y: 34), text: "+$95")
+        }
+    }
+
+    private func showIncomeFloater(at point: CGPoint, text: String, highlight: Bool = false) {
+        let label = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        label.text = text
+        label.fontSize = highlight ? 11.5 : 9.5
+        label.fontColor = HUDPalette.gold
+        label.horizontalAlignmentMode = .center
+        label.verticalAlignmentMode = .center
+        label.position = point
+        label.alpha = 0.0
+        label.zPosition = 276
+        effectsLayer.addChild(label)
+        label.run(.sequence([
+            .fadeAlpha(to: highlight ? 1.0 : 0.85, duration: 0.12),
+            .group([
+                .moveBy(x: 0, y: highlight ? 24 : 16, duration: highlight ? 0.95 : 0.75),
+                .fadeOut(withDuration: highlight ? 0.95 : 0.75)
+            ]),
+            .removeFromParent()
+        ]))
     }
 
     private func incomePerTick(for faction: Faction) -> Int {
@@ -11783,7 +11915,10 @@ final class GameScene: SKScene {
                 if derrick.captureProgress >= 3.0 {
                     setFaction(.player, for: derrick)
                     derrick.captureProgress = 0
-                    showMessage("Oil derrick captured.", color: UIColor(red: 0.70, green: 0.95, blue: 0.70, alpha: 1.0))
+                    showMessage("Oil derrick captured (+$145/s).", color: HUDPalette.gold)
+                    if !isCICaptureMode {
+                        showIncomeFloater(at: derrick.node.position + CGPoint(x: 0, y: 30), text: "OIL +$145/s", highlight: true)
+                    }
                 }
             } else if let nearbyEnemy, nearbyPlayer == nil, derrick.faction != .enemy {
                 capturingFaction = .enemy
@@ -11868,7 +12003,10 @@ final class GameScene: SKScene {
                 point.captureProgress += CGFloat(dt) * captureRate(for: nearbyPlayer)
                 if point.captureProgress >= 4.0 {
                     setControlPointFaction(.player, for: point)
-                    showMessage("\(point.name) flag captured. +$\(controlPointCaptureBonus)", color: UIColor(red: 0.70, green: 0.95, blue: 1.0, alpha: 1.0))
+                    showMessage("\(point.name) flag captured. +$\(controlPointCaptureBonus)", color: HUDPalette.gold)
+                    if !isCICaptureMode {
+                        showIncomeFloater(at: point.node.position + CGPoint(x: 0, y: 38), text: "+$\(controlPointCaptureBonus) CAPTURED", highlight: true)
+                    }
                 }
             } else if let nearbyEnemy, nearbyPlayer == nil, point.faction != .enemy {
                 point.capturingFaction = .enemy
@@ -12039,8 +12177,13 @@ final class GameScene: SKScene {
 
             let step = min(distance, movementSpeed(for: entity) * CGFloat(dt))
             let desiredDirection = vector.normalized
-            let direction = separatedMovementDirection(for: entity, desired: desiredDirection)
-            entity.node.position = current + direction * step
+            let direction = separatedMovementDirection(for: entity, desired: desiredDirection, step: step)
+            let nextPosition = current + direction * step
+            if entity.kind.domain == .air || (tile(at: nextPosition).map { isPassable($0, for: entity.kind.domain) } ?? false) {
+                entity.node.position = nextPosition
+            } else {
+                entity.node.position = current + desiredDirection * step
+            }
             entity.node.zPosition = entityZPosition(entity)
             if abs(direction.x) > 0.01 {
                 entity.node.xScale = direction.x < 0 ? -1 : 1
@@ -12051,32 +12194,57 @@ final class GameScene: SKScene {
         }
     }
 
-    private func separatedMovementDirection(for entity: GameEntity, desired: CGPoint) -> CGPoint {
-        guard entity.kind.domain == .air else { return desired }
+    private func separatedMovementDirection(for entity: GameEntity, desired: CGPoint, step: CGFloat) -> CGPoint {
+        let domain = entity.kind.domain
+        guard domain == .air || domain == .land || domain == .naval else { return desired }
+
+        let radius: CGFloat
+        let weight: CGFloat
+        switch domain {
+        case .air:
+            radius = airSeparationRadius
+            weight = airSeparationWeight
+        case .naval:
+            radius = max(56, entity.kind.footprint * 1.25)
+            weight = 0.46
+        case .land:
+            radius = max(34, entity.kind.footprint * 1.15)
+            weight = 0.40
+        case .structure:
+            return desired
+        }
 
         var separation = CGPoint.zero
         for neighbor in entities.values where
             neighbor.id != entity.id &&
             neighbor.isAlive &&
             neighbor.faction == entity.faction &&
-            neighbor.kind.domain == .air {
+            neighbor.kind.domain == domain {
             let delta = entity.node.position - neighbor.node.position
             let distance = delta.length
-            guard distance < airSeparationRadius else { continue }
+            let pairRadius = domain == .air ? radius : max(radius, (entity.kind.footprint + neighbor.kind.footprint) * 0.65)
+            guard distance < pairRadius else { continue }
 
             if distance < 0.5 {
                 let sign: CGFloat = entity.id < neighbor.id ? -1 : 1
                 separation = separation + CGPoint(x: sign, y: neighbor.id.isMultiple(of: 2) ? 0.45 : -0.45)
             } else {
-                let pressure = 1 - distance / airSeparationRadius
+                let pressure = 1 - distance / pairRadius
                 separation = separation + delta.normalized * pressure
             }
         }
 
         guard separation.length > 0.001 else { return desired }
-        let candidate = (desired + separation.normalized * airSeparationWeight).normalized
+        let candidate = (desired + separation.normalized * weight).normalized
         let forwardDot = candidate.x * desired.x + candidate.y * desired.y
-        return forwardDot >= 0.30 ? candidate : desired
+        guard forwardDot >= 0.30 else { return desired }
+        if domain != .air {
+            let probePoint = entity.node.position + candidate * max(step, 8)
+            guard let probeTile = tile(at: probePoint), isPassable(probeTile, for: domain) else {
+                return desired
+            }
+        }
+        return candidate
     }
 
     private func updateNavalWake(for entity: GameEntity, direction: CGPoint) {
@@ -17046,40 +17214,52 @@ final class GameScene: SKScene {
             path.addQuadCurve(to: impact, control: control)
 
             let smoke = SKShapeNode(path: path)
-            smoke.strokeColor = UIColor(white: 0.94, alpha: 0.24)
-            smoke.lineWidth = 2.5
+            smoke.strokeColor = UIColor(white: 0.92, alpha: 0.16)
+            smoke.lineWidth = 2.0
             smoke.lineCap = .round
             smoke.zPosition = 282
             effectsLayer.addChild(smoke)
 
             let trail = SKShapeNode(path: path)
-            trail.strokeColor = color.withAlphaComponent(0.25)
-            trail.lineWidth = 0.9
-            trail.glowWidth = 0.4
+            trail.strokeColor = color.withAlphaComponent(0.18)
+            trail.lineWidth = 0.75
+            trail.glowWidth = 0
             trail.zPosition = 283
             effectsLayer.addChild(trail)
 
-            let missile = SKShapeNode(rectOf: CGSize(width: 14, height: 3.5), cornerRadius: 2)
-            missile.fillColor = UIColor(white: 0.98, alpha: 1.0)
-            missile.strokeColor = UIColor(white: 0.38, alpha: 0.92)
-            missile.lineWidth = 0.6
-            missile.glowWidth = 0
+            let missile: SKNode
+            if let missileTexture = effectArtworkTexture(named: "missile-sprite") {
+                let sprite = SKSpriteNode(texture: missileTexture)
+                let width: CGFloat = 32
+                sprite.size = CGSize(width: width, height: width * missileTexture.size().height / max(missileTexture.size().width, 1))
+                sprite.anchorPoint = CGPoint(x: 0.80, y: 0.5)
+                missile = sprite
+            } else {
+                let fallback = SKShapeNode(rectOf: CGSize(width: 14, height: 3.5), cornerRadius: 2)
+                fallback.fillColor = UIColor(white: 0.98, alpha: 1.0)
+                fallback.strokeColor = UIColor(white: 0.38, alpha: 0.92)
+                fallback.lineWidth = 0.6
+                missile = fallback
+            }
             missile.zPosition = 285
-            let flame = SKShapeNode(ellipseOf: CGSize(width: 8, height: 2.5))
-            flame.position = CGPoint(x: -14, y: 0)
-            flame.fillColor = UIColor(red: 1.0, green: 0.58, blue: 0.16, alpha: 0.96)
-            flame.strokeColor = UIColor.white.withAlphaComponent(0.72)
-            flame.glowWidth = 1
-            flame.zPosition = -1
-            missile.addChild(flame)
             effectsLayer.addChild(missile)
 
-            let flash = SKShapeNode(circleOfRadius: 3.5)
+            let flash: SKNode
+            if let muzzleTexture = effectArtworkTexture(named: "muzzle-flash") {
+                let blast = SKSpriteNode(texture: muzzleTexture)
+                let width: CGFloat = 20
+                blast.size = CGSize(width: width, height: width * muzzleTexture.size().height / max(muzzleTexture.size().width, 1))
+                blast.anchorPoint = CGPoint(x: 0.08, y: 0.5)
+                blast.zRotation = atan2(direction.y, direction.x)
+                flash = blast
+            } else {
+                let fallback = SKShapeNode(circleOfRadius: 3.5)
+                fallback.fillColor = UIColor.white.withAlphaComponent(0.96)
+                fallback.strokeColor = color
+                fallback.lineWidth = 1.2
+                flash = fallback
+            }
             flash.position = launch
-            flash.fillColor = UIColor.white.withAlphaComponent(0.96)
-            flash.strokeColor = color
-            flash.lineWidth = 1.5
-            flash.glowWidth = 1
             flash.zPosition = 286
             effectsLayer.addChild(flash)
 
@@ -17190,57 +17370,47 @@ final class GameScene: SKScene {
             path.addQuadCurve(to: impact, control: control)
 
             let glowTrail = SKShapeNode(path: path)
-            glowTrail.strokeColor = color.withAlphaComponent(0.18)
-            glowTrail.lineWidth = 0.7
+            glowTrail.strokeColor = UIColor(white: 0.92, alpha: 0.18)
+            glowTrail.lineWidth = 1.2
             glowTrail.lineCap = .round
             glowTrail.glowWidth = 0
             glowTrail.zPosition = 282
             effectsLayer.addChild(glowTrail)
 
-            for smokeIndex in 0..<4 {
-                let t = CGFloat(smokeIndex + 1) * 0.14 + CGFloat(index) * 0.025
-                let puff = SKShapeNode(circleOfRadius: smokeIndex.isMultiple(of: 2) ? 2.2 : 1.7)
-                puff.position = quadraticPoint(from: launch, control: control, to: impact, t: min(t, 0.76))
-                puff.fillColor = UIColor(white: 0.94, alpha: 0.35)
-                puff.strokeColor = UIColor.white.withAlphaComponent(0.32)
-                puff.lineWidth = 0.8
-                puff.zPosition = 283
-                effectsLayer.addChild(puff)
-                guard !persistent else { continue }
-                puff.alpha = 0
-                puff.run(.sequence([
-                    .wait(forDuration: delay + TimeInterval(smokeIndex) * 0.026),
-                    .fadeIn(withDuration: 0.025),
-                    .group([
-                        .scale(to: 1.45, duration: 0.34),
-                        .fadeOut(withDuration: 0.34)
-                    ]),
-                    .removeFromParent()
-                ]))
+            let rocket: SKNode
+            if let missileTexture = effectArtworkTexture(named: "missile-sprite") {
+                let sprite = SKSpriteNode(texture: missileTexture)
+                let width: CGFloat = 25
+                sprite.size = CGSize(width: width, height: width * missileTexture.size().height / max(missileTexture.size().width, 1))
+                sprite.anchorPoint = CGPoint(x: 0.80, y: 0.5)
+                rocket = sprite
+            } else {
+                let fallback = SKShapeNode(rectOf: CGSize(width: 12, height: 3), cornerRadius: 1.8)
+                fallback.fillColor = UIColor(white: 0.98, alpha: 1.0)
+                fallback.strokeColor = UIColor(white: 0.38, alpha: 0.92)
+                fallback.lineWidth = 0.6
+                rocket = fallback
             }
-
-            let rocket = SKShapeNode(rectOf: CGSize(width: 12, height: 3), cornerRadius: 1.8)
-            rocket.fillColor = UIColor(white: 0.98, alpha: 1.0)
-            rocket.strokeColor = UIColor(white: 0.38, alpha: 0.92)
-            rocket.lineWidth = 0.6
-            rocket.glowWidth = 0
             rocket.zPosition = 285
-            let flame = SKShapeNode(ellipseOf: CGSize(width: 9, height: 3.4))
-            flame.position = CGPoint(x: -11, y: 0)
-            flame.fillColor = UIColor(red: 1.0, green: 0.58, blue: 0.16, alpha: 0.96)
-            flame.strokeColor = UIColor.white.withAlphaComponent(0.68)
-            flame.glowWidth = 2
-            flame.zPosition = -1
-            rocket.addChild(flame)
             effectsLayer.addChild(rocket)
 
             if index < 2 {
-                let flash = SKShapeNode(circleOfRadius: 3.5)
+                let flash: SKNode
+                if let muzzleTexture = effectArtworkTexture(named: "muzzle-flash") {
+                    let blast = SKSpriteNode(texture: muzzleTexture)
+                    let width: CGFloat = 19
+                    blast.size = CGSize(width: width, height: width * muzzleTexture.size().height / max(muzzleTexture.size().width, 1))
+                    blast.anchorPoint = CGPoint(x: 0.08, y: 0.5)
+                    blast.zRotation = atan2(direction.y, direction.x)
+                    flash = blast
+                } else {
+                    let fallback = SKShapeNode(circleOfRadius: 3.5)
+                    fallback.fillColor = UIColor.white.withAlphaComponent(0.96)
+                    fallback.strokeColor = color
+                    fallback.lineWidth = 1.2
+                    flash = fallback
+                }
                 flash.position = launch
-                flash.fillColor = UIColor.white.withAlphaComponent(0.96)
-                flash.strokeColor = color
-                flash.lineWidth = 1.4
-                flash.glowWidth = 1
                 flash.zPosition = 286
                 effectsLayer.addChild(flash)
                 if !persistent {
@@ -17633,57 +17803,23 @@ final class GameScene: SKScene {
 
         let accent = faction == .enemy
             ? UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0)
-            : UIColor(red: 0.30, green: 0.92, blue: 1.0, alpha: 1.0)
-        let laneOffsets: [CGFloat] = [-5.2, 5.2]
-        for laneOffset in laneOffsets {
-            let offset = normal * laneOffset
-            let railPath = CGMutablePath()
-            railPath.move(to: direction * 4 + offset)
-            railPath.addLine(to: direction * -18 + offset)
-            let rail = SKShapeNode(path: railPath)
-            rail.strokeColor = accent.withAlphaComponent(0.72)
-            rail.lineWidth = 3
-            rail.lineCap = .round
-            rail.glowWidth = 2
-            rail.zPosition = 2
-            root.addChild(rail)
+            : UIColor(red: 0.96, green: 0.78, blue: 0.38, alpha: 1.0)
 
-            let recoilingBarrel = SKShapeNode(rectOf: CGSize(width: 28, height: 3.4), cornerRadius: 1.3)
-            recoilingBarrel.position = direction * 27 + offset
-            recoilingBarrel.zRotation = angle
-            recoilingBarrel.fillColor = UIColor(white: 0.18, alpha: 0.92)
-            recoilingBarrel.strokeColor = UIColor.white.withAlphaComponent(0.48)
-            recoilingBarrel.lineWidth = 0.8
-            recoilingBarrel.zPosition = 3
-            root.addChild(recoilingBarrel)
-
-            if !persistent {
-                rail.run(.sequence([.fadeOut(withDuration: 0.30), .removeFromParent()]))
-                recoilingBarrel.run(.sequence([
-                    .group([
-                        .move(by: CGVector(dx: -direction.x * 11, dy: -direction.y * 11), duration: 0.18),
-                        .fadeOut(withDuration: 0.28)
-                    ]),
-                    .removeFromParent()
-                ]))
-            }
-        }
-
-        let shockRing = SKShapeNode(ellipseOf: CGSize(width: 58, height: 28))
-        shockRing.position = direction * -4
+        let shockRing = SKShapeNode(ellipseOf: CGSize(width: 58, height: 26))
+        shockRing.position = direction * 6
         shockRing.zRotation = angle
-        shockRing.fillColor = accent.withAlphaComponent(0.08)
-        shockRing.strokeColor = accent.withAlphaComponent(0.82)
-        shockRing.lineWidth = 2
+        shockRing.fillColor = accent.withAlphaComponent(0.06)
+        shockRing.strokeColor = accent.withAlphaComponent(0.45)
+        shockRing.lineWidth = 1.3
         shockRing.zPosition = 1
         root.addChild(shockRing)
 
-        let dust = SKShapeNode(ellipseOf: CGSize(width: 66, height: 25))
-        dust.position = direction * -22
+        let dust = SKShapeNode(ellipseOf: CGSize(width: 64, height: 24))
+        dust.position = direction * -16
         dust.zRotation = angle
-        dust.fillColor = UIColor(red: 0.72, green: 0.58, blue: 0.34, alpha: 0.24)
-        dust.strokeColor = UIColor(red: 0.92, green: 0.76, blue: 0.46, alpha: 0.54)
-        dust.lineWidth = 1.5
+        dust.fillColor = UIColor(red: 0.72, green: 0.58, blue: 0.34, alpha: 0.18)
+        dust.strokeColor = UIColor(red: 0.92, green: 0.76, blue: 0.46, alpha: 0.38)
+        dust.lineWidth = 1.2
         dust.zPosition = -1
         root.addChild(dust)
 
@@ -18155,35 +18291,36 @@ final class GameScene: SKScene {
         path.addLine(to: end)
 
         let smoke = SKShapeNode(path: path)
-        smoke.strokeColor = UIColor(white: 0.90, alpha: 0.22)
-        smoke.lineWidth = 3
+        smoke.strokeColor = UIColor(white: 0.90, alpha: 0.16)
+        smoke.lineWidth = 2.2
         smoke.lineCap = .round
         smoke.zPosition = 281
         effectsLayer.addChild(smoke)
 
         let trail = SKShapeNode(path: path)
-        trail.strokeColor = UIColor(red: 1.0, green: 0.67, blue: 0.20, alpha: 0.50)
-        trail.lineWidth = 1
-        trail.glowWidth = 0.5
+        trail.strokeColor = UIColor(red: 1.0, green: 0.67, blue: 0.20, alpha: 0.36)
+        trail.lineWidth = 0.85
+        trail.glowWidth = 0
         trail.zPosition = 282
         effectsLayer.addChild(trail)
 
-        let missile = SKShapeNode(rectOf: CGSize(width: 16, height: 4), cornerRadius: 2)
-        missile.fillColor = UIColor(white: 0.94, alpha: 1.0)
-        missile.strokeColor = UIColor(white: 0.36, alpha: 0.90)
-        missile.lineWidth = 0.6
-        missile.glowWidth = 0
+        let missile: SKNode
+        if let missileTexture = effectArtworkTexture(named: "missile-sprite") {
+            let sprite = SKSpriteNode(texture: missileTexture)
+            let width: CGFloat = 34
+            sprite.size = CGSize(width: width, height: width * missileTexture.size().height / max(missileTexture.size().width, 1))
+            sprite.anchorPoint = CGPoint(x: 0.80, y: 0.5)
+            missile = sprite
+        } else {
+            let fallback = SKShapeNode(rectOf: CGSize(width: 16, height: 4), cornerRadius: 2)
+            fallback.fillColor = UIColor(white: 0.94, alpha: 1.0)
+            fallback.strokeColor = UIColor(white: 0.36, alpha: 0.90)
+            fallback.lineWidth = 0.6
+            missile = fallback
+        }
         missile.zRotation = atan2(end.y - start.y, end.x - start.x)
         missile.zPosition = 284
         effectsLayer.addChild(missile)
-
-        let flame = SKShapeNode(ellipseOf: CGSize(width: 9, height: 2.5))
-        flame.position = CGPoint(x: -16, y: 0)
-        flame.fillColor = UIColor(red: 1.0, green: 0.53, blue: 0.14, alpha: 0.96)
-        flame.strokeColor = UIColor.white.withAlphaComponent(0.70)
-        flame.glowWidth = 1
-        flame.zPosition = -1
-        missile.addChild(flame)
 
         if persistent {
             missile.position = start + (end - start) * 0.55
@@ -18867,9 +19004,52 @@ final class GameScene: SKScene {
         else { return }
 
         if let tilePath = pathTiles(from: start, to: goal, domain: entity.kind.domain), tilePath.count > 1 {
-            entity.path = tilePath.dropFirst().map(tileCenter)
-            entity.destination = entity.path.removeFirst()
+            let smoothed = smoothWorldPath(tilePath.map(tileCenter), for: entity.kind.domain)
+            var waypoints = Array(smoothed.dropFirst())
+            if !waypoints.isEmpty, let goalTile = tile(at: destination), isPassable(goalTile, for: entity.kind.domain) {
+                waypoints[waypoints.count - 1] = destination
+            }
+            if !waypoints.isEmpty {
+                entity.path = waypoints
+                entity.destination = entity.path.removeFirst()
+            }
         }
+    }
+
+    private func smoothWorldPath(_ points: [CGPoint], for domain: Domain) -> [CGPoint] {
+        guard points.count > 2 else { return points }
+        var result: [CGPoint] = [points[0]]
+        var anchorIndex = 0
+        while anchorIndex < points.count - 1 {
+            var furthest = anchorIndex + 1
+            for candidate in stride(from: points.count - 1, through: anchorIndex + 2, by: -1) {
+                if hasClearTerrainLine(from: points[anchorIndex], to: points[candidate], domain: domain) {
+                    furthest = candidate
+                    break
+                }
+            }
+            result.append(points[furthest])
+            anchorIndex = furthest
+        }
+        return result
+    }
+
+    private func hasClearTerrainLine(from start: CGPoint, to end: CGPoint, domain: Domain) -> Bool {
+        let distance = start.distance(to: end)
+        let steps = max(2, Int(ceil(distance / 18)))
+        var sawRoad = false
+        for i in 0...steps {
+            let t = CGFloat(i) / CGFloat(steps)
+            let p = start + (end - start) * t
+            guard let tile = tile(at: p), isPassable(tile, for: domain) else { return false }
+            if domain == .land && terrain(at: tile) == .road { sawRoad = true }
+        }
+        // Keep land units following desert roads rather than cutting off-road across sand.
+        if domain == .land && !sawRoad, let startTile = tile(at: start), let endTile = tile(at: end),
+           terrain(at: startTile) == .road && terrain(at: endTile) == .road {
+            return false
+        }
+        return true
     }
 
     private func advancePath(for entity: GameEntity) {
@@ -18895,7 +19075,10 @@ final class GameScene: SKScene {
 
             open.remove(current)
             for neighbor in neighbors(of: current, for: domain) {
-                let tentativeScore = (gScore[current] ?? Int.max - 20) + movementCost(for: neighbor, domain: domain)
+                let isDiagonal = neighbor.row != current.row && neighbor.col != current.col
+                let baseCost = movementCost(for: neighbor, domain: domain)
+                let stepCost = isDiagonal ? (baseCost * 14) / 10 : baseCost
+                let tentativeScore = (gScore[current] ?? Int.max - 20) + stepCost
                 if tentativeScore < (gScore[neighbor] ?? Int.max) {
                     cameFrom[neighbor] = current
                     gScore[neighbor] = tentativeScore
@@ -18919,14 +19102,24 @@ final class GameScene: SKScene {
     }
 
     private func neighbors(of tile: TileCoord, for domain: Domain) -> [TileCoord] {
-        [
+        let orthogonal = [
             TileCoord(row: tile.row - 1, col: tile.col),
             TileCoord(row: tile.row + 1, col: tile.col),
             TileCoord(row: tile.row, col: tile.col - 1),
-            TileCoord(row: tile.row, col: tile.col + 1),
-            TileCoord(row: tile.row - 1, col: tile.col + 1),
-            TileCoord(row: tile.row + 1, col: tile.col - 1)
+            TileCoord(row: tile.row, col: tile.col + 1)
         ].filter { isPassable($0, for: domain) }
+        var result = orthogonal
+        // 8-way diagonals require both adjacent orthogonal tiles passable (no corner-cutting over water/ridges).
+        let diagonalDeltas = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+        for (dr, dc) in diagonalDeltas {
+            let candidate = TileCoord(row: tile.row + dr, col: tile.col + dc)
+            let sideA = TileCoord(row: tile.row + dr, col: tile.col)
+            let sideB = TileCoord(row: tile.row, col: tile.col + dc)
+            if isPassable(candidate, for: domain) && isPassable(sideA, for: domain) && isPassable(sideB, for: domain) {
+                result.append(candidate)
+            }
+        }
+        return result
     }
 
     private func movementCost(for tile: TileCoord, domain: Domain) -> Int {
@@ -18963,7 +19156,11 @@ final class GameScene: SKScene {
     }
 
     private func heuristic(from start: TileCoord, to goal: TileCoord) -> Int {
-        (abs(start.row - goal.row) + abs(start.col - goal.col)) * 7
+        let dr = abs(start.row - goal.row)
+        let dc = abs(start.col - goal.col)
+        let diag = min(dr, dc)
+        let straight = max(dr, dc) - diag
+        return diag * 10 + straight * 7
     }
 
     private func navigablePoint(for domain: Domain, near point: CGPoint) -> CGPoint {
