@@ -1380,6 +1380,8 @@ final class GameScene: SKScene {
     private var incomeFeedbackCounter = 0
     private var aiAccumulator: TimeInterval = 0
     private var fogAccumulator: TimeInterval = 0
+    private var cameraShakeRemaining: TimeInterval = 0
+    private var cameraShakeMagnitude: CGFloat = 0
     private var lastPlayerAttackAlertTime: TimeInterval = -100
     private var lastEnemyDefenseResponseTime: TimeInterval = -100
     private var lastEnemyControlPointDefenseResponseTime: TimeInterval = -100
@@ -1629,11 +1631,25 @@ final class GameScene: SKScene {
         if size != self.size { ciInvalidateReady("view-size-requested") }
     }
 
+    private func triggerCameraShake(intensity: CGFloat, at point: CGPoint) {
+        guard !isCICaptureMode, intensity > 0 else { return }
+        guard point.distance(to: cameraRig.position) <= 560 * max(cameraRig.xScale, 0.7) else { return }
+        cameraShakeRemaining = max(cameraShakeRemaining, 0.24)
+        cameraShakeMagnitude = max(cameraShakeMagnitude, min(6.0, intensity))
+    }
+
     private func applyCameraProjection() {
         // One logical camera drives the world transform; the HUD stays in screen space.
         let inverseX = 1 / max(cameraRig.xScale, 0.01)
         let inverseY = 1 / max(cameraRig.yScale, 0.01)
-        let position = CGPoint(x: -cameraRig.position.x * inverseX, y: -cameraRig.position.y * inverseY)
+        var position = CGPoint(x: -cameraRig.position.x * inverseX, y: -cameraRig.position.y * inverseY)
+        if !isCICaptureMode && cameraShakeRemaining > 0 && cameraShakeMagnitude > 0 {
+            let decay = CGFloat(min(1.0, cameraShakeRemaining / 0.24))
+            let amp = cameraShakeMagnitude * decay
+            let phase = CGFloat(lastUpdateTime) * 62
+            position.x += sin(phase) * amp
+            position.y += cos(phase * 1.27) * amp * 0.72
+        }
         if worldNode.xScale != inverseX { worldNode.xScale = inverseX }
         if worldNode.yScale != inverseY { worldNode.yScale = inverseY }
         if worldNode.position != position { worldNode.position = position }
@@ -1708,6 +1724,11 @@ final class GameScene: SKScene {
         updateCombat(dt: dt)
         updateAI(dt: dt)
         updateFog(force: false, dt: dt)
+        if cameraShakeRemaining > 0 {
+            cameraShakeRemaining = max(0, cameraShakeRemaining - dt)
+            if cameraShakeRemaining <= 0 { cameraShakeMagnitude = 0 }
+            applyCameraProjection()
+        }
         cullDestroyedEntities()
         updateMissionProgress()
         updateVictoryState()
@@ -10925,6 +10946,8 @@ final class GameScene: SKScene {
         incomeFeedbackCounter = 0
         aiAccumulator = 0
         fogAccumulator = 0
+        cameraShakeRemaining = 0
+        cameraShakeMagnitude = 0
         lastPlayerAttackAlertTime = -100
         lastEnemyDefenseResponseTime = -100
         lastEnemyControlPointDefenseResponseTime = -100
@@ -16565,6 +16588,12 @@ final class GameScene: SKScene {
         node.position = point
         node.zPosition = 264
 
+        let outerHalo = SKShapeNode(ellipseOf: CGSize(width: 64, height: 31))
+        outerHalo.strokeColor = color.withAlphaComponent(0.32)
+        outerHalo.fillColor = color.withAlphaComponent(0.06)
+        outerHalo.lineWidth = 0.9
+        node.addChild(outerHalo)
+
         let ring = SKShapeNode(ellipseOf: CGSize(width: 50, height: 24))
         ring.strokeColor = color
         ring.fillColor = .clear
@@ -16600,6 +16629,12 @@ final class GameScene: SKScene {
         if isCICaptureMode && persistent { node.name = "ci:marker:attack-move" }
         node.position = point
         node.zPosition = 266
+
+        let outerHalo = SKShapeNode(ellipseOf: CGSize(width: 76, height: 37))
+        outerHalo.strokeColor = color.withAlphaComponent(0.34)
+        outerHalo.fillColor = color.withAlphaComponent(0.07)
+        outerHalo.lineWidth = 1.0
+        node.addChild(outerHalo)
 
         let ringPath = CGPath(ellipseIn: CGRect(x: -31, y: -15, width: 62, height: 30), transform: nil)
         let ring = SKShapeNode(path: ringPath.copy(dashingWithPhase: 0, lengths: [5, 3]))
@@ -18920,6 +18955,7 @@ final class GameScene: SKScene {
             guard let self else { return }
             switch kind {
             case .artillery, .battleship, .coastalBattery:
+                self.triggerCameraShake(intensity: 2.4, at: point)
                 self.spawnScorchCraterIfLand(at: point, scale: 0.86, persistent: false)
                 self.showBlastShockwave(at: point, scale: 0.92, persistent: false)
                 _ = self.showArtworkImpact("explosion-fireball", at: point, width: 68, zPosition: 285.6, anchorY: 0.24, duration: 0.48, persistent: false)
@@ -18975,6 +19011,9 @@ final class GameScene: SKScene {
 
     private func explode(at point: CGPoint, scale: CGFloat, persistent: Bool = false) {
         spawnScorchCraterIfLand(at: point, scale: scale, persistent: persistent)
+        if !persistent && scale >= 0.85 {
+            triggerCameraShake(intensity: scale >= 1.25 ? 5.2 : 3.1, at: point)
+        }
         if scale >= 0.85 {
             showBlastShockwave(at: point, scale: scale, persistent: persistent)
         }
