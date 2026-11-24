@@ -602,6 +602,36 @@
       "worldWidth": 136
     },
     {
+      "kind": "shellTracer",
+      "file": "Effects/shell-tracer.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/shell-tracer",
+      "bytes": 128352,
+      "sha256": "f33bcff72245b88612e51207eb60043c7be4d52b3b8903892dc08bf058242977",
+      "width": 768,
+      "height": 256,
+      "worldWidth": 42
+    },
+    {
+      "kind": "aaFlakBurst",
+      "file": "Effects/aa-flak-burst.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/aa-flak-burst",
+      "bytes": 268419,
+      "sha256": "2c9657f8fb853530ec85a56dffad4f138572bf859fa69c1c9c45bbab091fc0b8",
+      "width": 640,
+      "height": 426,
+      "worldWidth": 46
+    },
+    {
+      "kind": "shockwaveRing",
+      "file": "Effects/shockwave-ring.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/shockwave-ring",
+      "bytes": 224419,
+      "sha256": "aba9715852df178448e1163061ad82a49cd69ac6fa92b707e485c549dd884875",
+      "width": 640,
+      "height": 426,
+      "worldWidth": 88
+    },
+    {
       "kind": "supplyDepot",
       "file": "Props/supply-depot.png",
       "sourceFile": "ai-v6.36-supply-depot",
@@ -624,9 +654,9 @@
     {
       "kind": "roadSurface",
       "file": "Terrain/desert-road.png",
-      "sourceFile": "v6.36-desert-road",
-      "bytes": 416906,
-      "sha256": "b93eb03f5cc93548842720e6d98bead1ea5030535b7db2a69d86a53c2088fc7d",
+      "sourceFile": "magpie-gpt-image-2.5-flare/desert-road",
+      "bytes": 548579,
+      "sha256": "c78271e89378d70ad4b3a5a1f3bc821bc1cefffe435a3e2b2bf0e27991e3f516",
       "width": 512,
       "height": 512,
       "format": "RGB8",

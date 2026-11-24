@@ -604,7 +604,7 @@ private enum HudAction: String, CaseIterable {
         case .cycleTarget: "scope"
         case .attackMove: "arrow.up.right"
         case .setRally: "flag.fill"
-        case .buildBase: "building.2.crop.circle"
+        case .buildBase: "hammer.fill"
         case .reconSweep: "dot.radiowaves.left.and.right"
         case .fieldRepair: "wrench.and.screwdriver"
         case .airStrike: "airplane"
@@ -748,6 +748,7 @@ private struct HUDLayout {
         let message = CGRect(x: messageX, y: min(mission.minY, selection.minY) - 24,
                              width: min(compact ? 320 : 440, mapPanel.minX - 6 - messageX), height: 18)
         let selectionContentWidth = selection.width - 20
+        let selectionPortraitInset: CGFloat = compact ? 34 : 42
         let disclosure = CGRect(x: selection.maxX - 44, y: selection.maxY - 44, width: 44, height: 44)
         panels = ["resources": top, "rail": rail, "dock": dock, "mission": mission,
                   "message": message, "selection": selection, "minimap": mapPanel]
@@ -775,11 +776,11 @@ private struct HUDLayout {
             "missionTitle": CGRect(x: mission.minX + 10, y: mission.maxY - (compact ? 16 : 17), width: mission.width - 20, height: 12),
             "missionDetail": CGRect(x: mission.minX + 10, y: mission.minY + (compact ? 8 : 11), width: mission.width - 20, height: 12),
             "messageText": message.insetBy(dx: 8, dy: 2),
-            "selectionTitle": CGRect(x: selection.minX + 10, y: selection.maxY - (compact ? 18 : 20),
-                                     width: selectionContentWidth - 44,
+            "selectionTitle": CGRect(x: selection.minX + 10 + selectionPortraitInset, y: selection.maxY - (compact ? 18 : 20),
+                                     width: max(40, selectionContentWidth - 44 - selectionPortraitInset),
                                      height: compact ? 14 : 16),
-            "selected": CGRect(x: selection.minX + 10, y: selection.maxY - (compact ? 33 : 34),
-                               width: selectionContentWidth - 44, height: 12),
+            "selected": CGRect(x: selection.minX + 10 + selectionPortraitInset, y: selection.maxY - (compact ? 33 : 34),
+                               width: max(40, selectionContentWidth - 44 - selectionPortraitInset), height: 12),
             "detailsToggle": disclosure,
             "detailsText": CGRect(x: disclosure.minX, y: disclosure.minY + 4, width: disclosure.width, height: 10)
         ]
@@ -1403,6 +1404,10 @@ final class GameScene: SKScene {
     private var forcesLabel = HUDTextLabel(fontNamed: "Menlo")
     private var aiStatusLabel = HUDTextLabel(fontNamed: "Menlo")
     private var selectionInfoTitleLabel = HUDTextLabel(fontNamed: "Menlo-Bold")
+    private var selectionPortraitFrame: SKShapeNode?
+    private var selectionPortraitSprite: SKSpriteNode?
+    private var selectionPortraitSymbol: SKSpriteNode?
+    private var selectionPortraitBoxSize: CGFloat = 34
     private var selectionInfoRowLabels: [SKLabelNode] = []
     private var selectionDetailsExpanded = false
     private var selectionTargetHealthBack = SKShapeNode()
@@ -2548,34 +2553,53 @@ final class GameScene: SKScene {
             context.clip(using: .evenOdd)
             context.setLineCap(.round)
             context.setLineJoin(.round)
-            for band in stride(from: 14, through: 1, by: -1) {
+            // Warm damp wet-sand beach rim on the landward side of the coast
+            for band in stride(from: 20, through: 1, by: -1) {
                 context.addPath(coast)
-                context.setLineWidth(CGFloat(band))
-                context.setStrokeColor(UIColor(red: 0.34, green: 0.32, blue: 0.22, alpha: 0.024).cgColor)
+                context.setLineWidth(CGFloat(band) * 1.15)
+                context.setStrokeColor(UIColor(red: 0.42, green: 0.34, blue: 0.21, alpha: 0.026).cgColor)
                 context.strokePath()
             }
+            // Sun-bleached dry beach crest line just behind the wet sand
+            context.addPath(coast)
+            context.setLineWidth(5.5)
+            context.setStrokeColor(UIColor(red: 0.86, green: 0.76, blue: 0.56, alpha: 0.16).cgColor)
+            context.strokePath()
             context.restoreGState()
-            // Shallows and broken foam follow only actual land/water edges.
+            // Shallows and broken surf foam follow only actual land/water edges.
             // Soft bands are clipped to water and never alter navigable tiles.
             context.saveGState()
             context.addPath(sea)
             context.clip()
             context.setLineCap(.round)
             context.setLineJoin(.round)
-            // Small opacity steps soften the old four hard-colored shoreline rails.
-            for band in stride(from: 20, through: 1, by: -1) {
+            // Layered coastal turquoise-to-teal reef shelf fading into deep gulf water
+            for band in stride(from: 24, through: 1, by: -1) {
+                let t = CGFloat(band) / 24.0
                 context.addPath(coast)
-                context.setLineWidth(CGFloat(band) * 3.2)
-                context.setStrokeColor(UIColor(red: 0.28, green: 0.68, blue: 0.66, alpha: 0.028).cgColor)
+                context.setLineWidth(CGFloat(band) * 3.6)
+                context.setStrokeColor(UIColor(
+                    red: 0.14 + (1 - t) * 0.24,
+                    green: 0.54 + (1 - t) * 0.24,
+                    blue: 0.58 + (1 - t) * 0.18,
+                    alpha: 0.024 + (1 - t) * 0.018
+                ).cgColor)
                 context.strokePath()
             }
-            context.addPath(coast.copy(dashingWithPhase: 0, lengths: [3.5, 2.8, 1.2, 5.5, 4.2, 6.0]))
-            context.setLineWidth(1.3)
-            context.setStrokeColor(UIColor(red: 0.96, green: 0.98, blue: 0.90, alpha: 0.62).cgColor)
+            // Inner translucent shorewash foam apron
+            context.addPath(coast)
+            context.setLineWidth(7.2)
+            context.setStrokeColor(UIColor(red: 0.82, green: 0.96, blue: 0.95, alpha: 0.22).cgColor)
             context.strokePath()
-            context.addPath(coast.copy(dashingWithPhase: 5, lengths: [2.0, 5.5, 3.0, 8.0]))
-            context.setLineWidth(2.8)
-            context.setStrokeColor(UIColor(red: 0.78, green: 0.94, blue: 0.92, alpha: 0.24).cgColor)
+            // Primary breaking surf foam crest along the shoreline
+            context.addPath(coast.copy(dashingWithPhase: 0, lengths: [4.2, 2.4, 1.8, 4.8, 5.2, 3.6]))
+            context.setLineWidth(2.1)
+            context.setStrokeColor(UIColor(red: 0.97, green: 0.99, blue: 0.95, alpha: 0.78).cgColor)
+            context.strokePath()
+            // Secondary receding wave foam line slightly offshore
+            context.addPath(coast.copy(dashingWithPhase: 6, lengths: [2.6, 5.2, 3.4, 7.2]))
+            context.setLineWidth(4.2)
+            context.setStrokeColor(UIColor(red: 0.84, green: 0.96, blue: 0.94, alpha: 0.26).cgColor)
             context.strokePath()
             context.restoreGState()
         }
@@ -2682,22 +2706,22 @@ final class GameScene: SKScene {
         context.setLineCap(.round)
         context.setLineJoin(.round)
         // Soft wind-blown sand shoulder transition along military road edges
-        for (width, alpha) in [(CGFloat(28), CGFloat(0.08)), (23, 0.13), (18.5, 0.22)] {
+        for (width, alpha) in [(CGFloat(30), CGFloat(0.09)), (24, 0.16), (19.0, 0.26)] {
             context.addPath(roads)
             context.setLineWidth(width)
-            context.setStrokeColor(UIColor(red: 0.56, green: 0.45, blue: 0.30, alpha: alpha).cgColor)
+            context.setStrokeColor(UIColor(red: 0.68, green: 0.55, blue: 0.36, alpha: alpha).cgColor)
             context.strokePath()
         }
-        // Subtle recessed asphalt curb border
+        // Weathered dusty roadbed edge border
         context.addPath(roads)
-        context.setLineWidth(16.2)
-        context.setStrokeColor(UIColor(red: 0.24, green: 0.23, blue: 0.20, alpha: 0.72).cgColor)
+        context.setLineWidth(16.4)
+        context.setStrokeColor(UIColor(red: 0.36, green: 0.31, blue: 0.24, alpha: 0.62).cgColor)
         context.strokePath()
-        // Textured weathered desert asphalt road surface
+        // Textured sun-baked desert tarmac surface
         context.saveGState()
         context.addPath(roads.copy(strokingWithWidth: 14.8, lineCap: .round, lineJoin: .round, miterLimit: 2))
         context.clip()
-        context.setFillColor(UIColor(red: 0.34, green: 0.33, blue: 0.29, alpha: 0.94).cgColor)
+        context.setFillColor(UIColor(red: 0.45, green: 0.40, blue: 0.33, alpha: 0.92).cgColor)
         context.fill(CGRect(origin: .zero, size: frame.size))
         if let roadImage = loadRoadMaterialImage() {
             let cell = CGSize(width: 240, height: 240)
@@ -2708,7 +2732,7 @@ final class GameScene: SKScene {
                     context.translateBy(x: CGFloat(x) * cell.width + (flipX ? cell.width : 0),
                                         y: CGFloat(y) * cell.height + (flipY ? cell.height : 0))
                     context.scaleBy(x: flipX ? -1 : 1, y: flipY ? -1 : 1)
-                    roadImage.draw(in: CGRect(origin: .zero, size: cell), blendMode: .normal, alpha: 0.88)
+                    roadImage.draw(in: CGRect(origin: .zero, size: cell), blendMode: .normal, alpha: 0.94)
                     context.restoreGState()
                 }
             }
@@ -6635,6 +6659,9 @@ final class GameScene: SKScene {
         hudPageHitFrames.removeAll()
         hudPageShapes.removeAll()
         selectionInfoRowLabels.removeAll()
+        selectionPortraitFrame = nil
+        selectionPortraitSprite = nil
+        selectionPortraitSymbol = nil
         boundedHUDLabels.removeAll()
         hudLabelFitCache.removeAll()
         lastMinimapBlipUpdateTime = -1
@@ -7572,6 +7599,39 @@ final class GameScene: SKScene {
     private func addSelectionInfoPanel(frame: CGRect, compact: Bool) {
         selectionInfoRowBaseFontSize = compact ? 9.5 : 10.5
         selectionInfoTitleLabel = makeHUDLabel(slot: "selectionTitle", font: "AvenirNext-DemiBold", size: 11, color: HUDPalette.gold)
+        let portraitBoxSize: CGFloat = compact ? 28 : 34
+        let portraitInset: CGFloat = compact ? 34 : 42
+        selectionPortraitBoxSize = portraitBoxSize
+        let portraitRect = CGRect(
+            x: frame.minX + 8,
+            y: frame.maxY - (compact ? 35 : 41),
+            width: portraitBoxSize,
+            height: portraitBoxSize
+        )
+        let portraitBezel = SKShapeNode(rect: portraitRect, cornerRadius: 5)
+        portraitBezel.name = "hud:selection-portrait-frame"
+        portraitBezel.fillColor = UIColor(red: 0.04, green: 0.08, blue: 0.11, alpha: 0.84)
+        portraitBezel.strokeColor = HUDPalette.cyan.withAlphaComponent(0.42)
+        portraitBezel.lineWidth = 0.85
+        hudNode.addChild(portraitBezel)
+        selectionPortraitFrame = portraitBezel
+
+        let portraitSprite = SKSpriteNode()
+        portraitSprite.name = "hud:selection-portrait-sprite"
+        portraitSprite.position = CGPoint(x: portraitRect.midX, y: portraitRect.midY)
+        portraitSprite.isHidden = true
+        hudNode.addChild(portraitSprite)
+        selectionPortraitSprite = portraitSprite
+
+        if let defaultSymbol = hudSymbol("scope", size: compact ? 15 : 18) {
+            defaultSymbol.name = "hud:selection-portrait-symbol"
+            defaultSymbol.position = CGPoint(x: portraitRect.midX, y: portraitRect.midY)
+            hudNode.addChild(defaultSymbol)
+            selectionPortraitSymbol = defaultSymbol
+        } else {
+            selectionPortraitSymbol = nil
+        }
+
         let disclosure = hudLayout!.slots["detailsToggle"]!
         let disclosurePlate = SKShapeNode(rect: disclosure.insetBy(dx: 3, dy: 4), cornerRadius: 5)
         if let keycap = uiSurfaceTexture(named: selectionDetailsExpanded ? "hud-button-active" : "hud-button-keycap") {
@@ -7602,7 +7662,7 @@ final class GameScene: SKScene {
             hudNode.addChild(row)
             selectionInfoRowLabels.append(row)
         }
-        selectionTargetHealthBarFrame = CGRect(x: frame.minX + 10, y: frame.minY + 5, width: frame.width - 64, height: 3.5)
+        selectionTargetHealthBarFrame = CGRect(x: frame.minX + 10 + portraitInset, y: frame.minY + 5, width: max(40, frame.width - 64 - portraitInset), height: 3.5)
         selectionTargetHealthBack = SKShapeNode(rectOf: selectionTargetHealthBarFrame.size, cornerRadius: 1.5)
         selectionTargetHealthBack.position = CGPoint(x: selectionTargetHealthBarFrame.midX, y: selectionTargetHealthBarFrame.midY)
         selectionTargetHealthBack.fillColor = HUDPalette.panelDeep
@@ -8294,10 +8354,31 @@ final class GameScene: SKScene {
         }
         if incomingThreatSummary(for: selected) != nil {
             selectionInfoTitleLabel.fontColor = HUDPalette.warning
+            selectionPortraitFrame?.strokeColor = HUDPalette.warning.withAlphaComponent(0.72)
         } else if selected.count == 1, let entity = selected.first {
-            selectionInfoTitleLabel.fontColor = selectionDomainColor(for: entity.kind)
+            let accent = selectionDomainColor(for: entity.kind)
+            selectionInfoTitleLabel.fontColor = accent
+            selectionPortraitFrame?.strokeColor = accent.withAlphaComponent(0.60)
         } else {
             selectionInfoTitleLabel.fontColor = UIColor(red: 0.74, green: 0.95, blue: 1.0, alpha: 1.0)
+            selectionPortraitFrame?.strokeColor = HUDPalette.cyan.withAlphaComponent(0.46)
+        }
+        if let portraitSprite = selectionPortraitSprite {
+            let representativeKind: EntityKind? = selected.count == 1
+                ? selected[0].kind
+                : (Set(selected.map(\.kind)).count == 1 ? selected.first?.kind : nil)
+            if let kind = representativeKind, let texture = productionArtworkTexture(for: kind) {
+                portraitSprite.texture = texture
+                let maxDim = selectionPortraitBoxSize - 4
+                let scale = min(maxDim / max(texture.size().width, 1), maxDim / max(texture.size().height, 1))
+                portraitSprite.size = CGSize(width: texture.size().width * scale, height: texture.size().height * scale)
+                portraitSprite.isHidden = false
+                selectionPortraitSymbol?.isHidden = true
+            } else {
+                portraitSprite.isHidden = true
+                selectionPortraitSymbol?.isHidden = false
+                selectionPortraitSymbol?.color = selected.isEmpty ? HUDPalette.mutedText : HUDPalette.cyan
+            }
         }
         let rowColors = selectionInfoRowColors(for: selected)
         for (index, label) in selectionInfoRowLabels.enumerated() {
@@ -16983,26 +17064,35 @@ final class GameScene: SKScene {
             }
         }
         let heavy = kind == .tank || kind == .artillery || kind == .battleship || kind == .coastalBattery
-        let length: CGFloat = heavy ? 11 : 6
         let root = SKNode()
         root.name = "projectile-tracer:\(kind.shortCode)"
         root.position = persistent ? start + travel * 0.55 : start
         root.zRotation = atan2(direction.y, direction.x)
         root.zPosition = 250
-        let shell = SKShapeNode(rectOf: CGSize(width: length, height: heavy ? 1.7 : 1.1), cornerRadius: 0.5)
-        shell.position.x = -length / 2
-        shell.fillColor = UIColor(red: 1.0, green: 0.91, blue: 0.67, alpha: 1.0)
-        shell.strokeColor = UIColor(white: 0.20, alpha: 0.46)
-        shell.lineWidth = 0.35
-        root.addChild(shell)
-        let tail = CGMutablePath()
-        tail.move(to: CGPoint(x: -length - (heavy ? 12 : 5), y: 0))
-        tail.addLine(to: CGPoint(x: -length, y: 0))
-        let afterglow = SKShapeNode(path: tail)
-        afterglow.strokeColor = UIColor(red: 0.94, green: 0.76, blue: 0.40, alpha: 0.30)
-        afterglow.lineWidth = heavy ? 0.9 : 0.6
-        afterglow.lineCap = .round
-        root.addChild(afterglow)
+        if heavy, let tracerTexture = effectArtworkTexture(named: "shell-tracer") {
+            let sprite = SKSpriteNode(texture: tracerTexture)
+            let width: CGFloat = kind == .battleship || kind == .coastalBattery ? 46 : (kind == .artillery ? 40 : 34)
+            sprite.size = CGSize(width: width, height: width * tracerTexture.size().height / max(tracerTexture.size().width, 1))
+            sprite.anchorPoint = CGPoint(x: 0.90, y: 0.5)
+            sprite.blendMode = .alpha
+            root.addChild(sprite)
+        } else {
+            let length: CGFloat = heavy ? 11 : 7
+            let shell = SKShapeNode(rectOf: CGSize(width: length, height: heavy ? 1.7 : 1.1), cornerRadius: 0.5)
+            shell.position.x = -length / 2
+            shell.fillColor = UIColor(red: 1.0, green: 0.91, blue: 0.67, alpha: 1.0)
+            shell.strokeColor = UIColor(white: 0.20, alpha: 0.46)
+            shell.lineWidth = 0.35
+            root.addChild(shell)
+            let tail = CGMutablePath()
+            tail.move(to: CGPoint(x: -length - (heavy ? 12 : 6), y: 0))
+            tail.addLine(to: CGPoint(x: -length, y: 0))
+            let afterglow = SKShapeNode(path: tail)
+            afterglow.strokeColor = UIColor(red: 0.94, green: 0.76, blue: 0.40, alpha: 0.34)
+            afterglow.lineWidth = heavy ? 0.9 : 0.65
+            afterglow.lineCap = .round
+            root.addChild(afterglow)
+        }
         effectsLayer.addChild(root)
         guard !persistent else { return }
         // A visual flight only; the existing firing path still owns every damage event.
@@ -17693,27 +17783,38 @@ final class GameScene: SKScene {
             path.addLine(to: impact)
 
             let glow = SKShapeNode(path: path)
-            glow.strokeColor = UIColor(red: 1, green: 0.85, blue: 0.58, alpha: 0.20)
-            glow.lineWidth = 2
+            glow.strokeColor = UIColor(red: 0.92, green: 0.88, blue: 0.78, alpha: 0.14)
+            glow.lineWidth = 1.6
             glow.lineCap = .round
             glow.glowWidth = 0
             glow.zPosition = 282
             effectsLayer.addChild(glow)
 
             let core = SKShapeNode(path: path)
-            core.strokeColor = UIColor(red: 1.0, green: 0.92, blue: 0.68, alpha: 0.65)
-            core.lineWidth = 0.9
+            core.strokeColor = UIColor(red: 1.0, green: 0.90, blue: 0.64, alpha: 0.28)
+            core.lineWidth = 0.7
             core.lineCap = .round
             core.zPosition = 283
             effectsLayer.addChild(core)
 
-            let shell = SKShapeNode(rectOf: CGSize(width: 12, height: 2.2), cornerRadius: 1)
+            let shell: SKNode
+            if let tracerTexture = effectArtworkTexture(named: "shell-tracer") {
+                let sprite = SKSpriteNode(texture: tracerTexture)
+                let width: CGFloat = kind == .battleship ? 50 : 44
+                sprite.size = CGSize(width: width, height: width * tracerTexture.size().height / max(tracerTexture.size().width, 1))
+                sprite.anchorPoint = CGPoint(x: 0.90, y: 0.5)
+                shell = sprite
+            } else {
+                let fallback = SKShapeNode(rectOf: CGSize(width: 12, height: 2.2), cornerRadius: 1)
+                fallback.fillColor = UIColor(red: 1.0, green: 0.90, blue: 0.58, alpha: 0.98)
+                fallback.strokeColor = UIColor(red: 1.0, green: 0.62, blue: 0.18, alpha: 0.85)
+                fallback.lineWidth = 0.5
+                fallback.glowWidth = 0
+                shell = fallback
+            }
+            shell.name = "combat:naval-shell"
             shell.position = persistent ? muzzle + (impact - muzzle) * 0.68 : muzzle
             shell.zRotation = atan2(direction.y, direction.x)
-            shell.fillColor = UIColor(red: 1.0, green: 0.90, blue: 0.58, alpha: 0.98)
-            shell.strokeColor = UIColor(red: 1.0, green: 0.62, blue: 0.18, alpha: 0.85)
-            shell.lineWidth = 0.5
-            shell.glowWidth = 0
             shell.zPosition = 285
             effectsLayer.addChild(shell)
 
@@ -18053,7 +18154,8 @@ final class GameScene: SKScene {
         persistent: Bool = false
     ) {
         guard faction == .player || isVisible(point: point) else { return }
-        if showArtworkImpact("impact-burst", at: point, width: 38, zPosition: 286, anchorY: 0.45, persistent: persistent) { return }
+        _ = showArtworkImpact("aa-flak-burst", at: point, width: 48, zPosition: 285.6, anchorY: 0.5, duration: 0.44, persistent: persistent)
+        if showArtworkImpact("impact-burst", at: point, width: 34, zPosition: 286, anchorY: 0.45, persistent: persistent) { return }
         let node = SKNode()
         node.position = point
         node.zPosition = 286
@@ -18539,8 +18641,34 @@ final class GameScene: SKScene {
         ]))
     }
 
+    private func showBlastShockwave(at point: CGPoint, scale: CGFloat, persistent: Bool) {
+        guard let ringTexture = effectArtworkTexture(named: "shockwave-ring") else { return }
+        let ring = SKSpriteNode(texture: ringTexture)
+        ring.name = "combat:shockwave-ring"
+        let width: CGFloat = 88 * scale
+        ring.size = CGSize(width: width, height: width * ringTexture.size().height / max(ringTexture.size().width, 1))
+        ring.position = point
+        ring.xScale = persistent ? 0.92 : 0.35
+        ring.yScale = (persistent ? 0.92 : 0.35) * 0.58
+        ring.alpha = persistent ? 0.72 : 0.92
+        ring.zPosition = 284.8
+        effectsLayer.addChild(ring)
+        guard !persistent else { return }
+        ring.run(.sequence([
+            .group([
+                .scaleX(to: 1.38, duration: 0.34),
+                .scaleY(to: 1.38 * 0.58, duration: 0.34),
+                .fadeOut(withDuration: 0.34)
+            ]),
+            .removeFromParent()
+        ]))
+    }
+
     private func explode(at point: CGPoint, scale: CGFloat, persistent: Bool = false) {
         spawnScorchCraterIfLand(at: point, scale: scale, persistent: persistent)
+        if scale >= 0.85 {
+            showBlastShockwave(at: point, scale: scale, persistent: persistent)
+        }
         if scale >= 1.0 {
             _ = showArtworkImpact("explosion-fireball", at: point, width: 84 * scale, zPosition: 285.5,
                                   anchorY: 0.22, duration: 0.58, persistent: persistent)
@@ -18891,6 +19019,7 @@ final class GameScene: SKScene {
             incomingDirection: incomingDirection,
             persistent: persistent
         )
+        showBlastShockwave(at: target.node.position, scale: 0.78, persistent: persistent)
         showNavalHullStrike(at: target.node.position, faction: faction, persistent: persistent)
     }
 
