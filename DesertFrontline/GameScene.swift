@@ -4550,12 +4550,20 @@ final class GameScene: SKScene {
         entity.node.addChild(entity.teamFlag)
 
         entity.label.text = entity.kind.shortCode
-        entity.label.fontSize = entity.kind.isStructure ? 10 : 8
-        entity.label.fontColor = .white
+        entity.label.fontSize = entity.kind.isStructure ? 9.5 : 8
+        entity.label.fontColor = UIColor(red: 0.94, green: 0.97, blue: 1.0, alpha: 1.0)
         entity.label.verticalAlignmentMode = .center
         entity.label.horizontalAlignmentMode = .center
-        entity.label.position = CGPoint(x: 0, y: barY - 9)
+        entity.label.position = CGPoint(x: 0, y: barY - 10)
         entity.label.zPosition = 23
+        let pillWidth = max(24, CGFloat(entity.kind.shortCode.count) * 6.2 + 8)
+        let labelPill = SKShapeNode(rectOf: CGSize(width: pillWidth, height: entity.kind.isStructure ? 13 : 11.5), cornerRadius: 3.5)
+        labelPill.name = "unit:label-pill"
+        labelPill.fillColor = UIColor(red: 0.04, green: 0.07, blue: 0.11, alpha: 0.78)
+        labelPill.strokeColor = (entity.faction == .enemy ? HUDPalette.warning : HUDPalette.cyan).withAlphaComponent(0.45)
+        labelPill.lineWidth = 0.7
+        labelPill.zPosition = -1
+        entity.label.addChild(labelPill)
         entity.node.addChild(entity.label)
 
         entity.productionNode.zPosition = 30
@@ -5950,20 +5958,35 @@ final class GameScene: SKScene {
         entity.mechanicRepairCoreNode.glowWidth = 1.2
         entity.mechanicRepairEffectNode.addChild(entity.mechanicRepairCoreNode)
 
-        entity.mechanicRepairTargetNode.fillColor = color.withAlphaComponent(0.12)
-        entity.mechanicRepairTargetNode.strokeColor = color.withAlphaComponent(0.92)
-        entity.mechanicRepairTargetNode.lineWidth = 2
-        entity.mechanicRepairTargetNode.glowWidth = 1.5
+        if let repairAura = effectArtworkTexture(named: "repair-aura") {
+            entity.mechanicRepairTargetNode.fillColor = .clear
+            entity.mechanicRepairTargetNode.strokeColor = .clear
+            entity.mechanicRepairTargetNode.lineWidth = 0
+            entity.mechanicRepairTargetNode.glowWidth = 0
+            let aura = SKSpriteNode(texture: repairAura)
+            aura.name = "combat:mechanic-repair-aura"
+            aura.size = CGSize(width: 28, height: 28)
+            if entity.faction == .enemy {
+                aura.color = color
+                aura.colorBlendFactor = 0.65
+            }
+            entity.mechanicRepairTargetNode.addChild(aura)
+        } else {
+            entity.mechanicRepairTargetNode.fillColor = color.withAlphaComponent(0.12)
+            entity.mechanicRepairTargetNode.strokeColor = color.withAlphaComponent(0.92)
+            entity.mechanicRepairTargetNode.lineWidth = 2
+            entity.mechanicRepairTargetNode.glowWidth = 1.5
 
-        let plusHorizontal = SKShapeNode(rectOf: CGSize(width: 10, height: 2.5), cornerRadius: 1)
-        plusHorizontal.fillColor = UIColor.white.withAlphaComponent(0.94)
-        plusHorizontal.strokeColor = .clear
-        entity.mechanicRepairTargetNode.addChild(plusHorizontal)
+            let plusHorizontal = SKShapeNode(rectOf: CGSize(width: 10, height: 2.5), cornerRadius: 1)
+            plusHorizontal.fillColor = UIColor.white.withAlphaComponent(0.94)
+            plusHorizontal.strokeColor = .clear
+            entity.mechanicRepairTargetNode.addChild(plusHorizontal)
 
-        let plusVertical = SKShapeNode(rectOf: CGSize(width: 2.5, height: 10), cornerRadius: 1)
-        plusVertical.fillColor = UIColor.white.withAlphaComponent(0.94)
-        plusVertical.strokeColor = .clear
-        entity.mechanicRepairTargetNode.addChild(plusVertical)
+            let plusVertical = SKShapeNode(rectOf: CGSize(width: 2.5, height: 10), cornerRadius: 1)
+            plusVertical.fillColor = UIColor.white.withAlphaComponent(0.94)
+            plusVertical.strokeColor = .clear
+            entity.mechanicRepairTargetNode.addChild(plusVertical)
+        }
         entity.mechanicRepairEffectNode.addChild(entity.mechanicRepairTargetNode)
 
         entity.mechanicRepairEffectNode.zPosition = 8
@@ -6732,9 +6755,22 @@ final class GameScene: SKScene {
             hudNode.addChild(accent)
         }
         let resources = layout.panels["resources"]!
+        let resourceAccents: [(String, UIColor)] = [
+            ("money", HUDPalette.gold),
+            ("income", UIColor(red: 0.36, green: 0.90, blue: 0.62, alpha: 0.85)),
+            ("forces", HUDPalette.cyan),
+            ("ai", HUDPalette.warning)
+        ]
+        for (key, accentColor) in resourceAccents {
+            guard let slot = layout.slots[key] else { continue }
+            let bar = SKShapeNode(rect: CGRect(x: slot.minX - 6, y: resources.minY + 6, width: 2.0, height: resources.height - 12), cornerRadius: 1.0)
+            bar.fillColor = accentColor.withAlphaComponent(0.82)
+            bar.strokeColor = .clear
+            hudNode.addChild(bar)
+        }
         for key in ["income", "forces", "ai"] {
-            let x = layout.slots[key]!.minX - 7
-            let separator = SKShapeNode(rect: CGRect(x: x, y: resources.minY + 7, width: 0.5, height: resources.height - 14))
+            let x = layout.slots[key]!.minX - 10
+            let separator = SKShapeNode(rect: CGRect(x: x, y: resources.minY + 6, width: 0.6, height: resources.height - 12))
             separator.fillColor = HUDPalette.borderSoft
             separator.strokeColor = .clear
             hudNode.addChild(separator)
