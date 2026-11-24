@@ -7568,7 +7568,16 @@ final class GameScene: SKScene {
         minimapCameraBox.lineWidth = 1.1
         minimapCameraBox.zPosition = 3
         minimapContentNode.addChild(minimapCameraBox)
-        minimapScaleLabel = makeHUDLabel(slot: "mapScale", size: 8, color: HUDPalette.mutedText)
+        if let scaleSlot = hudLayout?.slots["mapScale"] {
+            let scalePill = SKShapeNode(rect: scaleSlot.insetBy(dx: 0, dy: 9), cornerRadius: 4)
+            scalePill.name = "hud:minimap-scale-pill"
+            scalePill.fillColor = UIColor(red: 0.04, green: 0.07, blue: 0.10, alpha: 0.88)
+            scalePill.strokeColor = HUDPalette.borderSoft
+            scalePill.lineWidth = 0.7
+            hudNode.addChild(scalePill)
+        }
+        minimapScaleLabel = makeHUDLabel(slot: "mapScale", size: 8, color: HUDPalette.cyan)
+        minimapScaleLabel.horizontalAlignmentMode = .center
         addZoomButton(frame: zoomOutHitFrame, title: "-")
         addZoomButton(frame: zoomInHitFrame, title: "+")
         if !isWritingHUDContract { ciBeacon("minimap-end") }
@@ -16592,21 +16601,33 @@ final class GameScene: SKScene {
         node.position = point
         node.zPosition = worldCombatAttackMarkerZ
 
-        let ringRect = CGRect(x: -width * 0.5, y: -height * 0.5, width: width, height: height)
-        let ringPath = CGPath(ellipseIn: ringRect, transform: nil)
-        let dashedRingPath = ringPath.copy(dashingWithPhase: 0, lengths: [9, 6])
+        if let reticleTexture = effectArtworkTexture(named: "target-reticle") {
+            let reticle = SKSpriteNode(texture: reticleTexture)
+            reticle.name = "combat:target-reticle"
+            reticle.size = CGSize(width: width * 1.06, height: width * 1.06)
+            reticle.yScale = 0.54
+            reticle.alpha = 0.94
+            node.addChild(reticle)
+            if !persistent {
+                reticle.run(.rotate(byAngle: .pi * 0.25, duration: 0.55))
+            }
+        } else {
+            let ringRect = CGRect(x: -width * 0.5, y: -height * 0.5, width: width, height: height)
+            let ringPath = CGPath(ellipseIn: ringRect, transform: nil)
+            let dashedRingPath = ringPath.copy(dashingWithPhase: 0, lengths: [9, 6])
 
-        let ringBack = SKShapeNode(path: dashedRingPath)
-        ringBack.strokeColor = UIColor(red: 0.12, green: 0.03, blue: 0.02, alpha: 0.58)
-        ringBack.lineWidth = 2.8
-        ringBack.lineCap = .round
-        node.addChild(ringBack)
+            let ringBack = SKShapeNode(path: dashedRingPath)
+            ringBack.strokeColor = UIColor(red: 0.12, green: 0.03, blue: 0.02, alpha: 0.58)
+            ringBack.lineWidth = 2.8
+            ringBack.lineCap = .round
+            node.addChild(ringBack)
 
-        let ring = SKShapeNode(path: dashedRingPath)
-        ring.strokeColor = color.withAlphaComponent(0.94)
-        ring.lineWidth = 1.35
-        ring.lineCap = .round
-        node.addChild(ring)
+            let ring = SKShapeNode(path: dashedRingPath)
+            ring.strokeColor = color.withAlphaComponent(0.94)
+            ring.lineWidth = 1.35
+            ring.lineCap = .round
+            node.addChild(ring)
+        }
 
         // Keep the attack caption below the focus health segments when both markers share a target.
         let labelY = attackTargetMarkerLabelY(footprint: footprint, height: height)
@@ -16928,21 +16949,52 @@ final class GameScene: SKScene {
             labelText = "BARRAGE"
         }
 
-        let ringSize = CGSize(width: power.radius * 1.55, height: power.radius * 0.72)
-        for index in 0..<3 {
-            let ring = SKShapeNode(ellipseOf: ringSize)
-            ring.position = point
-            ring.strokeColor = color
-            ring.fillColor = color.withAlphaComponent(power == .reconSweep ? 0.05 : 0.10)
-            ring.lineWidth = power == .reconSweep ? 2 : 4
-            ring.glowWidth = 2
-            ring.zPosition = 290 + CGFloat(index)
-            effectsLayer.addChild(ring)
-            ring.run(.sequence([
-                .wait(forDuration: TimeInterval(index) * 0.12),
-                .group([.scale(to: 1.35 + CGFloat(index) * 0.18, duration: 0.55), .fadeOut(withDuration: 0.55)]),
+        let effectSpriteName: String
+        switch power {
+        case .reconSweep: effectSpriteName = "radar-sweep"
+        case .fieldRepair: effectSpriteName = "repair-aura"
+        case .airStrike, .navalBarrage: effectSpriteName = "target-reticle"
+        }
+        if let texture = effectArtworkTexture(named: effectSpriteName) {
+            let overlay = SKSpriteNode(texture: texture)
+            overlay.name = "support:\(effectSpriteName)"
+            let diameter = power.radius * 1.65
+            overlay.size = CGSize(width: diameter, height: diameter)
+            overlay.position = point
+            overlay.yScale = 0.54
+            overlay.alpha = 0.88
+            overlay.zPosition = 290
+            if faction == .enemy {
+                overlay.color = color
+                overlay.colorBlendFactor = 0.45
+            }
+            effectsLayer.addChild(overlay)
+            overlay.run(.sequence([
+                .group([
+                    .rotate(byAngle: power == .reconSweep ? -.pi * 1.2 : .pi * 0.35, duration: 0.85),
+                    .scaleX(to: 1.18, duration: 0.85),
+                    .scaleY(to: 1.18 * 0.54, duration: 0.85),
+                    .sequence([.wait(forDuration: 0.30), .fadeOut(withDuration: 0.55)])
+                ]),
                 .removeFromParent()
             ]))
+        } else {
+            let ringSize = CGSize(width: power.radius * 1.55, height: power.radius * 0.72)
+            for index in 0..<3 {
+                let ring = SKShapeNode(ellipseOf: ringSize)
+                ring.position = point
+                ring.strokeColor = color
+                ring.fillColor = color.withAlphaComponent(power == .reconSweep ? 0.05 : 0.10)
+                ring.lineWidth = power == .reconSweep ? 2 : 4
+                ring.glowWidth = 2
+                ring.zPosition = 290 + CGFloat(index)
+                effectsLayer.addChild(ring)
+                ring.run(.sequence([
+                    .wait(forDuration: TimeInterval(index) * 0.12),
+                    .group([.scale(to: 1.35 + CGFloat(index) * 0.18, duration: 0.55), .fadeOut(withDuration: 0.55)]),
+                    .removeFromParent()
+                ]))
+            }
         }
 
         let label = SKLabelNode(fontNamed: "Menlo-Bold")
@@ -19005,6 +19057,31 @@ final class GameScene: SKScene {
         let color = faction == .enemy
             ? UIColor(red: 1.0, green: 0.34, blue: 0.25, alpha: 1.0)
             : UIColor(red: 0.32, green: 0.92, blue: 1.0, alpha: 1.0)
+        if let radarTexture = effectArtworkTexture(named: "radar-sweep") {
+            let sweep = SKSpriteNode(texture: radarTexture)
+            sweep.name = "combat:sonar-sweep"
+            sweep.size = CGSize(width: 72, height: 72)
+            sweep.position = point
+            sweep.xScale = 0.65
+            sweep.yScale = 0.65 * 0.52
+            sweep.alpha = 0.78
+            sweep.zPosition = 278
+            if faction == .enemy {
+                sweep.color = color
+                sweep.colorBlendFactor = 0.55
+            }
+            effectsLayer.addChild(sweep)
+            sweep.run(.sequence([
+                .group([
+                    .rotate(byAngle: -.pi * 0.7, duration: 0.52),
+                    .scaleX(to: 1.85, duration: 0.52),
+                    .scaleY(to: 1.85 * 0.52, duration: 0.52),
+                    .fadeOut(withDuration: 0.52)
+                ]),
+                .removeFromParent()
+            ]))
+            return
+        }
         let ring = SKShapeNode(ellipseOf: CGSize(width: 62, height: 28))
         ring.position = point
         ring.fillColor = .clear

@@ -632,6 +632,36 @@
       "worldWidth": 88
     },
     {
+      "kind": "radarSweep",
+      "file": "Effects/radar-sweep.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/radar-sweep",
+      "bytes": 292187,
+      "sha256": "104f0ea9f49366c516ad9f3d3f6a993b787e14015e74fee10e4ed5161c950295",
+      "width": 512,
+      "height": 512,
+      "worldWidth": 140
+    },
+    {
+      "kind": "repairAura",
+      "file": "Effects/repair-aura.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/repair-aura",
+      "bytes": 296055,
+      "sha256": "82eddecd246a285254776dd63fad1a5444cb77d91a8df706f339b30e9030299e",
+      "width": 512,
+      "height": 512,
+      "worldWidth": 136
+    },
+    {
+      "kind": "targetReticle",
+      "file": "Effects/target-reticle.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/target-reticle",
+      "bytes": 279096,
+      "sha256": "38bed4b37732b214964c7bdfd0b14f9bd1d8a37992f0228c837dd5db05b9e91f",
+      "width": 512,
+      "height": 512,
+      "worldWidth": 78
+    },
+    {
       "kind": "supplyDepot",
       "file": "Props/supply-depot.png",
       "sourceFile": "ai-v6.36-supply-depot",

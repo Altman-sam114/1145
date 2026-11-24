@@ -26,7 +26,9 @@ EFFECTS = {"waterImpact": "water-impact", "impactBurst": "impact-burst",
            "missileSprite": "missile-sprite", "torpedoWake": "torpedo-wake",
            "craterScorch": "crater-scorch", "smokePlume": "smoke-plume",
            "navalWake": "naval-wake", "shellTracer": "shell-tracer",
-           "aaFlakBurst": "aa-flak-burst", "shockwaveRing": "shockwave-ring"}
+           "aaFlakBurst": "aa-flak-burst", "shockwaveRing": "shockwave-ring",
+           "radarSweep": "radar-sweep", "repairAura": "repair-aura",
+           "targetReticle": "target-reticle"}
 PROPS = {"supplyDepot": "supply-depot", "controlPointPad": "control-point-pad"}
 DIRECTIONS = {"tankDirections": "tank-eight", "fighterDirections": "fighter-eight", "helicopterDirections": "helicopter-eight",
               "battleshipDirections": "battleship-eight", "carrierDirections": "carrier-eight", "submarineDirections": "submarine-eight",
@@ -214,7 +216,7 @@ def verify(art):
         raise ValueError("Art provenance document missing")
     assets = manifest["assets"]
     if len(assets) != len(ASSET_PATHS) or {a["kind"] for a in assets} != set(ASSET_PATHS):
-        raise ValueError("Expected ten units, ten structures, seven scenery, twelve effects, two props, ten atlases, three terrain materials and four UI surfaces")
+        raise ValueError("Expected ten units, ten structures, seven scenery, fifteen effects, two props, ten atlases, three terrain materials and four UI surfaces")
     reports = []
     for asset in assets:
         name = ASSET_PATHS[asset['kind']]
