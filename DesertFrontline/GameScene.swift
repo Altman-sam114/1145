@@ -3580,11 +3580,18 @@ final class GameScene: SKScene {
         if let flagTexture = propArtworkTexture(named: "control-flag") {
             let flagSprite = SKSpriteNode(texture: flagTexture)
             flagSprite.name = "cp:flag-sprite"
-            let flagWidth: CGFloat = 54
+            let flagWidth: CGFloat = 48
             flagSprite.size = CGSize(width: flagWidth, height: flagWidth * flagTexture.size().height / max(flagTexture.size().width, 1))
-            flagSprite.anchorPoint = CGPoint(x: 0.34, y: 0.06)
-            flagSprite.position = CGPoint(x: poleX, y: hasPadTexture ? 8 : 4)
+            flagSprite.anchorPoint = CGPoint(x: 0.33, y: 0.05)
+            flagSprite.position = CGPoint(x: poleX + 3, y: hasPadTexture ? 10 : 5)
             flagSprite.zPosition = 2
+            if !isCICaptureMode {
+                let flutter = SKAction.repeatForever(.sequence([
+                    .scaleX(to: 1.04, duration: 0.95),
+                    .scaleX(to: 0.95, duration: 1.05)
+                ]))
+                flagSprite.run(flutter, withKey: "cp:flag-flutter")
+            }
             point.node.addChild(flagSprite)
             point.flag.isHidden = true
         } else {
@@ -8474,20 +8481,47 @@ final class GameScene: SKScene {
             selectionPortraitFrame?.strokeColor = HUDPalette.cyan.withAlphaComponent(0.46)
         }
         if let portraitSprite = selectionPortraitSprite {
-            let representativeKind: EntityKind? = selected.count == 1
-                ? selected[0].kind
-                : (Set(selected.map(\.kind)).count == 1 ? selected.first?.kind : nil)
-            if let kind = representativeKind, let texture = productionArtworkTexture(for: kind) {
+            let maxDim = selectionPortraitBoxSize - 4
+            if let buildKind = pendingConstructionKind, let texture = productionArtworkTexture(for: buildKind) {
                 portraitSprite.texture = texture
-                let maxDim = selectionPortraitBoxSize - 4
                 let scale = min(maxDim / max(texture.size().width, 1), maxDim / max(texture.size().height, 1))
                 portraitSprite.size = CGSize(width: texture.size().width * scale, height: texture.size().height * scale)
                 portraitSprite.isHidden = false
                 selectionPortraitSymbol?.isHidden = true
+                selectionPortraitFrame?.strokeColor = HUDPalette.gold.withAlphaComponent(0.75)
+            } else if let power = pendingSupportPower {
+                let spriteName: String
+                let accent: UIColor
+                switch power {
+                case .reconSweep: spriteName = "radar-sweep"; accent = HUDPalette.cyan
+                case .fieldRepair: spriteName = "repair-aura"; accent = UIColor(red: 0.32, green: 0.96, blue: 0.68, alpha: 1.0)
+                case .airStrike, .navalBarrage: spriteName = "target-reticle"; accent = HUDPalette.gold
+                }
+                if let texture = effectArtworkTexture(named: spriteName) {
+                    portraitSprite.texture = texture
+                    portraitSprite.size = CGSize(width: maxDim, height: maxDim)
+                    portraitSprite.isHidden = false
+                    selectionPortraitSymbol?.isHidden = true
+                    selectionPortraitFrame?.strokeColor = accent.withAlphaComponent(0.78)
+                } else {
+                    portraitSprite.isHidden = true
+                    selectionPortraitSymbol?.isHidden = false
+                }
             } else {
-                portraitSprite.isHidden = true
-                selectionPortraitSymbol?.isHidden = false
-                selectionPortraitSymbol?.color = selected.isEmpty ? HUDPalette.mutedText : HUDPalette.cyan
+                let representativeKind: EntityKind? = selected.count == 1
+                    ? selected[0].kind
+                    : (Set(selected.map(\.kind)).count == 1 ? selected.first?.kind : nil)
+                if let kind = representativeKind, let texture = productionArtworkTexture(for: kind) {
+                    portraitSprite.texture = texture
+                    let scale = min(maxDim / max(texture.size().width, 1), maxDim / max(texture.size().height, 1))
+                    portraitSprite.size = CGSize(width: texture.size().width * scale, height: texture.size().height * scale)
+                    portraitSprite.isHidden = false
+                    selectionPortraitSymbol?.isHidden = true
+                } else {
+                    portraitSprite.isHidden = true
+                    selectionPortraitSymbol?.isHidden = false
+                    selectionPortraitSymbol?.color = selected.isEmpty ? HUDPalette.mutedText : HUDPalette.cyan
+                }
             }
         }
         let rowColors = selectionInfoRowColors(for: selected)
@@ -19484,6 +19518,8 @@ final class GameScene: SKScene {
             incomingDirection: incomingDirection,
             persistent: persistent
         )
+        showBlastShockwave(at: target.node.position, scale: 0.80, persistent: persistent)
+        if !persistent { triggerCameraShake(intensity: 2.8, at: target.node.position) }
         showNavalHullStrike(
             at: target.node.position + normal * (side * target.kind.footprint * 0.08),
             faction: faction,
