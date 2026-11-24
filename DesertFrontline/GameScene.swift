@@ -1386,6 +1386,8 @@ final class GameScene: SKScene {
     private var lastEnemyDefenseResponseTime: TimeInterval = -100
     private var lastEnemyControlPointDefenseResponseTime: TimeInterval = -100
     private var victoryState: String?
+    private var victoryOverlayNode: SKNode?
+    private var victoryRestartButtonFrame = CGRect.zero
     private var completedMissionStages = Set<MissionStage>()
 
     private let enemyRetreatHealthThreshold: CGFloat = 0.38
@@ -6757,6 +6759,8 @@ final class GameScene: SKScene {
         selectionPortraitFrame = nil
         selectionPortraitSprite = nil
         selectionPortraitSymbol = nil
+        victoryOverlayNode = nil
+        victoryRestartButtonFrame = .zero
         boundedHUDLabels.removeAll()
         hudLabelFitCache.removeAll()
         lastMinimapBlipUpdateTime = -1
@@ -10144,6 +10148,10 @@ final class GameScene: SKScene {
 
     @discardableResult
     private func consumeHUDTouch(at point: CGPoint, tapCount: Int = 1) -> Bool {
+        if victoryOverlayNode != nil, victoryRestartButtonFrame.contains(point) {
+            handleHudAction(.newSkirmish, tapCount: 1)
+            return true
+        }
         guard let route = hudLayout?.route(at: point, messageVisible: messageLabel.alpha > 0.01), route != .world else { return false }
         touchStartScene = nil
         touchStartWorld = nil
@@ -11019,6 +11027,9 @@ final class GameScene: SKScene {
         isSettingRallyPoint = false
         isSettingAttackMove = false
         victoryState = nil
+        victoryOverlayNode?.removeFromParent()
+        victoryOverlayNode = nil
+        victoryRestartButtonFrame = .zero
         completedMissionStages.removeAll()
         incomeAccumulator = 0
         incomeFeedbackCounter = 0
@@ -15488,15 +15499,101 @@ final class GameScene: SKScene {
     }
 
     private func updateVictoryState() {
+        guard victoryState == nil else { return }
         let playerHQAlive = entities.values.contains { $0.kind == .hq && $0.faction == .player && $0.isAlive }
         let enemyHQAlive = entities.values.contains { $0.kind == .hq && $0.faction == .enemy && $0.isAlive }
         if !enemyHQAlive {
             victoryState = "Victory: enemy HQ destroyed."
             showMessage(victoryState ?? "", color: UIColor(red: 0.75, green: 1.0, blue: 0.55, alpha: 1.0))
+            showVictoryOverlay(victory: true)
         } else if !playerHQAlive {
             victoryState = "Defeat: command HQ lost."
             showMessage(victoryState ?? "", color: UIColor(red: 1.0, green: 0.45, blue: 0.35, alpha: 1.0))
+            showVictoryOverlay(victory: false)
         }
+    }
+
+    private func showVictoryOverlay(victory: Bool) {
+        guard !isCICaptureMode, victoryOverlayNode == nil else { return }
+        let overlay = SKNode()
+        overlay.name = "hud:victory-overlay"
+        overlay.zPosition = 500
+
+        let cardSize = CGSize(width: min(360, size.width - 48), height: 158)
+        let cardFrame = CGRect(x: -cardSize.width * 0.5, y: -cardSize.height * 0.5, width: cardSize.width, height: cardSize.height)
+        let accent = victory ? HUDPalette.gold : HUDPalette.warning
+
+        let backdrop = SKShapeNode(rectOf: size)
+        backdrop.fillColor = UIColor.black.withAlphaComponent(0.46)
+        backdrop.strokeColor = .clear
+        overlay.addChild(backdrop)
+
+        let card = SKShapeNode(rect: cardFrame, cornerRadius: 10)
+        if let metal = uiSurfaceTexture(named: "hud-panel-metal") {
+            card.fillTexture = metal
+            card.fillColor = UIColor(red: 0.84, green: 0.90, blue: 0.96, alpha: 0.98)
+        } else {
+            card.fillColor = HUDPalette.panelDeep
+        }
+        card.strokeColor = accent.withAlphaComponent(0.78)
+        card.lineWidth = 1.6
+        overlay.addChild(card)
+        addCornerBrackets(to: overlay, frame: cardFrame, color: accent, length: 12, lineWidth: 1.4)
+
+        let title = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        title.text = victory ? "VICTORY" : "DEFEAT"
+        title.fontSize = 24
+        title.fontColor = accent
+        title.verticalAlignmentMode = .center
+        title.horizontalAlignmentMode = .center
+        title.position = CGPoint(x: 0, y: 46)
+        overlay.addChild(title)
+
+        let subtitle = SKLabelNode(fontNamed: "AvenirNext-Medium")
+        subtitle.text = victory ? "Enemy Command HQ Destroyed" : "Command HQ Lost in Action"
+        subtitle.fontSize = 12
+        subtitle.fontColor = HUDPalette.text
+        subtitle.verticalAlignmentMode = .center
+        subtitle.horizontalAlignmentMode = .center
+        subtitle.position = CGPoint(x: 0, y: 20)
+        overlay.addChild(subtitle)
+
+        let stats = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        stats.text = "UNITS \(mobileCount(for: .player))  ·  OIL \(oilCount(for: .player))  ·  FLAGS \(controlPointCount(for: .player))  ·  $\(Int(playerMoney))"
+        stats.fontSize = 10.5
+        stats.fontColor = HUDPalette.cyan
+        stats.verticalAlignmentMode = .center
+        stats.horizontalAlignmentMode = .center
+        stats.position = CGPoint(x: 0, y: -4)
+        overlay.addChild(stats)
+
+        let buttonRect = CGRect(x: -88, y: -62, width: 176, height: 38)
+        let button = SKShapeNode(rect: buttonRect, cornerRadius: 7)
+        if let goldTex = uiSurfaceTexture(named: "hud-button-gold") {
+            button.fillTexture = goldTex
+            button.fillColor = .white
+        } else {
+            button.fillColor = HUDPalette.gold
+        }
+        button.strokeColor = UIColor.white.withAlphaComponent(0.65)
+        button.lineWidth = 1.0
+        overlay.addChild(button)
+
+        let buttonLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        buttonLabel.text = "NEW SKIRMISH"
+        buttonLabel.fontSize = 13
+        buttonLabel.fontColor = UIColor(red: 0.08, green: 0.06, blue: 0.04, alpha: 1.0)
+        buttonLabel.verticalAlignmentMode = .center
+        buttonLabel.horizontalAlignmentMode = .center
+        buttonLabel.position = CGPoint(x: buttonRect.midX, y: buttonRect.midY)
+        overlay.addChild(buttonLabel)
+
+        hudNode.addChild(overlay)
+        victoryOverlayNode = overlay
+        victoryRestartButtonFrame = buttonRect
+        overlay.alpha = 0
+        overlay.setScale(0.92)
+        overlay.run(.group([.fadeIn(withDuration: 0.24), .scale(to: 1.0, duration: 0.24)]))
     }
 
     private func fogOpacityLevel(at tile: TileCoord) -> Int {
@@ -18847,6 +18944,27 @@ final class GameScene: SKScene {
         catapult.run(.sequence([.group([.move(to: catapultEnd, duration: 0.30), .fadeOut(withDuration: 0.30)]), .removeFromParent()]))
 
         showCarrierLaunchTrail(from: catapultStart, to: catapultEnd, faction: faction)
+        // Steam catapult deck puffs & jet afterburner launch flare
+        for index in 0..<4 {
+            let t = CGFloat(index) / 3.0
+            let puff = SKShapeNode(circleOfRadius: 4.5 + t * 2.5)
+            puff.position = catapultStart + (catapultEnd - catapultStart) * (t * 0.45)
+            puff.fillColor = UIColor(white: 0.94, alpha: 0.34)
+            puff.strokeColor = .clear
+            puff.zPosition = 275
+            puff.alpha = 0
+            effectsLayer.addChild(puff)
+            puff.run(.sequence([
+                .wait(forDuration: TimeInterval(index) * 0.04),
+                .fadeIn(withDuration: 0.03),
+                .group([
+                    .moveBy(x: -6, y: 12, duration: 0.42),
+                    .scale(to: 2.2, duration: 0.42),
+                    .fadeOut(withDuration: 0.42)
+                ]),
+                .removeFromParent()
+            ]))
+        }
         showCarrierCraftFlight(kind: kind, from: start + CGPoint(x: -10, y: 22), to: end + CGPoint(x: 0, y: 24), faction: faction, duration: 0.38, scale: kind == .helicopter ? 0.78 : 0.60)
     }
 
