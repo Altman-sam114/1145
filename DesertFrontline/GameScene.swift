@@ -1382,6 +1382,7 @@ final class GameScene: SKScene {
     private var fogAccumulator: TimeInterval = 0
     private var cameraShakeRemaining: TimeInterval = 0
     private var cameraShakeMagnitude: CGFloat = 0
+    private var motionTrailNextTime: [Int: TimeInterval] = [:]
     private var lastPlayerAttackAlertTime: TimeInterval = -100
     private var lastEnemyDefenseResponseTime: TimeInterval = -100
     private var lastEnemyControlPointDefenseResponseTime: TimeInterval = -100
@@ -11037,6 +11038,7 @@ final class GameScene: SKScene {
         fogAccumulator = 0
         cameraShakeRemaining = 0
         cameraShakeMagnitude = 0
+        motionTrailNextTime.removeAll()
         lastPlayerAttackAlertTime = -100
         lastEnemyDefenseResponseTime = -100
         lastEnemyControlPointDefenseResponseTime = -100
@@ -12505,6 +12507,34 @@ final class GameScene: SKScene {
             y: -12 - direction.y * 6
         )
         entity.airShadowNode.alpha = 0.88 + sin(CGFloat(lastUpdateTime) * 4 + CGFloat(entity.id)) * 0.08
+        if !isCICaptureMode && entity.kind == .fighter,
+           entity.faction == .player || isKnownToFaction(entity, observer: .player),
+           lastUpdateTime >= (motionTrailNextTime[entity.id] ?? 0) {
+            motionTrailNextTime[entity.id] = lastUpdateTime + 0.11
+            let normal = CGPoint(x: -direction.y, y: direction.x)
+            for side in [-1.0, 1.0] as [CGFloat] {
+                let contrail = SKShapeNode(circleOfRadius: 2.1)
+                contrail.position = entity.node.position - direction * 20 + normal * (side * 12) + CGPoint(x: 0, y: 8)
+                contrail.fillColor = UIColor(white: 0.96, alpha: 0.36)
+                contrail.strokeColor = .clear
+                contrail.zPosition = entity.node.zPosition - 2
+                effectsLayer.addChild(contrail)
+                contrail.run(.sequence([
+                    .group([.scale(to: 2.2, duration: 0.45), .fadeOut(withDuration: 0.45)]),
+                    .removeFromParent()
+                ]))
+            }
+            let burner = SKShapeNode(circleOfRadius: 3.4)
+            burner.position = entity.node.position - direction * 22 + CGPoint(x: 0, y: 7)
+            burner.fillColor = UIColor(red: 1.0, green: 0.72, blue: 0.26, alpha: 0.58)
+            burner.strokeColor = .clear
+            burner.zPosition = entity.node.zPosition - 1.5
+            effectsLayer.addChild(burner)
+            burner.run(.sequence([
+                .group([.scale(to: 0.4, duration: 0.14), .fadeOut(withDuration: 0.14)]),
+                .removeFromParent()
+            ]))
+        }
     }
 
     private func updateLandDust(
@@ -12520,6 +12550,25 @@ final class GameScene: SKScene {
             }
             switch terrain(at: tile) {
             case .sand, .oil:
+                if !isCICaptureMode,
+                   entity.faction == .player || isKnownToFaction(entity, observer: .player),
+                   lastUpdateTime >= (motionTrailNextTime[entity.id] ?? 0) {
+                    motionTrailNextTime[entity.id] = lastUpdateTime + 0.18
+                    let puff = SKShapeNode(ellipseOf: CGSize(width: 14, height: 7.5))
+                    puff.position = entity.node.position - direction * 18 + CGPoint(x: 0, y: -7)
+                    puff.fillColor = UIColor(red: 0.80, green: 0.67, blue: 0.44, alpha: 0.30)
+                    puff.strokeColor = .clear
+                    puff.zPosition = 240
+                    effectsLayer.addChild(puff)
+                    puff.run(.sequence([
+                        .group([
+                            .moveBy(x: -direction.x * 8, y: 5, duration: 0.48),
+                            .scale(to: 2.0, duration: 0.48),
+                            .fadeOut(withDuration: 0.48)
+                        ]),
+                        .removeFromParent()
+                    ]))
+                }
                 break
             case .road, .water, .ridge:
                 entity.landDustNode.isHidden = true
