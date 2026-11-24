@@ -21,18 +21,27 @@ STRUCTURES = {"hq": "command-hq", "barracks": "war-factory", "airfield": "airfie
 SCENERY = {"desertRocks": "desert-rocks", "datePalm": "date-palm", "desertHamlet": "desert-hamlet",
            "desertScrub": "desert-scrub", "oasisSpring": "oasis-spring", "desertFarm": "desert-farm",
            "armoredWreck": "armored-wreck"}
-EFFECTS = {"waterImpact": "water-impact", "impactBurst": "impact-burst"}
+EFFECTS = {"waterImpact": "water-impact", "impactBurst": "impact-burst",
+           "explosionFireball": "explosion-fireball", "muzzleFlash": "muzzle-flash",
+           "missileSprite": "missile-sprite", "torpedoWake": "torpedo-wake",
+           "craterScorch": "crater-scorch", "smokePlume": "smoke-plume",
+           "navalWake": "naval-wake"}
+PROPS = {"supplyDepot": "supply-depot", "controlPointPad": "control-point-pad"}
 DIRECTIONS = {"tankDirections": "tank-eight", "fighterDirections": "fighter-eight", "helicopterDirections": "helicopter-eight",
               "battleshipDirections": "battleship-eight", "carrierDirections": "carrier-eight", "submarineDirections": "submarine-eight",
               "scoutDirections": "scout-eight", "artilleryDirections": "artillery-eight",
               "mobileAADirections": "mobile-aa-eight", "repairTruckDirections": "repair-truck-eight"}
-MATERIALS = {"sandSurface": "desert-sand", "waterSurface": "open-water"}
+MATERIALS = {"sandSurface": "desert-sand", "waterSurface": "open-water", "roadSurface": "desert-road"}
+UI_SURFACES = {"hudPanelMetal": "hud-panel-metal", "hudButtonKeycap": "hud-button-keycap",
+               "hudButtonGold": "hud-button-gold", "hudButtonActive": "hud-button-active"}
 ASSET_PATHS = {**{kind: f"Units/{name}.png" for kind, name in KINDS.items()},
                **{kind: f"Structures/{name}.png" for kind, name in STRUCTURES.items()},
                **{kind: f"Scenery/{name}.png" for kind, name in SCENERY.items()},
                **{kind: f"Effects/{name}.png" for kind, name in EFFECTS.items()},
+               **{kind: f"Props/{name}.png" for kind, name in PROPS.items()},
                **{kind: f"Directions/{name}.png" for kind, name in DIRECTIONS.items()},
-               **{kind: f"Terrain/{name}.png" for kind, name in MATERIALS.items()}}
+               **{kind: f"Terrain/{name}.png" for kind, name in MATERIALS.items()},
+               **{kind: f"UI/{name}.png" for kind, name in UI_SURFACES.items()}}
 
 
 # Reconstruct alpha prediction exactly, then count and locate its thresholds in
@@ -204,7 +213,7 @@ def verify(art):
         raise ValueError("Art provenance document missing")
     assets = manifest["assets"]
     if len(assets) != len(ASSET_PATHS) or {a["kind"] for a in assets} != set(ASSET_PATHS):
-        raise ValueError("Expected ten units, ten structures, seven scenery, two effects, ten atlases and two terrain materials")
+        raise ValueError("Expected ten units, ten structures, seven scenery, nine effects, two props, ten atlases, three terrain materials and four UI surfaces")
     reports = []
     for asset in assets:
         name = ASSET_PATHS[asset['kind']]
@@ -216,12 +225,16 @@ def verify(art):
             raise ValueError(f"Asset digest mismatch: {name}")
         directional = asset["kind"] in DIRECTIONS
         material = asset["kind"] in MATERIALS
-        info = inspect_png(data, atlas_grid=(4, 2) if directional else None, opaque_rgb=material)
+        ui_surface = asset["kind"] in UI_SURFACES
+        info = inspect_png(data, atlas_grid=(4, 2) if directional else None, opaque_rgb=(material or ui_surface))
         if [info["width"], info["height"]] != [asset["width"], asset["height"]]:
             raise ValueError(f"Asset dimensions mismatch: {name}")
         if material:
             if asset.get("format") != "RGB8" or asset.get("decodeMaxPixels") != 1024:
                 raise ValueError("Unexpected terrain material format / decode budget")
+        elif ui_surface:
+            if asset.get("format") != "RGB8" or asset.get("decodeMaxPixels") != 512:
+                raise ValueError("Unexpected UI surface format / decode budget")
         else:
             verify_transparency(info)
         if directional:

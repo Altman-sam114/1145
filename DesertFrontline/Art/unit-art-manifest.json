@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "v6.34",
+  "version": "v6.36",
   "createdDate": "2026-10-28",
   "generator": "built-in image generation; original project art",
   "decodeMaxPixels": 384,
-  "promptDocument": "md/art/v6.34-repair-truck-art.md",
+  "promptDocument": "md/art/v6.36-modern-overhaul-art.md",
   "assets": [
     {
       "kind": "humvee",
@@ -252,21 +252,19 @@
     {
       "kind": "waterImpact",
       "file": "Effects/water-impact.png",
-      "sourceFile": "v6.7-water-impact.png",
-      "generationFile": "exec-c55b4e3d-c0bc-4eaf-83e6-bbd46738462e.png",
-      "bytes": 1377613,
-      "sha256": "b3223cd9929fbb664f81ae687f206cb07a62175d123bc121ab625c576497cff4",
-      "width": 1312,
-      "height": 1199,
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.35-water-impact-candidate.png",
+      "bytes": 1400835,
+      "sha256": "198137668e251909533baf11018d22e1e3597611451eff0cd221a3cd3d17d67c",
+      "width": 1536,
+      "height": 1024,
       "worldWidth": 50
     },
     {
       "kind": "impactBurst",
       "file": "Effects/impact-burst.png",
-      "sourceFile": "v6.7-impact-burst.png",
-      "generationFile": "exec-a013845c-2e99-4c94-8829-1a74324b6795.png",
-      "bytes": 1696917,
-      "sha256": "9026d7bcb55511611a3becf7014222f22a5ab4b94c78eae735d7705f04e2ef71",
+      "sourceFile": "/Users/a114514/.codex/generated_images/1/v6.35-ground-impact-candidate.png",
+      "bytes": 1861478,
+      "sha256": "9a786989abf6dbc649ad27dde221c3a842c6048eceb2f910c2253ca9a8d6f322",
       "width": 1536,
       "height": 1024,
       "worldWidth": 48
@@ -532,7 +530,152 @@
       "width": 1774,
       "height": 887,
       "worldWidth": 49
+    },
+    {
+      "kind": "explosionFireball",
+      "file": "Effects/explosion-fireball.png",
+      "sourceFile": "ai-v6.36-explosion-fireball",
+      "bytes": 371482,
+      "sha256": "d52a8644cf9198d6d02ed9dc08e744e21f0943103051293b2fddcd3353773589",
+      "width": 768,
+      "height": 512,
+      "worldWidth": 84
+    },
+    {
+      "kind": "muzzleFlash",
+      "file": "Effects/muzzle-flash.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/muzzle-flash",
+      "bytes": 204487,
+      "sha256": "a4844172ddd53cd0617321b477475341c9c4df2a71c9982402c02645b6c43748",
+      "width": 768,
+      "height": 288,
+      "worldWidth": 46
+    },
+    {
+      "kind": "missileSprite",
+      "file": "Effects/missile-sprite.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/missile-sprite",
+      "bytes": 73983,
+      "sha256": "f5a31c427d83086943127b0672f13039b3b495ac42b11e9e81936fbb3fc08229",
+      "width": 768,
+      "height": 256,
+      "worldWidth": 36
+    },
+    {
+      "kind": "torpedoWake",
+      "file": "Effects/torpedo-wake.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/torpedo-wake",
+      "bytes": 111272,
+      "sha256": "ab797e2c32dc63c00b30099020b320786f4b17d9d11502cf93fe092c718aafa3",
+      "width": 768,
+      "height": 256,
+      "worldWidth": 72
+    },
+    {
+      "kind": "craterScorch",
+      "file": "Effects/crater-scorch.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/crater-scorch",
+      "bytes": 409522,
+      "sha256": "1e7633dc2f51cb103cc63cb897cb805a436e437e9503e249f8fff231880e0c92",
+      "width": 768,
+      "height": 384,
+      "worldWidth": 46
+    },
+    {
+      "kind": "smokePlume",
+      "file": "Effects/smoke-plume.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/smoke-plume",
+      "bytes": 236046,
+      "sha256": "036147fe26435bfa86992d4cb028644382b5043ef1973adadee1edddf9b493f9",
+      "width": 512,
+      "height": 576,
+      "worldWidth": 28
+    },
+    {
+      "kind": "navalWake",
+      "file": "Effects/naval-wake.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/naval-wake",
+      "bytes": 191406,
+      "sha256": "d1a2f07e440207e401b47a8ee6f63b48e9e31780d109b5a5c3bf98bd5b715f80",
+      "width": 768,
+      "height": 288,
+      "worldWidth": 136
+    },
+    {
+      "kind": "supplyDepot",
+      "file": "Props/supply-depot.png",
+      "sourceFile": "ai-v6.36-supply-depot",
+      "bytes": 475365,
+      "sha256": "bb0b4de53d0097eb721f6dd1918452c1873c59c9128655efa898a4c4bc1a3a3c",
+      "width": 768,
+      "height": 432,
+      "worldWidth": 62
+    },
+    {
+      "kind": "controlPointPad",
+      "file": "Props/control-point-pad.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/control-point-pad",
+      "bytes": 486439,
+      "sha256": "3a279a64c16d108a1cb763f13b4e957c1fc87dbe0d90b7cff15bf6f7ea3288db",
+      "width": 768,
+      "height": 512,
+      "worldWidth": 82
+    },
+    {
+      "kind": "roadSurface",
+      "file": "Terrain/desert-road.png",
+      "sourceFile": "v6.36-desert-road",
+      "bytes": 416906,
+      "sha256": "b93eb03f5cc93548842720e6d98bead1ea5030535b7db2a69d86a53c2088fc7d",
+      "width": 512,
+      "height": 512,
+      "format": "RGB8",
+      "decodeMaxPixels": 1024
+    },
+    {
+      "kind": "hudPanelMetal",
+      "file": "UI/hud-panel-metal.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/hud-panel-metal",
+      "bytes": 156773,
+      "sha256": "03cc4e7558a72450c62e4686d89b42f8c67b3b3e888c78af3a09d67b7b086feb",
+      "width": 512,
+      "height": 288,
+      "format": "RGB8",
+      "decodeMaxPixels": 512
+    },
+    {
+      "kind": "hudButtonKeycap",
+      "file": "UI/hud-button-keycap.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/hud-button-keycap",
+      "bytes": 122527,
+      "sha256": "7acfa5dcd2a4041409ce06eec07a99e6c24301bb3e451d0b65bad7a8b6a289f2",
+      "width": 512,
+      "height": 256,
+      "format": "RGB8",
+      "decodeMaxPixels": 512
+    },
+    {
+      "kind": "hudButtonGold",
+      "file": "UI/hud-button-gold.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/hud-button-gold",
+      "bytes": 153703,
+      "sha256": "ba0afa93c54be6251f33448f9c2fd90fffe5712a2f506c395560e3342355f36c",
+      "width": 512,
+      "height": 256,
+      "format": "RGB8",
+      "decodeMaxPixels": 512
+    },
+    {
+      "kind": "hudButtonActive",
+      "file": "UI/hud-button-active.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/hud-button-active",
+      "bytes": 131040,
+      "sha256": "26a7d488fd3616ce5b28511c4356a4504bd03e584d41c79efd4e2cc62328a02d",
+      "width": 512,
+      "height": 256,
+      "format": "RGB8",
+      "decodeMaxPixels": 512
     }
   ],
-  "updatedDate": "2026-11-12"
+  "updatedDate": "2026-11-24"
 }
