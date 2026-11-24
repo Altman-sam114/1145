@@ -13416,8 +13416,16 @@ final class GameScene: SKScene {
                 kind: .artillery,
                 persistent: true
             )
+            if let playerTank = playerTanks.first, let enemyTank = captureEnemyTanks.first {
+                showProjectile(
+                    from: playerTank.node.position,
+                    to: enemyTank.node.position,
+                    kind: .tank,
+                    persistent: true
+                )
+            }
         }
-        explode(at: tileCenter(TileCoord(row: 15, col: 13)), scale: 0.72, persistent: true)
+        explode(at: tileCenter(TileCoord(row: 15, col: 13)), scale: 0.95, persistent: true)
     }
 
     private func prepareCIAirCaptureScene() {
@@ -13637,6 +13645,9 @@ final class GameScene: SKScene {
 
         let attackerKnownToPlayer = attacker.faction == .player || isKnownToFaction(attacker, observer: .player)
         let targetKnownToPlayer = target.faction == .player || isKnownToFaction(target, observer: .player)
+        if attackerKnownToPlayer {
+            triggerFiringRecoil(for: attacker, toward: target.node.position)
+        }
         let submarineNavalTarget = attacker.kind == .submarine && target.kind.domain == .naval
         if submarineNavalTarget {
             if attackerKnownToPlayer && targetKnownToPlayer {
@@ -13779,6 +13790,27 @@ final class GameScene: SKScene {
         }
         if shouldShowAirMissileImpact(attacker: attacker, target: target) {
             showAirMissileImpact(at: target.node.position, faction: attacker.faction)
+        } else if targetKnownToPlayer && !submarineNavalTarget && !shouldShowNavalWaterImpact(attacker: attacker, target: target) {
+            let distance = attacker.node.position.distance(to: target.node.position)
+            let impactDelay: TimeInterval
+            switch attacker.kind {
+            case .artillery:
+                impactDelay = min(0.56, max(0.24, Double(distance) / 620))
+            case .battleship, .coastalBattery:
+                impactDelay = 0.24
+            case .tank:
+                impactDelay = min(0.24, max(0.08, Double(distance) / 1180))
+            case .humvee, .guardTower:
+                impactDelay = min(0.18, max(0.07, Double(distance) / 1450))
+            default:
+                impactDelay = min(0.24, max(0.10, Double(distance) / 1200))
+            }
+            showWeaponImpactExplosion(
+                at: target.node.position,
+                kind: attacker.kind,
+                faction: attacker.faction,
+                delay: impactDelay
+            )
         }
         showPlayerUnderAttackAlertIfNeeded(target: target, attacker: attacker)
         triggerEnemyDefenseIfNeeded(target: target, attacker: attacker)
@@ -17046,32 +17078,91 @@ final class GameScene: SKScene {
         let travel = end - start
         guard travel.length > 1 else { return }
         let direction = travel.normalized
-        if kind == .tank, let muzzleTexture = effectArtworkTexture(named: "muzzle-flash") {
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+
+        if (kind == .tank || kind == .humvee || kind == .guardTower),
+           let muzzleTexture = effectArtworkTexture(named: "muzzle-flash") {
             let muzzle = SKSpriteNode(texture: muzzleTexture)
-            muzzle.name = "combat:tank-flash"
-            let width: CGFloat = 28
+            muzzle.name = "combat:\(kind.shortCode)-flash"
+            let width: CGFloat = kind == .tank ? 32 : 18
             muzzle.size = CGSize(width: width, height: width * muzzleTexture.size().height / max(muzzleTexture.size().width, 1))
             muzzle.anchorPoint = CGPoint(x: 0.08, y: 0.5)
-            muzzle.position = start + direction * 24
+            let barrelOffset: CGFloat = kind == .tank ? 24 : 16
+            muzzle.position = start + direction * barrelOffset
             muzzle.zRotation = atan2(direction.y, direction.x)
             muzzle.zPosition = 286
             effectsLayer.addChild(muzzle)
             if !persistent {
                 muzzle.run(.sequence([
-                    .group([.scale(to: 1.28, duration: 0.16), .fadeOut(withDuration: 0.16)]),
+                    .group([.scale(to: 1.32, duration: 0.15), .fadeOut(withDuration: 0.15)]),
+                    .removeFromParent()
+                ]))
+            }
+            if kind == .tank && !persistent {
+                let muzzleDust = SKShapeNode(ellipseOf: CGSize(width: 26, height: 11))
+                muzzleDust.position = start + direction * 18 + CGPoint(x: 0, y: -6)
+                muzzleDust.fillColor = UIColor(red: 0.78, green: 0.65, blue: 0.42, alpha: 0.24)
+                muzzleDust.strokeColor = UIColor(red: 0.92, green: 0.80, blue: 0.54, alpha: 0.35)
+                muzzleDust.lineWidth = 1.0
+                muzzleDust.zPosition = 246
+                effectsLayer.addChild(muzzleDust)
+                muzzleDust.run(.sequence([
+                    .group([.scale(to: 1.65, duration: 0.28), .fadeOut(withDuration: 0.28)]),
                     .removeFromParent()
                 ]))
             }
         }
+
+        // Rapid-fire 3-round autocannon tracer burst for Scout Humvee & Guard Tower
+        if (kind == .humvee || kind == .guardTower) && !persistent {
+            let burstDuration = min(0.18, max(0.07, Double(travel.length) / 1450))
+            for shotIndex in 0..<3 {
+                let shotDelay = TimeInterval(shotIndex) * 0.055
+                let jitter = normal * (CGFloat(shotIndex - 1) * 2.4)
+                let shotStart = start + direction * 16 + jitter * 0.4
+                let shotEnd = end + jitter
+                let root = SKNode()
+                root.name = "projectile-tracer:\(kind.shortCode)"
+                root.position = shotStart
+                root.zRotation = atan2((shotEnd - shotStart).y, (shotEnd - shotStart).x)
+                root.zPosition = 250
+                root.alpha = 0
+                let core = SKShapeNode(rectOf: CGSize(width: 11, height: 1.7), cornerRadius: 0.8)
+                core.position.x = -5.5
+                core.fillColor = UIColor(red: 1.0, green: 0.94, blue: 0.68, alpha: 1.0)
+                core.strokeColor = UIColor(red: 1.0, green: 0.60, blue: 0.16, alpha: 0.85)
+                core.lineWidth = 0.5
+                root.addChild(core)
+                let tailPath = CGMutablePath()
+                tailPath.move(to: CGPoint(x: -22, y: 0))
+                tailPath.addLine(to: CGPoint(x: -10, y: 0))
+                let tail = SKShapeNode(path: tailPath)
+                tail.strokeColor = UIColor(red: 1.0, green: 0.78, blue: 0.36, alpha: 0.46)
+                tail.lineWidth = 1.1
+                tail.lineCap = .round
+                root.addChild(tail)
+                effectsLayer.addChild(root)
+                root.run(.sequence([
+                    .wait(forDuration: shotDelay),
+                    .fadeIn(withDuration: 0.01),
+                    .move(to: shotEnd, duration: burstDuration),
+                    .fadeOut(withDuration: 0.03),
+                    .removeFromParent()
+                ]))
+            }
+            return
+        }
+
         let heavy = kind == .tank || kind == .artillery || kind == .battleship || kind == .coastalBattery
+        let launchOrigin = kind == .tank ? start + direction * 22 : (kind == .artillery ? start + direction * 34 : start)
         let root = SKNode()
         root.name = "projectile-tracer:\(kind.shortCode)"
-        root.position = persistent ? start + travel * 0.55 : start
+        root.position = persistent ? start + travel * 0.55 : launchOrigin
         root.zRotation = atan2(direction.y, direction.x)
-        root.zPosition = 250
+        root.zPosition = kind == .artillery ? 287 : 250
         if heavy, let tracerTexture = effectArtworkTexture(named: "shell-tracer") {
             let sprite = SKSpriteNode(texture: tracerTexture)
-            let width: CGFloat = kind == .battleship || kind == .coastalBattery ? 46 : (kind == .artillery ? 40 : 34)
+            let width: CGFloat = kind == .battleship || kind == .coastalBattery ? 48 : (kind == .artillery ? 44 : 36)
             sprite.size = CGSize(width: width, height: width * tracerTexture.size().height / max(tracerTexture.size().width, 1))
             sprite.anchorPoint = CGPoint(x: 0.90, y: 0.5)
             sprite.blendMode = .alpha
@@ -17095,8 +17186,46 @@ final class GameScene: SKScene {
         }
         effectsLayer.addChild(root)
         guard !persistent else { return }
+
+        // High-arc parabolic howitzer trajectory for Artillery shells
+        if kind == .artillery {
+            let duration = min(0.56, max(0.24, Double(travel.length) / 620))
+            let apexHeight = min(96, max(38, travel.length * 0.28))
+            let controlPoint = (launchOrigin + end) * 0.5 + CGPoint(x: 0, y: apexHeight)
+            let arcPath = CGMutablePath()
+            arcPath.move(to: launchOrigin)
+            arcPath.addQuadCurve(to: end, control: controlPoint)
+            root.run(.sequence([
+                .follow(arcPath, asOffset: false, orientToPath: true, duration: duration),
+                .fadeOut(withDuration: 0.03),
+                .removeFromParent()
+            ]))
+            // Subtle propellant smoke puffs along the climbing arc
+            for step in [0.18, 0.42, 0.68] as [CGFloat] {
+                let u = 1 - step
+                let pt = CGPoint(
+                    x: u * u * launchOrigin.x + 2 * u * step * controlPoint.x + step * step * end.x,
+                    y: u * u * launchOrigin.y + 2 * u * step * controlPoint.y + step * step * end.y
+                )
+                let puff = SKShapeNode(circleOfRadius: 3.2 + step * 1.4)
+                puff.position = pt
+                puff.fillColor = UIColor(white: 0.86, alpha: 0.26)
+                puff.strokeColor = .clear
+                puff.zPosition = 285
+                puff.alpha = 0
+                effectsLayer.addChild(puff)
+                puff.run(.sequence([
+                    .wait(forDuration: duration * Double(step)),
+                    .fadeIn(withDuration: 0.02),
+                    .group([.scale(to: 2.1, duration: 0.34), .fadeOut(withDuration: 0.34)]),
+                    .removeFromParent()
+                ]))
+            }
+            return
+        }
+
         // A visual flight only; the existing firing path still owns every damage event.
-        let duration = min(0.28, max(0.09, Double(travel.length) / 1200))
+        let duration = min(0.24, max(0.08, Double(travel.length) / 1180))
         root.run(.sequence([.move(to: end, duration: duration), .fadeOut(withDuration: 0.04), .removeFromParent()]))
     }
 
@@ -17664,7 +17793,10 @@ final class GameScene: SKScene {
         persistent: Bool = false
     ) {
         guard faction == .player || isVisible(point: point) else { return }
-        if showArtworkImpact("impact-burst", at: point, width: 52, zPosition: 288, persistent: persistent) { return }
+        spawnScorchCraterIfLand(at: point, scale: 0.62, persistent: persistent)
+        showBlastShockwave(at: point, scale: 0.72, persistent: persistent)
+        if !persistent { spawnImpactSparks(at: point, count: 6, radius: 22) }
+        if showArtworkImpact("impact-burst", at: point, width: 56, zPosition: 288, persistent: persistent) { return }
         let root = SKNode()
         root.position = point
         root.zPosition = 288
@@ -17713,7 +17845,11 @@ final class GameScene: SKScene {
         persistent: Bool = false
     ) {
         guard faction == .player || isVisible(point: point) else { return }
-        if showArtworkImpact("impact-burst", at: point, width: 48, zPosition: 288, persistent: persistent) { return }
+        spawnScorchCraterIfLand(at: point, scale: 0.78, persistent: persistent)
+        showBlastShockwave(at: point, scale: 0.86, persistent: persistent)
+        if !persistent { spawnImpactSparks(at: point, count: 7, radius: 26) }
+        _ = showArtworkImpact("explosion-fireball", at: point, width: 64, zPosition: 287.5, anchorY: 0.24, duration: 0.46, persistent: persistent)
+        if showArtworkImpact("impact-burst", at: point, width: 54, zPosition: 288, persistent: persistent) { return }
         let root = SKNode()
         root.position = point
         root.zPosition = 288
@@ -18664,10 +18800,118 @@ final class GameScene: SKScene {
         ]))
     }
 
+    private func triggerFiringRecoil(for attacker: GameEntity, toward targetPoint: CGPoint) {
+        guard !isCICaptureMode, let sprite = attacker.artworkNode, sprite.action(forKey: "combat:recoil") == nil else { return }
+        let kick: CGFloat
+        switch attacker.kind {
+        case .artillery: kick = 5.2
+        case .tank: kick = 3.8
+        case .battleship, .coastalBattery: kick = 3.2
+        case .humvee, .guardTower: kick = 1.8
+        default: return
+        }
+        let dir = (targetPoint - attacker.node.position).normalized
+        guard dir.length > 0.01 else { return }
+        // Compensate if the parent entity node is horizontally mirrored (xScale < 0).
+        let localDX = -dir.x * kick * (attacker.node.xScale < 0 ? -1 : 1)
+        let localDY = -dir.y * kick
+        let recoil = SKAction.sequence([
+            .moveBy(x: localDX, y: localDY, duration: 0.045),
+            .moveBy(x: -localDX, y: -localDY, duration: 0.14)
+        ])
+        sprite.run(recoil, withKey: "combat:recoil")
+    }
+
+    private func showWeaponImpactExplosion(
+        at point: CGPoint,
+        kind: EntityKind,
+        faction: Faction,
+        delay: TimeInterval
+    ) {
+        let performImpact = SKAction.run { [weak self] in
+            guard let self else { return }
+            switch kind {
+            case .artillery, .battleship, .coastalBattery:
+                self.spawnScorchCraterIfLand(at: point, scale: 0.86, persistent: false)
+                self.showBlastShockwave(at: point, scale: 0.92, persistent: false)
+                _ = self.showArtworkImpact("explosion-fireball", at: point, width: 68, zPosition: 285.6, anchorY: 0.24, duration: 0.48, persistent: false)
+                _ = self.showArtworkImpact("impact-burst", at: point, width: 58, zPosition: 286.2, duration: 0.36, persistent: false)
+                self.spawnImpactSparks(at: point, count: 6, radius: 26)
+            case .tank:
+                self.spawnScorchCraterIfLand(at: point, scale: 0.54, persistent: false)
+                self.showBlastShockwave(at: point, scale: 0.56, persistent: false)
+                _ = self.showArtworkImpact("impact-burst", at: point, width: 44, zPosition: 286.2, duration: 0.30, persistent: false)
+                self.spawnImpactSparks(at: point, count: 5, radius: 20)
+            case .humvee, .guardTower:
+                _ = self.showArtworkImpact("impact-burst", at: point, width: 22, zPosition: 286.0, duration: 0.20, persistent: false)
+                self.spawnImpactSparks(at: point, count: 3, radius: 13)
+            default:
+                _ = self.showArtworkImpact("impact-burst", at: point, width: 34, zPosition: 286.0, duration: 0.26, persistent: false)
+                self.spawnImpactSparks(at: point, count: 4, radius: 16)
+            }
+        }
+        let timerNode = SKNode()
+        effectsLayer.addChild(timerNode)
+        timerNode.run(.sequence([
+            .wait(forDuration: max(0, delay)),
+            performImpact,
+            .removeFromParent()
+        ]))
+    }
+
+    private func spawnImpactSparks(at point: CGPoint, count: Int, radius: CGFloat) {
+        for index in 0..<count {
+            let angle = (CGFloat(index) / CGFloat(max(1, count))) * .pi * 2 + CGFloat(index % 2) * 0.35
+            let distance = radius * (0.65 + CGFloat((index * 37) % 10) * 0.06)
+            let spark = SKShapeNode(rectOf: CGSize(width: 7, height: 1.6), cornerRadius: 0.8)
+            spark.position = point
+            spark.zRotation = angle
+            spark.fillColor = index.isMultiple(of: 2)
+                ? UIColor(red: 1.0, green: 0.94, blue: 0.68, alpha: 1.0)
+                : UIColor(red: 1.0, green: 0.58, blue: 0.16, alpha: 0.95)
+            spark.strokeColor = .clear
+            spark.zPosition = 287
+            effectsLayer.addChild(spark)
+            let dx = cos(angle) * distance
+            let dy = sin(angle) * distance * 0.65 + 10
+            spark.run(.sequence([
+                .group([
+                    .moveBy(x: dx, y: dy, duration: 0.26),
+                    .fadeOut(withDuration: 0.26),
+                    .scale(to: 0.4, duration: 0.26)
+                ]),
+                .removeFromParent()
+            ]))
+        }
+    }
+
     private func explode(at point: CGPoint, scale: CGFloat, persistent: Bool = false) {
         spawnScorchCraterIfLand(at: point, scale: scale, persistent: persistent)
         if scale >= 0.85 {
             showBlastShockwave(at: point, scale: scale, persistent: persistent)
+        }
+        if !persistent {
+            spawnImpactSparks(at: point, count: scale >= 1.2 ? 10 : 7, radius: 34 * scale)
+            if let smokeTexture = effectArtworkTexture(named: "smoke-plume") {
+                let smoke = SKSpriteNode(texture: smokeTexture)
+                smoke.name = "combat:death-smoke"
+                let w: CGFloat = 42 * scale
+                smoke.size = CGSize(width: w, height: w * smokeTexture.size().height / max(smokeTexture.size().width, 1))
+                smoke.anchorPoint = CGPoint(x: 0.5, y: 0.14)
+                smoke.position = point
+                smoke.alpha = 0.72
+                smoke.zPosition = 284.5
+                effectsLayer.addChild(smoke)
+                smoke.run(.sequence([
+                    .wait(forDuration: 0.10),
+                    .group([
+                        .moveBy(x: 8 * scale, y: 34 * scale, duration: 1.45),
+                        .scale(to: 1.65, duration: 1.45),
+                        .fadeOut(withDuration: 1.45)
+                    ]),
+                    .removeFromParent()
+                ]))
+            }
         }
         if scale >= 1.0 {
             _ = showArtworkImpact("explosion-fireball", at: point, width: 84 * scale, zPosition: 285.5,
