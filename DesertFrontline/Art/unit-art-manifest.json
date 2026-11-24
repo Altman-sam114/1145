@@ -532,6 +532,16 @@
       "worldWidth": 49
     },
     {
+      "kind": "desertDuneDecal",
+      "file": "Scenery/desert-dune-decal.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/desert-dune-decal",
+      "bytes": 443471,
+      "sha256": "001dbf676ddd7b437d2297df97f3bafb90cda8b4c49c00783eabe2cebc821cf6",
+      "width": 640,
+      "height": 426,
+      "worldWidth": 130
+    },
+    {
       "kind": "explosionFireball",
       "file": "Effects/explosion-fireball.png",
       "sourceFile": "ai-v6.36-explosion-fireball",
@@ -570,6 +580,16 @@
       "width": 768,
       "height": 256,
       "worldWidth": 72
+    },
+    {
+      "kind": "torpedoSprite",
+      "file": "Effects/torpedo-sprite.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/torpedo-sprite",
+      "bytes": 104547,
+      "sha256": "5e26a1bb6754938c597444dba0b7b1099d3d352c3bb37df0009452afa4525bed",
+      "width": 768,
+      "height": 256,
+      "worldWidth": 62
     },
     {
       "kind": "craterScorch",
@@ -680,6 +700,16 @@
       "width": 768,
       "height": 512,
       "worldWidth": 82
+    },
+    {
+      "kind": "controlFlag",
+      "file": "Props/control-flag.png",
+      "sourceFile": "magpie-gpt-image-2.5-flare/control-flag",
+      "bytes": 90894,
+      "sha256": "a1e9bd69ddbc508db31041e70fee4738bca746a76b778985310073d0a35283ae",
+      "width": 640,
+      "height": 426,
+      "worldWidth": 52
     },
     {
       "kind": "roadSurface",

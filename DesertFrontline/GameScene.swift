@@ -2525,6 +2525,34 @@ final class GameScene: SKScene {
             }
             paint(sand, within: footprint, fallback: color(for: .sand, tile: TileCoord(row: 0, col: 0)),
                   cell: CGSize(width: 680, height: 340))
+            // Natural wind-sculpted desert sand ripples & dry wadi earth decals baked into land
+            if let decalURL = Bundle.main.url(forResource: "desert-dune-decal", withExtension: "png", subdirectory: "Art/Scenery"),
+               let decalImage = UIImage(contentsOfFile: decalURL.path) {
+                context.saveGState()
+                context.addPath(land)
+                context.clip(using: .evenOdd)
+                for row in 0..<rows {
+                    for col in 0..<cols where terrain[row][col] == .sand {
+                        let tile = TileCoord(row: row, col: col)
+                        let hash = terrainDetailHash(for: tile)
+                        guard hash % 13 == 0 else { continue }
+                        let center = point(tileCenter(tile))
+                        let decalWidth: CGFloat = 116 + CGFloat(hash % 44)
+                        let decalHeight = decalWidth * (decalImage.size.height / max(decalImage.size.width, 1))
+                        let flipX = (hash / 13) % 2 == 0
+                        context.saveGState()
+                        context.translateBy(x: center.x, y: center.y)
+                        if flipX { context.scaleBy(x: -1, y: 1) }
+                        decalImage.draw(
+                            in: CGRect(x: -decalWidth * 0.5, y: -decalHeight * 0.5, width: decalWidth, height: decalHeight),
+                            blendMode: .normal,
+                            alpha: 0.42
+                        )
+                        context.restoreGState()
+                    }
+                }
+                context.restoreGState()
+            }
             // Subtle warm desert sunlight gradient and macro dune depth clipped to land.
             context.saveGState()
             context.addPath(land)
@@ -3549,35 +3577,47 @@ final class GameScene: SKScene {
         }
 
         let poleX: CGFloat = hasPadTexture ? -1 : -6
-        let pole = SKShapeNode(rectOf: CGSize(width: 2.2, height: 34), cornerRadius: 0.6)
-        pole.position = CGPoint(x: poleX, y: hasPadTexture ? 24 : 19)
-        pole.fillColor = UIColor(white: 0.90, alpha: 1.0)
-        pole.strokeColor = UIColor(white: 0.14, alpha: 0.9)
-        pole.lineWidth = 0.5
-        pole.zPosition = 1
-        point.node.addChild(pole)
+        if let flagTexture = propArtworkTexture(named: "control-flag") {
+            let flagSprite = SKSpriteNode(texture: flagTexture)
+            flagSprite.name = "cp:flag-sprite"
+            let flagWidth: CGFloat = 54
+            flagSprite.size = CGSize(width: flagWidth, height: flagWidth * flagTexture.size().height / max(flagTexture.size().width, 1))
+            flagSprite.anchorPoint = CGPoint(x: 0.34, y: 0.06)
+            flagSprite.position = CGPoint(x: poleX, y: hasPadTexture ? 8 : 4)
+            flagSprite.zPosition = 2
+            point.node.addChild(flagSprite)
+            point.flag.isHidden = true
+        } else {
+            let pole = SKShapeNode(rectOf: CGSize(width: 2.2, height: 34), cornerRadius: 0.6)
+            pole.position = CGPoint(x: poleX, y: hasPadTexture ? 24 : 19)
+            pole.fillColor = UIColor(white: 0.90, alpha: 1.0)
+            pole.strokeColor = UIColor(white: 0.14, alpha: 0.9)
+            pole.lineWidth = 0.5
+            pole.zPosition = 1
+            point.node.addChild(pole)
 
-        let finial = SKShapeNode(circleOfRadius: 2.0)
-        finial.position = CGPoint(x: poleX, y: (hasPadTexture ? 24 : 19) + 17.5)
-        finial.fillColor = HUDPalette.gold
-        finial.strokeColor = UIColor(white: 0.12, alpha: 0.8)
-        finial.lineWidth = 0.5
-        finial.zPosition = 2.2
-        point.node.addChild(finial)
+            let finial = SKShapeNode(circleOfRadius: 2.0)
+            finial.position = CGPoint(x: poleX, y: (hasPadTexture ? 24 : 19) + 17.5)
+            finial.fillColor = HUDPalette.gold
+            finial.strokeColor = UIColor(white: 0.12, alpha: 0.8)
+            finial.lineWidth = 0.5
+            finial.zPosition = 2.2
+            point.node.addChild(finial)
 
-        let pennant = CGMutablePath()
-        pennant.move(to: CGPoint(x: -9, y: 6))
-        pennant.addLine(to: CGPoint(x: 11, y: 4.5))
-        pennant.addLine(to: CGPoint(x: 6.5, y: 0))
-        pennant.addLine(to: CGPoint(x: 11, y: -4.5))
-        pennant.addLine(to: CGPoint(x: -9, y: -6))
-        pennant.closeSubpath()
-        point.flag.path = pennant
-        point.flag.position = CGPoint(x: poleX + 10, y: hasPadTexture ? 35 : 31)
-        point.flag.strokeColor = UIColor.white.withAlphaComponent(0.85)
-        point.flag.lineWidth = 0.7
-        point.flag.zPosition = 2
-        point.node.addChild(point.flag)
+            let pennant = CGMutablePath()
+            pennant.move(to: CGPoint(x: -9, y: 6))
+            pennant.addLine(to: CGPoint(x: 11, y: 4.5))
+            pennant.addLine(to: CGPoint(x: 6.5, y: 0))
+            pennant.addLine(to: CGPoint(x: 11, y: -4.5))
+            pennant.addLine(to: CGPoint(x: -9, y: -6))
+            pennant.closeSubpath()
+            point.flag.path = pennant
+            point.flag.position = CGPoint(x: poleX + 10, y: hasPadTexture ? 35 : 31)
+            point.flag.strokeColor = UIColor.white.withAlphaComponent(0.85)
+            point.flag.lineWidth = 0.7
+            point.flag.zPosition = 2
+            point.node.addChild(point.flag)
+        }
 
         let labelBack = SKShapeNode(rectOf: CGSize(width: 82, height: 14), cornerRadius: 3.5)
         labelBack.name = "cp:label-back"
@@ -3614,6 +3654,10 @@ final class GameScene: SKScene {
     private func updateControlPointVisual(_ point: BattlefieldControlPoint) {
         let ownerColor = controlPointColor(for: point.faction)
         point.flag.fillColor = ownerColor
+        if let flagSprite = point.node.childNode(withName: "cp:flag-sprite") as? SKSpriteNode {
+            flagSprite.color = ownerColor
+            flagSprite.colorBlendFactor = 0.62
+        }
         point.ring.strokeColor = ownerColor.withAlphaComponent(0.78)
         if let labelBack = point.node.childNode(withName: "cp:label-back") as? SKShapeNode {
             labelBack.strokeColor = ownerColor.withAlphaComponent(0.72)
@@ -17396,12 +17440,12 @@ final class GameScene: SKScene {
         root.zRotation = atan2(direction.y, direction.x)
         root.zPosition = 283
 
-        if let torpedoTexture = effectArtworkTexture(named: "torpedo-wake") {
+        if let torpedoTexture = effectArtworkTexture(named: "torpedo-sprite") ?? effectArtworkTexture(named: "torpedo-wake") {
             let sprite = SKSpriteNode(texture: torpedoTexture)
             sprite.name = "combat:torpedo-sprite"
-            let width: CGFloat = 72
+            let width: CGFloat = 68
             sprite.size = CGSize(width: width, height: width * torpedoTexture.size().height / max(torpedoTexture.size().width, 1))
-            sprite.anchorPoint = CGPoint(x: 0.84, y: 0.5)
+            sprite.anchorPoint = CGPoint(x: 0.88, y: 0.5)
             root.addChild(sprite)
         } else {
             let disturbancePath = CGMutablePath()
